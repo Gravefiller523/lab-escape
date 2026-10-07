@@ -14,10 +14,35 @@ config/name="Lab Escape"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+Config="*res://core/autoload/config.gd"
+EventBus="*res://core/autoload/event_bus.gd"
+ContentRegistry="*res://core/autoload/content_registry.gd"
+
+[debug]
+
+gdscript/warnings/untyped_declaration=2
+gdscript/warnings/unsafe_property_access=1
+gdscript/warnings/unsafe_method_access=1
+gdscript/warnings/unsafe_call_argument=1
+
 [display]
 
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[layer_names]
+
+3d_physics/layer_1="world"
+3d_physics/layer_2="players"
+3d_physics/layer_3="enemies"
+3d_physics/layer_4="props"
+3d_physics/layer_5="held_props"
+3d_physics/layer_6="carts"
+3d_physics/layer_7="triggers"
+3d_physics/layer_8="interactables"
+3d_physics/layer_9="hitboxes"
 
 [physics]
 

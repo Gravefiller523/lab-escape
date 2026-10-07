@@ -55,9 +55,10 @@ None.
 - If the host leaves, emits `connection_lost`; game_flow returns the client to the main menu.
 
 ## Dependencies and stubs
-- GodotSteam (GDExtension or the pre-built editor) matching Godot 4.7, **including
-  SteamMultiplayerPeer** (check whether your GodotSteam download includes it; for the GDExtension it
-  may be a separate add-on).
+- GodotSteam: use **"GodotSteam GDExtension 4.4+"** from the AssetLib tab, version 4.23 or newer
+  (checked 2026-10-07). It includes `SteamMultiplayerPeer` (merged in 4.17; no separate download) and
+  the voice functions (`getVoice`, `decompressVoice`, `getVoiceOptimalSampleRate`). Don't mix it with
+  GodotSteam's pre-compiled editors.
 - Stub for others: local mode *is* the stub. Every other system tests with `host_local()`/`join_local()`.
 
 ## Test scene and GUT tests
@@ -77,7 +78,7 @@ GUT tests (`tests/unit/steam_session/`):
 
 ## Open design questions
 - DEFAULT: lobbies are friends-only (no public browser).
-- Which exact GodotSteam build (GDExtension vs. pre-built editor) works best with GUT and exports? Decide in Phase 1a.
+- DEFAULT: the GDExtension build (works with Godot's normal export templates).
 
 ## Changelog
 - 2026-10-07: spec created.

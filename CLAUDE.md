@@ -72,8 +72,12 @@ Never call a function or touch a variable that starts with `_` from outside its 
 
 ## 4. Static typing rules
 
-The project treats an untyped variable as an **error** (Project Settings > Debug > GDScript).
-- Type every variable, parameter and return value: `var speed: float = 3.0`,
+The project shows a **warning** for untyped code (Project Settings > Debug > GDScript > Untyped
+Declaration = Warn). It is deliberately not set to Error: GUT and the Godot AI plugin compile code
+while running, and Error makes them fail. Treat every typing warning in your own code as a bug and
+fix it before merging.
+- Type every variable, parameter, loop variable and return value: `var speed: float = 3.0`,
+  `for item: ItemData in items:`,
   `func get_slot(index: int) -> ItemData:`. Functions that return nothing use `-> void`.
 - `:=` is allowed when the type is obvious from the right side (`var rng := RandomNumberGenerator.new()`).
 - Use typed arrays: `Array[StringName]`, `Array[ItemData]`. Prefer typed dictionaries

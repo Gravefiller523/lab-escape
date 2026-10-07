@@ -17,7 +17,11 @@ func test_all_content_is_valid() -> void:
 
 
 func test_every_department_has_a_boss_and_rooms() -> void:
-	for data: ContentData in ContentRegistry.get_all(&"department"):
+	var departments: Array[ContentData] = ContentRegistry.get_all(&"department")
+	if departments.is_empty():
+		pass_test("No departments yet.")
+		return
+	for data: ContentData in departments:
 		var department: DepartmentData = data as DepartmentData
 		assert_true(ContentRegistry.has_content(department.boss_id),
 			"%s needs a boss that exists." % department.id)

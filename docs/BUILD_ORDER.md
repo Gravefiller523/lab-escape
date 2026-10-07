@@ -10,12 +10,21 @@ M = a week or two, L = several weeks, for a beginner working with Claude Code.
 Swap the stub for the real thing at merge time.
 
 ## Phase 0: setup (everyone, 1 to 2 days)
+Versions checked on 2026-10-07:
 1. Install **Git for Windows** (git wasn't found on Zachary's PC) and make sure `git --version` works.
-2. Install **GUT** from Godot's AssetLib tab into `addons/gut/`; enable the plugin; run the two tests in `tests/`.
-3. Install **GodotSteam** for Godot 4.7 (check it includes `SteamMultiplayerPeer`), put
-   `steam_appid.txt` containing `480` in the project folder, and keep Steam running while testing.
-4. Commit the foundation to `main` (it's already written and checked).
-5. Each person opens the project, runs it, and runs the tests. Agree who is A, B and C.
+2. Optional but recommended: update everyone to **Godot 4.7.2** (bug-fix release; same project format).
+3. Install **GUT 9.7.1** (the version made for Godot 4.7) from GitHub, `bitwes/Gut`, release tag
+   `v9.7.1`: copy its `addons/gut` folder into the project and enable the plugin. **Don't use the
+   AssetLib tab for GUT**: it only offers 9.6.1, which is the Godot 4.6 version. Run the two tests in `tests/`.
+4. Install **GodotSteam GDExtension 4.4+** (version 4.23 or newer, by Gramps, MIT) from Godot's
+   AssetLib tab. It already includes `SteamMultiplayerPeer` (since 4.17) and the voice functions.
+   Don't mix it with GodotSteam's pre-compiled editors. Put `steam_appid.txt` containing `480` in the
+   project folder (or set the app ID in GodotSteam's project settings) and keep Steam running while testing.
+5. Optional: the **Godot AI** MCP (`hi-godot/godot-ai`, free, MIT) so Claude Code can work in the live
+   editor (build scenes, run the game, take screenshots, read errors). Needs `uv` installed. It sends
+   anonymous usage telemetry unless you set `GODOT_AI_DISABLE_TELEMETRY=true`.
+6. Commit the foundation to `main` (it's already written and checked).
+7. Each person opens the project, runs it, and runs the tests. Agree who is A, B and C.
 
 ## Phase 1a: the risky proofs first (3 tracks in parallel)
 Goal: find out early whether the three hardest things work, before building anything on top of them.

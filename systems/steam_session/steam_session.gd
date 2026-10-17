@@ -269,7 +269,7 @@ func _close_peer() -> void:
 		_say_goodbye(enet)
 	if multiplayer.multiplayer_peer != null and not multiplayer.multiplayer_peer is OfflineMultiplayerPeer:
 		multiplayer.multiplayer_peer.close()
-	multiplayer.multiplayer_peer = null
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	_mode = Mode.NONE
 	_is_host = false
 	_lobby_id = 0

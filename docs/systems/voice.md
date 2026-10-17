@@ -35,7 +35,11 @@ func feed_voice(player_id: int, frames: PackedVector2Array) -> bool   # play voi
 func get_voice_volume(player_id: int) -> float      # 0..1 how loud that voice is for you now
 func get_hearing(player_id: int) -> VoiceHearing    # distance, muffle, source, used_path, closed_doors
 func get_muffle_filter(player_id: int) -> AudioEffectLowPassFilter
-static func distance_gain(distance: float, full_distance: float, max_distance: float) -> float
+func get_echo_effects(player_id: int) -> Array[AudioEffect]   # NEW: [reverb, echo] on their bus
+static func distance_gain(distance: float, full_distance: float, max_distance: float, curve: Curve = null) -> float
+static func distance_reverb(distance: float, config: GameConfig) -> float      # NEW
+static func distance_echo(distance: float, config: GameConfig) -> float        # NEW
+static func voice_cutoff(muffle: float, distance: float, config: GameConfig) -> float   # NEW: distance + walls
 static func hearing_gain(distance: float, muffle: float, config: GameConfig) -> float
 static func muffle_cutoff(muffle: float, config: GameConfig) -> float
 static func load_preset(preset: StringName) -> VoicePreset
@@ -52,9 +56,16 @@ extend `VoicePreset` (`voice_preset.gd`) and override `build(bus_index, strength
 so far: `buzz` (Fly: band-pass + light distortion + fast chorus) and `deep`.
 
 ### NEW 2026-10-17: how far voices carry (Zachary's request)
-- **Distance fade:** each player's voice plays from their head (`AudioStreamPlayer3D`). Godot's own
-  falloff is off; voice sets the volume itself: full volume within `voice_full_volume_distance` (4 m),
-  then a smooth fade to **complete silence at `voice_max_distance`** (30 m). 0 = everyone hears everyone.
+- **Distance fade (CHANGED 2026-10-17, after Zachary's playtest):** each player's voice plays from
+  their head (`AudioStreamPlayer3D`). Godot's own falloff is off; voice sets the volume itself: full
+  volume within `voice_full_volume_distance` (4 m), then it follows `voice_distance_curve` (a Curve you
+  can reshape in the Inspector): a fairly quick drop, then a **long, quiet tail** where far voices are
+  barely there, and **complete silence at `voice_max_distance` (now 60 m, was 30 m)**. 0 = everyone hears everyone.
+- **Sounding far away (NEW 2026-10-17):** far voices also lose treble (air absorption, down to
+  `voice_far_cutoff_hz` = 2500 Hz at the max distance), get more reverb (`voice_far_reverb` = 0.45 at
+  the max) and a faint echo ~0.3 s later (`voice_far_echo` = 0.2 at the max). Each player's bus has
+  pitch/presets, then reverb, then echo, then the treble filter (distance and walls combined).
+  Route distances (round corners, through doors) use the same curve and effects.
 - **Walls muffle (step A):** about 10 times a second (`voice_hearing_updates_per_second`) each PC casts
   3 rays from the listener's camera to each speaker's head against the sound-blocker layer
   (`voice_sound_blocker_layer`, 1 = world). Blocked = muffled: quieter (`voice_muffle_volume`) and
@@ -115,6 +126,8 @@ NEW 2026-10-17 (all with generated test tones, never the real mic): `test_open_m
 `test_clear_line_of_sight_is_not_muffled`, `test_wall_without_navmesh_is_fully_muffled`,
 `test_route_through_doorway_is_longer_and_comes_from_the_doorway`, `test_closed_door_muffles_open_door_does_not`,
 `test_closed_door_on_direct_line_without_navmesh`.
+NEW 2026-10-17 (distance tail): `test_long_quiet_tail_with_the_default_curve`, `test_reverb_and_echo_grow_with_distance`,
+`test_far_voices_lose_treble`, `test_bus_has_distance_effects`. The test field now runs to 60 m with markers every 10 m.
 CHANGED 2026-10-17, proof scene: two rooms joined by a hallway (`test/voice_test_rooms.gd`, also used by
 the tests), a door between Room A and the hallway (E), a long field off Room B, a yellow echo dummy
 (K on/off, J moves it to you), F = Fly voice for everyone, L = hear yourself, P = open mic / push-to-talk
@@ -141,6 +154,8 @@ label yet (delay is judged by ear on 2 PCs).
   marked NEW above. New GameConfig numbers: `voice_open_mic_threshold`, `voice_sound_blocker_layer`,
   `voice_muffle_volume`, `voice_muffle_cutoff_hz`, `voice_corner_muffle`, `voice_closed_door_muffle`,
   `voice_hearing_updates_per_second`. Project setting `audio/driver/enable_input = true` (needed for the mic).
+- 2026-10-17: after Zachary's playtest: `voice_max_distance` 30 -> 60 m; new `voice_distance_curve`,
+  `voice_far_cutoff_hz`, `voice_far_reverb`, `voice_far_echo`; reverb and echo effects on every voice bus.
 
 ## HANDOFF
 **Done (Phase 1a proof):** the `Voice` autoload: one bus per player (`Voice_<slot>`) with pitch,

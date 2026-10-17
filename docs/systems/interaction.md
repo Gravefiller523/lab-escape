@@ -31,7 +31,25 @@ func register_use_handler(priority: int, handler: Callable) -> void
 func unregister_use_handler(handler: Callable) -> void
 ## prompt: func(target: Node3D) -> String  ("" = no opinion). Lets handlers change the prompt ("Eat glowing gem").
 func register_prompt_provider(priority: int, provider: Callable) -> void
+func unregister_prompt_provider(provider: Callable) -> void   # NEW 2026-10-17
+func press_use(target: Node3D) -> bool          # NEW 2026-10-17: what pressing use does (handlers, then the Interactable)
+func request_use(target: Node3D, held_seconds: float) -> void   # NEW 2026-10-17: ask the host to use a target
+const NODE_NAME: String = "Interaction"
+
+# NEW 2026-10-17 on Interactable:
+func get_anchor() -> Node3D                     # the object distance is measured to (its parent)
+func allows(player_id: int) -> bool             # host: enabled and use_condition
+
+# NEW 2026-10-17: autoload "Interaction" (systems/interaction/interaction.gd, class_name InteractionService)
+func get_local_controller() -> InteractionController   # null if you have no body
+static func controller_of(body: PlayerCharacter) -> InteractionController
 ```
+NEW 2026-10-17: the `Interaction` autoload adds an `InteractionController` (child "Interaction") to
+every player body when `player_spawned` fires, on every PC, so the player scene needn't change. Only the
+local body's controller looks and listens to the key; the others are there so use requests (RPCs) have
+the same node path on every PC. Target paths are sent relative to the multiplayer root. The look ray
+is 4 m long and hits INTERACTABLES, PROPS, CARTS and WORLD (walls block it). The host allows
+`max_distance` + 0.75 m (network delay), measured from the player's eyes to the Interactable's parent.
 What pressing **use** does, in order: (1) use handlers by priority (e.g. holding a glowing gem → eat it;
 holding a normal prop → drop it; looking at a prop → grab it); (2) otherwise, if the target has an
 `Interactable`, request a use from the host.
@@ -55,16 +73,42 @@ player (camera ray and input). Stub: a camera-only rig with the `InteractionCont
 
 ## Test scene and GUT tests
 Test scene: a room with a button (press), a lever (hold 1 s), a disabled button, and one far away.
+(`systems/interaction/test/interaction_test.tscn`; the lamp changes colour when the host accepts a use,
+and the prompt and hold bar are drawn by the test scene until the HUD exists. Launch options `-- host`,
+`-- join`, `port=7790`.)
 GUT tests: `test_target_found_by_ray`, `test_out_of_range_rejected_on_host`, `test_hold_requires_full_time`,
 `test_use_condition_blocks`, `test_handler_priority_order`, `test_prompt_provider_overrides_text`.
+NEW 2026-10-17: `test_controller_added_to_every_body`, `test_press_fires_used_on_host_with_player_id`,
+`test_client_use_goes_through_the_host` (real ENet, two "PCs").
 
 ## Acceptance criteria
-- [ ] Looking at a button shows its prompt; pressing E makes the host emit `used` with the right player id.
-- [ ] A client's use works through the host; too-far uses are refused.
-- [ ] physics_props and upgrades can plug in without editing this system.
+- [x] Looking at a button shows its prompt; pressing E makes the host emit `used` with the right player id. *(GUT; test scene)*
+- [x] A client's use works through the host; too-far uses are refused. *(GUT, two PCs over ENet)*
+- [x] physics_props and upgrades can plug in without editing this system. *(use handlers and prompt providers, tested)*
 
 ## Open design questions
 - DEFAULT: holding a non-upgrade prop and pressing use **drops** it (Half-Life 2 style); `drop` (Q) always drops.
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-17: built. Added the `Interaction` autoload, `press_use`, `request_use`,
+  `unregister_prompt_provider`, `Interactable.get_anchor`/`allows`.
+
+## HANDOFF
+**Done:** `Interactable`, `InteractionController` (look ray, prompt, hold-to-use, use handlers and prompt
+providers by priority, host-checked use requests with the player id), the `Interaction` autoload that
+gives every body a controller, the test scene, 9 GUT tests (all pass). Checked with 2 local windows.
+
+**Not done / stubbed:** the on-screen "Press E to ..." prompt and hold ring belong to ui's HUD (the
+test scene draws its own for now). The drop key (Q) is physics_props' to handle.
+
+**Should switch over to Interactables later (not changed now, they belong to other systems):**
+- break_room: the elevator start button, "Start anyway" button, jacket closet and mirror use a
+  "stand next to it and press E" stub. Give each an `Interactable` (on the INTERACTABLES layer) and
+  connect `used`; the host-side checks they do now can move into `use_condition`.
+- voice: the voice test room's door is opened with E by distance. It should become an Interactable
+  (the real doors system will own doors anyway).
+
+**For physics_props (next):** get `Interaction.get_local_controller()` when the local body spawns and
+register a use handler (grab/drop) and a prompt provider ("Grab box"). Props are hit by the look ray
+(PROPS layer), so the target is the prop's body.

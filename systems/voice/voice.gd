@@ -32,6 +32,12 @@ const FINAL_FADE_PART: float = 0.1
 const MIN_CUTOFF_HZ: float = 300.0
 ## The faint far echo repeats the voice this long after (milliseconds).
 const ECHO_DELAY_MS: float = 280.0
+## Open mic loudness needed at sensitivity 0 and 1 (0 to 1 scale, root-mean-square of the mic).
+const MIC_THRESHOLD_LEAST_SENSITIVE: float = 0.06
+const MIC_THRESHOLD_MOST_SENSITIVE: float = 0.002
+## The mic meter's range (mic RMS): empty at the first, full at the second.
+const METER_QUIETEST_RMS: float = 0.001
+const METER_LOUDEST_RMS: float = 0.3
 ## How fast the distance-based sound (volume, echo, treble) follows a change, per second.
 const DISTANCE_GLIDE_SPEED: float = 6.0
 ## How fast muffling fades in and out (full change in 1 / this seconds).
@@ -55,6 +61,9 @@ var _speaking: Dictionary[int, bool] = {}
 var _presets: Dictionary[StringName, Callable] = {}
 var _preset_objects: Array[VoicePreset] = []
 var _push_to_talk: bool = false
+var _mic_sensitivity: float = 0.7
+## A mic meter is on screen: listen to the mic (for the meter only).
+var _mic_test: bool = false
 var _reduce_effects: bool = false
 var _loopback: bool = false
 ## A flat AudioStreamPlayer, or an AudioStreamPlayer3D when the loopback has an anchor.
@@ -91,6 +100,7 @@ func _ready() -> void:
 	if _config == null:
 		_config = Config.game
 	_push_to_talk = _config.voice_push_to_talk_default
+	_mic_sensitivity = _config.voice_mic_sensitivity
 	_net.roster_changed.connect(sync_players)
 	EventBus.player_spawned.connect(_on_player_spawned)
 	EventBus.settings_changed.connect(_on_settings_changed)
@@ -109,9 +119,22 @@ func is_speaking(player_id: int) -> bool:
 	return _speaking.get(player_id, false)
 
 
-## 0 to 1: how loud the local microphone is right now.
+## 0 to 1: how loud the local microphone is right now, on the mic meter's scale (see meter_position).
 func get_input_level() -> float:
 	return _input_level
+
+
+## Where on a 0 to 1 mic meter a loudness (mic RMS) sits. The meter is even in decibels, from
+## METER_QUIETEST_RMS (empty) to METER_LOUDEST_RMS (full), like most mic meters.
+static func meter_position(rms: float) -> float:
+	if rms <= METER_QUIETEST_RMS:
+		return 0.0
+	return clampf(log(rms / METER_QUIETEST_RMS) / log(METER_LOUDEST_RMS / METER_QUIETEST_RMS), 0.0, 1.0)
+
+
+## Where the open-mic threshold sits on the mic meter (talking above this line is sent).
+func get_threshold_meter_position() -> float:
+	return meter_position(get_open_mic_threshold())
 
 
 ## Adds or replaces one source's effect (usually an upgrade id) on a player's voice.
@@ -189,10 +212,11 @@ static func distance_fraction(distance: float, full_distance: float, max_distanc
 	return clampf((distance - full_distance) / maxf(max_distance - full_distance, 0.001), 0.0, 1.0)
 
 
-## How much reverb (wet, 0 to 1) a voice gets at this distance: none up close, voice_far_reverb at
-## the max distance, so far voices sound spread out across the lab.
+## How much reverb (wet, 0 to 1) a voice gets at this distance: voice_near_reverb up close (the
+## underground-facility sound), rising to voice_far_reverb at the max distance.
 static func distance_reverb(distance: float, config: GameConfig) -> float:
-	return config.voice_far_reverb * distance_fraction(distance, config.voice_full_volume_distance, config.voice_max_distance)
+	var t: float = distance_fraction(distance, config.voice_full_volume_distance, config.voice_max_distance)
+	return lerpf(config.voice_near_reverb, config.voice_far_reverb, t)
 
 
 ## How loud (0 to 1) the faint echo is at this distance: none up close, voice_far_echo at the max.
@@ -285,12 +309,38 @@ func feed_voice(player_id: int, frames: PackedVector2Array) -> bool:
 	return true
 
 
+## Open mic sensitivity, 0 to 1 (higher = quieter talking is picked up). STUB until settings_input
+## saves it; starts at Config.game.voice_mic_sensitivity.
+func set_mic_sensitivity(sensitivity: float) -> void:
+	_mic_sensitivity = clampf(sensitivity, 0.0, 1.0)
+
+
+func get_mic_sensitivity() -> float:
+	return _mic_sensitivity
+
+
+## Turns the mic on just for a level meter (MicSensitivityPanel). Nothing is sent or saved.
+func set_mic_test(enabled: bool) -> void:
+	_mic_test = enabled
+
+
+## How loud (0 to 1) the mic must be for open mic to send, from the sensitivity.
+func get_open_mic_threshold() -> float:
+	return sensitivity_to_threshold(_mic_sensitivity)
+
+
+## Sensitivity 0 needs a loud voice (MIC_THRESHOLD_LEAST_SENSITIVE), 1 picks up a whisper
+## (MIC_THRESHOLD_MOST_SENSITIVE). Evenly spaced in loudness, so the slider feels even.
+static func sensitivity_to_threshold(sensitivity: float) -> float:
+	return exp(lerpf(log(MIC_THRESHOLD_LEAST_SENSITIVE), log(MIC_THRESHOLD_MOST_SENSITIVE), clampf(sensitivity, 0.0, 1.0)))
+
+
 ## Whether the local mic should send right now. Push-to-talk: only while the key is held.
 ## Open mic: while loud enough (plus a short hold so words don't get cut).
 func would_send(level: float, push_to_talk_held: bool) -> bool:
 	if _push_to_talk:
 		return push_to_talk_held
-	return level >= _config.voice_open_mic_threshold or _open_mic_hold > 0.0
+	return level >= get_open_mic_threshold() or _open_mic_hold > 0.0
 
 
 ## True while the local mic is being sent.
@@ -372,9 +422,12 @@ func _rebuild_bus(player_id: int) -> void:
 			print("Voice: no preset called '%s' yet." % effect.effect_preset)
 	# Distance effects, set by _update_volumes(): reverb (spread out) and a faint echo.
 	var reverb := AudioEffectReverb.new()
-	reverb.room_size = 0.85
-	reverb.damping = 0.4
-	reverb.spread = 1.0
+	# Concrete corridors: a short pre-delay, a medium room, and damped highs so speech stays clear.
+	reverb.predelay_msec = 20.0
+	reverb.room_size = 0.55
+	reverb.damping = 0.7
+	reverb.spread = 0.8
+	reverb.hipass = 0.1
 	reverb.dry = 1.0
 	reverb.wet = 0.0
 	AudioServer.add_bus_effect(index, reverb)
@@ -478,12 +531,17 @@ func _compute_hearing(speaker: AudioStreamPlayer3D) -> VoiceHearing:
 
 
 func _gain(hearing: VoiceHearing, muffle: float) -> float:
-	return hearing_gain(hearing.distance, muffle, _config)
+	return hearing_gain(hearing.distance, muffle, _config, hearing.closed_doors)
 
 
 ## Volume (0 to 1) for a voice that travels `distance` metres with this much muffle (0 to 1).
-static func hearing_gain(distance: float, muffle: float, config: GameConfig) -> float:
-	var gain: float = distance_gain(distance, config.voice_full_volume_distance, config.voice_max_distance,
+## Through a closed door (closed_doors > 0) the voice goes silent sooner: at voice_closed_door_max_distance.
+static func hearing_gain(distance: float, muffle: float, config: GameConfig, closed_doors: int = 0) -> float:
+	var max_distance: float = config.voice_max_distance
+	if closed_doors > 0:
+		max_distance = minf(max_distance, config.voice_closed_door_max_distance) if max_distance > 0.0 \
+			else config.voice_closed_door_max_distance
+	var gain: float = distance_gain(distance, config.voice_full_volume_distance, max_distance,
 		config.voice_distance_curve)
 	return gain * lerpf(1.0, config.voice_muffle_volume, muffle)
 
@@ -527,7 +585,7 @@ func _update_volumes(delta: float) -> void:
 		var distance: float = lerpf(_distance_now.get(player_id, hearing.distance), hearing.distance,
 			1.0 - exp(-DISTANCE_GLIDE_SPEED * delta))
 		_distance_now[player_id] = distance
-		var gain: float = hearing_gain(distance, muffle, _config)
+		var gain: float = hearing_gain(distance, muffle, _config, hearing.closed_doors)
 		speaker.volume_db = linear_to_db(gain) if gain > 0.0 else -80.0
 		var filter: AudioEffectLowPassFilter = _muffle_filters.get(player_id)
 		if filter != null:
@@ -571,7 +629,7 @@ func _process(delta: float) -> void:
 	if not _live:
 		return
 	_open_mic_hold = maxf(_open_mic_hold - delta, 0.0)
-	var wants_mic: bool = _loopback or _net.get_player_count() > 1
+	var wants_mic: bool = _loopback or _mic_test or _net.get_player_count() > 1
 	var push_held: bool = Input.is_action_pressed(InputActions.PUSH_TO_TALK)
 	if _use_steam_voice():
 		_stop_mic()
@@ -598,8 +656,8 @@ func _process_local(wants_mic: bool, push_held: bool) -> void:
 	if available <= 0:
 		return
 	var frames: PackedVector2Array = _capture.get_buffer(available)
-	_input_level = clampf(VoiceCodec.level(frames) * 4.0, 0.0, 1.0)
-	if not _push_to_talk and VoiceCodec.level(frames) >= _config.voice_open_mic_threshold:
+	_input_level = meter_position(VoiceCodec.level(frames))
+	if not _push_to_talk and VoiceCodec.level(frames) >= get_open_mic_threshold():
 		_open_mic_hold = SPEAKING_HOLD_SECONDS
 	var sending: bool = would_send(VoiceCodec.level(frames), push_held)
 	_set_transmitting(sending)

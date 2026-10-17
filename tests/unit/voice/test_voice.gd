@@ -147,8 +147,8 @@ func test_push_to_talk_gates_sending() -> void:
 
 func test_open_mic_sends_only_when_loud_enough() -> void:
 	_voice.set_push_to_talk(false)
-	assert_false(_voice.would_send(_config.voice_open_mic_threshold * 0.5, false))
-	assert_true(_voice.would_send(_config.voice_open_mic_threshold * 2.0, false))
+	assert_false(_voice.would_send(_voice.get_open_mic_threshold() * 0.5, false))
+	assert_true(_voice.would_send(_voice.get_open_mic_threshold() * 2.0, false))
 
 
 func test_speaking_follows_voice_packets() -> void:
@@ -284,31 +284,31 @@ func test_closed_door_on_direct_line_without_navmesh() -> void:
 
 func test_long_quiet_tail_with_the_default_curve() -> void:
 	var config := GameConfig.new()
-	assert_eq(config.voice_max_distance, 60.0)
-	var near: float = VoiceService.hearing_gain(10.0, 0.0, config)
-	var middle: float = VoiceService.hearing_gain(30.0, 0.0, config)
-	var far: float = VoiceService.hearing_gain(50.0, 0.0, config)
+	assert_eq(config.voice_max_distance, 40.0)
+	var near: float = VoiceService.hearing_gain(8.0, 0.0, config)
+	var middle: float = VoiceService.hearing_gain(20.0, 0.0, config)
+	var far: float = VoiceService.hearing_gain(34.0, 0.0, config)
 	assert_lt(near, 1.0)
 	assert_lt(middle, near)
 	assert_lt(far, middle, "keeps getting quieter")
 	assert_gt(far, 0.01, "but far voices are still there")
-	assert_eq(VoiceService.hearing_gain(61.0, 0.0, config), 0.0, "silent beyond the max distance")
+	assert_eq(VoiceService.hearing_gain(40.5, 0.0, config), 0.0, "silent beyond 40 m")
 
 
 func test_reverb_and_echo_grow_with_distance() -> void:
 	var config := GameConfig.new()
-	assert_eq(VoiceService.distance_reverb(2.0, config), 0.0, "dry up close")
-	assert_gt(VoiceService.distance_reverb(40.0, config), VoiceService.distance_reverb(15.0, config))
-	assert_gt(VoiceService.distance_echo(50.0, config), VoiceService.distance_echo(10.0, config))
+	assert_gt(VoiceService.distance_reverb(0.0, config), 0.0, "some underground reverb even up close")
+	assert_gt(VoiceService.distance_reverb(35.0, config), VoiceService.distance_reverb(15.0, config))
+	assert_gt(VoiceService.distance_echo(35.0, config), VoiceService.distance_echo(10.0, config))
 
 
 func test_far_voices_lose_treble() -> void:
 	var config := GameConfig.new()
 	var close: float = VoiceService.voice_cutoff(0.0, 2.0, config)
-	var far: float = VoiceService.voice_cutoff(0.0, 55.0, config)
+	var far: float = VoiceService.voice_cutoff(0.0, 38.0, config)
 	assert_gt(close, 15000.0, "full sound up close")
 	assert_lt(far, close, "duller far away")
-	assert_lt(VoiceService.voice_cutoff(1.0, 55.0, config), far, "walls still muffle on top of distance")
+	assert_lt(VoiceService.voice_cutoff(1.0, 38.0, config), far, "walls still muffle on top of distance")
 
 
 func test_bus_has_distance_effects() -> void:
@@ -316,3 +316,25 @@ func test_bus_has_distance_effects() -> void:
 	assert_eq(echo_effects.size(), 2)
 	assert_true(echo_effects[0] is AudioEffectReverb)
 	assert_true(echo_effects[1] is AudioEffectDelay)
+
+
+func test_closed_door_silences_past_15_metres() -> void:
+	var config := GameConfig.new()
+	var muffle: float = config.voice_closed_door_muffle
+	assert_gte(muffle, 0.7, "a closed door muffles at least 70%")
+	assert_gt(VoiceService.hearing_gain(12.0, muffle, config, 1), 0.0, "still heard at 12 m through a closed door")
+	assert_eq(VoiceService.hearing_gain(15.5, muffle, config, 1), 0.0, "silent past 15 m through a closed door")
+	assert_gt(VoiceService.hearing_gain(15.5, 0.0, config, 0), 0.0, "without a door it carries further")
+
+
+func test_mic_sensitivity_changes_what_counts_as_speech() -> void:
+	_voice.set_push_to_talk(false)
+	var quiet_voice: float = 0.01
+	_voice.set_mic_sensitivity(0.0)
+	assert_false(_voice.would_send(quiet_voice, false), "low sensitivity ignores quiet talking")
+	_voice.set_mic_sensitivity(1.0)
+	assert_true(_voice.would_send(quiet_voice, false), "high sensitivity picks it up")
+	assert_lt(VoiceService.sensitivity_to_threshold(0.9), VoiceService.sensitivity_to_threshold(0.1))
+	_voice.set_push_to_talk(true)
+	_voice.set_mic_sensitivity(0.0)
+	assert_true(_voice.would_send(0.0, true), "push-to-talk always sends while V is held")

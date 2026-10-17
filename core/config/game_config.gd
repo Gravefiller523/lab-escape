@@ -86,7 +86,7 @@ extends Resource
 ## Within this distance (m) voices are at full volume.
 @export var voice_full_volume_distance: float = 4.0
 ## Beyond this distance (m) voices are silent. 0 = hear everyone everywhere.
-@export var voice_max_distance: float = 60.0
+@export var voice_max_distance: float = 40.0
 ## The shape of the fade between the two distances: left edge = full volume distance, right edge =
 ## max distance; height = volume (1 = full, 0 = silent). Drag the points in the Inspector to reshape it.
 ## Default: drops fairly quickly, then a long, quiet tail where you can barely hear someone.
@@ -94,24 +94,28 @@ extends Resource
 ## Far voices lose their high frequencies (like sound across a big space): the treble cut-off (Hz)
 ## at the max distance.
 @export var voice_far_cutoff_hz: float = 2500.0
+## Reverb (0 to 1) every voice has even up close, so the lab sounds like a big underground facility.
+@export_range(0.0, 1.0) var voice_near_reverb: float = 0.2
 ## How much reverb (0 to 1) a voice has at the max distance, so far voices sound spread out.
 @export_range(0.0, 1.0) var voice_far_reverb: float = 0.45
 ## How loud (0 to 1) the faint echo (a repeat ~0.3 s later) is at the max distance.
 @export_range(0.0, 1.0) var voice_far_echo: float = 0.2
 @export var voice_push_to_talk_default: bool = false
-## Open mic: how loud (0 to 1) the mic must be before your voice is sent. Raise it if background
-## noise keeps your mic on.
-@export_range(0.0, 1.0) var voice_open_mic_threshold: float = 0.02
+## Open mic: how easily your voice is picked up, 0 to 1. Higher = quieter talking is sent too.
+## Lower it if background noise keeps your mic on. (settings_input will let players change it.)
+@export_range(0.0, 1.0) var voice_mic_sensitivity: float = 0.7
 ## Physics layer number (1 to 32) of things that block sound: level walls and floors (1 = world).
 @export_range(1, 32) var voice_sound_blocker_layer: int = 1
 ## A fully muffled voice (behind a wall) is this loud, 0 to 1.
-@export_range(0.0, 1.0) var voice_muffle_volume: float = 0.35
+@export_range(0.0, 1.0) var voice_muffle_volume: float = 0.25
 ## A fully muffled voice keeps sounds below this pitch (Hz). Lower = more "through a wall".
-@export var voice_muffle_cutoff_hz: float = 700.0
+@export var voice_muffle_cutoff_hz: float = 550.0
 ## Extra muffle (0 to 1) for each corner a voice goes round on its way through doors and halls.
 @export_range(0.0, 1.0) var voice_corner_muffle: float = 0.1
 ## Extra muffle (0 to 1) for each closed door a voice passes through.
-@export_range(0.0, 1.0) var voice_closed_door_muffle: float = 0.6
+@export_range(0.0, 1.0) var voice_closed_door_muffle: float = 0.7
+## A voice that has to go through a closed door can't be heard past this distance (metres).
+@export var voice_closed_door_max_distance: float = 15.0
 ## How often each PC re-checks walls, doors and routes for every voice.
 @export var voice_hearing_updates_per_second: float = 10.0
 

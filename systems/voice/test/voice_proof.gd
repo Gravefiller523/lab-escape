@@ -19,6 +19,8 @@ const FLY_PRESET: StringName = &"buzz"
 const FLY_STRENGTH: float = 0.6
 ## How close you must be to the door to open or close it (metres).
 const DOOR_REACH: float = 3.0
+## How much [ and ] change the mic sensitivity.
+const SENSITIVITY_STEP: float = 0.05
 
 var _fly_on: Dictionary[int, bool] = {}
 var _echo_on: bool = false
@@ -29,7 +31,6 @@ var _door_body: StaticBody3D
 var _overview: Camera3D
 var _status: Label
 var _hearing_label: Label
-var _meter: ProgressBar
 var _speakers: Label
 
 
@@ -68,7 +69,6 @@ func _run_launch_options() -> void:
 func _process(_delta: float) -> void:
 	if PlayerCharacter.find(Net.local_player_id()) == null and not _overview.current:
 		_overview.make_current()
-	_meter.value = Voice.get_input_level()
 	var me: int = Net.local_player_id()
 	_status.text = "%s | players: %d | mic: %s | loopback: %s | echo dummy: %s | Fly: %s | door: %s" % [
 		"HOST" if Net.is_host() else "CLIENT", Net.get_player_count(),
@@ -116,6 +116,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_set_door.rpc(not _door.is_open)
 		KEY_P:
 			Voice.set_push_to_talk(not Voice.is_push_to_talk())
+		KEY_BRACKETLEFT:
+			Voice.set_mic_sensitivity(Voice.get_mic_sensitivity() - SENSITIVITY_STEP)
+		KEY_BRACKETRIGHT:
+			Voice.set_mic_sensitivity(Voice.get_mic_sensitivity() + SENSITIVITY_STEP)
 
 
 ## STUB for upgrades: in the game, upgrades calls Voice.set_voice_effect on every PC.
@@ -180,7 +184,7 @@ func _build_world() -> void:
 	_add_label(_door.position + Vector3(0, 2.0, 0.5), "Door (E)")
 
 	# Distance markers on the field south of Room B.
-	for metres: int in [10, 20, 30, 40, 50, 60]:
+	for metres: int in [10, 20, 30, 40]:
 		_add_label(Vector3(6, 1.5, -4.0 - float(metres)), "%d m from Room B" % metres)
 
 	# The echo dummy, in Room A.
@@ -232,18 +236,9 @@ func _build_ui() -> void:
 	_hearing_label = Label.new()
 	_hearing_label.add_theme_color_override("font_color", Color(1, 0.9, 0.4))
 	column.add_child(_hearing_label)
-	var meter_row := HBoxContainer.new()
-	column.add_child(meter_row)
-	var meter_label := Label.new()
-	meter_label.text = "Mic level: "
-	meter_row.add_child(meter_label)
-	_meter = ProgressBar.new()
-	_meter.max_value = 1.0
-	_meter.show_percentage = false
-	_meter.custom_minimum_size = Vector2(200, 16)
-	meter_row.add_child(_meter)
+	column.add_child(MicSensitivityPanel.new())
 	var help := Label.new()
-	help.text = "F Fly voice | L hear yourself | K echo dummy | J move dummy here | E door | P open mic / push-to-talk (hold V)"
+	help.text = "F Fly voice | L hear yourself | K echo dummy | J move dummy here | E door | P open mic / push-to-talk (hold V)\n[ and ] change mic sensitivity (or drag the slider before clicking into the game)"
 	column.add_child(help)
 	_speakers = Label.new()
 	column.add_child(_speakers)

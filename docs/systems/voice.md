@@ -61,7 +61,7 @@ so far: `buzz` (Fly: band-pass + light distortion + fast chorus) and `deep`.
   volume within `voice_full_volume_distance` (CHANGED: 10 m, was 4 m; through a closed door
   `voice_closed_door_full_volume_distance` = 4 m), then it follows `voice_distance_curve` (a Curve you
   can reshape in the Inspector): a fairly quick drop, then a **long, quiet tail** where far voices are
-  barely there, and **complete silence at `voice_max_distance` (CHANGED: now 40 m; was 30 m, then 60 m)**.
+  barely there, and **complete silence at `voice_max_distance` (CHANGED: now 46 m; was 30, 60, then 40 m)**.
   0 = everyone hears everyone.
 - **Sounding far away (NEW 2026-10-17):** far voices also lose treble (air absorption, down to
   `voice_far_cutoff_hz` = 2500 Hz at the max distance), get more reverb (`voice_far_reverb` = 0.45 at
@@ -175,7 +175,7 @@ label yet (delay is judged by ear on 2 PCs).
   `voice_mic_sensitivity` (0.7) with `set_mic_sensitivity`, `get_open_mic_threshold`, `set_mic_test`,
   `meter_position`, `get_threshold_meter_position` and `MicSensitivityPanel` (also added to ui's Esc menu).
 - 2026-10-17: full volume (and no extra treble loss, reverb or echo) out to 10 m when no closed door is in
-  the way (`voice_full_volume_distance` 4 -> 10); the same curve then runs 10 -> 40 m. Through a closed
+  the way (`voice_full_volume_distance` 4 -> 10); the same curve then runs 10 -> 46 m (`voice_max_distance` 40 -> 46, the same drop per metre as the old 4 -> 40 m). Through a closed
   door: full to 4 m (`voice_closed_door_full_volume_distance`), silent past 15 m.
 
 ## HANDOFF

@@ -284,16 +284,16 @@ func test_closed_door_on_direct_line_without_navmesh() -> void:
 
 func test_long_quiet_tail_with_the_default_curve() -> void:
 	var config := GameConfig.new()
-	assert_eq(config.voice_max_distance, 40.0)
+	assert_eq(config.voice_max_distance, 46.0)
 	assert_eq(VoiceService.hearing_gain(9.5, 0.0, config), 1.0, "full volume up to 10 m")
 	var near: float = VoiceService.hearing_gain(14.0, 0.0, config)
 	var middle: float = VoiceService.hearing_gain(22.0, 0.0, config)
-	var far: float = VoiceService.hearing_gain(34.0, 0.0, config)
+	var far: float = VoiceService.hearing_gain(40.0, 0.0, config)
 	assert_lt(near, 1.0)
 	assert_lt(middle, near)
 	assert_lt(far, middle, "keeps getting quieter")
 	assert_gt(far, 0.01, "but far voices are still there")
-	assert_eq(VoiceService.hearing_gain(40.5, 0.0, config), 0.0, "silent beyond 40 m")
+	assert_eq(VoiceService.hearing_gain(46.5, 0.0, config), 0.0, "silent beyond 46 m")
 
 
 func test_reverb_and_echo_grow_with_distance() -> void:

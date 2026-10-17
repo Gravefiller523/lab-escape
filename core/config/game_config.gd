@@ -86,7 +86,7 @@ extends Resource
 ## Within this distance (m) voices are at full volume.
 @export var voice_full_volume_distance: float = 10.0
 ## Beyond this distance (m) voices are silent. 0 = hear everyone everywhere.
-@export var voice_max_distance: float = 40.0
+@export var voice_max_distance: float = 46.0
 ## The shape of the fade between the two distances: left edge = full volume distance, right edge =
 ## max distance; height = volume (1 = full, 0 = silent). Drag the points in the Inspector to reshape it.
 ## Default: drops fairly quickly, then a long, quiet tail where you can barely hear someone.

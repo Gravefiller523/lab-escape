@@ -184,7 +184,7 @@ func _build_world() -> void:
 	_add_label(_door.position + Vector3(0, 2.0, 0.5), "Door (E)")
 
 	# Distance markers on the field south of Room B.
-	for metres: int in [10, 20, 30, 40]:
+	for metres: int in [10, 20, 30, 40, 46]:
 		_add_label(Vector3(6, 1.5, -4.0 - float(metres)), "%d m from Room B" % metres)
 
 	# The echo dummy, in Room A.

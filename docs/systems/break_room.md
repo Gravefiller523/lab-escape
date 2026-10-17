@@ -13,11 +13,14 @@ the elevator to start a run. Everyone returns here after a run ends.
 ```gdscript
 class_name BreakRoom extends Node3D           # scene: systems/break_room/break_room.tscn (owned by this system)
 func get_spawn_points() -> Array[Node3D]      # at least Config.game.max_players points; extra points are generated in a ring if max_players grows
-func get_elevator_zone() -> ElevatorZone
+func get_elevator_zone() -> ElevatorZone      # CHANGED 2026-10-17: returns ElevatorZoneStub until cargo_lift exists
 func can_force_start() -> bool                # host: AFK timer passed
 func request_start() -> void                  # local; the elevator button calls it
 func request_force_start() -> void            # host only button, appears after Config.game.afk_force_start_after seconds
+func use_net(net: NetService, config: GameConfig) -> void   # NEW 2026-10-17: tests only
 ```
+NEW 2026-10-17: the AFK timer counts from when the first player stepped into the elevator (it
+resets when the elevator is empty again).
 Contents of the scene: spawn points, elevator (ElevatorZone + button + doors), jacket closet
 (Interactable that opens the cosmetics screen), a mirror with voice loopback (voice test), a
 "who's missing" sign by the elevator, a whiteboard showing the last run summary.
@@ -25,6 +28,8 @@ Contents of the scene: spawn points, elevator (ElevatorZone + button + doors), j
 ## EventBus
 - Emits: `elevator_start_accepted` (all).
 - Listens: `player_joined` (host: spawn them), `run_ended` (show summary on the whiteboard), `cosmetics_changed`.
+  CHANGED 2026-10-17: spawning on `player_joined` is done by the scene's `PlayerSpawner` (player system),
+  not by break_room code. `cosmetics_changed` isn't used yet (no cosmetics).
 
 ## Data it owns and saves
 The Break Room scene. Saves nothing.
@@ -34,6 +39,7 @@ Decorations are scene edits by the break_room owner. Cosmetics come from cosmeti
 
 ## Multiplayer
 - Host spawns players at spawn points (via `PlayerSpawner`). Joining is open while here (game_flow sets it).
+  CHANGED 2026-10-17: joining is open during runs too (mid-run joining); nothing to do here.
 - Start: a press sends a request; the host checks `ElevatorZone.contains_all_players()`; if someone is
   missing it shows their names; if all are in, it closes the doors and emits `elevator_start_accepted`.
 - AFK: after `afk_force_start_after` seconds with at least one player in the elevator, the host sees
@@ -44,13 +50,19 @@ cargo_lift (ElevatorZone; stub: an Area3D counting players), cosmetics (closet; 
 
 ## Test scene and GUT tests
 The Break Room scene itself is the test scene (run with 2 to 4 local instances).
-GUT tests: `test_enough_spawn_points_for_max_players` (set 8), `test_start_refused_if_someone_outside`,
-`test_start_accepted_when_all_inside`, `test_force_start_only_after_timer_and_only_host`.
+CHANGED 2026-10-17: because there's no main menu yet, the test scene is
+`systems/break_room/test/break_room_test.tscn`: the Break Room plus Host local / Join local /
+Host (Steam) / Invite / Leave / "End run (stub)" buttons, a toast line, an overview camera while you
+have no body, and launch options `-- host`, `-- join`, `port=7790`.
+GUT tests (`tests/unit/break_room/test_break_room.gd`): `test_enough_spawn_points_for_max_players` (set 8, and 12),
+`test_start_refused_if_someone_outside`, `test_start_accepted_when_all_inside`,
+`test_force_start_only_after_timer_and_only_host`, NEW `test_solo_player_spawns_in_the_room`.
 
 ## Acceptance criteria
 - [ ] Phase 1a: 2+ players on Steam join into the grey-box Break Room and walk around together.
-- [ ] Elevator only starts when everyone is inside; force start works after the timer.
-- [ ] Returning after a run puts everyone back here.
+  *Done with 2 local windows (2026-10-17). Real Steam on 2 PCs still to do.*
+- [x] Elevator only starts when everyone is inside; force start works after the timer. *(GUT tests)*
+- [ ] Returning after a run puts everyone back here. *Needs game_flow.*
 
 ## Open design questions
 - DEFAULT: the host gets "Start anyway" after 60 s (config).
@@ -58,3 +70,30 @@ GUT tests: `test_enough_spawn_points_for_max_players` (set 8), `test_start_refus
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-17: Phase 1a grey box built. `get_elevator_zone()` returns `ElevatorZoneStub` for now;
+  added the test-only `use_net`; separate test scene with Host/Join buttons.
+
+## HANDOFF
+**Done (Phase 1a grey box):** `break_room.tscn`: floor, walls, a table, 8 spawn points (more are
+added in a ring if `max_players` is bigger), an elevator with sliding doors, a green start button,
+a "Not in the elevator: ..." sign, a red host-only "Start anyway" button that appears after
+`afk_force_start_after` seconds, placeholders for the jacket closet, the mirror and the whiteboard
+(shows the last run's result on `run_ended`). Start requests go to the host, which checks the zone
+and emits `elevator_start_accepted` on every PC; "Start anyway" teleports outside players into the
+elevator first. 5 GUT tests, all pass. Checked with 2 local windows.
+
+**Stubbed:**
+- interaction: stand next to a button and press E (no "Press E" prompt or look-at check yet).
+- cargo_lift: `ElevatorZoneStub` (`stubs/elevator_zone_stub.gd`) has the same functions as
+  `ElevatorZone` minus props. Swap the scene's ElevatorZone node for the real one.
+- game_flow: after a start is accepted, the doors reopen after 4 seconds instead of a run starting.
+- cosmetics / voice: the closet and mirror only show a message.
+- ui: toasts are shown by the test scene.
+
+**Known limits:** walls only, no ceiling or real art; grey-box sizes may change. Not tested on real Steam yet.
+
+**For the next systems:**
+- **ui (main menu, next):** after Host/Join, load `break_room.tscn` as the scene. The `PlayerSpawner`
+  inside spawns everyone automatically.
+- **game_flow:** listen to `elevator_start_accepted` and start the run; when it ends, load the Break Room again.
+- **cargo_lift:** replace the ElevatorZone node in `break_room.tscn` (break_room owns the scene, so ask).

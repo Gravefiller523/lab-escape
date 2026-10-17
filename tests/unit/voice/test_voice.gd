@@ -66,7 +66,7 @@ func _bus_effects(player_id: int) -> Array[AudioEffect]:
 	var index: int = AudioServer.get_bus_index(_voice.get_bus_name(player_id))
 	for effect_index: int in AudioServer.get_bus_effect_count(index):
 		var effect: AudioEffect = AudioServer.get_bus_effect(index, effect_index)
-		if effect != _voice.get_muffle_filter(player_id):
+		if effect != _voice.get_muffle_filter(player_id) and not _voice.get_echo_effects(player_id).has(effect):
 			effects.append(effect)
 	return effects
 
@@ -280,3 +280,39 @@ func test_closed_door_on_direct_line_without_navmesh() -> void:
 	door.is_open = false
 	assert_almost_eq(VoiceHearing.compute(listener, speaker, world, _config).muffle,
 		_config.voice_closed_door_muffle, 0.001, "closed door: muffled")
+
+
+func test_long_quiet_tail_with_the_default_curve() -> void:
+	var config := GameConfig.new()
+	assert_eq(config.voice_max_distance, 60.0)
+	var near: float = VoiceService.hearing_gain(10.0, 0.0, config)
+	var middle: float = VoiceService.hearing_gain(30.0, 0.0, config)
+	var far: float = VoiceService.hearing_gain(50.0, 0.0, config)
+	assert_lt(near, 1.0)
+	assert_lt(middle, near)
+	assert_lt(far, middle, "keeps getting quieter")
+	assert_gt(far, 0.01, "but far voices are still there")
+	assert_eq(VoiceService.hearing_gain(61.0, 0.0, config), 0.0, "silent beyond the max distance")
+
+
+func test_reverb_and_echo_grow_with_distance() -> void:
+	var config := GameConfig.new()
+	assert_eq(VoiceService.distance_reverb(2.0, config), 0.0, "dry up close")
+	assert_gt(VoiceService.distance_reverb(40.0, config), VoiceService.distance_reverb(15.0, config))
+	assert_gt(VoiceService.distance_echo(50.0, config), VoiceService.distance_echo(10.0, config))
+
+
+func test_far_voices_lose_treble() -> void:
+	var config := GameConfig.new()
+	var close: float = VoiceService.voice_cutoff(0.0, 2.0, config)
+	var far: float = VoiceService.voice_cutoff(0.0, 55.0, config)
+	assert_gt(close, 15000.0, "full sound up close")
+	assert_lt(far, close, "duller far away")
+	assert_lt(VoiceService.voice_cutoff(1.0, 55.0, config), far, "walls still muffle on top of distance")
+
+
+func test_bus_has_distance_effects() -> void:
+	var echo_effects: Array[AudioEffect] = _voice.get_echo_effects(11)
+	assert_eq(echo_effects.size(), 2)
+	assert_true(echo_effects[0] is AudioEffectReverb)
+	assert_true(echo_effects[1] is AudioEffectDelay)

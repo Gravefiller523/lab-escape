@@ -86,7 +86,18 @@ extends Resource
 ## Within this distance (m) voices are at full volume.
 @export var voice_full_volume_distance: float = 4.0
 ## Beyond this distance (m) voices are silent. 0 = hear everyone everywhere.
-@export var voice_max_distance: float = 30.0
+@export var voice_max_distance: float = 60.0
+## The shape of the fade between the two distances: left edge = full volume distance, right edge =
+## max distance; height = volume (1 = full, 0 = silent). Drag the points in the Inspector to reshape it.
+## Default: drops fairly quickly, then a long, quiet tail where you can barely hear someone.
+@export var voice_distance_curve: Curve = default_voice_distance_curve()
+## Far voices lose their high frequencies (like sound across a big space): the treble cut-off (Hz)
+## at the max distance.
+@export var voice_far_cutoff_hz: float = 2500.0
+## How much reverb (0 to 1) a voice has at the max distance, so far voices sound spread out.
+@export_range(0.0, 1.0) var voice_far_reverb: float = 0.45
+## How loud (0 to 1) the faint echo (a repeat ~0.3 s later) is at the max distance.
+@export_range(0.0, 1.0) var voice_far_echo: float = 0.2
 @export var voice_push_to_talk_default: bool = false
 ## Open mic: how loud (0 to 1) the mic must be before your voice is sent. Raise it if background
 ## noise keeps your mic on.
@@ -123,3 +134,15 @@ extends Resource
 @export_group("Debug")
 ## Allow cheats in exported (release) builds. Always on in the editor.
 @export var cheats_in_release: bool = false
+
+
+## The default voice fade (see voice_distance_curve): full, a fairly quick drop, then a long quiet tail.
+static func default_voice_distance_curve() -> Curve:
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 1.0))
+	curve.add_point(Vector2(0.15, 0.35))
+	curve.add_point(Vector2(0.4, 0.12))
+	curve.add_point(Vector2(0.75, 0.05))
+	curve.add_point(Vector2(0.92, 0.025))
+	curve.add_point(Vector2(1.0, 0.0))
+	return curve

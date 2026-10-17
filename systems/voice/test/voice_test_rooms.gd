@@ -16,7 +16,7 @@ const ROOM_A_CENTER: Vector3 = Vector3(-6, 0, 0)
 const ROOM_B_CENTER: Vector3 = Vector3(6, 0, 0)
 const DOOR_CENTER: Vector3 = Vector3(-2.5, 0, 4)
 ## Length of the optional field south of Room B (metres).
-const FIELD_LENGTH: float = 60.0
+const FIELD_LENGTH: float = 70.0
 
 
 ## Builds the rooms under `parent`. With `navmesh`, the walkable floor is baked so voices can go the

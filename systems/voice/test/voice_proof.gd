@@ -79,9 +79,11 @@ func _process(_delta: float) -> void:
 	if _echo_on:
 		var hearing: VoiceHearing = Voice.get_hearing(me)
 		if hearing != null:
-			_hearing_label.text = "Echo dummy: %.0f m away%s | muffled %d%% | volume %d%%%s" % [
+			_hearing_label.text = "Echo dummy: %.0f m away%s | muffled %d%% | volume %.1f%% | reverb %d%% | treble up to %d Hz%s" % [
 				hearing.distance, " (the long way round)" if hearing.used_path else "",
-				int(hearing.muffle * 100.0), int(Voice.get_voice_volume(me) * 100.0),
+				int(hearing.muffle * 100.0), Voice.get_voice_volume(me) * 100.0,
+				int(VoiceService.distance_reverb(hearing.distance, Config.game) * 100.0),
+				int(VoiceService.voice_cutoff(hearing.muffle, hearing.distance, Config.game)),
 				" | through a CLOSED door" if hearing.closed_doors > 0 else ""]
 	var lines: PackedStringArray = ["Players (speaking shows ((( talking ))) ):"]
 	for player_id: int in Net.get_player_ids():
@@ -178,7 +180,7 @@ func _build_world() -> void:
 	_add_label(_door.position + Vector3(0, 2.0, 0.5), "Door (E)")
 
 	# Distance markers on the field south of Room B.
-	for metres: int in [10, 20, 30, 40, 50]:
+	for metres: int in [10, 20, 30, 40, 50, 60]:
 		_add_label(Vector3(6, 1.5, -4.0 - float(metres)), "%d m from Room B" % metres)
 
 	# The echo dummy, in Room A.

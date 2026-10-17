@@ -24,6 +24,16 @@ const STEAM_VOICE_OK: int = 0
 const NODE_NAME_3D: String = "VoiceSpeaker"
 ## The muffle filter when nothing is in the way (above what people can hear).
 const OPEN_CUTOFF_HZ: float = 20000.0
+## Used when no config is given: how quiet a voice is at the far end, just before silence.
+const DEFAULT_FAR_VOLUME_DB: float = -40.0
+## The last part of the range (as a fraction) where the faint tail fades to true silence.
+const FINAL_FADE_PART: float = 0.1
+## The treble cut-off never goes below this (Hz), so voices stay understandable-ish.
+const MIN_CUTOFF_HZ: float = 300.0
+## The faint far echo repeats the voice this long after (milliseconds).
+const ECHO_DELAY_MS: float = 280.0
+## How fast the distance-based sound (volume, echo, treble) follows a change, per second.
+const DISTANCE_GLIDE_SPEED: float = 6.0
 ## How fast muffling fades in and out (full change in 1 / this seconds).
 const MUFFLE_FADE_PER_SECOND: float = 3.0
 ## How fast a voice glides to a new spot (e.g. a doorway) when you walk round a corner.
@@ -60,6 +70,9 @@ var _muffle_filters: Dictionary[int, AudioEffectLowPassFilter] = {}
 ## Latest hearing check per player (from _physics_process), and the smoothed muffle now.
 var _hearing: Dictionary[int, VoiceHearing] = {}
 var _muffle_now: Dictionary[int, float] = {}
+var _distance_now: Dictionary[int, float] = {}
+## player_id -> [AudioEffectReverb, AudioEffectDelay] on their bus.
+var _echo_effects: Dictionary[int, Array] = {}
 var _hearing_timer: float = 0.0
 
 
@@ -152,13 +165,46 @@ func set_loopback(enabled: bool, anchor: Node3D = null) -> void:
 
 ## How loud a voice is at this distance, 0 to 1: full volume up to `full_distance`, then fading
 ## smoothly to silence at `max_distance`. max_distance 0 means everyone hears everyone at full volume.
-static func distance_gain(distance: float, full_distance: float, max_distance: float) -> float:
+## The fade between the two distances follows `curve` (GameConfig.voice_distance_curve: x = 0 at
+## full_distance to 1 at max_distance, y = volume). Without a curve it fades evenly in decibels down
+## to DEFAULT_FAR_VOLUME_DB. Either way the last FINAL_FADE_PART fades the faint tail to silence.
+static func distance_gain(distance: float, full_distance: float, max_distance: float,
+		curve: Curve = null) -> float:
 	if max_distance <= 0.0 or distance <= full_distance:
 		return 1.0
 	if distance >= max_distance:
 		return 0.0
-	var t: float = (distance - full_distance) / maxf(max_distance - full_distance, 0.001)
-	return 1.0 - smoothstep(0.0, 1.0, t)
+	var t: float = distance_fraction(distance, full_distance, max_distance)
+	var gain: float = clampf(curve.sample(t), 0.0, 1.0) if curve != null else db_to_linear(DEFAULT_FAR_VOLUME_DB * t)
+	var final_fade_start: float = 1.0 - FINAL_FADE_PART
+	if t > final_fade_start:
+		gain *= 1.0 - smoothstep(final_fade_start, 1.0, t)
+	return gain
+
+
+## 0 at full volume distance, 1 at the max distance.
+static func distance_fraction(distance: float, full_distance: float, max_distance: float) -> float:
+	if max_distance <= 0.0:
+		return 0.0
+	return clampf((distance - full_distance) / maxf(max_distance - full_distance, 0.001), 0.0, 1.0)
+
+
+## How much reverb (wet, 0 to 1) a voice gets at this distance: none up close, voice_far_reverb at
+## the max distance, so far voices sound spread out across the lab.
+static func distance_reverb(distance: float, config: GameConfig) -> float:
+	return config.voice_far_reverb * distance_fraction(distance, config.voice_full_volume_distance, config.voice_max_distance)
+
+
+## How loud (0 to 1) the faint echo is at this distance: none up close, voice_far_echo at the max.
+static func distance_echo(distance: float, config: GameConfig) -> float:
+	return config.voice_far_echo * distance_fraction(distance, config.voice_full_volume_distance, config.voice_max_distance)
+
+
+## The treble cut-off (Hz) for a voice: lowered by distance (air) and by muffling (walls, doors).
+static func voice_cutoff(muffle: float, distance: float, config: GameConfig) -> float:
+	var t: float = distance_fraction(distance, config.voice_full_volume_distance, config.voice_max_distance)
+	var air: float = exp(lerpf(log(OPEN_CUTOFF_HZ), log(config.voice_far_cutoff_hz), t))
+	return clampf(air * muffle_cutoff(muffle, config) / OPEN_CUTOFF_HZ, MIN_CUTOFF_HZ, OPEN_CUTOFF_HZ)
 
 
 ## How loud a player's voice is for you right now (0 to 1): distance (the long way round through
@@ -175,6 +221,13 @@ func get_voice_volume(player_id: int) -> float:
 func get_hearing(player_id: int) -> VoiceHearing:
 	var speaker: AudioStreamPlayer3D = _speakers_3d().get(player_id)
 	return _compute_hearing(speaker) if speaker != null else null
+
+
+## The distance effects on a player's bus: [reverb, echo]. Empty if none.
+func get_echo_effects(player_id: int) -> Array[AudioEffect]:
+	var effects: Array[AudioEffect] = []
+	effects.assign(_echo_effects.get(player_id, []))
+	return effects
 
 
 ## The low-pass filter that muffles a player's voice (last effect on their bus). Null if none.
@@ -281,6 +334,8 @@ func _remove_player(player_id: int) -> void:
 	_muffle_filters.erase(player_id)
 	_hearing.erase(player_id)
 	_muffle_now.erase(player_id)
+	_distance_now.erase(player_id)
+	_echo_effects.erase(player_id)
 	if _speaking.get(player_id, false):
 		EventBus.player_speaking_changed.emit(player_id, false)
 	_speaking.erase(player_id)
@@ -315,7 +370,24 @@ func _rebuild_bus(player_id: int) -> void:
 			builder.call(index, strength)
 		else:
 			print("Voice: no preset called '%s' yet." % effect.effect_preset)
-	# Always last: the muffle filter, opened and closed by _update_volumes().
+	# Distance effects, set by _update_volumes(): reverb (spread out) and a faint echo.
+	var reverb := AudioEffectReverb.new()
+	reverb.room_size = 0.85
+	reverb.damping = 0.4
+	reverb.spread = 1.0
+	reverb.dry = 1.0
+	reverb.wet = 0.0
+	AudioServer.add_bus_effect(index, reverb)
+	var echo := AudioEffectDelay.new()
+	echo.dry = 1.0
+	echo.tap1_active = true
+	echo.tap1_delay_ms = ECHO_DELAY_MS
+	echo.tap1_level_db = -80.0
+	echo.tap2_active = false
+	echo.feedback_active = false
+	AudioServer.add_bus_effect(index, echo)
+	_echo_effects[player_id] = [reverb, echo] as Array[AudioEffect]
+	# Always last: the treble filter (muffling and distance), set by _update_volumes().
 	var muffle := AudioEffectLowPassFilter.new()
 	muffle.cutoff_hz = OPEN_CUTOFF_HZ
 	AudioServer.add_bus_effect(index, muffle)
@@ -411,7 +483,8 @@ func _gain(hearing: VoiceHearing, muffle: float) -> float:
 
 ## Volume (0 to 1) for a voice that travels `distance` metres with this much muffle (0 to 1).
 static func hearing_gain(distance: float, muffle: float, config: GameConfig) -> float:
-	var gain: float = distance_gain(distance, config.voice_full_volume_distance, config.voice_max_distance)
+	var gain: float = distance_gain(distance, config.voice_full_volume_distance, config.voice_max_distance,
+		config.voice_distance_curve)
 	return gain * lerpf(1.0, config.voice_muffle_volume, muffle)
 
 
@@ -451,11 +524,19 @@ func _update_volumes(delta: float) -> void:
 		_muffle_now[player_id] = muffle
 		var weight: float = 1.0 - exp(-SOURCE_GLIDE_SPEED * delta)
 		speaker.global_position = speaker.global_position.lerp(hearing.source, weight)
-		var gain: float = _gain(hearing, muffle)
+		var distance: float = lerpf(_distance_now.get(player_id, hearing.distance), hearing.distance,
+			1.0 - exp(-DISTANCE_GLIDE_SPEED * delta))
+		_distance_now[player_id] = distance
+		var gain: float = hearing_gain(distance, muffle, _config)
 		speaker.volume_db = linear_to_db(gain) if gain > 0.0 else -80.0
 		var filter: AudioEffectLowPassFilter = _muffle_filters.get(player_id)
 		if filter != null:
-			filter.cutoff_hz = muffle_cutoff(muffle, _config)
+			filter.cutoff_hz = voice_cutoff(muffle, distance, _config)
+		var echo_effects: Array[AudioEffect] = _echo_effects.get(player_id, [] as Array[AudioEffect])
+		if echo_effects.size() == 2:
+			(echo_effects[0] as AudioEffectReverb).wet = distance_reverb(distance, _config)
+			var echo_level: float = distance_echo(distance, _config)
+			(echo_effects[1] as AudioEffectDelay).tap1_level_db = linear_to_db(echo_level) if echo_level > 0.0 else -80.0
 
 
 func _push_frames(playback: AudioStreamGeneratorPlayback, frames: PackedVector2Array) -> void:

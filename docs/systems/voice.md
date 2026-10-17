@@ -23,7 +23,51 @@ func set_loopback(enabled: bool) -> void              # hear your own voice with
 func get_bus_name(player_id: int) -> StringName       # &"Voice_<slot_index>"
 ## New effect presets register themselves (a preset = a function that adds AudioEffects to a bus):
 func register_preset(preset: StringName, builder: Callable) -> void   # builder: func(bus_index: int, strength: float) -> void
+# NEW 2026-10-17:
+func set_loopback(enabled: bool, anchor: Node3D = null) -> void   # CHANGED: with an anchor, your voice plays from that spot (echo dummy)
+func is_loopback() -> bool
+func set_push_to_talk(enabled: bool) -> void        # STUB until settings_input; default Config.game.voice_push_to_talk_default
+func is_push_to_talk() -> bool
+func is_transmitting() -> bool                      # the local mic is being sent right now
+func would_send(level: float, push_to_talk_held: bool) -> bool   # the push-to-talk / open-mic gate
+func sync_players() -> void                         # runs by itself on Net.roster_changed
+func feed_voice(player_id: int, frames: PackedVector2Array) -> bool   # play voice audio (network code, tests)
+func get_voice_volume(player_id: int) -> float      # 0..1 how loud that voice is for you now
+func get_hearing(player_id: int) -> VoiceHearing    # distance, muffle, source, used_path, closed_doors
+func get_muffle_filter(player_id: int) -> AudioEffectLowPassFilter
+static func distance_gain(distance: float, full_distance: float, max_distance: float) -> float
+static func hearing_gain(distance: float, muffle: float, config: GameConfig) -> float
+static func muffle_cutoff(muffle: float, config: GameConfig) -> float
+static func load_preset(preset: StringName) -> VoicePreset
+func use_test_setup(net: NetService, config: GameConfig, bus_prefix: String) -> void   # tests only
+
+class_name SoundDoor extends Area3D                 # NEW 2026-10-17: put one on every door
+@export var is_open: bool                           # keep this up to date; voice reads it
+signal open_changed(is_open: bool)
+func blocks_segment(from: Vector3, to: Vector3) -> bool   # BoxShape3D children = the doorway
+const GROUP: StringName = &"sound_doors"
 ```
+NEW 2026-10-17: the autoload script is `systems/voice/voice.gd` (`class_name VoiceService`). Presets
+extend `VoicePreset` (`voice_preset.gd`) and override `build(bus_index, strength)`. Launch presets built
+so far: `buzz` (Fly: band-pass + light distortion + fast chorus) and `deep`.
+
+### NEW 2026-10-17: how far voices carry (Zachary's request)
+- **Distance fade:** each player's voice plays from their head (`AudioStreamPlayer3D`). Godot's own
+  falloff is off; voice sets the volume itself: full volume within `voice_full_volume_distance` (4 m),
+  then a smooth fade to **complete silence at `voice_max_distance`** (30 m). 0 = everyone hears everyone.
+- **Walls muffle (step A):** about 10 times a second (`voice_hearing_updates_per_second`) each PC casts
+  3 rays from the listener's camera to each speaker's head against the sound-blocker layer
+  (`voice_sound_blocker_layer`, 1 = world). Blocked = muffled: quieter (`voice_muffle_volume`) and
+  duller (a low-pass filter down to `voice_muffle_cutoff_hz`, always the last effect on the player's bus).
+- **Through doors and hallways (step B):** when walls are in the way and the level has a navmesh,
+  voice gets the walkable route (NavigationServer3D). The route length is used for the distance fade,
+  the voice seems to come from the last corner before you (the doorway), and each real corner adds a
+  light muffle (`voice_corner_muffle`, at most 0.4 in total). No route, or no navmesh at all (like
+  the Break Room today): plain wall muffling from step A.
+- **Doors:** a closed `SoundDoor` on the route adds `voice_closed_door_muffle` (quieter and duller, still
+  heard). An open door adds nothing. Without a navmesh, a closed door on the straight line counts the same.
+- Everything changes smoothly (muffle fades, the voice glides to the doorway) and is worked out on
+  each listener's PC: no extra network traffic. All numbers are in `config/game_config.tres`.
 Launch presets in `systems/voice/presets/`: `buzz` (Fly: band-pass + tremolo), `robot` (cybernetic
 voicebox: distortion + chorus), `gurgle` (Octo: low-pass + phaser), `slime` (Slug), `deep` (pitch down).
 Preset files are found by name (`<preset>_preset.gd`), like movement modes.
@@ -32,6 +76,8 @@ Preset files are found by name (`<preset>_preset.gd`), like movement modes.
 - Emits: `player_speaking_changed` (local).
 - Listens: `player_joined`/`player_left` (create/free buses and players), `player_spawned` (attach the
   3D voice player to the body's head), `settings_changed` (push-to-talk, mic device, voice volume, reduce_voice_effects).
+  CHANGED 2026-10-17: buses follow `Net.roster_changed` (covers joins and leaves) instead of
+  `player_joined`/`player_left`. `settings_changed` is a stub until settings_input exists.
 
 ## Data it owns and saves
 Uses `VoiceEffectData` inside upgrades. Buses are created at runtime (never edit `default_bus_layout.tres`; audio owns it). Saves nothing.
@@ -63,12 +109,25 @@ to toggle Fly voice on either player; loopback toggle; a latency label. Test on 
 GUT tests: `test_bus_created_per_player_and_freed`, `test_bus_count_follows_player_count` (8 players),
 `test_effect_applies_pitch_on_that_bus_only`, `test_clear_effect_restores_bus`, `test_two_sources_combine`,
 `test_preset_found_by_name`, `test_muted_player_silent`, `test_push_to_talk_gates_sending`.
+NEW 2026-10-17 (all with generated test tones, never the real mic): `test_open_mic_sends_only_when_loud_enough`,
+`test_speaking_follows_voice_packets`, `test_codec_round_trip_keeps_the_tone`, `test_distance_gain_fades_then_cuts_off`,
+`test_voice_from_body_is_quieter_farther_and_silent_beyond_max`, `test_muffle_lowers_volume_and_cutoff`,
+`test_clear_line_of_sight_is_not_muffled`, `test_wall_without_navmesh_is_fully_muffled`,
+`test_route_through_doorway_is_longer_and_comes_from_the_doorway`, `test_closed_door_muffles_open_door_does_not`,
+`test_closed_door_on_direct_line_without_navmesh`.
+CHANGED 2026-10-17, proof scene: two rooms joined by a hallway (`test/voice_test_rooms.gd`, also used by
+the tests), a door between Room A and the hallway (E), a long field off Room B, a yellow echo dummy
+(K on/off, J moves it to you), F = Fly voice for everyone, L = hear yourself, P = open mic / push-to-talk
+(hold V), a mic meter, speaking indicators and a line showing the echo's distance and muffle. No latency
+label yet (delay is judged by ear on 2 PCs).
 
 ## Acceptance criteria
 - [ ] Two Steam PCs: talking is clear with under ~250 ms delay; with Fly, the listener hears a higher, buzzy voice from that player only.
-- [ ] Voice gets quieter with distance and comes from the speaker's position.
-- [ ] Push-to-talk and open mic both work; settings change them live.
-- [ ] Works with 4 players; 8 tested with local instances (bus count, CPU).
+  *Not tested yet: needs 2 PCs. Fly effect per player is unit-tested.*
+- [x] Voice gets quieter with distance and comes from the speaker's position. *(GUT tests; Zachary to check by ear with the echo dummy)*
+- [ ] Push-to-talk and open mic both work; settings change them live. *Both built (P toggles); "settings" waits for settings_input.*
+- [ ] Works with 4 players; 8 tested with local instances (bus count, CPU). *8 buses unit-tested; CPU with 8 not measured yet.*
+- [x] NEW: voices are muffled through walls and closed doors, and travel through open doors and hallways. *(GUT tests)*
 
 ## Open design questions
 - DEFAULT: proximity voice with a 30 m cut-off; ghosts are heard by everyone at low volume. **Team to playtest.**
@@ -77,3 +136,38 @@ GUT tests: `test_bus_created_per_player_and_freed`, `test_bus_count_follows_play
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-17: Phase 1a proof built. Added distance fade to silence, wall muffling, routes through
+  doors and hallways, `SoundDoor`, `VoiceHearing`, the echo dummy loopback anchor, and the functions
+  marked NEW above. New GameConfig numbers: `voice_open_mic_threshold`, `voice_sound_blocker_layer`,
+  `voice_muffle_volume`, `voice_muffle_cutoff_hz`, `voice_corner_muffle`, `voice_closed_door_muffle`,
+  `voice_hearing_updates_per_second`. Project setting `audio/driver/enable_input = true` (needed for the mic).
+
+## HANDOFF
+**Done (Phase 1a proof):** the `Voice` autoload: one bus per player (`Voice_<slot>`) with pitch,
+presets (`buzz`, `deep`) and the muffle filter; local-mode capture (Godot mic, 16 kHz, sent as
+unreliable RPCs) and Steam capture (`startVoiceRecording`/`getVoice`/`decompressVoice`); push-to-talk
+or open mic; mute; speaking events; loopback (flat or from an anchor); 3D voices from each head with
+distance fade to silence; wall and closed-door muffling; routes through doors and hallways using the
+navmesh. 19 GUT tests, all pass. Never records, saves or uploads mic audio.
+
+**Known limits / not tested:** Steam voice between 2 PCs (needs the second PC); real delay; CPU with 8
+players; the mic device choice and voice volume (settings_input); ghosts heard by everyone at low
+volume (death_respawn, later). Late joiners don't learn effects set before they joined until upgrades
+re-applies them from the player record (upgrades' job). Mic capture starts only while you are in a
+game with others or loopback is on.
+
+**Stubbed:** settings (push-to-talk via `set_push_to_talk`), the test scene's Fly toggle (upgrades) and
+door (doors system).
+
+**How the door system plugs in:** give every door scene a `SoundDoor` child with a `BoxShape3D`
+covering the doorway, set `is_open` whenever the door opens or closes, and put the door's solid body
+on the sound-blocker layer (world). Don't carve the navmesh for closed doors: sound still goes through
+them, just muffled. Keycard-locked doors are simply closed doors.
+
+**What level_gen must provide:** walls and floors on the sound-blocker layer (world), and a baked
+navmesh per floor (a `NavigationRegion3D`) that includes every doorway. Without a navmesh, voices still
+work, but only with straight-line wall muffling.
+
+**For the next systems:** upgrades calls `Voice.set_voice_effect(player_id, upgrade_id, effect)` on every PC
+when a mutation is gained (and `clear_voice_effect` when lost); audio should create the `Voice` bus
+(voice buses send to it, or to Master until it exists); settings_input calls `set_push_to_talk`.

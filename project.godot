@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 Config="*res://core/autoload/config.gd"
 EventBus="*res://core/autoload/event_bus.gd"
 ContentRegistry="*res://core/autoload/content_registry.gd"
+SteamSession="*res://systems/steam_session/steam_session.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [debug]

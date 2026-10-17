@@ -1,26 +1,34 @@
 extends Node3D
-## Voice proof scene (run alone with F6). A grey room where you can hear yourself and others.
+## Voice proof scene (run alone with F6). Two rooms joined by a hallway (Room A has a door), and a
+## long field south of Room B. You start in Room B; the yellow echo dummy stands in Room A.
 ##
 ## Keys (while walking around):
 ##   F  = Fly voice on/off for yourself (everyone in the game hears the change)
 ##   L  = loopback on/off: hear your own voice (with your effects) as if through headphones
-##   K  = echo dummy on/off: your own voice plays from the dummy in the room, so you can walk
-##        away from it and hear yourself fade out, and go silent past the max distance
+##   K  = echo dummy on/off: your own voice plays from the dummy, so you hear yourself the way
+##        others would hear you from there (through walls, round the hallway, fading with distance)
+##   J  = move the echo dummy to where you're standing
+##   E  = open or close the door (stand next to it)
 ##   P  = switch between open mic and push-to-talk (hold V to talk)
-## Buttons at the top host/join (click them before clicking into the game, or press Esc first).
+## Buttons at the top host/join (click them before clicking into the game).
 ## Launch options after "--": "host", "join", "port=7790".
 
 const FLY_SOURCE: StringName = &"test_fly"
 const FLY_PITCH: float = 1.5
 const FLY_PRESET: StringName = &"buzz"
 const FLY_STRENGTH: float = 0.6
-const DUMMY_POSITION: Vector3 = Vector3(0, 0, -6)
+## How close you must be to the door to open or close it (metres).
+const DOOR_REACH: float = 3.0
 
 var _fly_on: Dictionary[int, bool] = {}
 var _echo_on: bool = false
+var _dummy: Node3D
 var _dummy_head: Node3D
+var _door: SoundDoor
+var _door_body: StaticBody3D
 var _overview: Camera3D
 var _status: Label
+var _hearing_label: Label
 var _meter: ProgressBar
 var _speakers: Label
 
@@ -29,10 +37,17 @@ func _ready() -> void:
 	_build_world()
 	var spawner := PlayerSpawner.new()
 	spawner.name = "PlayerSpawner"
+	var points: Array[Node3D] = []
+	for index: int in 8:
+		var point := Marker3D.new()
+		point.position = VoiceTestRooms.ROOM_B_CENTER + Vector3(float(index % 4) - 1.5, 0.1, floorf(float(index) / 4.0) * 1.5 - 0.75)
+		add_child(point)
+		points.append(point)
+	spawner.spawn_points = points
 	add_child(spawner)
 	_overview = Camera3D.new()
-	_overview.position = Vector3(0, 14, 14)
-	_overview.rotation_degrees = Vector3(-45, 0, 0)
+	_overview.position = Vector3(0, 16, 14)
+	_overview.rotation_degrees = Vector3(-50, 0, 0)
 	add_child(_overview)
 	_build_ui()
 	_run_launch_options.call_deferred()
@@ -55,11 +70,20 @@ func _process(_delta: float) -> void:
 		_overview.make_current()
 	_meter.value = Voice.get_input_level()
 	var me: int = Net.local_player_id()
-	_status.text = "%s | players: %d | mic: %s | loopback: %s | echo dummy: %s | my Fly voice: %s" % [
+	_status.text = "%s | players: %d | mic: %s | loopback: %s | echo dummy: %s | Fly: %s | door: %s" % [
 		"HOST" if Net.is_host() else "CLIENT", Net.get_player_count(),
 		"push-to-talk (hold V)" if Voice.is_push_to_talk() else "open mic",
-		_on_off(Voice.is_loopback() and not _echo_on), _on_off(_echo_on), _on_off(_fly_on.get(me, false))]
-	var lines: PackedStringArray = ["Players (speaking shows ((( ))) ):"]
+		_on_off(Voice.is_loopback() and not _echo_on), _on_off(_echo_on), _on_off(_fly_on.get(me, false)),
+		"open" if _door.is_open else "CLOSED"]
+	_hearing_label.text = ""
+	if _echo_on:
+		var hearing: VoiceHearing = Voice.get_hearing(me)
+		if hearing != null:
+			_hearing_label.text = "Echo dummy: %.0f m away%s | muffled %d%% | volume %d%%%s" % [
+				hearing.distance, " (the long way round)" if hearing.used_path else "",
+				int(hearing.muffle * 100.0), int(Voice.get_voice_volume(me) * 100.0),
+				" | through a CLOSED door" if hearing.closed_doors > 0 else ""]
+	var lines: PackedStringArray = ["Players (speaking shows ((( talking ))) ):"]
 	for player_id: int in Net.get_player_ids():
 		var speaking: String = "  ((( talking )))" if Voice.is_speaking(player_id) else ""
 		var fly: String = "  [Fly]" if _fly_on.get(player_id, false) else ""
@@ -73,20 +97,23 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	match key.keycode:
 		KEY_F:
-			_toggle_fly(Net.local_player_id())
+			_set_fly.rpc(Net.local_player_id(), not _fly_on.get(Net.local_player_id(), false))
 		KEY_L:
 			_echo_on = false
 			Voice.set_loopback(not Voice.is_loopback())
 		KEY_K:
 			_echo_on = not _echo_on
 			Voice.set_loopback(_echo_on, _dummy_head if _echo_on else null)
+		KEY_J:
+			var body: PlayerCharacter = PlayerCharacter.find(Net.local_player_id())
+			if body != null:
+				_dummy.global_position = body.global_position + Vector3(0, 1.0, 0)
+		KEY_E:
+			var me: PlayerCharacter = PlayerCharacter.find(Net.local_player_id())
+			if me != null and me.global_position.distance_to(_door.global_position) <= DOOR_REACH:
+				_set_door.rpc(not _door.is_open)
 		KEY_P:
 			Voice.set_push_to_talk(not Voice.is_push_to_talk())
-
-
-## Asks every PC (including this one) to switch Fly voice for a player.
-func _toggle_fly(player_id: int) -> void:
-	_set_fly.rpc(player_id, not _fly_on.get(player_id, false))
 
 
 ## STUB for upgrades: in the game, upgrades calls Voice.set_voice_effect on every PC.
@@ -101,6 +128,14 @@ func _set_fly(player_id: int, enabled: bool) -> void:
 		Voice.set_voice_effect(player_id, FLY_SOURCE, fly)
 	else:
 		Voice.clear_voice_effect(player_id, FLY_SOURCE)
+
+
+## STUB for the doors system: anyone may open or close the test door, on every PC.
+@rpc("any_peer", "call_local", "reliable")
+func _set_door(open: bool) -> void:
+	_door.is_open = open
+	_door_body.collision_layer = 0 if open else PhysicsLayers.bit(PhysicsLayers.WORLD)
+	_door_body.visible = not open
 
 
 func _on_off(value: bool) -> String:
@@ -119,50 +154,62 @@ func _build_world() -> void:
 	sun.rotation_degrees = Vector3(-55.0, 30.0, 0.0)
 	sun.shadow_enabled = true
 	add_child(sun)
-	# A long floor so you can walk well past the 30 m silence distance.
-	var floor_body := StaticBody3D.new()
-	floor_body.collision_layer = PhysicsLayers.bit(PhysicsLayers.WORLD)
+
+	_door = VoiceTestRooms.build(self, true, true)
+	# The door you can see and bump into. Open (no collision) to start with.
+	_door_body = StaticBody3D.new()
+	_door_body.position = _door.position
+	_door_body.collision_layer = 0
+	_door_body.visible = false
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(16, 1, 80)
+	box.size = Vector3(3, VoiceTestRooms.WALL_HEIGHT, 0.2)
 	shape.shape = box
-	floor_body.add_child(shape)
+	_door_body.add_child(shape)
 	var mesh := MeshInstance3D.new()
 	var box_mesh := BoxMesh.new()
 	box_mesh.size = box.size
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.5, 0.5, 0.52)
+	material.albedo_color = Color(0.55, 0.35, 0.2)
 	box_mesh.material = material
 	mesh.mesh = box_mesh
-	floor_body.add_child(mesh)
-	floor_body.position = Vector3(0, -0.5, 30)
-	add_child(floor_body)
-	# Distance markers every 10 m.
-	for metres: int in [10, 20, 30, 40, 50, 60]:
-		var marker := Label3D.new()
-		marker.text = "%d m from the dummy" % metres
-		marker.font_size = 64
-		marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		marker.position = DUMMY_POSITION + Vector3(0, 1.5, float(metres))
-		add_child(marker)
-	# The echo dummy.
-	var dummy := MeshInstance3D.new()
+	_door_body.add_child(mesh)
+	add_child(_door_body)
+	_add_label(_door.position + Vector3(0, 2.0, 0.5), "Door (E)")
+
+	# Distance markers on the field south of Room B.
+	for metres: int in [10, 20, 30, 40, 50]:
+		_add_label(Vector3(6, 1.5, -4.0 - float(metres)), "%d m from Room B" % metres)
+
+	# The echo dummy, in Room A.
+	_dummy = MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
 	var dummy_material := StandardMaterial3D.new()
 	dummy_material.albedo_color = Color(0.95, 0.75, 0.2)
 	capsule.material = dummy_material
-	dummy.mesh = capsule
-	dummy.position = DUMMY_POSITION + Vector3(0, 1.0, 0)
-	add_child(dummy)
+	(_dummy as MeshInstance3D).mesh = capsule
+	_dummy.position = VoiceTestRooms.ROOM_A_CENTER + Vector3(0, 1.0, 0)
+	add_child(_dummy)
 	_dummy_head = Node3D.new()
 	_dummy_head.position = Vector3(0, 0.6, 0)
-	dummy.add_child(_dummy_head)
+	_dummy.add_child(_dummy_head)
 	var dummy_label := Label3D.new()
-	dummy_label.text = "Echo dummy (press K)"
-	dummy_label.font_size = 48
+	dummy_label.text = "Echo dummy (K on/off, J moves it to you)"
+	dummy_label.font_size = 40
 	dummy_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	dummy_label.position = Vector3(0, 1.4, 0)
-	dummy.add_child(dummy_label)
+	_dummy.add_child(dummy_label)
+	_add_label(VoiceTestRooms.ROOM_A_CENTER + Vector3(0, 2.6, 0), "Room A")
+	_add_label(VoiceTestRooms.ROOM_B_CENTER + Vector3(0, 2.6, 0), "Room B")
+
+
+func _add_label(where: Vector3, text: String) -> void:
+	var label := Label3D.new()
+	label.text = text
+	label.font_size = 56
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.position = where
+	add_child(label)
 
 
 func _build_ui() -> void:
@@ -180,6 +227,9 @@ func _build_ui() -> void:
 	_add_button(row, "Leave", SteamSession.leave_lobby)
 	_status = Label.new()
 	column.add_child(_status)
+	_hearing_label = Label.new()
+	_hearing_label.add_theme_color_override("font_color", Color(1, 0.9, 0.4))
+	column.add_child(_hearing_label)
 	var meter_row := HBoxContainer.new()
 	column.add_child(meter_row)
 	var meter_label := Label.new()
@@ -191,7 +241,7 @@ func _build_ui() -> void:
 	_meter.custom_minimum_size = Vector2(200, 16)
 	meter_row.add_child(_meter)
 	var help := Label.new()
-	help.text = "F = Fly voice   L = hear yourself   K = echo dummy   P = open mic / push-to-talk (hold V)"
+	help.text = "F Fly voice | L hear yourself | K echo dummy | J move dummy here | E door | P open mic / push-to-talk (hold V)"
 	column.add_child(help)
 	_speakers = Label.new()
 	column.add_child(_speakers)

@@ -15,11 +15,13 @@ const WALL_HEIGHT: float = 3.0
 const ROOM_A_CENTER: Vector3 = Vector3(-6, 0, 0)
 const ROOM_B_CENTER: Vector3 = Vector3(6, 0, 0)
 const DOOR_CENTER: Vector3 = Vector3(-2.5, 0, 4)
+## Length of the optional field south of Room B (metres).
+const FIELD_LENGTH: float = 60.0
 
 
 ## Builds the rooms under `parent`. With `navmesh`, the walkable floor is baked so voices can go the
 ## long way round. Returns the door's SoundDoor (open to start with).
-static func build(parent: Node3D, navmesh: bool) -> SoundDoor:
+static func build(parent: Node3D, navmesh: bool, long_field: bool = false) -> SoundDoor:
 	var holder: Node3D
 	var region: NavigationRegion3D
 	if navmesh:
@@ -44,7 +46,13 @@ static func build(parent: Node3D, navmesh: bool) -> SoundDoor:
 	_box(holder, Vector3(-7, WALL_HEIGHT / 2.0, 4.2), Vector3(6, WALL_HEIGHT, 0.4), Color(0.6, 0.6, 0.64))
 	_box(holder, Vector3(7, WALL_HEIGHT / 2.0, 4.2), Vector3(6, WALL_HEIGHT, 0.4), Color(0.6, 0.6, 0.64))
 	_box(holder, Vector3(0, WALL_HEIGHT / 2.0, 7.2), Vector3(20, WALL_HEIGHT, 0.4), Color(0.6, 0.6, 0.64))
-	_box(holder, Vector3(0, WALL_HEIGHT / 2.0, -4.2), Vector3(20, WALL_HEIGHT, 0.4), Color(0.6, 0.6, 0.64))
+	if long_field:
+		# Room B gets an opening in its south wall onto a long field, for the distance fade test.
+		_box(holder, Vector3(-3, WALL_HEIGHT / 2.0, -4.2), Vector3(14, WALL_HEIGHT, 0.4), Color(0.6, 0.6, 0.64))
+		_box(holder, Vector3(9, WALL_HEIGHT / 2.0, -4.2), Vector3(2, WALL_HEIGHT, 0.4), Color(0.6, 0.6, 0.64))
+		_box(holder, Vector3(6, -0.25, -FIELD_LENGTH / 2.0 - 4.0), Vector3(8, 0.5, FIELD_LENGTH), Color(0.5, 0.52, 0.48))
+	else:
+		_box(holder, Vector3(0, WALL_HEIGHT / 2.0, -4.2), Vector3(20, WALL_HEIGHT, 0.4), Color(0.6, 0.6, 0.64))
 	_box(holder, Vector3(-10.2, WALL_HEIGHT / 2.0, 1.5), Vector3(0.4, WALL_HEIGHT, 11), Color(0.6, 0.6, 0.64))
 	_box(holder, Vector3(10.2, WALL_HEIGHT / 2.0, 1.5), Vector3(0.4, WALL_HEIGHT, 11), Color(0.6, 0.6, 0.64))
 	if region != null:

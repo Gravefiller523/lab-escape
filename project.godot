@@ -30,6 +30,7 @@ Net="*res://systems/net_core/net.gd"
 UI="*res://systems/ui/ui.gd"
 Voice="*res://systems/voice/voice.gd"
 Interaction="*res://systems/interaction/interaction.gd"
+Props="*res://systems/physics_props/props.gd"
 
 [debug]
 

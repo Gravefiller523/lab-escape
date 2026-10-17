@@ -27,6 +27,7 @@ func is_online() -> bool                   # false in solo (no clients and no lo
 func local_player_id() -> int
 func get_player_ids() -> Array[int]        # connected players, in join order. Never assume 4.
 func get_player_count() -> int
+func get_record_ids() -> Array[int]        # NEW 2026-10-17: everyone with a record, including players who dropped mid-run
 func get_peer_id(player_id: int) -> int    # 0 if not connected
 func get_player_id_for_peer(peer_id: int) -> int
 func sender_player_id() -> int             # inside an RPC handler: who sent it (0 if unknown)
@@ -42,7 +43,11 @@ func get_waiting_player_ids() -> Array[int]               # NEW 2026-10-17
 func set_waiting_for_next_floor(player_id: int, waiting: bool) -> void   # NEW 2026-10-17: host only
 func clear_run_records() -> void           # host; at run start and end
 func kick(player_id: int) -> void          # host
+func use_config(config: GameConfig) -> void   # NEW 2026-10-17: tests only; call before adding the node to the tree
 ```
+NEW 2026-10-17: the autoload script is `systems/net_core/net.gd` with `class_name NetService` (a class
+can't have the same name as its autoload). Net notices when steam_session changes the connection
+and starts a fresh roster by itself; nobody needs to tell it.
 
 `PlayerRecord` (`systems/net_core/player_record.gd`, `class_name PlayerRecord extends RefCounted`):
 ```gdscript
@@ -56,6 +61,7 @@ var upgrade_ids: Array[StringName] = []        # written by upgrades (repeated i
 var cosmetic_loadout: Dictionary = {}          # slot -> cosmetic id, written by cosmetics
 func to_dict() -> Dictionary
 static func from_dict(data: Dictionary) -> PlayerRecord
+func apply_dict(data: Dictionary) -> void      # NEW 2026-10-17: copies the fields found in data onto this record
 ```
 Other systems add fields here only by asking (foundation-style change to net_core).
 
@@ -105,12 +111,20 @@ GUT tests:
 - `test_record_round_trips_to_dict`
 - `test_roster_limit_follows_config` (set max_players to 8, accept 8, refuse the 9th)
 - NEW 2026-10-17: `test_mid_run_joiner_waits_for_next_floor` (accepted during a run, waiting until `floor_loading`)
+- NEW 2026-10-17: `test_joiner_before_run_does_not_wait`
+All in `tests/unit/net_core/test_net.gd`. Each test "PC" is a node with its own multiplayer, so
+several players connect over real ENet inside one test.
+
+NEW 2026-10-17, test scene extras: "Start run", "Next floor" and "End run" buttons (STUB: they emit
+game_flow's EventBus signals on that PC only; press them in the host window), "Give everyone Fly",
+"Toggle joining", "Kick last player", and the launch options `-- host` / `-- join`.
 
 ## Acceptance criteria
-- [ ] Every system can call `Net.is_host()` and `Net.get_player_ids()` in solo with no setup.
-- [ ] CHANGED 2026-10-17: joining during a run is accepted with the joiner waiting for the next floor; reconnecting players get their record back.
-- [ ] Works with `max_players` set to 8 (tested with local instances).
-- [ ] No system other than net_core and steam_session touches `multiplayer.multiplayer_peer`.
+- [x] Every system can call `Net.is_host()` and `Net.get_player_ids()` in solo with no setup. *(test_solo_is_host_with_one_player)*
+- [x] CHANGED 2026-10-17: joining during a run is accepted with the joiner waiting for the next floor; reconnecting players get their record back. *(GUT tests; two-window check still to do by eye)*
+- [x] Works with `max_players` set to 8 (tested with local instances). *(test_roster_limit_follows_config: 8 ENet players in one test; 3 separate windows also checked)*
+- [x] No system other than net_core and steam_session touches `multiplayer.multiplayer_peer`. *(checked with a search, 2026-10-17)*
+- [ ] Not yet: the same on real Steam between 2 PCs (needs a second PC).
 
 ## Open design questions
 - CHANGED 2026-10-17 (decided): new players can join any time there is room; mid-run joiners spectate until the next floor. Reconnects are allowed mid-run.
@@ -122,3 +136,33 @@ GUT tests:
   `waiting_for_next_floor` to PlayerRecord, `is_run_active`, `is_waiting_for_next_floor`,
   `get_waiting_player_ids`, `set_waiting_for_next_floor`, the `record_changed` and `join_refused`
   signals, and the client hello. Listens to `run_started`/`floor_loading` instead of `game_state_changed`.
+- 2026-10-17: built. Also added `get_record_ids`, `PlayerRecord.apply_dict` and the test-only `use_config`.
+
+## HANDOFF
+**Done:** the `Net` autoload: roster, slot indexes (lowest free slot, reused), PlayerRecords synced
+host -> clients, joining rules (open, room left, reconnects always allowed), mid-run joiners marked
+`waiting_for_next_floor` until `floor_loading`, kick, refusal messages, solo with no setup, 8 GUT
+tests (all pass), and the roster test scene. Checked with 3 local windows.
+
+**Known bugs / limits:**
+- Over Steam the host trusts Steam for player ids. In local mode it trusts the client's hello (fine for testing only).
+- In local mode the "Steam ID" is a random ENet number, so names show as "Player 705903177".
+- Not tested on real Steam between two PCs yet.
+- If the host leaves, everyone's run ends (no host migration; spec default).
+
+**Stubbed:** the test scene's run and floor buttons stand in for game_flow.
+
+**What other systems must do for mid-run joining (decided 2026-10-17):**
+- **game_flow:** emit `run_started` and `floor_loading` on every PC. Net clears the waiting flags on
+  `floor_loading`, before `floor_ready`. Don't call `Net.set_joining_open(false)` for runs any more.
+- **player:** on `player_joined`, if `Net.is_waiting_for_next_floor(id)`, don't spawn a body yet;
+  spawn every connected player on `floor_ready` (waiting flags are already cleared by then).
+  Listen to `Net.record_changed(id, &"waiting_for_next_floor")` if you need to react sooner.
+- **death_respawn:** treat waiting players as spectators (ghost camera, like the dead), and leave
+  them out of the team-wipe check: they aren't alive yet, but they aren't dead either.
+- **ui:** show "Joined mid-run: you'll spawn on the next floor" when the local player is waiting.
+- **upgrades / cosmetics:** write into records with `Net.update_record()`; read with `get_record()`.
+
+**For everyone:** use `Net.sender_player_id()` inside RPC handlers, loop over `Net.get_player_ids()`,
+and use `Net.get_slot_index()` for colours and voice buses. Records of players who dropped mid-run
+are in `get_record_ids()` but not in `get_player_ids()`.

@@ -21,6 +21,7 @@ EventBus="*res://core/autoload/event_bus.gd"
 ContentRegistry="*res://core/autoload/content_registry.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 SteamSession="*res://systems/steam_session/steam_session.gd"
+Net="*res://systems/net_core/net.gd"
 
 [debug]
 

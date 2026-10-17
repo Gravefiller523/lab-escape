@@ -19,6 +19,8 @@ const SNAPSHOT_SMOOTHING: float = 18.0
 const SNAPSHOT_SNAP_DISTANCE: float = 3.0
 ## A resting spot only counts as safe this far above the out-of-world height.
 const SAFE_HEIGHT_MARGIN: float = 5.0
+## A push counts for this long after the last report (milliseconds), so pushes don't flicker.
+const PUSH_MEMORY_MSEC: int = 150
 
 ## Unique per spawned prop, set by the host.
 var net_id: int = 0
@@ -48,6 +50,8 @@ var _safe_position: Vector3
 var _stuck_seconds: float = 0.0
 ## Holders' bodies we ignore collisions with.
 var _excepted_bodies: Array[PlayerCharacter] = []
+## Host: players pushing it right now (player id -> {time, direction, speed}).
+var _pushes: Dictionary[int, Dictionary] = {}
 
 
 ## The NetProp a node belongs to (the prop itself, or one of its children). Null if none.
@@ -95,11 +99,22 @@ func needs_help() -> bool:
 ## How much of its weight its holders carry, 0 to 1. Normal props: 1 while held. Heavy props: each
 ## holder takes heavy_lift_per_holder kg off (1 holder of an 80 kg crate: 30/80 = 0.375).
 func get_support() -> float:
-	if _holders.is_empty():
+	return support_for(_holders.size())
+
+
+## How much of its weight `people` holders (or pushers) can move, 0 to 1 (see get_support).
+func support_for(people: int) -> float:
+	if people <= 0:
 		return 0.0
 	if not needs_help():
 		return 1.0
-	return clampf(float(_holders.size()) * _config().heavy_lift_per_holder / mass, 0.0, 1.0)
+	return clampf(float(people) * _config().heavy_lift_per_holder / mass, 0.0, 1.0)
+
+
+## Host: a player walking into this prop pushes it along `direction` at up to `speed` m/s, slowed by
+## its weight the same way carrying is (light props move at full speed, heavy ones barely).
+func add_push(player_id: int, direction: Vector3, speed: float) -> void:
+	_pushes[player_id] = {"time": Time.get_ticks_msec(), "direction": direction, "speed": speed}
 
 
 ## True while it is fully off the ground in its holders' hands.
@@ -217,6 +232,7 @@ func _physics_process(delta: float) -> void:
 ## Host: pull a lifted prop toward its holders' hold point with a spring, and drop it if stuck.
 ## Heavy props that aren't fully lifted are pulled more weakly and more slowly (they drag).
 func _host_update(delta: float) -> void:
+	_apply_pushes()
 	var support: float = get_support()
 	if support <= 0.0 or _hold_targets.is_empty():
 		_stuck_seconds = 0.0
@@ -239,6 +255,31 @@ func _host_update(delta: float) -> void:
 			_spawner.release_all(self)
 	else:
 		_stuck_seconds = 0.0
+
+
+## Host: players walking into it right now push it. More pushers = faster, like more holders.
+func _apply_pushes() -> void:
+	if _pushes.is_empty() or is_held():
+		_pushes.clear()
+		return
+	var now: int = Time.get_ticks_msec()
+	var direction := Vector3.ZERO
+	var speed: float = 0.0
+	for player_id: int in _pushes.keys():
+		var push: Dictionary = _pushes[player_id]
+		if now - int(push["time"]) > PUSH_MEMORY_MSEC:
+			_pushes.erase(player_id)
+			continue
+		direction += push["direction"] as Vector3
+		speed = maxf(speed, float(push["speed"]))
+	if _pushes.is_empty() or direction.is_zero_approx():
+		return
+	direction = Vector3(direction.x, 0.0, direction.z).normalized()
+	var wanted: float = speed * support_for(_pushes.size())
+	var current: float = linear_velocity.dot(direction)
+	if current < wanted:
+		linear_velocity += direction * (wanted - current)
+		sleeping = false
 
 
 ## Client: the local holder moves its copy to the hold point; everyone else follows snapshots.

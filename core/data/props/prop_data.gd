@@ -6,8 +6,8 @@ extends ContentData
 
 ## The RigidBody3D scene. Its root must use the physics_props system's NetProp script.
 @export var scene: PackedScene
-## Kilograms. Above GameConfig.grab_max_mass one player can't lift it;
-## above GameConfig.two_player_lift_max_mass nobody can.
+## Kilograms. Above GameConfig.grab_max_mass one player can only drag it slowly; each extra
+## helper (or pusher) makes it faster.
 @export var mass: float = 1.0
 ## Key objects (lift parts, keycards) respawn somewhere safe if they fall out of the world.
 @export var is_key_object: bool = false

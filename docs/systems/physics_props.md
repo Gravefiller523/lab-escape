@@ -118,13 +118,18 @@ CHANGED AGAIN 2026-10-17 (Zachary, after playtesting): **no limit on helpers.** 
 prop takes `heavy_lift_per_holder` kg (30) off its weight. `NetProp.get_support()` = holders x 30 / mass
 (0..1): the host's spring pulls that much weaker, gravity is reduced by that much, and the top speed is
 `held_prop_max_speed` (8 m/s) x support. An 80 kg crate: 1 holder 37% (drags very slowly), 2 holders 75%,
-3 holders 100% (fully lifted, like a normal prop). `two_player_lift_max_mass` (120 kg) is now "can't be
-moved at all above this", whatever the number of holders. Heavy props aren't predicted on the client.
+3 holders 100% (fully lifted, like a normal prop). CHANGED: **nothing is too heavy**; `two_player_lift_max_mass`
+is no longer used (a 300 kg prop with 1 holder: 10%). Heavy props aren't predicted on the client.
 
 **Solid props (NEW 2026-10-17):** players collide with props (the player mask has PROPS), so you bump
 into them and can stand on them, but props don't react to players (their mask has no PLAYERS): walking
 into a prop can't shove it through a wall. You move props by holding them. A prop you hold ignores your
 body (collision exception), so you can't stand on or push yourself with it.
+**Pushing (NEW 2026-10-17, Zachary):** walking into a prop pushes it. The walker's GrabController sees the
+collision and asks the host (`request_push`, ~20 a second); the host gives the prop up to walking speed x
+`support_for(number of pushers)`, the same weight rule as carrying: props of 30 kg or less move at walking
+speed, the 80 kg crate at about a third, a 300 kg one at a tenth; more pushers = faster. The host ignores
+pushers more than 3 m away and speeds above sprinting.
 
 **Key objects.** `is_key_object` props falling below `out_of_world_y` (or into a kill zone) are moved
 by the host to their last safe resting spot (last place they were still on the WORLD layer), or else
@@ -180,6 +185,9 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
   holders ignore the prop they hold. Tests: `test_every_grab_helps_lift_heavy_prop`,
   `test_each_helper_carries_more_of_the_weight`, `test_heavy_prop_moves_faster_with_more_helpers`,
   `test_players_can_stand_on_props_and_bump_into_them`, `test_holder_does_not_collide_with_held_prop`.
+- 2026-10-17: nothing is too heavy to move (`two_player_lift_max_mass` deprecated); walking into props pushes
+  them by weight (`add_push`, `support_for`, `request_push`). Tests: `test_nothing_is_too_heavy`,
+  `test_walking_into_props_pushes_them_by_weight`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

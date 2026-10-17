@@ -57,8 +57,8 @@ extends Resource
 @export_group("Physics props")
 ## Heaviest object (kg) one player can lift.
 @export var grab_max_mass: float = 40.0
-## Heaviest object (kg) that can be moved at all, however many people hold it. (The name is from
-## when heavy lifts were two people only; kept so existing files keep working.)
+## @deprecated Not used any more (2026-10-17): nothing is too heavy to move. Kept so existing
+## files keep working.
 @export var two_player_lift_max_mass: float = 120.0
 ## Heavy objects (above grab_max_mass): each person holding one takes this many kg off its weight.
 ## 1 person moves it very slowly, more people faster; once they take off all of it, it is fully lifted.

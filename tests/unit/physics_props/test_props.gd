@@ -98,14 +98,39 @@ func test_spawn_assigns_unique_net_id() -> void:
 	assert_almost_eq(a.mass, 10.0, 0.01, "mass comes from the content file")
 
 
-func test_too_heavy_refused() -> void:
-	var config := _config()
-	config.two_player_lift_max_mass = 50.0
-	var pc := _make_pc(config)
+func test_nothing_is_too_heavy() -> void:
+	var pc := _make_pc()
 	var heavy: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)))
+	heavy.mass = 300.0
 	var refusal: Array[String] = []
-	assert_eq(_props(pc).decide_grab(heavy, 1, refusal), [] as Array[int])
-	assert_eq(refusal, [PropSpawner.REFUSE_TOO_HEAVY] as Array[String])
+	assert_eq(_props(pc).decide_grab(heavy, 1, refusal), [1] as Array[int], "even 300 kg can be grabbed")
+	assert_true(refusal.is_empty())
+	heavy.apply_holders([1] as Array[int], 1)
+	assert_almost_eq(heavy.get_support(), 0.1, 0.001, "one person: 30 of 300 kg, it barely moves")
+
+
+func test_walking_into_props_pushes_them_by_weight() -> void:
+	var pc := _make_pc()
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var body: PlayerCharacter = _my_body(pc)
+	var moved: Array[float] = []
+	for prop_id: StringName in [&"prop_crate", &"prop_crate_heavy"]:
+		var crate: NetProp = _props(pc).spawn_prop(prop_id, Transform3D(Basis.IDENTITY, Vector3(0, 0.45, -8)))
+		await wait_physics_frames(10)
+		var start: Vector3 = crate.global_position
+		body.global_position = start + Vector3(0, -0.4, 1.5)
+		body.rotation = Vector3.ZERO
+		var walk := PlayerInputState.new()
+		walk.move = Vector2(0, 1)
+		body.set_input_override(walk)
+		await wait_physics_frames(60)
+		body.set_input_override(PlayerInputState.new())
+		moved.append(start.distance_to(crate.global_position))
+		_props(pc).despawn(crate)
+		await wait_physics_frames(2)
+	assert_gt(moved[0], 0.5, "a light crate gets pushed along")
+	assert_gt(moved[1], 0.05, "the heavy crate moves a little")
+	assert_lt(moved[1], moved[0], "but much less than the light one")
 
 
 func test_newest_grab_takes_normal_prop() -> void:

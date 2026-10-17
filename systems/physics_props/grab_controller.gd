@@ -13,10 +13,12 @@ const NODE_NAME: String = "Grab"
 const USE_PRIORITY: int = 50
 ## How often (per second) the hold point is sent to the host.
 const HOLD_SEND_RATE: float = 30.0
+## How often (per second) we tell the host we are pushing a prop, and the slowest push that counts.
+const PUSH_SEND_RATE: float = 20.0
+const MIN_PUSH_SPEED: float = 0.05
 
 const PROMPT_PICK_UP: String = "Pick up"
 const PROMPT_DROP: String = "Drop"
-const PROMPT_TOO_HEAVY: String = "Too heavy"
 const PROMPT_HEAVY: String = "Drag (heavy: more people make it faster)"
 const PROMPT_HELP_LIFT: String = "Help lift (%d holding)"
 const PROMPT_TAKE: String = "Take"
@@ -26,6 +28,7 @@ var _held: NetProp
 ## True from our grab request until the host answers.
 var _pending: bool = false
 var _send_timer: float = 0.0
+var _push_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -53,8 +56,6 @@ func get_held() -> NetProp:
 ## Local: grab a prop (it moves to your hands now; the host confirms or refuses).
 func try_grab(prop: NetProp) -> void:
 	if prop == null or prop.get_spawner() == null or prop.is_attached():
-		return
-	if prop.mass > prop.get_spawner().get_config().two_player_lift_max_mass:
 		return
 	if _held != null:
 		drop()
@@ -118,9 +119,6 @@ func _prompt_for(target: Node3D) -> String:
 	var prop: NetProp = NetProp.of(target) if target != null else null
 	if prop == null or prop.is_attached() or prop.get_spawner() == null:
 		return ""
-	var config: GameConfig = prop.get_spawner().get_config()
-	if prop.mass > config.two_player_lift_max_mass:
-		return PROMPT_TOO_HEAVY
 	if prop.needs_help():
 		return PROMPT_HELP_LIFT % prop.get_holder_ids().size() if prop.is_held() else PROMPT_HEAVY
 	return PROMPT_TAKE if prop.is_held() else PROMPT_PICK_UP
@@ -138,6 +136,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _body != null and _body.is_local():
+		_push_what_we_walk_into(delta)
 	if _held == null:
 		return
 	if not is_instance_valid(_held):
@@ -151,6 +151,30 @@ func _physics_process(delta: float) -> void:
 
 
 ## Where held props float: hold_distance (config) in front of the eyes.
+## Props block us; when we walk into one, tell the host how hard we're pushing (it moves the prop,
+## slowed by weight). Runs after the body moved this frame (children run after their parent).
+func _push_what_we_walk_into(delta: float) -> void:
+	_push_timer -= delta
+	if _push_timer > 0.0 or delta <= 0.0:
+		return
+	for index: int in _body.get_slide_collision_count():
+		var collision: KinematicCollision3D = _body.get_slide_collision(index)
+		var prop := collision.get_collider() as NetProp
+		if prop == null or prop == _held or prop.is_attached() or prop.get_spawner() == null:
+			continue
+		var into := -collision.get_normal()
+		into.y = 0.0
+		if into.is_zero_approx():
+			continue
+		into = into.normalized()
+		# Still trying to move into it (once blocked, our own speed into it drops to almost nothing,
+		# so push at walking speed instead; the host slows the prop by its weight).
+		if collision.get_remainder().dot(into) / delta > MIN_PUSH_SPEED:
+			_push_timer = 1.0 / PUSH_SEND_RATE
+			var speed: float = _body.tuning.walk_speed * _body.get_movement().get_speed_multiplier()
+			prop.get_spawner().request_push(prop, into, speed)
+
+
 func _hold_point() -> Vector3:
 	var distance: float = _held.get_spawner().get_config().hold_distance if _held != null else 1.6
 	return _body.get_aim_origin() + _body.get_aim_direction() * distance

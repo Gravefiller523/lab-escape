@@ -7,12 +7,12 @@ extends Node3D
 ##
 ## Grab rules (decided by Zachary, 2026-10-17):
 ## - normal props: the newest grab takes it (the old holder lets go);
-## - heavy props (above grab_max_mass, up to two_player_lift_max_mass): every grab joins the lift, and
-##   each holder takes heavy_lift_per_holder kg off its weight (more helpers = faster);
-## - heavier than that: refused.
+## - heavy props (above grab_max_mass, any weight): every grab joins the lift, and each holder takes
+##   heavy_lift_per_holder kg off its weight (more helpers = faster). Nothing is too heavy to move.
 
-const REFUSE_TOO_HEAVY: String = "Too heavy"
 const REFUSE_TOO_FAR: String = "Too far away"
+## A pusher must be this close to the prop (metres, body to prop centre).
+const PUSH_REACH: float = 3.0
 ## Extra reach the host allows for network delay and the size of the prop (metres).
 const REACH_TOLERANCE: float = 1.0
 
@@ -109,9 +109,6 @@ func apply_impulse(prop: NetProp, impulse: Vector3) -> void:
 ## empty list plus a reason in `refusal` (refusal[0]) when the grab is refused.
 func decide_grab(prop: NetProp, player_id: int, refusal: Array[String]) -> Array[int]:
 	var holders: Array[int] = prop.get_holder_ids()
-	if prop.mass > _config.two_player_lift_max_mass:
-		refusal.append(REFUSE_TOO_HEAVY)
-		return []
 	if prop.mass <= _config.grab_max_mass:
 		return [player_id] as Array[int]
 	# Heavy: everyone who grabs helps (no limit).
@@ -147,6 +144,11 @@ func request_grab(prop: NetProp) -> void:
 
 func request_release(prop: NetProp, throw_direction: Vector3) -> void:
 	_request_release_rpc.rpc_id(1, prop.net_id, throw_direction)
+
+
+## Walking into a prop: ask the host to push it (the host slows it by weight).
+func request_push(prop: NetProp, direction: Vector3, speed: float) -> void:
+	_push_rpc.rpc_id(1, prop.net_id, direction, speed)
 
 
 func send_hold_point(prop: NetProp, player_id: int, point: Vector3) -> void:
@@ -192,6 +194,21 @@ func _request_release_rpc(net_id: int, throw_direction: Vector3) -> void:
 	if thrown:
 		var strength: float = _config.throw_impulse * minf(prop.mass, _config.grab_max_mass)
 		prop.apply_central_impulse(throw_direction.normalized() * strength)
+
+
+@rpc("any_peer", "call_local", "unreliable_ordered")
+func _push_rpc(net_id: int, direction: Vector3, speed: float) -> void:
+	if not multiplayer.is_server():
+		return
+	var prop: NetProp = get_prop(net_id)
+	var body: PlayerCharacter = body_of_peer(multiplayer.get_remote_sender_id())
+	if prop == null or body == null:
+		return
+	# Only players right next to it, and no faster than anyone can walk.
+	if body.global_position.distance_to(prop.global_position) > PUSH_REACH:
+		return
+	var fastest: float = body.tuning.sprint_speed * body.get_movement().get_speed_multiplier()
+	prop.add_push(body.player_id, direction, clampf(speed, 0.0, fastest))
 
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")

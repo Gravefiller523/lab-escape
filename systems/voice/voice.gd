@@ -107,10 +107,20 @@ func _ready() -> void:
 	sync_players()
 
 
+func _notification(what: int) -> void:
+	# Closing the window: let go of the mic while the audio engine is still running.
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_stop_mic()
+
+
 func _exit_tree() -> void:
 	for player_id: int in _buses.keys():
 		_remove_player(player_id)
-	_stop_mic()
+	# The game may be quitting, when queue_free never happens: free the microphone right away.
+	if _mic_player != null:
+		_mic_player.stop()
+		_mic_player.free()
+		_mic_player = null
 
 
 # --- Public API -------------------------------------------------------------------------------
@@ -718,6 +728,8 @@ func _start_mic() -> void:
 func _stop_mic() -> void:
 	if _mic_player != null:
 		_mic_player.stop()
+		# Let go of the microphone stream now; queue_free alone can be too late when the game quits.
+		_mic_player.stream = null
 		_mic_player.queue_free()
 		_mic_player = null
 

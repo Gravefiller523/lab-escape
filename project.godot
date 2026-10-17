@@ -11,6 +11,7 @@ config_version=5
 [application]
 
 config/name="Lab Escape"
+run/main_scene="res://systems/ui/main_menu_background.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -22,6 +23,7 @@ ContentRegistry="*res://core/autoload/content_registry.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 SteamSession="*res://systems/steam_session/steam_session.gd"
 Net="*res://systems/net_core/net.gd"
+UI="*res://systems/ui/ui.gd"
 
 [debug]
 

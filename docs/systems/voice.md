@@ -58,7 +58,8 @@ so far: `buzz` (Fly: band-pass + light distortion + fast chorus) and `deep`.
 ### NEW 2026-10-17: how far voices carry (Zachary's request)
 - **Distance fade (CHANGED 2026-10-17, after Zachary's playtest):** each player's voice plays from
   their head (`AudioStreamPlayer3D`). Godot's own falloff is off; voice sets the volume itself: full
-  volume within `voice_full_volume_distance` (4 m), then it follows `voice_distance_curve` (a Curve you
+  volume within `voice_full_volume_distance` (CHANGED: 10 m, was 4 m; through a closed door
+  `voice_closed_door_full_volume_distance` = 4 m), then it follows `voice_distance_curve` (a Curve you
   can reshape in the Inspector): a fairly quick drop, then a **long, quiet tail** where far voices are
   barely there, and **complete silence at `voice_max_distance` (CHANGED: now 40 m; was 30 m, then 60 m)**.
   0 = everyone hears everyone.
@@ -173,6 +174,9 @@ label yet (delay is judged by ear on 2 PCs).
   550 Hz); base "underground" reverb (`voice_near_reverb` 0.2); `voice_open_mic_threshold` replaced by
   `voice_mic_sensitivity` (0.7) with `set_mic_sensitivity`, `get_open_mic_threshold`, `set_mic_test`,
   `meter_position`, `get_threshold_meter_position` and `MicSensitivityPanel` (also added to ui's Esc menu).
+- 2026-10-17: full volume (and no extra treble loss, reverb or echo) out to 10 m when no closed door is in
+  the way (`voice_full_volume_distance` 4 -> 10); the same curve then runs 10 -> 40 m. Through a closed
+  door: full to 4 m (`voice_closed_door_full_volume_distance`), silent past 15 m.
 
 ## HANDOFF
 **Done (Phase 1a proof):** the `Voice` autoload: one bus per player (`Voice_<slot>`) with pitch,

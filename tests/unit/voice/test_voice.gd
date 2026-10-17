@@ -285,8 +285,9 @@ func test_closed_door_on_direct_line_without_navmesh() -> void:
 func test_long_quiet_tail_with_the_default_curve() -> void:
 	var config := GameConfig.new()
 	assert_eq(config.voice_max_distance, 40.0)
-	var near: float = VoiceService.hearing_gain(8.0, 0.0, config)
-	var middle: float = VoiceService.hearing_gain(20.0, 0.0, config)
+	assert_eq(VoiceService.hearing_gain(9.5, 0.0, config), 1.0, "full volume up to 10 m")
+	var near: float = VoiceService.hearing_gain(14.0, 0.0, config)
+	var middle: float = VoiceService.hearing_gain(22.0, 0.0, config)
 	var far: float = VoiceService.hearing_gain(34.0, 0.0, config)
 	assert_lt(near, 1.0)
 	assert_lt(middle, near)
@@ -338,3 +339,9 @@ func test_mic_sensitivity_changes_what_counts_as_speech() -> void:
 	_voice.set_push_to_talk(true)
 	_voice.set_mic_sensitivity(0.0)
 	assert_true(_voice.would_send(0.0, true), "push-to-talk always sends while V is held")
+
+
+func test_closed_door_starts_fading_sooner() -> void:
+	var config := GameConfig.new()
+	assert_eq(VoiceService.hearing_gain(8.0, 0.0, config, 0), 1.0, "no door: still full volume at 8 m")
+	assert_lt(VoiceService.hearing_gain(8.0, 0.0, config, 1), 1.0, "closed door: fading from 4 m")

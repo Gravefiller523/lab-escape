@@ -548,11 +548,12 @@ func _gain(hearing: VoiceHearing, muffle: float) -> float:
 ## Through a closed door (closed_doors > 0) the voice goes silent sooner: at voice_closed_door_max_distance.
 static func hearing_gain(distance: float, muffle: float, config: GameConfig, closed_doors: int = 0) -> float:
 	var max_distance: float = config.voice_max_distance
+	var full_distance: float = config.voice_full_volume_distance
 	if closed_doors > 0:
+		full_distance = minf(full_distance, config.voice_closed_door_full_volume_distance)
 		max_distance = minf(max_distance, config.voice_closed_door_max_distance) if max_distance > 0.0 \
 			else config.voice_closed_door_max_distance
-	var gain: float = distance_gain(distance, config.voice_full_volume_distance, max_distance,
-		config.voice_distance_curve)
+	var gain: float = distance_gain(distance, full_distance, max_distance, config.voice_distance_curve)
 	return gain * lerpf(1.0, config.voice_muffle_volume, muffle)
 
 

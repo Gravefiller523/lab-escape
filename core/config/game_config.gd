@@ -84,7 +84,7 @@ extends Resource
 
 @export_group("Voice")
 ## Within this distance (m) voices are at full volume.
-@export var voice_full_volume_distance: float = 4.0
+@export var voice_full_volume_distance: float = 10.0
 ## Beyond this distance (m) voices are silent. 0 = hear everyone everywhere.
 @export var voice_max_distance: float = 40.0
 ## The shape of the fade between the two distances: left edge = full volume distance, right edge =
@@ -116,6 +116,8 @@ extends Resource
 @export_range(0.0, 1.0) var voice_closed_door_muffle: float = 0.7
 ## A voice that has to go through a closed door can't be heard past this distance (metres).
 @export var voice_closed_door_max_distance: float = 15.0
+## Through a closed door, voices are only at full volume this close (metres); the fade starts after.
+@export var voice_closed_door_full_volume_distance: float = 4.0
 ## How often each PC re-checks walls, doors and routes for every voice.
 @export var voice_hearing_updates_per_second: float = 10.0
 

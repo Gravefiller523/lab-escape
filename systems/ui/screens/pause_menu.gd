@@ -1,6 +1,6 @@
 extends Control
-## The small Esc menu: Resume, Leave game, Quit. The game keeps running for everyone else.
-## Settings come later with settings_input.
+## The small Esc menu: mic sensitivity, Resume, Leave game, Quit. The game keeps running for
+## everyone else. Settings come later with settings_input.
 
 
 func _ready() -> void:
@@ -20,6 +20,8 @@ func _ready() -> void:
 	title.text = "Paused (the game keeps going for others)"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
+	# Voice's mic sensitivity slider and level bar (moves to Settings when settings_input exists).
+	column.add_child(MicSensitivityPanel.new())
 	_add_button(column, "Resume", UI.close_screen)
 	_add_button(column, "Leave game", UI.leave_game)
 	_add_button(column, "Quit", func() -> void: get_tree().quit())

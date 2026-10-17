@@ -109,8 +109,11 @@ A few words used everywhere:
 ### 1. Hosting and joining
 Main menu (ui) → `SteamSession.host_lobby()` → Steam lobby created → `Net` sets up the host →
 `GameFlow` loads the Break Room → the player system spawns the host's body.
-A friend accepts an invite → `SteamSession` joins → `Net` checks joining is allowed (only while in
-the Break Room) → `Net` adds them to the roster → `player_joined` → their body spawns for everyone.
+A friend accepts an invite → `SteamSession` joins → `Net` checks joining is allowed (the lobby has
+room) → `Net` adds them to the roster → `player_joined` → their body spawns for everyone.
+Players can also join **mid-run** (decided 2026-10-17): the Steam lobby stays joinable during a run.
+A mid-run joiner spectates like a dead player (a ghost) until the next floor starts, then spawns
+with everyone at the start of that floor.
 
 ### 2. Starting a run
 Everyone walks into the elevator. Someone presses the button (interaction) → break_room asks the host →
@@ -283,3 +286,5 @@ Each system adds its own autoload line to `project.godot` when it is merged.
 - Every random roll uses `SeededRng` with its own stream name, so runs can be replayed from a seed.
 - No hand-written content lists. Ask `ContentRegistry`.
 - Never assume 4 players. Read `Config.game.max_players`, loop over `Net.get_player_ids()`.
+- If a player grabs a prop another player is carrying, the newest grab takes control; the host
+  decides who the holder is (decided 2026-10-17).

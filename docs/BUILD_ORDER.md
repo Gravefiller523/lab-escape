@@ -2,7 +2,8 @@
 
 The order to build Lab Escape's systems, split into phases. Each system is built in its own Claude
 Code session with Prompt 2 ("build one system"), on its own branch, then merged with Prompt 3.
-People are called **A**, **B** and **C** below: decide who is who. Sizes: S = a few days,
+The work is split into tracks **A**, **B** and **C** below. Zachary is the only builder (decided
+2026-10-17), so he builds them one after another (A, then B, then C), not in parallel. Sizes: S = a few days,
 M = a week or two, L = several weeks, for a beginner working with Claude Code.
 
 **The rule that makes parallel work possible:** if a system you need isn't merged yet, build against a
@@ -24,7 +25,7 @@ Versions checked on 2026-10-07:
    editor (build scenes, run the game, take screenshots, read errors). Needs `uv` installed. It sends
    anonymous usage telemetry unless you set `GODOT_AI_DISABLE_TELEMETRY=true`.
 6. Commit the foundation to `main` (it's already written and checked).
-7. Each person opens the project, runs it, and runs the tests. Agree who is A, B and C.
+7. Open the project, run it, and run the tests.
 
 ## Phase 1a: the risky proofs first (3 tracks in parallel)
 Goal: find out early whether the three hardest things work, before building anything on top of them.

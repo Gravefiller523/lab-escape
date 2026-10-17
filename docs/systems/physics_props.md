@@ -86,13 +86,18 @@ holder's PC while held, and give it back on release.
 
 **Two-player lift.** If mass is above `grab_max_mass` but at most `two_player_lift_max_mass`, it only
 lifts once two players hold it; the hold point is the average of both.
+CHANGED 2026-10-17 (Zachary's decisions, gap 24): a second player grabbing a **heavy** prop that someone
+holds **joins the lift** (up to 2 holders). A second player grabbing a **normal** prop someone holds
+**takes it**: the newest grab wins and the old holder lets go. The host decides the holder(s).
 
 **Key objects.** `is_key_object` props falling below `out_of_world_y` (or into a kill zone) are moved
 by the host to their last safe resting spot (last place they were still on the WORLD layer), or else
 the lift room.
 
 **Limits.** Despawn timers from data; loot merges plain gems when there are too many (see loot).
-Pickups of 2 players on the same frame: the host accepts the first request it receives; the second gets "refused".
+CHANGED 2026-10-17: grabs are handled in the order the host receives them. For a normal prop the
+newest grab wins (even two on the same frame end with exactly one holder: the later one). For a heavy
+prop, the first two grabbers hold it together; a third is refused ("Already two people lifting").
 
 ## Dependencies and stubs
 net_core, player (hold point, aim), interaction (handlers). Stub player: a capsule with a camera and the GrabController.
@@ -103,7 +108,8 @@ crates of different masses, one heavy (two-player) crate, a pit with a kill zone
 Two local instances (then two Steam PCs): pass one box back and forth, stack, throw, drop into the pit.
 Measure: does holding feel instant for the client? Jitter? Bandwidth at 100 awake props?
 GUT tests: `test_spawn_assigns_unique_net_id`, `test_too_heavy_refused`, `test_two_player_lift_needs_two`,
-`test_first_grab_wins`, `test_key_object_respawns_at_safe_spot`, `test_sleeping_props_not_sent`,
+`test_first_grab_wins` (CHANGED 2026-10-17: now `test_newest_grab_takes_normal_prop` and
+`test_second_grab_helps_lift_heavy_prop`), `test_key_object_respawns_at_safe_spot`, `test_sleeping_props_not_sent`,
 `test_throw_sets_last_holder`, `test_attach_freezes_detach_restores`.
 
 ## Acceptance criteria
@@ -115,8 +121,9 @@ GUT tests: `test_spawn_assigns_unique_net_id`, `test_too_heavy_refused`, `test_t
 
 ## Open design questions
 - Approach A vs. B: decide after the Phase 1 proof.
-- DEFAULT: first grab wins; no tug-of-war.
+- CHANGED 2026-10-17 (decided): newest grab takes a normal prop; a second grab on a heavy prop helps lift it.
 - DEFAULT: players can't stand on a prop they are holding (prevents "prop surfing" launching).
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-17: grab rules decided by Zachary: newest grab takes normal props; a second player helps lift heavy ones.

@@ -24,6 +24,7 @@ var _props: Dictionary[int, NetProp] = {}
 var _next_net_id: int = 1
 var _near_timer: float = 0.0
 var _far_timer: float = 0.0
+var _peer_seen: MultiplayerPeer
 
 
 ## For tests only: a different Net and config. Call before adding the node to the tree.
@@ -42,6 +43,7 @@ func _ready() -> void:
 	add_child(_spawner)
 	_spawner.spawn_path = _spawner.get_path_to(self)
 	_spawner.spawn_function = _make_prop
+	_peer_seen = multiplayer.multiplayer_peer
 	_net.roster_changed.connect(_release_missing_players)
 	Props.register_spawner(self)
 
@@ -259,10 +261,32 @@ func _on_prop_exiting(net_id: int) -> void:
 	_props.erase(net_id)
 
 
+func _process(_delta: float) -> void:
+	# The connection changed (hosting, joining, leaving): props from the old session are stale.
+	if multiplayer.multiplayer_peer != _peer_seen:
+		_peer_seen = multiplayer.multiplayer_peer
+		_restart_session()
+
+
+## A new connection: the host spawns its props again so every new client gets them; a client
+## drops its copies and waits for the host's.
+func _restart_session() -> void:
+	var keep: Array[Dictionary] = []
+	for prop: NetProp in get_props():
+		keep.append({"content_id": prop.content_id, "xform": prop.global_transform, "extra": prop.extra})
+		remove_child(prop)
+		prop.queue_free()
+	_props.clear()
+	_next_net_id = 1
+	if multiplayer.is_server():
+		for entry: Dictionary in keep:
+			spawn_prop(entry["content_id"], entry["xform"], entry["extra"])
+
+
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server():
 		return
-	_respawn_fallen_key_objects()
+	_handle_fallen_props()
 	if not _net.is_online():
 		return
 	_near_timer += delta
@@ -296,17 +320,20 @@ func _is_near_a_player(prop: NetProp) -> bool:
 	return false
 
 
-## Host: key objects that fell out of the world go back to their last safe resting spot.
-func _respawn_fallen_key_objects() -> void:
+## Host: key objects that fell out of the world go back to their last safe resting spot; other
+## props that fell out are removed.
+func _handle_fallen_props() -> void:
 	for prop: NetProp in _props.values():
-		if not is_instance_valid(prop) or prop.data == null or not prop.data.is_key_object:
+		if not is_instance_valid(prop) or prop.global_position.y >= _config.out_of_world_y:
 			continue
-		if prop.global_position.y < _config.out_of_world_y:
-			release_all(prop)
-			prop.linear_velocity = Vector3.ZERO
-			prop.angular_velocity = Vector3.ZERO
-			prop.global_position = prop.get_safe_position()
-			_key_respawned.rpc(prop.net_id)
+		if prop.data == null or not prop.data.is_key_object:
+			despawn(prop)
+			continue
+		release_all(prop)
+		prop.linear_velocity = Vector3.ZERO
+		prop.angular_velocity = Vector3.ZERO
+		prop.global_position = prop.get_safe_position()
+		_key_respawned.rpc(prop.net_id)
 
 
 @rpc("authority", "call_local", "reliable")

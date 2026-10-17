@@ -82,6 +82,11 @@ a "Not in the elevator: ..." sign, a red host-only "Start anyway" button that ap
 and emits `elevator_start_accepted` on every PC; "Start anyway" teleports outside players into the
 elevator first. 5 GUT tests, all pass. Checked with 2 local windows.
 
+**Layout change (2026-10-17, after Zachary's test):** the green start button and the red "Start
+anyway" button are on the elevator's inside walls (right and left), so players standing inside can
+press them, and the "who's missing" sign has a copy on the elevator's back wall. Tests:
+`test_start_button_is_inside_the_elevator`, `test_start_anyway_button_is_inside_the_elevator`.
+
 **Stubbed:**
 - interaction: stand next to a button and press E (no "Press E" prompt or look-at check yet).
 - cargo_lift: `ElevatorZoneStub` (`stubs/elevator_zone_stub.gd`) has the same functions as

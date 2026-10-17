@@ -35,6 +35,7 @@ var _right_open_x: float = 0.0
 @onready var _left_door: Node3D = %LeftDoor
 @onready var _right_door: Node3D = %RightDoor
 @onready var _missing_sign: Label3D = %MissingSign
+@onready var _missing_sign_inside: Label3D = %MissingSignInside
 @onready var _force_button: Node3D = %ForceButton
 @onready var _whiteboard: Label3D = %WhiteboardText
 @onready var _message: Label3D = %MessageSign
@@ -164,8 +165,9 @@ func _process(delta: float) -> void:
 	_right_door.position.x = move_toward(_right_door.position.x,
 		DOOR_CLOSED_X if _doors_closed else _right_open_x, DOOR_SPEED * delta)
 	var missing: String = _missing_names()
-	_missing_sign.text = "Everyone's in! Press E at the button." if missing.is_empty() \
+	_missing_sign.text = "Everyone's in! Press E at the green button." if missing.is_empty() \
 		else "Not in the elevator:\n" + missing
+	_missing_sign_inside.text = _missing_sign.text
 	_force_button.visible = can_force_start()
 
 

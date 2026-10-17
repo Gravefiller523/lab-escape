@@ -163,20 +163,20 @@ size = Vector3(2, 2.5, 0.15)
 material = SubResource("Mat_door")
 
 [node name="StartButton" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 1.2, -8.95)
-size = Vector3(0.3, 0.3, 0.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.95, 1.2, -10.5)
+size = Vector3(0.1, 0.3, 0.3)
 material = SubResource("Mat_green")
 
 [node name="StartButtonLabel" type="Label3D" parent="StartButton"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1, 0.45, 0)
 billboard = 1
 pixel_size = 0.004
-text = "Elevator
-(stand here, press E)"
+text = "Start
+(press E)"
 
 [node name="StartButtonArea" type="Area3D" parent="."]
 unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 1, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 1, -10.5)
 
 [node name="Shape" type="CollisionShape3D" parent="StartButtonArea"]
 shape = SubResource("Shape_button")
@@ -184,14 +184,14 @@ shape = SubResource("Shape_button")
 [node name="ForceButton" type="Node3D" parent="."]
 unique_name_in_owner = true
 visible = false
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 1.2, -8.95)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.95, 1.2, -10.5)
 
 [node name="Box" type="CSGBox3D" parent="ForceButton"]
-size = Vector3(0.3, 0.3, 0.1)
+size = Vector3(0.1, 0.3, 0.3)
 material = SubResource("Mat_red")
 
 [node name="Label" type="Label3D" parent="ForceButton"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.45, 0)
 billboard = 1
 pixel_size = 0.004
 text = "Start anyway (host)
@@ -199,7 +199,7 @@ text = "Start anyway (host)
 
 [node name="ForceButtonArea" type="Area3D" parent="."]
 unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 1, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2, 1, -10.5)
 
 [node name="Shape" type="CollisionShape3D" parent="ForceButtonArea"]
 shape = SubResource("Shape_button")
@@ -209,6 +209,14 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -8.95)
 pixel_size = 0.004
 font_size = 72
+modulate = Color(1, 0.9, 0.4, 1)
+text = "Not in the elevator:"
+
+[node name="MissingSignInside" type="Label3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, -13.45)
+pixel_size = 0.004
+font_size = 56
 modulate = Color(1, 0.9, 0.4, 1)
 text = "Not in the elevator:"
 

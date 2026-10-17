@@ -68,6 +68,20 @@ func _walk_into_elevator(pc: Node, player_id: int) -> void:
 	body.global_position = Vector3(zone.global_position.x, 0.1, zone.global_position.z)
 
 
+## Stands a body next to one of the room's buttons (StartButtonArea or ForceButtonArea).
+func _walk_to(pc: Node, player_id: int, area_name: String) -> void:
+	var area := pc.get_node("BreakRoom/" + area_name) as Area3D
+	_body(pc, player_id).global_position = Vector3(area.global_position.x, 0.1, area.global_position.z)
+
+
+## Presses Use (E) in that PC's window.
+func _press_use(pc: Node) -> void:
+	var event := InputEventAction.new()
+	event.action = InputActions.USE
+	event.pressed = true
+	(pc as Viewport).push_input(event)
+
+
 func after_each() -> void:
 	var paths: Array[NodePath] = []
 	var peers: Array[MultiplayerPeer] = []
@@ -148,3 +162,29 @@ func test_force_start_only_after_timer_and_only_host() -> void:
 	assert_signal_emitted(EventBus, "elevator_start_accepted")
 	await wait_until(func() -> bool: return _room(host).get_elevator_zone().get_players_inside().has(client_id), WAIT)
 	assert_true(_room(host).get_elevator_zone().get_players_inside().has(client_id), "the client was moved into the elevator")
+
+
+func test_start_button_is_inside_the_elevator() -> void:
+	var pc := _make_pc(_config())
+	var me: int = _net(pc).local_player_id()
+	await wait_until(func() -> bool: return _body(pc, me) != null, WAIT)
+	_walk_to(pc, me, "StartButtonArea")
+	await wait_physics_frames(5)
+	assert_true(_room(pc).get_elevator_zone().get_players_inside().has(me), "next to the button = inside the elevator")
+	watch_signals(EventBus)
+	_press_use(pc)
+	assert_signal_emitted(EventBus, "elevator_start_accepted", "pressing E there starts the elevator")
+
+
+func test_start_anyway_button_is_inside_the_elevator() -> void:
+	var host := _host(_config(4, 0.3))
+	var client := _client(_config(4, 0.3))
+	var host_id: int = _net(host).local_player_id()
+	await wait_until(func() -> bool: return _body(client, _net(client).local_player_id()) != null, WAIT)
+	_walk_to(host, host_id, "ForceButtonArea")
+	await wait_physics_frames(5)
+	assert_true(_room(host).get_elevator_zone().get_players_inside().has(host_id))
+	await wait_seconds(0.5)
+	watch_signals(EventBus)
+	_press_use(host)
+	assert_signal_emitted(EventBus, "elevator_start_accepted", "host pressed Start anyway from inside")

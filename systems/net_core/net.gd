@@ -98,6 +98,11 @@ func get_player_count() -> int:
 	return get_player_ids().size()
 
 
+## Every player with a record, in join order, including players who dropped mid-run.
+func get_record_ids() -> Array[int]:
+	return _order.duplicate()
+
+
 ## The Godot network peer id for a player. 0 if not connected.
 func get_peer_id(player_id: int) -> int:
 	return _peer_by_player.get(player_id, 0)
@@ -314,6 +319,9 @@ func _reconnect(record: PlayerRecord, peer_id: int) -> void:
 
 
 func _on_peer_disconnected(peer_id: int) -> void:
+	# steam_session says goodbye while the game quits; by then we may already be out of the tree.
+	if not is_inside_tree():
+		return
 	var player_id: int = _player_by_peer.get(peer_id, 0)
 	_player_by_peer.erase(peer_id)
 	if player_id == 0:

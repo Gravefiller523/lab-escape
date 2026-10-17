@@ -88,6 +88,9 @@ extends Resource
 ## Beyond this distance (m) voices are silent. 0 = hear everyone everywhere.
 @export var voice_max_distance: float = 30.0
 @export var voice_push_to_talk_default: bool = false
+## Open mic: how loud (0 to 1) the mic must be before your voice is sent. Raise it if background
+## noise keeps your mic on.
+@export_range(0.0, 1.0) var voice_open_mic_threshold: float = 0.02
 
 @export_group("Difficulty")
 ## Extra enemy spawn budget per player beyond the first (0.35 = +35% each).

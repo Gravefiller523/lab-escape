@@ -84,6 +84,7 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
 - 2026-10-07: spec created.
 - 2026-10-17: Phase 1a slice built: main menu, small pause menu, toasts, the main scene and the
   game_flow scene-change stub. Added `get_open_screen`, `leave_game`, `get_toast_text`, `use_flow`.
+- 2026-10-17 (voice branch): the Esc menu shows voice's `MicSensitivityPanel` (mic sensitivity slider and level bar).
 
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and

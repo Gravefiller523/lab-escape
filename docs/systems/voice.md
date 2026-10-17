@@ -60,10 +60,14 @@ so far: `buzz` (Fly: band-pass + light distortion + fast chorus) and `deep`.
   their head (`AudioStreamPlayer3D`). Godot's own falloff is off; voice sets the volume itself: full
   volume within `voice_full_volume_distance` (4 m), then it follows `voice_distance_curve` (a Curve you
   can reshape in the Inspector): a fairly quick drop, then a **long, quiet tail** where far voices are
-  barely there, and **complete silence at `voice_max_distance` (now 60 m, was 30 m)**. 0 = everyone hears everyone.
+  barely there, and **complete silence at `voice_max_distance` (CHANGED: now 40 m; was 30 m, then 60 m)**.
+  0 = everyone hears everyone.
 - **Sounding far away (NEW 2026-10-17):** far voices also lose treble (air absorption, down to
   `voice_far_cutoff_hz` = 2500 Hz at the max distance), get more reverb (`voice_far_reverb` = 0.45 at
-  the max) and a faint echo ~0.3 s later (`voice_far_echo` = 0.2 at the max). Each player's bus has
+  the max) and a faint echo ~0.3 s later (`voice_far_echo` = 0.2 at the max).
+- **Underground facility sound (NEW 2026-10-17):** every voice has some reverb even up close
+  (`voice_near_reverb` = 0.2, rising to `voice_far_reverb` with distance): 20 ms pre-delay, medium room
+  (0.55), damped highs (0.7), so it sounds like concrete corridors while speech stays clear. Each player's bus has
   pitch/presets, then reverb, then echo, then the treble filter (distance and walls combined).
   Route distances (round corners, through doors) use the same curve and effects.
 - **Walls muffle (step A):** about 10 times a second (`voice_hearing_updates_per_second`) each PC casts
@@ -77,6 +81,14 @@ so far: `buzz` (Fly: band-pass + light distortion + fast chorus) and `deep`.
   the Break Room today): plain wall muffling from step A.
 - **Doors:** a closed `SoundDoor` on the route adds `voice_closed_door_muffle` (quieter and duller, still
   heard). An open door adds nothing. Without a navmesh, a closed door on the straight line counts the same.
+  CHANGED 2026-10-17 (Zachary): closed-door muffle 0.6 -> 0.7 (shows ~70-80% with corners), full muffle
+  volume `voice_muffle_volume` 0.35 -> 0.25 and cutoff `voice_muffle_cutoff_hz` 700 -> 550 Hz, and a voice
+  through a closed door is **silent past `voice_closed_door_max_distance` (15 m)** of route distance.
+- **Mic sensitivity (NEW 2026-10-17):** open mic sends when the mic is louder than a threshold set by
+  `set_mic_sensitivity(0..1)` (default `voice_mic_sensitivity` = 0.7; 0 needs a loud voice, 1 picks up a
+  whisper). `MicSensitivityPanel` is a ready-made slider with a live level bar and the threshold line;
+  it's in the voice test scene and the Esc menu. Push-to-talk (hold V) always sends, whatever the
+  threshold. Over Steam, Steam decides when you're talking and the threshold doesn't apply.
 - Everything changes smoothly (muffle fades, the voice glides to the doorway) and is worked out on
   each listener's PC: no extra network traffic. All numbers are in `config/game_config.tres`.
 Launch presets in `systems/voice/presets/`: `buzz` (Fly: band-pass + tremolo), `robot` (cybernetic
@@ -156,6 +168,11 @@ label yet (delay is judged by ear on 2 PCs).
   `voice_hearing_updates_per_second`. Project setting `audio/driver/enable_input = true` (needed for the mic).
 - 2026-10-17: after Zachary's playtest: `voice_max_distance` 30 -> 60 m; new `voice_distance_curve`,
   `voice_far_cutoff_hz`, `voice_far_reverb`, `voice_far_echo`; reverb and echo effects on every voice bus.
+- 2026-10-17: after Zachary's second playtest: `voice_max_distance` 60 -> 40 m; closed doors silence
+  voices past 15 m (`voice_closed_door_max_distance`) and muffle more (0.7; muffle volume 0.25, cutoff
+  550 Hz); base "underground" reverb (`voice_near_reverb` 0.2); `voice_open_mic_threshold` replaced by
+  `voice_mic_sensitivity` (0.7) with `set_mic_sensitivity`, `get_open_mic_threshold`, `set_mic_test`,
+  `meter_position`, `get_threshold_meter_position` and `MicSensitivityPanel` (also added to ui's Esc menu).
 
 ## HANDOFF
 **Done (Phase 1a proof):** the `Voice` autoload: one bus per player (`Voice_<slot>`) with pitch,
@@ -169,7 +186,13 @@ navmesh. 19 GUT tests, all pass. Never records, saves or uploads mic audio.
 players; the mic device choice and voice volume (settings_input); ghosts heard by everyone at low
 volume (death_respawn, later). Late joiners don't learn effects set before they joined until upgrades
 re-applies them from the player record (upgrades' job). Mic capture starts only while you are in a
-game with others or loopback is on.
+game with others, loopback is on, or a mic sensitivity panel is on screen (meter only; nothing sent).
+The mic sensitivity is kept for the session only; saving it to disk comes with settings_input. A
+headless test run that quits while the mic is open may print "2 ObjectDB instances were leaked at
+exit" (the mic stream); harmless, and closing the window normally lets go of the mic first.
+
+**For audio (later):** reuse the voice reverb settings (20 ms pre-delay, room 0.55, damping 0.7, wet
+about 0.2 up close) for footsteps and sound effects, so the whole facility sounds like one place.
 
 **Stubbed:** settings (push-to-talk via `set_push_to_talk`), the test scene's Fly toggle (upgrades) and
 door (doors system).

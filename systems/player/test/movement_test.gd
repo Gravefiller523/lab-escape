@@ -11,6 +11,7 @@ const FLOOR_SIZE: float = 40.0
 const TEST_MODIFIERS: Dictionary[Key, StringName] = {KEY_1: &"test_fast", KEY_2: &"test_no_jump", KEY_3: &"test_giraffe"}
 
 var _spawner: PlayerSpawner
+var _overview: Camera3D
 var _status: Label
 var _floor_number: int = 0
 var _active_test_sources: Array[StringName] = []
@@ -30,20 +31,35 @@ func _ready() -> void:
 		points.append(point)
 	_spawner.spawn_points = points
 	add_child(_spawner)
+	# Used while this window has no body of its own (e.g. joined mid-run, waiting for the next floor).
+	# Your own body's first-person camera takes over as soon as it spawns.
+	_overview = Camera3D.new()
+	_overview.position = Vector3(0, 18, 18)
+	_overview.rotation_degrees = Vector3(-45, 0, 0)
+	add_child(_overview)
 	_build_ui()
 	_run_launch_options.call_deferred()
 
 
+## "port=7790" picks another port, so a second test group doesn't join the first one.
 func _run_launch_options() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var port: int = 7777
+	for arg: String in args:
+		if arg.begins_with("port=") and arg.trim_prefix("port=").is_valid_int():
+			port = arg.trim_prefix("port=").to_int()
 	if args.has("host"):
-		SteamSession.host_local()
+		SteamSession.host_local(port)
+		if args.has("start_run"):
+			EventBus.run_started.emit(randi())
 	elif args.has("join"):
-		SteamSession.join_local()
+		SteamSession.join_local("127.0.0.1", port)
 
 
 func _process(_delta: float) -> void:
 	var body: PlayerCharacter = PlayerCharacter.find(Net.local_player_id())
+	if body == null and not _overview.current:
+		_overview.make_current()
 	var lines: PackedStringArray = []
 	lines.append("%s | me: %d | players: %d | bodies: %d" % ["HOST" if Net.is_host() else "CLIENT",
 		Net.local_player_id(), Net.get_player_count(), get_tree().get_nodes_in_group(PlayerCharacter.GROUP).size()])

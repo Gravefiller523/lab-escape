@@ -178,6 +178,8 @@ func test_mid_run_joiner_spawns_on_next_floor() -> void:
 	await wait_until(func() -> bool: return _net(host).get_player_count() == 2, WAIT)
 	await wait_process_frames(10)
 	assert_eq(_bodies(host).size(), 1, "waiting player has no body yet")
+	await wait_until(_body_count_is(client, 1), WAIT)
+	assert_eq(_bodies(client).size(), 1, "the waiting player still sees the host's body")
 
 	EventBus.floor_loading.emit(2, &"department_zoology")
 	EventBus.floor_ready.emit(2, &"department_zoology")

@@ -1,0 +1,297 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/break_room/break_room.gd" id="1_room"]
+[ext_resource type="Script" path="res://systems/break_room/stubs/elevator_zone_stub.gd" id="2_zone"]
+[ext_resource type="Script" path="res://systems/player/player_spawner.gd" id="3_spawner"]
+
+[sub_resource type="Environment" id="Environment_room"]
+background_mode = 1
+background_color = Color(0.32, 0.34, 0.38, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.62, 0.66, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_grey"]
+albedo_color = Color(0.55, 0.56, 0.58, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.42, 0.44, 0.47, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_steel"]
+albedo_color = Color(0.36, 0.4, 0.46, 1)
+metallic = 0.6
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="Mat_door"]
+albedo_color = Color(0.68, 0.7, 0.74, 1)
+metallic = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Mat_green"]
+albedo_color = Color(0.2, 0.75, 0.3, 1)
+emission_enabled = true
+emission = Color(0.1, 0.5, 0.15, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_red"]
+albedo_color = Color(0.85, 0.2, 0.2, 1)
+emission_enabled = true
+emission = Color(0.5, 0.05, 0.05, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_white"]
+albedo_color = Color(0.95, 0.95, 0.95, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_mirror"]
+albedo_color = Color(0.75, 0.88, 0.97, 1)
+metallic = 0.0
+roughness = 0.1
+
+[sub_resource type="StandardMaterial3D" id="Mat_wood"]
+albedo_color = Color(0.55, 0.4, 0.27, 1)
+
+[sub_resource type="BoxShape3D" id="Shape_zone"]
+size = Vector3(3.8, 3, 3.8)
+
+[sub_resource type="BoxShape3D" id="Shape_button"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="Shape_closet"]
+size = Vector3(1.6, 2, 2.4)
+
+[node name="BreakRoom" type="Node3D"]
+script = ExtResource("1_room")
+
+[node name="Environment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_room")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, 0.25, -0.433013, 0, 0.866025, 0.5, 0.5, -0.433013, 0.75, 0, 8, 0)
+shadow_enabled = true
+
+[node name="ElevatorLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, -11.5)
+light_color = Color(1, 0.95, 0.8, 1)
+omni_range = 5.0
+
+[node name="Geometry" type="CSGCombiner3D" parent="."]
+use_collision = true
+
+[node name="Floor" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, -2.5)
+size = Vector3(15, 0.5, 24)
+material = SubResource("Mat_floor")
+
+[node name="WallSouth" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 9.25)
+size = Vector3(15, 3.5, 0.5)
+material = SubResource("Mat_grey")
+
+[node name="WallEast" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.25, 1.75, 0)
+size = Vector3(0.5, 3.5, 18)
+material = SubResource("Mat_grey")
+
+[node name="WallWest" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.25, 1.75, 0)
+size = Vector3(0.5, 3.5, 18)
+material = SubResource("Mat_grey")
+
+[node name="WallNorthLeft" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.75, 1.75, -9.25)
+size = Vector3(5.5, 3.5, 0.5)
+material = SubResource("Mat_grey")
+
+[node name="WallNorthRight" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.75, 1.75, -9.25)
+size = Vector3(5.5, 3.5, 0.5)
+material = SubResource("Mat_grey")
+
+[node name="Lintel" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -9.25)
+size = Vector3(4, 1, 0.5)
+material = SubResource("Mat_grey")
+
+[node name="ElevatorBack" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, -13.75)
+size = Vector3(5, 3.5, 0.5)
+material = SubResource("Mat_steel")
+
+[node name="ElevatorLeft" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.25, 1.75, -11.5)
+size = Vector3(0.5, 3.5, 4)
+material = SubResource("Mat_steel")
+
+[node name="ElevatorRight" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.25, 1.75, -11.5)
+size = Vector3(0.5, 3.5, 4)
+material = SubResource("Mat_steel")
+
+[node name="ElevatorCeiling" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, -11.5)
+size = Vector3(5, 0.2, 5)
+material = SubResource("Mat_steel")
+
+[node name="Table" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0.4, 5)
+size = Vector3(2, 0.8, 1)
+material = SubResource("Mat_wood")
+
+[node name="Closet" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 1.2, 0)
+size = Vector3(0.9, 2.4, 2)
+material = SubResource("Mat_wood")
+
+[node name="Mirror" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.95, 1.5, 0)
+size = Vector3(0.1, 2, 1.4)
+material = SubResource("Mat_mirror")
+
+[node name="Whiteboard" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 8.95)
+size = Vector3(3, 1.5, 0.1)
+material = SubResource("Mat_white")
+
+[node name="LeftDoor" type="CSGBox3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1.25, -8.9)
+use_collision = true
+size = Vector3(2, 2.5, 0.15)
+material = SubResource("Mat_door")
+
+[node name="RightDoor" type="CSGBox3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1.25, -8.9)
+use_collision = true
+size = Vector3(2, 2.5, 0.15)
+material = SubResource("Mat_door")
+
+[node name="StartButton" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 1.2, -8.95)
+size = Vector3(0.3, 0.3, 0.1)
+material = SubResource("Mat_green")
+
+[node name="StartButtonLabel" type="Label3D" parent="StartButton"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0.1)
+billboard = 1
+pixel_size = 0.004
+text = "Elevator
+(stand here, press E)"
+
+[node name="StartButtonArea" type="Area3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 1, -8)
+
+[node name="Shape" type="CollisionShape3D" parent="StartButtonArea"]
+shape = SubResource("Shape_button")
+
+[node name="ForceButton" type="Node3D" parent="."]
+unique_name_in_owner = true
+visible = false
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 1.2, -8.95)
+
+[node name="Box" type="CSGBox3D" parent="ForceButton"]
+size = Vector3(0.3, 0.3, 0.1)
+material = SubResource("Mat_red")
+
+[node name="Label" type="Label3D" parent="ForceButton"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0.1)
+billboard = 1
+pixel_size = 0.004
+text = "Start anyway (host)
+(press E)"
+
+[node name="ForceButtonArea" type="Area3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 1, -8)
+
+[node name="Shape" type="CollisionShape3D" parent="ForceButtonArea"]
+shape = SubResource("Shape_button")
+
+[node name="MissingSign" type="Label3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -8.95)
+pixel_size = 0.004
+font_size = 72
+modulate = Color(1, 0.9, 0.4, 1)
+text = "Not in the elevator:"
+
+[node name="MessageSign" type="Label3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, -7)
+billboard = 1
+pixel_size = 0.005
+font_size = 56
+outline_size = 8
+
+[node name="ElevatorZone" type="Area3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -11.5)
+script = ExtResource("2_zone")
+
+[node name="Shape" type="CollisionShape3D" parent="ElevatorZone"]
+shape = SubResource("Shape_zone")
+
+[node name="ClosetLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 2.7, 0)
+billboard = 1
+pixel_size = 0.004
+text = "Jacket closet
+(coming later)"
+
+[node name="ClosetArea" type="Area3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.6, 1, 0)
+
+[node name="Shape" type="CollisionShape3D" parent="ClosetArea"]
+shape = SubResource("Shape_closet")
+
+[node name="MirrorLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.6, 2.7, 0)
+billboard = 1
+pixel_size = 0.004
+text = "Mirror: voice test
+(coming later)"
+
+[node name="MirrorArea" type="Area3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, 0)
+
+[node name="Shape" type="CollisionShape3D" parent="MirrorArea"]
+shape = SubResource("Shape_closet")
+
+[node name="WhiteboardText" type="Label3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 1.9, 8.85)
+pixel_size = 0.004
+font_size = 56
+modulate = Color(0.1, 0.1, 0.15, 1)
+outline_size = 0
+text = "Last run:"
+
+[node name="Spawns" type="Node3D" parent="."]
+unique_name_in_owner = true
+
+[node name="Spawn0" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.1, 2)
+
+[node name="Spawn1" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.12, 0.1, 4.12)
+
+[node name="Spawn2" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 5)
+
+[node name="Spawn3" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.12, 0.1, 4.12)
+
+[node name="Spawn4" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0.1, 2)
+
+[node name="Spawn5" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.12, 0.1, -0.12)
+
+[node name="Spawn6" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -1)
+
+[node name="Spawn7" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.12, 0.1, -0.12)
+
+[node name="PlayerSpawner" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("3_spawner")

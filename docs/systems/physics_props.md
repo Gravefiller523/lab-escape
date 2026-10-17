@@ -44,7 +44,32 @@ func try_grab(prop: NetProp) -> void      # local: predicts, asks host
 func drop() -> void
 func throw() -> void
 func can_lift(prop: NetProp) -> bool      # mass vs Config.game.grab_max_mass + carry_strength stat
+
+# NEW 2026-10-17:
+# NetProp
+func is_lifted() -> bool                  # off the ground: one holder, or two for a heavy prop
+func needs_two_people() -> bool
+func get_spawner() -> PropSpawner
+func get_safe_position() -> Vector3       # key objects return here
+# Props autoload (class_name PropsService)
+signal grab_refused(prop: NetProp, reason: String)   # local
+func get_spawner() -> PropSpawner         # the current level's
+static func grab_of(body: PlayerCharacter) -> GrabController
+# class_name PropSpawner extends Node3D: put one in every level; props are its children.
+func spawn_prop(...) / despawn / get_prop / get_props / get_loose_count / apply_impulse   # same as Props
+func decide_grab(prop: NetProp, player_id: int, refusal: Array[String]) -> Array[int]   # host: the grab rules
+func release_all(prop: NetProp) -> void   # host
+func get_snapshot_batch(near: bool) -> Array   # what the host would send now (moving props only)
+func get_config() -> GameConfig
+func use_net(net: NetService, config: GameConfig) -> void   # tests only
 ```
+NEW 2026-10-17: `NetProp.apply_holders`, `apply_snapshot`, `start_predicting`, `stop_predicting`,
+`set_hold_target` and `set_spawner`, and PropSpawner's `request_grab`, `request_release` and
+`send_hold_point`, are internal to physics_props (only PropSpawner and GrabController call them).
+The `Props` autoload gives every body a GrabController when it spawns, the same way interaction does,
+so the player scene needn't change. A level needs a `PropSpawner` node, like it needs a PlayerSpawner.
+When the connection changes (hosting, joining, leaving), the host spawns its props again so new
+clients get them, and clients drop their old copies.
 Registers with interaction: a use handler (look at prop → grab; holding → drop) and a prompt provider
 ("Pick up", "Too heavy", "Needs two people"). PRIMARY while holding = throw.
 
@@ -93,6 +118,9 @@ holds **joins the lift** (up to 2 holders). A second player grabbing a **normal*
 **Key objects.** `is_key_object` props falling below `out_of_world_y` (or into a kill zone) are moved
 by the host to their last safe resting spot (last place they were still on the WORLD layer), or else
 the lift room.
+CHANGED 2026-10-17: the "last safe spot" is where it last fell asleep (came to rest) at least 5 m above
+`out_of_world_y`, or where it spawned. Non-key props that fall out of the world are despawned. No kill
+zones or "lift room" fallback yet.
 
 **Limits.** Despawn timers from data; loot merges plain gems when there are too many (see loot).
 CHANGED 2026-10-17: grabs are handled in the order the host receives them. For a normal prop the
@@ -112,12 +140,20 @@ GUT tests: `test_spawn_assigns_unique_net_id`, `test_too_heavy_refused`, `test_t
 `test_second_grab_helps_lift_heavy_prop`), `test_key_object_respawns_at_safe_spot`, `test_sleeping_props_not_sent`,
 `test_throw_sets_last_holder`, `test_attach_freezes_detach_restores`.
 
+NEW 2026-10-17: tests are in `tests/unit/physics_props/test_props.gd`, plus
+`test_grab_carries_and_throw_sets_last_holder` and `test_client_grab_goes_through_host_and_newest_grab_wins`
+(two "PCs" over real ENet). Test props added as content: `prop_crate` (10 kg), `prop_crate_heavy` (80 kg,
+two people), `prop_lift_part_zoology` (key object), with scenes in `systems/physics_props/scenes/`.
+The proof scene has 4 light crates (all the same mass for now), the heavy crate, a lift part, a table,
+a pit (no kill zone: things fall out of the world), and R to reset the props.
+
 ## Acceptance criteria
 - [ ] Two players on two PCs can pass one box with no visible lag for the holder and smooth motion for the watcher.
-- [ ] Held props collide with walls and can knock other props over and be stacked.
-- [ ] A lift part dropped in the pit reappears at a safe spot for everyone.
-- [ ] 150 props on a floor (most asleep) keep the game smooth with 4 players; tested at 8.
-- [ ] A new prop is just a new `.tres` + scene.
+  *Two local windows work (checked 2026-10-17). Zachary to judge the feel; two PCs on Steam still to do.*
+- [x] Held props collide with walls and can knock other props over and be stacked. *(the host's spring-pulled body really collides; check by eye)*
+- [x] A lift part dropped in the pit reappears at a safe spot for everyone. *(GUT)*
+- [ ] 150 props on a floor (most asleep) keep the game smooth with 4 players; tested at 8. *Not measured yet.*
+- [x] A new prop is just a new `.tres` + scene. *(the three test props)*
 
 ## Open design questions
 - Approach A vs. B: decide after the Phase 1 proof.
@@ -127,3 +163,26 @@ GUT tests: `test_spawn_assigns_unique_net_id`, `test_too_heavy_refused`, `test_t
 ## Changelog
 - 2026-10-07: spec created.
 - 2026-10-17: grab rules decided by Zachary: newest grab takes normal props; a second player helps lift heavy ones.
+- 2026-10-17: Phase 1a proof built (approach A). Added the functions marked NEW, PropSpawner, the test props.
+
+## HANDOFF
+**Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,
+net ids, near/far snapshot batches of moving props only, host spring holding, grab rules, throw,
+key-object respawn, fallen props removed, session restarts), the `Props` autoload, `GrabController`
+(plugs into interaction: E grabs/drops, left click throws, Q drops, prompts "Pick up", "Take", "Help lift",
+"Lift (needs two people)", "Too heavy", "Drop"), 3 test props, the pass-the-box scene, 10 GUT tests (all pass).
+
+**Not done yet:** item pickups (`spawn_item` is a stub until items exists); `floor_loading` handover to
+cargo_lift; releasing props on `player_died` (death_respawn); carts' use of `attach_to`; approach B to
+compare; client-side drift correction (the host already drops a held prop that gets stuck); the
+"can't stand on a prop you're holding" rule; the carry_strength stat (upgrades); 5 crates of different
+masses (needs more content files); measuring bandwidth at 100 awake props and 150 props with 8 players.
+
+**Known limits:** a client sees its held light prop instantly (prediction), but while two players lift a
+heavy prop, both see it move with the network delay (no prediction for shared lifts). The held prop is
+pulled by a spring, so very fast turning makes it lag slightly behind your hands, on purpose.
+
+**For other systems:** levels need a `PropSpawner` node; spawn props with `Props.spawn_prop(id, xform, extra)`
+(host only); vendors read `last_holder_id`; carts call `attach_to`/`detach`; upgrades can register a
+higher-priority use handler on the InteractionController ("Eat glowing gem") that checks
+`PropsService.grab_of(body).get_held()`.

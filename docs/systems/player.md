@@ -137,6 +137,8 @@ launch options `-- host` / `-- join`.
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-17 (physics_props branch): bodies now collide with props (PROPS added to the collision mask), so
+  players bump into props and can stand on them. physics_props adds a collision exception for the prop you hold.
 - 2026-10-17: Phase 1a (walking) built. `MovementMode.physics_update` takes a `PlayerInputState`.
   Added `PlayerTuning` (`player_tuning.tres`), `PlayerInputState`, the sync_* values, the modifier
   getters, `get_wanted_mode`, `load_mode`, the spawner's exports and auto-spawning (including mid-run

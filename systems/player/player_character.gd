@@ -64,8 +64,11 @@ static func find(player_id: int) -> PlayerCharacter:
 func _ready() -> void:
 	add_to_group(GROUP)
 	collision_layer = PhysicsLayers.bit(PhysicsLayers.PLAYERS)
+	# Props are solid too: you bump into them and can stand on them (physics_props stops you
+	# colliding with the prop you are holding).
 	collision_mask = PhysicsLayers.bit(PhysicsLayers.WORLD) | PhysicsLayers.bit(PhysicsLayers.PLAYERS) \
-		| PhysicsLayers.bit(PhysicsLayers.CARTS) | PhysicsLayers.bit(PhysicsLayers.ENEMIES)
+		| PhysicsLayers.bit(PhysicsLayers.CARTS) | PhysicsLayers.bit(PhysicsLayers.ENEMIES) \
+		| PhysicsLayers.bit(PhysicsLayers.PROPS)
 	# Each body needs its own shape and mesh so crouching one doesn't shrink everyone.
 	_collision.shape = _collision.shape.duplicate()
 	_body_mesh.mesh = _body_mesh.mesh.duplicate()

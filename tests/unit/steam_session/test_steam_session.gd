@@ -121,3 +121,26 @@ func test_rich_presence_follows_floors() -> void:
 	assert_eq(fake.presence.get("status", ""), "department_does_not_exist, floor 3")
 	EventBus.run_ended.emit(&"wiped")
 	assert_eq(fake.presence.get("status", ""), SteamSessionService.PRESENCE_BREAK_ROOM)
+
+
+func test_leaving_leaves_an_offline_peer() -> void:
+	var session := _make_session(FakeSteamApi.new())
+	session.host_local(PORT)
+	session.leave_lobby()
+	assert_not_null(session.multiplayer.multiplayer_peer, "never left with no peer (get_unique_id would error)")
+	assert_true(session.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	assert_eq(session.multiplayer.get_unique_id(), 1)
+
+
+func test_client_leaving_is_noticed_by_host() -> void:
+	var host := _make_session(FakeSteamApi.new())
+	var client := _make_session(FakeSteamApi.new())
+	host.host_local(PORT)
+	client.join_local("127.0.0.1", PORT)
+	await wait_for_signal(client.lobby_joined, 5.0)
+	await wait_until(func() -> bool: return host.multiplayer.get_peers().size() == 1, 2.0)
+
+	client.leave_lobby()
+	await wait_until(func() -> bool: return host.multiplayer.get_peers().is_empty(), 2.0)
+
+	assert_eq(host.multiplayer.get_peers().size(), 0, "host sees the client go straight away")

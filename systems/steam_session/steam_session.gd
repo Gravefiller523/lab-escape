@@ -265,7 +265,8 @@ func _can_start() -> bool:
 
 func _close_peer() -> void:
 	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
-	if enet != null and _is_host and enet.host != null:
+	if enet != null and enet.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED \
+			and enet.host != null:
 		_say_goodbye(enet)
 	if multiplayer.multiplayer_peer != null and not multiplayer.multiplayer_peer is OfflineMultiplayerPeer:
 		multiplayer.multiplayer_peer.close()
@@ -276,13 +277,16 @@ func _close_peer() -> void:
 	_pending_lobby = false
 
 
-## ENet's close() alone doesn't tell clients, so they would only notice after a long timeout.
-## Sends each client a polite "disconnect" and keeps the connection running for a moment
+## ENet's close() alone doesn't tell the other side, so it would only notice after a long timeout.
+## Sends everyone we are connected to a polite "disconnect" and keeps the connection running for a moment
 ## (a few dozen milliseconds) so it actually goes out.
 func _say_goodbye(enet: ENetMultiplayerPeer) -> void:
-	for client: ENetPacketPeer in enet.host.get_peers():
-		client.peer_disconnect()
+	for other: ENetPacketPeer in enet.host.get_peers():
+		other.peer_disconnect()
 	for attempt: int in GOODBYE_POLLS:
+		# A client's connection shuts itself once the host confirms; polling after that is an error.
+		if enet.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+			return
 		enet.poll()
 		OS.delay_msec(GOODBYE_POLL_MS)
 

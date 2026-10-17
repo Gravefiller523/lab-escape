@@ -137,4 +137,10 @@ another Steam account.
   sees itself and the host. net_core's roster is the real list.
 - Don't close the lobby during runs: mid-run joiners are allowed now. net_core's own spec still says
   "only the Break Room accepts new players" and needs updating to match.
-- On `connection_lost`, SteamSession has already left the lobby and cleared the peer.
+- On `connection_lost`, SteamSession has already left the lobby and set an `OfflineMultiplayerPeer`.
+
+**Fixes made while building net_core (2026-10-17, no API change):**
+- Leaving a lobby now sets an `OfflineMultiplayerPeer` instead of no peer at all. With no peer,
+  `multiplayer.get_unique_id()` printed errors everywhere. Test: `test_leaving_leaves_an_offline_peer`.
+- In local mode a leaving *client* now also says goodbye, so the host notices at once (needed for
+  net_core's reconnect test). Test: `test_client_leaving_is_noticed_by_host`.

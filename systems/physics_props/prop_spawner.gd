@@ -7,12 +7,11 @@ extends Node3D
 ##
 ## Grab rules (decided by Zachary, 2026-10-17):
 ## - normal props: the newest grab takes it (the old holder lets go);
-## - heavy props (above grab_max_mass, up to two_player_lift_max_mass): a second grab joins the lift,
-##   and it only lifts with two holders; a third grab is refused;
+## - heavy props (above grab_max_mass, up to two_player_lift_max_mass): every grab joins the lift, and
+##   each holder takes heavy_lift_per_holder kg off its weight (more helpers = faster);
 ## - heavier than that: refused.
 
 const REFUSE_TOO_HEAVY: String = "Too heavy"
-const REFUSE_FULL: String = "Already two people lifting"
 const REFUSE_TOO_FAR: String = "Too far away"
 ## Extra reach the host allows for network delay and the size of the prop (metres).
 const REACH_TOLERANCE: float = 1.0
@@ -115,12 +114,9 @@ func decide_grab(prop: NetProp, player_id: int, refusal: Array[String]) -> Array
 		return []
 	if prop.mass <= _config.grab_max_mass:
 		return [player_id] as Array[int]
-	if holders.has(player_id):
-		return holders
-	if holders.size() >= 2:
-		refusal.append(REFUSE_FULL)
-		return []
-	holders.append(player_id)
+	# Heavy: everyone who grabs helps (no limit).
+	if not holders.has(player_id):
+		holders.append(player_id)
 	return holders
 
 
@@ -166,7 +162,7 @@ func _request_grab_rpc(net_id: int) -> void:
 		return
 	var sender: int = multiplayer.get_remote_sender_id()
 	var prop: NetProp = get_prop(net_id)
-	var body: PlayerCharacter = _body_of_peer(sender)
+	var body: PlayerCharacter = body_of_peer(sender)
 	if prop == null or body == null:
 		return
 	if body.get_aim_origin().distance_to(prop.global_position) > _config.grab_reach + REACH_TOLERANCE:
@@ -185,7 +181,7 @@ func _request_release_rpc(net_id: int, throw_direction: Vector3) -> void:
 	if not multiplayer.is_server():
 		return
 	var prop: NetProp = get_prop(net_id)
-	var body: PlayerCharacter = _body_of_peer(multiplayer.get_remote_sender_id())
+	var body: PlayerCharacter = body_of_peer(multiplayer.get_remote_sender_id())
 	if prop == null or body == null or not prop.get_holder_ids().has(body.player_id):
 		return
 	var was_lifted: bool = prop.is_lifted()
@@ -203,7 +199,7 @@ func _hold_point_rpc(net_id: int, point: Vector3) -> void:
 	if not multiplayer.is_server():
 		return
 	var prop: NetProp = get_prop(net_id)
-	var body: PlayerCharacter = _body_of_peer(multiplayer.get_remote_sender_id())
+	var body: PlayerCharacter = body_of_peer(multiplayer.get_remote_sender_id())
 	if prop != null and body != null:
 		prop.set_hold_target(body.player_id, point)
 
@@ -314,7 +310,7 @@ func _receive_snapshots(batch: Array) -> void:
 
 
 func _is_near_a_player(prop: NetProp) -> bool:
-	for body: PlayerCharacter in _bodies():
+	for body: PlayerCharacter in get_bodies():
 		if body.global_position.distance_to(prop.global_position) <= _config.prop_far_distance:
 			return true
 	return false
@@ -360,7 +356,7 @@ func _release_missing_players() -> void:
 
 
 ## Player bodies that belong to this spawner's game (same multiplayer).
-func _bodies() -> Array[PlayerCharacter]:
+func get_bodies() -> Array[PlayerCharacter]:
 	var bodies: Array[PlayerCharacter] = []
 	for node: Node in get_tree().get_nodes_in_group(PlayerCharacter.GROUP):
 		var body := node as PlayerCharacter
@@ -369,8 +365,16 @@ func _bodies() -> Array[PlayerCharacter]:
 	return bodies
 
 
-func _body_of_peer(peer_id: int) -> PlayerCharacter:
-	for body: PlayerCharacter in _bodies():
+func body_of_peer(peer_id: int) -> PlayerCharacter:
+	for body: PlayerCharacter in get_bodies():
 		if body.get_multiplayer_authority() == peer_id:
+			return body
+	return null
+
+
+## A player's body in this game. Null if not spawned.
+func get_body_of_player(player_id: int) -> PlayerCharacter:
+	for body: PlayerCharacter in get_bodies():
+		if body.player_id == player_id:
 			return body
 	return null

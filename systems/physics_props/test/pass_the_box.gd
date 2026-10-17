@@ -70,7 +70,7 @@ func _process(_delta: float) -> void:
 	if body != null and PropsService.grab_of(body) != null and PropsService.grab_of(body).get_held() != null:
 		var prop: NetProp = PropsService.grab_of(body).get_held()
 		held = "%s (%d kg)%s" % [prop.data.display_name, int(prop.mass),
-			"  - waiting for a second person" if prop.needs_two_people() and not prop.is_lifted() else ""]
+			"  - %d holding, carrying %d%% of its weight" % [prop.get_holder_ids().size(), int(prop.get_support() * 100.0)] if prop.needs_help() else ""]
 	_status.text = "%s | players: %d | props: %d | holding: %s" % ["HOST" if Net.is_host() else "CLIENT",
 		Net.get_player_count(), _props.get_props().size(), held]
 

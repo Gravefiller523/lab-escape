@@ -17,8 +17,8 @@ const HOLD_SEND_RATE: float = 30.0
 const PROMPT_PICK_UP: String = "Pick up"
 const PROMPT_DROP: String = "Drop"
 const PROMPT_TOO_HEAVY: String = "Too heavy"
-const PROMPT_NEEDS_TWO: String = "Lift (needs two people)"
-const PROMPT_HELP_LIFT: String = "Help lift"
+const PROMPT_HEAVY: String = "Drag (heavy: more people make it faster)"
+const PROMPT_HELP_LIFT: String = "Help lift (%d holding)"
 const PROMPT_TAKE: String = "Take"
 
 var _body: PlayerCharacter
@@ -73,9 +73,9 @@ func throw() -> void:
 	_let_go(_body.get_aim_direction())
 
 
-## True if this player can lift it alone (heavy props need a second player).
+## True if this player can lift it alone (heavy props need helpers to lift fully).
 func can_lift(prop: NetProp) -> bool:
-	return not prop.needs_two_people()
+	return not prop.needs_help()
 
 
 func _let_go(throw_direction: Vector3) -> void:
@@ -121,8 +121,8 @@ func _prompt_for(target: Node3D) -> String:
 	var config: GameConfig = prop.get_spawner().get_config()
 	if prop.mass > config.two_player_lift_max_mass:
 		return PROMPT_TOO_HEAVY
-	if prop.needs_two_people():
-		return PROMPT_HELP_LIFT if prop.is_held() else PROMPT_NEEDS_TWO
+	if prop.needs_help():
+		return PROMPT_HELP_LIFT % prop.get_holder_ids().size() if prop.is_held() else PROMPT_HEAVY
 	return PROMPT_TAKE if prop.is_held() else PROMPT_PICK_UP
 
 
@@ -158,7 +158,7 @@ func _hold_point() -> Vector3:
 
 ## Light props follow our hands on this PC right away; heavy ones wait for the host (two holders).
 func _update_hold_point() -> void:
-	if _held.needs_two_people():
+	if _held.needs_help():
 		_held.stop_predicting()
 	else:
 		_held.start_predicting(_hold_point())

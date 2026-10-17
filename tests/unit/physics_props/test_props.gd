@@ -119,25 +119,51 @@ func test_newest_grab_takes_normal_prop() -> void:
 	assert_true(refusal.is_empty())
 
 
-func test_second_grab_helps_lift_heavy_prop() -> void:
+func test_every_grab_helps_lift_heavy_prop() -> void:
 	var pc := _make_pc()
 	var heavy: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)))
 	var refusal: Array[String] = []
-	heavy.apply_holders(_props(pc).decide_grab(heavy, 1, refusal), 1)
-	heavy.apply_holders(_props(pc).decide_grab(heavy, 2, refusal), 2)
-	assert_eq(heavy.get_holder_ids(), [1, 2] as Array[int], "the second player helps")
-	assert_eq(_props(pc).decide_grab(heavy, 3, refusal), [] as Array[int], "a third is refused")
-	assert_eq(refusal, [PropSpawner.REFUSE_FULL] as Array[String])
+	for player_id: int in [1, 2, 3, 4]:
+		heavy.apply_holders(_props(pc).decide_grab(heavy, player_id, refusal), player_id)
+	assert_eq(heavy.get_holder_ids(), [1, 2, 3, 4] as Array[int], "no limit on helpers")
+	assert_true(refusal.is_empty())
 
 
-func test_two_player_lift_needs_two() -> void:
+func test_each_helper_carries_more_of_the_weight() -> void:
 	var pc := _make_pc()
+	var config: GameConfig = _props(pc).get_config()
 	var heavy: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)))
 	heavy.apply_holders([1] as Array[int], 1)
-	assert_true(heavy.is_held())
-	assert_false(heavy.is_lifted(), "one person can't lift it")
+	var one: float = heavy.get_support()
+	assert_almost_eq(one, config.heavy_lift_per_holder / heavy.mass, 0.001, "1 person: a little")
+	assert_false(heavy.is_lifted(), "1 person only drags it")
 	heavy.apply_holders([1, 2] as Array[int], 2)
-	assert_true(heavy.is_lifted(), "two people can")
+	var two: float = heavy.get_support()
+	assert_gt(two, one, "2 people: more")
+	heavy.apply_holders([1, 2, 3] as Array[int], 3)
+	assert_true(heavy.is_lifted(), "3 people x 30 kg >= 80 kg: fully lifted")
+	assert_almost_eq(heavy.gravity_scale, 0.0, 0.001)
+
+
+func test_heavy_prop_moves_faster_with_more_helpers() -> void:
+	var config: GameConfig = _config()
+	var pc := _make_pc(config)
+	var speeds: Array[float] = []
+	for holders: int in [1, 2, 3]:
+		var heavy: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(float(holders) * 4.0, 0.41, -3)))
+		await wait_physics_frames(2)
+		var ids: Array[int] = []
+		for index: int in holders:
+			ids.append(100 + index)
+		heavy.apply_holders(ids, ids[0])
+		var start: Vector3 = heavy.global_position
+		for player_id: int in ids:
+			heavy.set_hold_target(player_id, start + Vector3(0, 1.0, -5.0))
+		await wait_physics_frames(20)
+		speeds.append(heavy.global_position.distance_to(start))
+		heavy.apply_holders([] as Array[int], 0)
+	assert_lt(speeds[0], speeds[1], "2 people move it further than 1")
+	assert_lt(speeds[1], speeds[2], "3 people move it further than 2")
 
 
 func test_key_object_respawns_at_safe_spot() -> void:
@@ -230,3 +256,38 @@ func test_client_grab_goes_through_host_and_newest_grab_wins() -> void:
 	assert_eq(crate_on_host.get_holder_ids(), [host_body.player_id] as Array[int])
 	await wait_until(func() -> bool: return PropsService.grab_of(client_body).get_held() == null, WAIT)
 	assert_null(PropsService.grab_of(client_body).get_held(), "the client let go")
+
+
+func test_players_can_stand_on_props_and_bump_into_them() -> void:
+	var pc := _make_pc()
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var body: PlayerCharacter = _my_body(pc)
+	body.set_input_override(PlayerInputState.new())
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(0, 0.41, -6)))
+	await wait_physics_frames(10)
+	# Drop the player onto the crate.
+	body.global_position = crate.global_position + Vector3(0, 1.5, 0)
+	await wait_physics_frames(40)
+	assert_gt(body.global_position.y, crate.global_position.y + 0.3, "standing on top of it")
+
+	# Walk into it from the side: blocked, not passing through.
+	body.global_position = crate.global_position + Vector3(0, 0, 2.0)
+	body.rotation = Vector3.ZERO
+	var walk := PlayerInputState.new()
+	walk.move = Vector2(0, 1)
+	body.set_input_override(walk)
+	await wait_physics_frames(60)
+	assert_gt(body.global_position.z, crate.global_position.z, "the crate stopped the player")
+
+
+func test_holder_does_not_collide_with_held_prop() -> void:
+	var pc := _make_pc()
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var body: PlayerCharacter = _my_body(pc)
+	body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(5)
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", _in_front_of(body))
+	PropsService.grab_of(body).try_grab(crate)
+	assert_true(crate.get_collision_exceptions().has(body), "no standing on what you hold")
+	PropsService.grab_of(body).drop()
+	assert_false(crate.get_collision_exceptions().has(body), "solid again once dropped")

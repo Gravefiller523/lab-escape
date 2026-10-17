@@ -46,6 +46,8 @@ var _hold_targets: Dictionary[int, Vector3] = {}
 ## Host: last place it was resting safely (for key objects).
 var _safe_position: Vector3
 var _stuck_seconds: float = 0.0
+## Holders' bodies we ignore collisions with.
+var _excepted_bodies: Array[PlayerCharacter] = []
 
 
 ## The NetProp a node belongs to (the prop itself, or one of its children). Null if none.
@@ -60,9 +62,10 @@ static func of(node: Node) -> NetProp:
 
 func _ready() -> void:
 	collision_layer = PhysicsLayers.bit(PhysicsLayers.PROPS)
-	collision_mask = PhysicsLayers.bit(PhysicsLayers.WORLD) | PhysicsLayers.bit(PhysicsLayers.PLAYERS) \
-		| PhysicsLayers.bit(PhysicsLayers.PROPS) | PhysicsLayers.bit(PhysicsLayers.CARTS) \
-		| PhysicsLayers.bit(PhysicsLayers.ENEMIES)
+	# Not PLAYERS: players bump into props (their mask has PROPS) but can't shove them through walls
+	# just by walking into them. Players move props by holding them.
+	collision_mask = PhysicsLayers.bit(PhysicsLayers.WORLD) | PhysicsLayers.bit(PhysicsLayers.PROPS) \
+		| PhysicsLayers.bit(PhysicsLayers.CARTS) | PhysicsLayers.bit(PhysicsLayers.ENEMIES)
 	if data != null:
 		mass = data.mass
 	_safe_position = global_position
@@ -84,13 +87,28 @@ func get_holder_ids() -> Array[int]:
 
 
 ## True when two people must lift it together (heavier than one player can carry).
-func needs_two_people() -> bool:
-	return mass > _spawner.get_config().grab_max_mass if _spawner != null else mass > Config.game.grab_max_mass
+## True for heavy props (above grab_max_mass): one person can only drag them slowly; helpers speed it up.
+func needs_help() -> bool:
+	return mass > _config().grab_max_mass
 
 
-## True while it is actually off the ground in someone's hands (a heavy prop needs both holders).
+## How much of its weight its holders carry, 0 to 1. Normal props: 1 while held. Heavy props: each
+## holder takes heavy_lift_per_holder kg off (1 holder of an 80 kg crate: 30/80 = 0.375).
+func get_support() -> float:
+	if _holders.is_empty():
+		return 0.0
+	if not needs_help():
+		return 1.0
+	return clampf(float(_holders.size()) * _config().heavy_lift_per_holder / mass, 0.0, 1.0)
+
+
+## True while it is fully off the ground in its holders' hands.
 func is_lifted() -> bool:
-	return _holders.size() >= (2 if needs_two_people() else 1)
+	return get_support() >= 1.0
+
+
+func _config() -> GameConfig:
+	return _spawner.get_config() if _spawner != null else Config.game
 
 
 ## Snapped into a cart, vendor or lift.
@@ -138,10 +156,28 @@ func apply_holders(holders: Array[int], last_holder: int) -> void:
 		if not _holders.has(player_id):
 			_hold_targets.erase(player_id)
 	if multiplayer.is_server():
-		# Lifted props float (the spring holds them up); everything else falls normally.
-		gravity_scale = 0.0 if is_lifted() else 1.0
-		angular_damp = 8.0 if is_lifted() else 0.0
+		# The holders carry part (or all) of its weight; the rest still pulls it down.
+		gravity_scale = 1.0 - get_support()
+		angular_damp = 8.0 if is_held() else 0.0
+	_update_holder_exceptions()
 	hold_changed.emit()
+
+
+## Holders don't collide with what they hold (no standing on it, no pushing yourself with it).
+func _update_holder_exceptions() -> void:
+	if _spawner == null:
+		return
+	var holder_bodies: Array[PlayerCharacter] = []
+	for player_id: int in _holders:
+		var body: PlayerCharacter = _spawner.get_body_of_player(player_id)
+		if body != null:
+			holder_bodies.append(body)
+	for body: PlayerCharacter in _excepted_bodies:
+		if is_instance_valid(body) and not holder_bodies.has(body):
+			remove_collision_exception_with(body)
+	for body: PlayerCharacter in holder_bodies:
+		add_collision_exception_with(body)
+	_excepted_bodies = holder_bodies
 
 
 func apply_snapshot(position_now: Vector3, rotation_now: Quaternion) -> void:
@@ -179,8 +215,10 @@ func _physics_process(delta: float) -> void:
 
 
 ## Host: pull a lifted prop toward its holders' hold point with a spring, and drop it if stuck.
+## Heavy props that aren't fully lifted are pulled more weakly and more slowly (they drag).
 func _host_update(delta: float) -> void:
-	if not is_lifted() or _hold_targets.is_empty():
+	var support: float = get_support()
+	if support <= 0.0 or _hold_targets.is_empty():
 		_stuck_seconds = 0.0
 		return
 	var target := Vector3.ZERO
@@ -190,8 +228,11 @@ func _host_update(delta: float) -> void:
 	var config: GameConfig = _spawner.get_config()
 	var offset: Vector3 = target - global_position
 	# A spring that grows with mass, plus damping so it settles instead of wobbling.
-	apply_central_force((offset * HOLD_STIFFNESS - linear_velocity * HOLD_DAMPING) * mass)
-	if offset.length() > config.hold_break_distance:
+	apply_central_force((offset * HOLD_STIFFNESS - linear_velocity * HOLD_DAMPING) * mass * support)
+	var max_speed: float = config.held_prop_max_speed * support
+	if linear_velocity.length() > max_speed:
+		linear_velocity = linear_velocity.limit_length(max_speed)
+	if support >= 1.0 and offset.length() > config.hold_break_distance:
 		_stuck_seconds += delta
 		if _stuck_seconds > HOLD_BREAK_SECONDS:
 			_stuck_seconds = 0.0

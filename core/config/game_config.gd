@@ -91,6 +91,18 @@ extends Resource
 ## Open mic: how loud (0 to 1) the mic must be before your voice is sent. Raise it if background
 ## noise keeps your mic on.
 @export_range(0.0, 1.0) var voice_open_mic_threshold: float = 0.02
+## Physics layer number (1 to 32) of things that block sound: level walls and floors (1 = world).
+@export_range(1, 32) var voice_sound_blocker_layer: int = 1
+## A fully muffled voice (behind a wall) is this loud, 0 to 1.
+@export_range(0.0, 1.0) var voice_muffle_volume: float = 0.35
+## A fully muffled voice keeps sounds below this pitch (Hz). Lower = more "through a wall".
+@export var voice_muffle_cutoff_hz: float = 700.0
+## Extra muffle (0 to 1) for each corner a voice goes round on its way through doors and halls.
+@export_range(0.0, 1.0) var voice_corner_muffle: float = 0.1
+## Extra muffle (0 to 1) for each closed door a voice passes through.
+@export_range(0.0, 1.0) var voice_closed_door_muffle: float = 0.6
+## How often each PC re-checks walls, doors and routes for every voice.
+@export var voice_hearing_updates_per_second: float = 10.0
 
 @export_group("Difficulty")
 ## Extra enemy spawn budget per player beyond the first (0.35 = +35% each).

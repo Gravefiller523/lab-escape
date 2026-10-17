@@ -60,12 +60,30 @@ func _fly(pitch: float = 1.5, preset: StringName = &"") -> VoiceEffectData:
 	return effect
 
 
+## A player's voice effects, leaving out the muffle filter that is always last.
 func _bus_effects(player_id: int) -> Array[AudioEffect]:
 	var effects: Array[AudioEffect] = []
 	var index: int = AudioServer.get_bus_index(_voice.get_bus_name(player_id))
 	for effect_index: int in AudioServer.get_bus_effect_count(index):
-		effects.append(AudioServer.get_bus_effect(index, effect_index))
+		var effect: AudioEffect = AudioServer.get_bus_effect(index, effect_index)
+		if effect != _voice.get_muffle_filter(player_id):
+			effects.append(effect)
 	return effects
+
+
+## A separate 3D world (own physics and navigation) holding the two test rooms.
+func _rooms(navmesh: bool) -> Array:
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	add_child_autofree(viewport)
+	var root := Node3D.new()
+	viewport.add_child(root)
+	var door: SoundDoor = VoiceTestRooms.build(root, navmesh)
+	return [root.get_world_3d(), door]
+
+
+func _head(spot: Vector3) -> Vector3:
+	return spot + Vector3(0, 1.6, 0)
 
 
 func test_bus_created_per_player_and_freed() -> void:
@@ -182,3 +200,83 @@ func test_voice_from_body_is_quieter_farther_and_silent_beyond_max() -> void:
 	assert_almost_eq(close, 1.0, 0.001, "full volume up close")
 	assert_lt(middle, close, "quieter farther away")
 	assert_eq(beyond, 0.0, "silent beyond the max distance")
+
+
+func test_muffle_lowers_volume_and_cutoff() -> void:
+	var clear_gain: float = VoiceService.hearing_gain(10.0, 0.0, _config)
+	var muffled_gain: float = VoiceService.hearing_gain(10.0, 1.0, _config)
+	assert_lt(muffled_gain, clear_gain, "muffled voices are quieter")
+	assert_gt(muffled_gain, 0.0, "but still heard")
+	assert_gt(VoiceService.muffle_cutoff(0.0, _config), 15000.0, "clear = filter wide open")
+	assert_almost_eq(VoiceService.muffle_cutoff(1.0, _config), _config.voice_muffle_cutoff_hz, 1.0)
+
+
+func test_clear_line_of_sight_is_not_muffled() -> void:
+	var parts: Array = _rooms(false)
+	await wait_physics_frames(3)
+	var world: World3D = parts[0]
+	var hearing := VoiceHearing.compute(_head(Vector3(-3, 0, -2)), _head(VoiceTestRooms.ROOM_A_CENTER), world, _config)
+	assert_eq(hearing.muffle, 0.0)
+	assert_false(hearing.used_path)
+
+
+func test_wall_without_navmesh_is_fully_muffled() -> void:
+	var parts: Array = _rooms(false)
+	await wait_physics_frames(3)
+	var world: World3D = parts[0]
+	var listener: Vector3 = _head(VoiceTestRooms.ROOM_B_CENTER)
+	var speaker: Vector3 = _head(VoiceTestRooms.ROOM_A_CENTER)
+	var hearing := VoiceHearing.compute(listener, speaker, world, _config)
+	assert_eq(hearing.muffle, 1.0, "no way round: straight through the wall")
+	assert_almost_eq(hearing.distance, listener.distance_to(speaker), 0.01)
+	assert_false(hearing.used_path, "no navmesh: falls back cleanly")
+
+
+func test_route_through_doorway_is_longer_and_comes_from_the_doorway() -> void:
+	var parts: Array = _rooms(true)
+	await wait_physics_frames(5)
+	var world: World3D = parts[0]
+	var listener: Vector3 = _head(VoiceTestRooms.ROOM_B_CENTER)
+	var speaker: Vector3 = _head(VoiceTestRooms.ROOM_A_CENTER)
+	var hearing := VoiceHearing.compute(listener, speaker, world, _config)
+	assert_true(hearing.used_path, "goes the long way round")
+	assert_gt(hearing.distance, listener.distance_to(speaker) + 1.0, "the route is longer than the straight line")
+	assert_lt(hearing.muffle, 0.6, "only lightly muffled (corners), not through-the-wall")
+	assert_gt(hearing.source.z, 2.5, "the voice seems to come from the hallway side")
+
+
+func test_closed_door_muffles_open_door_does_not() -> void:
+	var parts: Array = _rooms(true)
+	await wait_physics_frames(5)
+	var world: World3D = parts[0]
+	var door: SoundDoor = parts[1]
+	var listener: Vector3 = _head(VoiceTestRooms.ROOM_B_CENTER)
+	var speaker: Vector3 = _head(VoiceTestRooms.ROOM_A_CENTER)
+	var open_hearing := VoiceHearing.compute(listener, speaker, world, _config)
+	door.is_open = false
+	var closed_hearing := VoiceHearing.compute(listener, speaker, world, _config)
+	door.is_open = true
+	var reopened := VoiceHearing.compute(listener, speaker, world, _config)
+	assert_eq(open_hearing.closed_doors, 0)
+	assert_eq(closed_hearing.closed_doors, 1, "the route goes through the closed door")
+	assert_gt(closed_hearing.muffle, open_hearing.muffle, "closed door muffles more")
+	assert_lt(closed_hearing.muffle, 1.0 + 0.001)
+	assert_lt(VoiceService.hearing_gain(closed_hearing.distance, closed_hearing.muffle, _config),
+		VoiceService.hearing_gain(open_hearing.distance, open_hearing.muffle, _config), "and is quieter")
+	assert_lt(VoiceService.muffle_cutoff(closed_hearing.muffle, _config),
+		VoiceService.muffle_cutoff(open_hearing.muffle, _config), "and duller")
+	assert_almost_eq(reopened.muffle, open_hearing.muffle, 0.001, "opening it again goes back")
+
+
+func test_closed_door_on_direct_line_without_navmesh() -> void:
+	var parts: Array = _rooms(false)
+	await wait_physics_frames(3)
+	var world: World3D = parts[0]
+	var door: SoundDoor = parts[1]
+	# Standing either side of the doorway, nothing solid in between (the stub door has no body here).
+	var listener: Vector3 = _head(VoiceTestRooms.DOOR_CENTER + Vector3(0, 0, 1.5))
+	var speaker: Vector3 = _head(VoiceTestRooms.DOOR_CENTER + Vector3(0, 0, -2))
+	assert_eq(VoiceHearing.compute(listener, speaker, world, _config).muffle, 0.0, "open door: clear")
+	door.is_open = false
+	assert_almost_eq(VoiceHearing.compute(listener, speaker, world, _config).muffle,
+		_config.voice_closed_door_muffle, 0.001, "closed door: muffled")

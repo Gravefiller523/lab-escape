@@ -22,6 +22,12 @@ const STEAM_DECOMPRESSED_BUFFER: int = 32768
 ## Steam's "OK" result for voice calls.
 const STEAM_VOICE_OK: int = 0
 const NODE_NAME_3D: String = "VoiceSpeaker"
+## The muffle filter when nothing is in the way (above what people can hear).
+const OPEN_CUTOFF_HZ: float = 20000.0
+## How fast muffling fades in and out (full change in 1 / this seconds).
+const MUFFLE_FADE_PER_SECOND: float = 3.0
+## How fast a voice glides to a new spot (e.g. a doorway) when you walk round a corner.
+const SOURCE_GLIDE_SPEED: float = 8.0
 
 var _net: NetService
 var _config: GameConfig
@@ -50,6 +56,11 @@ var _steam_recording: bool = false
 var _input_level: float = 0.0
 var _open_mic_hold: float = 0.0
 var _transmitting: bool = false
+var _muffle_filters: Dictionary[int, AudioEffectLowPassFilter] = {}
+## Latest hearing check per player (from _physics_process), and the smoothed muffle now.
+var _hearing: Dictionary[int, VoiceHearing] = {}
+var _muffle_now: Dictionary[int, float] = {}
+var _hearing_timer: float = 0.0
 
 
 ## For tests only: a fake Net and config, a different bus name prefix, and no microphone.
@@ -150,12 +161,25 @@ static func distance_gain(distance: float, full_distance: float, max_distance: f
 	return 1.0 - smoothstep(0.0, 1.0, t)
 
 
-## How loud a player's voice is for you right now (0 to 1), from their distance to your camera.
+## How loud a player's voice is for you right now (0 to 1): distance (the long way round through
+## doors when walls are in the way) and muffling. 1 for voices with no position.
 func get_voice_volume(player_id: int) -> float:
-	var speaker := _speakers.get(player_id) as AudioStreamPlayer3D
-	if speaker == null or not is_instance_valid(speaker):
+	var hearing: VoiceHearing = get_hearing(player_id)
+	if hearing == null:
 		return 1.0
-	return _gain_for(speaker)
+	return _gain(hearing, hearing.muffle)
+
+
+## How you hear a player right now (distance, muffle, where it comes from), worked out fresh.
+## Null for voices with no position.
+func get_hearing(player_id: int) -> VoiceHearing:
+	var speaker: AudioStreamPlayer3D = _speakers_3d().get(player_id)
+	return _compute_hearing(speaker) if speaker != null else null
+
+
+## The low-pass filter that muffles a player's voice (last effect on their bus). Null if none.
+func get_muffle_filter(player_id: int) -> AudioEffectLowPassFilter:
+	return _muffle_filters.get(player_id)
 
 
 func is_loopback() -> bool:
@@ -254,6 +278,9 @@ func _remove_player(player_id: int) -> void:
 	_speakers.erase(player_id)
 	_playbacks.erase(player_id)
 	_last_heard_msec.erase(player_id)
+	_muffle_filters.erase(player_id)
+	_hearing.erase(player_id)
+	_muffle_now.erase(player_id)
 	if _speaking.get(player_id, false):
 		EventBus.player_speaking_changed.emit(player_id, false)
 	_speaking.erase(player_id)
@@ -288,6 +315,11 @@ func _rebuild_bus(player_id: int) -> void:
 			builder.call(index, strength)
 		else:
 			print("Voice: no preset called '%s' yet." % effect.effect_preset)
+	# Always last: the muffle filter, opened and closed by _update_volumes().
+	var muffle := AudioEffectLowPassFilter.new()
+	muffle.cutoff_hz = OPEN_CUTOFF_HZ
+	AudioServer.add_bus_effect(index, muffle)
+	_muffle_filters[player_id] = muffle
 
 
 func _preset_builder(preset: StringName) -> Callable:
@@ -342,31 +374,88 @@ func _ensure_speaker(player_id: int) -> AudioStreamGeneratorPlayback:
 
 
 ## Godot's own distance falloff is switched off; _update_volumes() sets the volume from
-## distance_gain(), so the fade and the silent cut-off are exactly the numbers in Config.
+## distance_gain() and the muffle, so the fade and the silent cut-off are exactly the numbers in
+## Config. The speaker floats free of its parent (top_level) so it can be moved to a doorway.
 func _setup_distance_fade(speaker: AudioStreamPlayer3D) -> void:
 	speaker.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
+	speaker.top_level = true
 	if _config.voice_max_distance > 0.0:
 		speaker.max_distance = _config.voice_max_distance
 
 
-func _gain_for(speaker: AudioStreamPlayer3D) -> float:
-	var camera: Camera3D = speaker.get_viewport().get_camera_3d() if speaker.is_inside_tree() else null
-	if camera == null:
-		return 1.0
-	var distance: float = camera.global_position.distance_to(speaker.global_position)
-	return distance_gain(distance, _config.voice_full_volume_distance, _config.voice_max_distance)
-
-
-func _update_volumes() -> void:
-	var speakers: Array[Node] = []
-	speakers.append_array(_speakers.values())
-	if _loopback_player != null:
-		speakers.append(_loopback_player)
-	for node: Node in speakers:
-		var speaker := node as AudioStreamPlayer3D
+## Every positioned voice by player id (other players' voices, plus your echo dummy loopback).
+func _speakers_3d() -> Dictionary[int, AudioStreamPlayer3D]:
+	var result: Dictionary[int, AudioStreamPlayer3D] = {}
+	for player_id: int in _speakers.keys():
+		var speaker := _speakers[player_id] as AudioStreamPlayer3D
 		if speaker != null and is_instance_valid(speaker) and speaker.is_inside_tree():
-			var gain: float = _gain_for(speaker)
-			speaker.volume_db = linear_to_db(gain) if gain > 0.0 else -80.0
+			result[player_id] = speaker
+	var loopback := _loopback_player as AudioStreamPlayer3D
+	if loopback != null and is_instance_valid(loopback) and loopback.is_inside_tree():
+		result[_net.local_player_id()] = loopback
+	return result
+
+
+## Hearing for one speaker, from the listener's camera to the speaker's real spot (its parent).
+func _compute_hearing(speaker: AudioStreamPlayer3D) -> VoiceHearing:
+	var camera: Camera3D = speaker.get_viewport().get_camera_3d()
+	var anchor := speaker.get_parent() as Node3D
+	if camera == null or anchor == null:
+		return null
+	return VoiceHearing.compute(camera.global_position, anchor.global_position, speaker.get_world_3d(), _config)
+
+
+func _gain(hearing: VoiceHearing, muffle: float) -> float:
+	return hearing_gain(hearing.distance, muffle, _config)
+
+
+## Volume (0 to 1) for a voice that travels `distance` metres with this much muffle (0 to 1).
+static func hearing_gain(distance: float, muffle: float, config: GameConfig) -> float:
+	var gain: float = distance_gain(distance, config.voice_full_volume_distance, config.voice_max_distance)
+	return gain * lerpf(1.0, config.voice_muffle_volume, muffle)
+
+
+## The muffle filter's cutoff (Hz) for this much muffle: wide open at 0, config's cutoff at 1.
+static func muffle_cutoff(muffle: float, config: GameConfig) -> float:
+	return exp(lerpf(log(OPEN_CUTOFF_HZ), log(config.voice_muffle_cutoff_hz), clampf(muffle, 0.0, 1.0)))
+
+
+## Walls, doors and routes are re-checked a few times a second (not every frame, to stay cheap).
+func _physics_process(delta: float) -> void:
+	_hearing_timer -= delta
+	if _hearing_timer > 0.0:
+		return
+	_hearing_timer = 1.0 / maxf(_config.voice_hearing_updates_per_second, 1.0)
+	var speakers: Dictionary[int, AudioStreamPlayer3D] = _speakers_3d()
+	for player_id: int in speakers.keys():
+		var hearing: VoiceHearing = _compute_hearing(speakers[player_id])
+		if hearing != null:
+			_hearing[player_id] = hearing
+
+
+## Every frame: glide each voice's volume, muffle and position toward the latest hearing check,
+## so doors opening and walking round corners never pop.
+func _update_volumes(delta: float) -> void:
+	var speakers: Dictionary[int, AudioStreamPlayer3D] = _speakers_3d()
+	for player_id: int in speakers.keys():
+		var speaker: AudioStreamPlayer3D = speakers[player_id]
+		var hearing: VoiceHearing = _hearing.get(player_id)
+		if hearing == null:
+			hearing = _compute_hearing(speaker)
+			if hearing == null:
+				continue
+			_hearing[player_id] = hearing
+			speaker.global_position = hearing.source
+		var muffle: float = move_toward(_muffle_now.get(player_id, hearing.muffle), hearing.muffle,
+			MUFFLE_FADE_PER_SECOND * delta)
+		_muffle_now[player_id] = muffle
+		var weight: float = 1.0 - exp(-SOURCE_GLIDE_SPEED * delta)
+		speaker.global_position = speaker.global_position.lerp(hearing.source, weight)
+		var gain: float = _gain(hearing, muffle)
+		speaker.volume_db = linear_to_db(gain) if gain > 0.0 else -80.0
+		var filter: AudioEffectLowPassFilter = _muffle_filters.get(player_id)
+		if filter != null:
+			filter.cutoff_hz = muffle_cutoff(muffle, _config)
 
 
 func _push_frames(playback: AudioStreamGeneratorPlayback, frames: PackedVector2Array) -> void:
@@ -397,7 +486,7 @@ func _route_loopback() -> void:
 
 func _process(delta: float) -> void:
 	_update_speaking()
-	_update_volumes()
+	_update_volumes(delta)
 	if not _live:
 		return
 	_open_mic_hold = maxf(_open_mic_hold - delta, 0.0)

@@ -101,6 +101,17 @@ Clients buffer ~100 ms and interpolate, so movement looks smooth.
 **Spawning.** Host-only via a `MultiplayerSpawner` with a custom spawn function (data:
 `content_id`, `net_id`, transform, `extra`). Late or reconnecting players get every existing prop automatically.
 
+**CHANGED 2026-10-17: approach B is now used (Zachary chose it after playtesting approach A).** Each prop
+has a physics owner (`get_owner_peer()`, 1 = host). When a client grabs a prop alone or pushes a loose one,
+the host hands its physics to that client (`_set_owner` with the current state): the client's copy turns
+dynamic and reacts with no delay, and the client sends its position to the host ~30 times a second, which
+passes it on to everyone. When it has been untouched for 0.8 s and has settled, the client hands it back.
+Props held by several players (heavy lifts) stay with the host. A newest grab moves ownership to the new
+grabber. Props of a player who leaves, and key objects that fall out of the world, go back to the host.
+Trade-off: the owner's PC is trusted with that prop's position (fine for co-op among friends). On the
+owner's PC, other props are frozen copies, so a held prop can't knock them over there (the host's copy can).
+Non-owners show props `prop_interpolation_delay_msec` = 50 ms behind (was 100).
+Old text kept below for reference.
 **Holding with local prediction (approach A, default).** When a client grabs:
 1. The client immediately moves its own copy toward its hold point each frame (shape-cast against the
    world so it doesn't pass through walls). This makes holding feel instant.
@@ -130,7 +141,9 @@ is no longer used (a 300 kg prop with 1 holder: 10%). Heavy props aren't predict
 into them and can stand on them, but props don't react to players (their mask has no PLAYERS): walking
 into a prop can't shove it through a wall. You move props by holding them. A prop you hold ignores your
 body (collision exception), so you can't stand on or push yourself with it.
-**Pushing (NEW 2026-10-17, Zachary):** walking into a prop pushes it. The walker's GrabController sees the
+**Pushing (NEW 2026-10-17, Zachary):** walking into a prop pushes it. CHANGED: only walking into its **side**
+counts (contacts whose normal points up or down by more than 0.5 are ignored), so standing or walking on
+top of a prop never moves it. With approach B the pusher's PC runs the pushed prop. The walker's GrabController sees the
 collision and asks the host (`request_push`, ~20 a second); the host gives the prop up to walking speed x
 `support_for(number of pushers)`, the same weight rule as carrying: props of 30 kg or less move at walking
 speed, the 80 kg crate at about a third, a 300 kg one at a tenth; more pushers = faster. The host ignores
@@ -195,6 +208,9 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
   `test_walking_into_props_pushes_them_by_weight`.
 - 2026-10-17: smoother for clients (timestamped snapshots, interpolation delay, 30 Hz, push prediction).
   Test: `test_client_push_moves_its_copy_at_once_and_the_host_follows`.
+- 2026-10-17: approach B (physics ownership hand-off), side-only pushing, 50 ms interpolation delay. Added
+  `get_owner_peer`, `is_simulated_here`, `throw_strength`, `peer_of_player`, `report_stuck`. Tests:
+  `test_client_grab_hands_physics_to_the_client_and_back`, `test_standing_on_a_prop_does_not_push_it`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

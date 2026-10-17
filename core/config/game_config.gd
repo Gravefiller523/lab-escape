@@ -79,7 +79,7 @@ extends Resource
 @export var prop_sync_rate_far: int = 4
 ## Clients show props this many milliseconds behind the host, so they can glide evenly between
 ## snapshots instead of hopping. Higher = smoother but later.
-@export var prop_interpolation_delay_msec: int = 100
+@export var prop_interpolation_delay_msec: int = 50
 ## Distance (m) beyond which a prop counts as far.
 @export var prop_far_distance: float = 30.0
 ## Anything below this height (m) has fallen out of the world.

@@ -2,10 +2,11 @@ class_name NetProp
 extends RigidBody3D
 ## Root of every prop scene (crates, gems, meat, lift parts...). Spawned only by a PropSpawner.
 ##
-## The host simulates the real physics. Clients' copies are frozen and slide smoothly toward the
-## host's snapshots. A client holding a prop moves its own copy straight to its hold point (so holding
-## feels instant) while the host pulls the real body there with a spring, so it still collides,
-## pushes things and stacks.
+## One PC runs each prop's physics: its "physics owner". Normally that is the host. When a player
+## picks up or pushes a prop, the host hands its physics to that player's PC (approach B), so it
+## reacts with no delay for them; their PC sends where it is to the host, which passes it on.
+## When they let go and it settles, the owner hands it back to the host. Heavy props held by several
+## players stay with the host. Every other PC's copy is frozen and glides between snapshots.
 
 signal hold_changed()
 
@@ -14,7 +15,7 @@ const HOLD_STIFFNESS: float = 150.0
 const HOLD_DAMPING: float = 22.0
 ## A held prop that stays further than hold_break_distance from its hold point this long is dropped.
 const HOLD_BREAK_SECONDS: float = 0.4
-## How quickly clients' copies catch up with snapshots, and when they jump instead.
+## How quickly copies catch up with snapshots, and when they jump instead.
 const SNAPSHOT_SMOOTHING: float = 25.0
 const SNAPSHOT_SNAP_DISTANCE: float = 3.0
 ## A resting spot only counts as safe this far above the out-of-world height.
@@ -23,8 +24,13 @@ const SAFE_HEIGHT_MARGIN: float = 5.0
 const PUSH_MEMORY_MSEC: int = 250
 ## Pushed props move a little slower than the pusher, so the pusher stays pressed against them.
 const PUSH_SPEED_FACTOR: float = 0.9
-## Snapshots kept per prop on clients.
+## Snapshots kept per prop.
 const MAX_SNAPSHOTS: int = 12
+## A player's PC gives a prop back to the host after nobody has touched it for this long
+## (milliseconds) and it has stopped moving.
+const OWNER_IDLE_MSEC: int = 800
+## "Stopped moving" for handing back (m/s).
+const SETTLED_SPEED: float = 0.15
 
 ## Unique per spawned prop, set by the host.
 var net_id: int = 0
@@ -40,24 +46,23 @@ var extra: Dictionary = {}
 var _holders: Array[int] = []
 var _spawner: PropSpawner
 var _anchor: Node3D
-## Clients: the latest snapshot from the host.
-## Clients: recent snapshots from the host, oldest first: {"t": host msec, "p": Vector3, "r": Quaternion}.
+## The network peer whose PC runs this prop's physics (1 = the host).
+var _owner_peer: int = 1
+## Recent snapshots from the owner, oldest first: {"t": host-clock msec, "p": Vector3, "r": Quaternion}.
 var _snapshots: Array[Dictionary] = []
-## Clients: while this PC is pushing it, move it here straight away instead of waiting for the host.
-var _push_predict_until_msec: int = 0
-var _push_predict_velocity: Vector3 = Vector3.ZERO
-## The local holder's predicted hold point (clients and host alike); null-like when not predicting.
-var _predicting: bool = false
-var _predicted_target: Vector3
-## Host: where each holder wants it (player id -> point).
+## Owner: where each holder wants it (player id -> point).
 var _hold_targets: Dictionary[int, Vector3] = {}
+## Owner: players pushing it right now (player id -> {time, direction, speed}).
+var _pushes: Dictionary[int, Dictionary] = {}
+## Owner (a client): when someone last held or pushed it here.
+var _last_touch_msec: int = 0
 ## Host: last place it was resting safely (for key objects).
 var _safe_position: Vector3
 var _stuck_seconds: float = 0.0
 ## Holders' bodies we ignore collisions with.
 var _excepted_bodies: Array[PlayerCharacter] = []
-## Host: players pushing it right now (player id -> {time, direction, speed}).
-var _pushes: Dictionary[int, Dictionary] = {}
+## Owner (a client): we already asked the host to take it back.
+var _handback_sent: bool = false
 
 
 ## The NetProp a node belongs to (the prop itself, or one of its children). Null if none.
@@ -73,15 +78,14 @@ static func of(node: Node) -> NetProp:
 func _ready() -> void:
 	collision_layer = PhysicsLayers.bit(PhysicsLayers.PROPS)
 	# Not PLAYERS: players bump into props (their mask has PROPS) but can't shove them through walls
-	# just by walking into them. Players move props by holding them.
+	# just by walking into them. Walking into a prop's side pushes it on purpose (see add_push).
 	collision_mask = PhysicsLayers.bit(PhysicsLayers.WORLD) | PhysicsLayers.bit(PhysicsLayers.PROPS) \
 		| PhysicsLayers.bit(PhysicsLayers.CARTS) | PhysicsLayers.bit(PhysicsLayers.ENEMIES)
 	if data != null:
 		mass = data.mass
 	_safe_position = global_position
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
-	# Only the host simulates. Clients follow snapshots.
-	freeze = not multiplayer.is_server()
+	freeze = not is_simulated_here()
 	sleeping_state_changed.connect(_on_sleeping_state_changed)
 
 
@@ -89,12 +93,11 @@ func is_held() -> bool:
 	return not _holders.is_empty()
 
 
-## Who is holding it: one player, or two for a shared heavy lift.
+## Who is holding it (any number for a heavy prop).
 func get_holder_ids() -> Array[int]:
 	return _holders.duplicate()
 
 
-## True when two people must lift it together (heavier than one player can carry).
 ## True for heavy props (above grab_max_mass): one person can only drag them slowly; helpers speed it up.
 func needs_help() -> bool:
 	return mass > _config().grab_max_mass
@@ -115,19 +118,9 @@ func support_for(people: int) -> float:
 	return clampf(float(people) * _config().heavy_lift_per_holder / mass, 0.0, 1.0)
 
 
-## Host: a player walking into this prop pushes it along `direction` at up to `speed` m/s, slowed by
-## its weight the same way carrying is (light props move at full speed, heavy ones barely).
-func add_push(player_id: int, direction: Vector3, speed: float) -> void:
-	_pushes[player_id] = {"time": Time.get_ticks_msec(), "direction": direction, "speed": speed}
-
-
 ## True while it is fully off the ground in its holders' hands.
 func is_lifted() -> bool:
 	return get_support() >= 1.0
-
-
-func _config() -> GameConfig:
-	return _spawner.get_config() if _spawner != null else Config.game
 
 
 ## Snapped into a cart, vendor or lift.
@@ -148,12 +141,22 @@ func detach() -> void:
 	if not multiplayer.is_server():
 		return
 	_anchor = null
-	freeze = false
+	freeze = not is_simulated_here()
 
 
 ## The spawner that made this prop.
 func get_spawner() -> PropSpawner:
 	return _spawner
+
+
+## The network peer whose PC runs this prop's physics (1 = the host).
+func get_owner_peer() -> int:
+	return _owner_peer
+
+
+## True if this PC runs this prop's physics right now.
+func is_simulated_here() -> bool:
+	return _owner_peer == multiplayer.get_unique_id()
 
 
 # --- Internal to physics_props (PropSpawner and GrabController call these; other systems don't) ---
@@ -174,12 +177,70 @@ func apply_holders(holders: Array[int], last_holder: int) -> void:
 	for player_id: int in _hold_targets.keys():
 		if not _holders.has(player_id):
 			_hold_targets.erase(player_id)
-	if multiplayer.is_server():
-		# The holders carry part (or all) of its weight; the rest still pulls it down.
-		gravity_scale = 1.0 - get_support()
-		angular_damp = 8.0 if is_held() else 0.0
+	# The holders carry part (or all) of its weight; the rest still pulls it down.
+	gravity_scale = 1.0 - get_support()
+	angular_damp = 8.0 if is_held() else 0.0
+	_last_touch_msec = Time.get_ticks_msec()
 	_update_holder_exceptions()
 	hold_changed.emit()
+
+
+## A new physics owner, starting from this state (sent by the host to every PC).
+func apply_owner(peer_id: int, start: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+	_owner_peer = peer_id
+	_snapshots.clear()
+	_last_touch_msec = Time.get_ticks_msec()
+	if _anchor != null:
+		return
+	_handback_sent = false
+	if is_simulated_here():
+		global_transform = start
+		freeze = false
+		linear_velocity = velocity
+		angular_velocity = spin
+		sleeping = false
+	else:
+		freeze = true
+
+
+## A snapshot from the owner, stamped with the host's clock (milliseconds).
+func apply_snapshot(host_msec: int, position_now: Vector3, rotation_now: Quaternion) -> void:
+	if is_simulated_here():
+		return
+	if not _snapshots.is_empty() and host_msec <= int(_snapshots.back()["t"]):
+		return
+	_snapshots.append({"t": host_msec, "p": position_now, "r": rotation_now})
+	while _snapshots.size() > MAX_SNAPSHOTS:
+		_snapshots.pop_front()
+
+
+## Owner: where a holder wants it now.
+func set_hold_target(player_id: int, target: Vector3) -> void:
+	if _holders.has(player_id):
+		_hold_targets[player_id] = target
+		_last_touch_msec = Time.get_ticks_msec()
+
+
+## Owner: a player walking into this prop's side pushes it along `direction` at up to `speed` m/s,
+## slowed by its weight the same way carrying is (light props move at full speed, heavy ones barely).
+func add_push(player_id: int, direction: Vector3, speed: float) -> void:
+	_pushes[player_id] = {"time": Time.get_ticks_msec(), "direction": direction, "speed": speed}
+	_last_touch_msec = Time.get_ticks_msec()
+
+
+## Owner (a client): nobody here has touched it for a while and it has settled.
+func is_idle_here() -> bool:
+	return not _handback_sent and not is_held() and Time.get_ticks_msec() - _last_touch_msec > OWNER_IDLE_MSEC \
+		and linear_velocity.length() < SETTLED_SPEED
+
+
+## Owner (a client): we've asked the host to take it back (don't ask again).
+func mark_handback_sent() -> void:
+	_handback_sent = true
+
+
+func _config() -> GameConfig:
+	return _spawner.get_config() if _spawner != null else Config.game
 
 
 ## Holders don't collide with what they hold (no standing on it, no pushing yourself with it).
@@ -199,52 +260,23 @@ func _update_holder_exceptions() -> void:
 	_excepted_bodies = holder_bodies
 
 
-## Clients: a snapshot from the host, stamped with the host's clock (milliseconds).
-func apply_snapshot(host_msec: int, position_now: Vector3, rotation_now: Quaternion) -> void:
-	if not _snapshots.is_empty() and host_msec <= int(_snapshots.back()["t"]):
-		return
-	_snapshots.append({"t": host_msec, "p": position_now, "r": rotation_now})
-	while _snapshots.size() > MAX_SNAPSHOTS:
-		_snapshots.pop_front()
-
-
-## Clients: this PC is pushing it; move it now (the host does the same a moment later).
-func predict_push(velocity: Vector3) -> void:
-	_push_predict_velocity = velocity
-	_push_predict_until_msec = Time.get_ticks_msec() + PUSH_MEMORY_MSEC
-
-
-func start_predicting(target: Vector3) -> void:
-	_predicting = true
-	_predicted_target = target
-
-
-func stop_predicting() -> void:
-	_predicting = false
-
-
-func set_hold_target(player_id: int, target: Vector3) -> void:
-	if _holders.has(player_id):
-		_hold_targets[player_id] = target
-
-
 func _physics_process(delta: float) -> void:
 	if _anchor != null:
 		if is_instance_valid(_anchor):
 			global_transform = _anchor.global_transform
 		else:
 			_anchor = null
-			freeze = not multiplayer.is_server()
+			freeze = not is_simulated_here()
 		return
-	if multiplayer.is_server():
-		_host_update(delta)
+	if is_simulated_here():
+		_simulate(delta)
 	else:
-		_client_update(delta)
+		_follow(delta)
 
 
-## Host: pull a lifted prop toward its holders' hold point with a spring, and drop it if stuck.
+## Owner: pull a held prop toward its holders' hold point with a spring, and drop it if stuck.
 ## Heavy props that aren't fully lifted are pulled more weakly and more slowly (they drag).
-func _host_update(delta: float) -> void:
+func _simulate(delta: float) -> void:
 	_apply_pushes()
 	var support: float = get_support()
 	if support <= 0.0 or _hold_targets.is_empty():
@@ -254,7 +286,7 @@ func _host_update(delta: float) -> void:
 	for point: Vector3 in _hold_targets.values():
 		target += point
 	target /= float(_hold_targets.size())
-	var config: GameConfig = _spawner.get_config()
+	var config: GameConfig = _config()
 	var offset: Vector3 = target - global_position
 	# A spring that grows with mass, plus damping so it settles instead of wobbling.
 	apply_central_force((offset * HOLD_STIFFNESS - linear_velocity * HOLD_DAMPING) * mass * support)
@@ -263,14 +295,14 @@ func _host_update(delta: float) -> void:
 		linear_velocity = linear_velocity.limit_length(max_speed)
 	if support >= 1.0 and offset.length() > config.hold_break_distance:
 		_stuck_seconds += delta
-		if _stuck_seconds > HOLD_BREAK_SECONDS:
+		if _stuck_seconds > HOLD_BREAK_SECONDS and _spawner != null:
 			_stuck_seconds = 0.0
-			_spawner.release_all(self)
+			_spawner.report_stuck(self)
 	else:
 		_stuck_seconds = 0.0
 
 
-## Host: players walking into it right now push it. More pushers = faster, like more holders.
+## Owner: players walking into its side right now push it. More pushers = faster, like more holders.
 func _apply_pushes() -> void:
 	if _pushes.is_empty() or is_held():
 		_pushes.clear()
@@ -295,25 +327,12 @@ func _apply_pushes() -> void:
 		sleeping = false
 
 
-## Client: the local holder moves its copy to the hold point; everyone else follows snapshots.
-func _client_update(delta: float) -> void:
-	if _predicting:
-		var motion: Vector3 = _predicted_target - global_position
-		# Stop at walls instead of passing through them.
-		var collision: KinematicCollision3D = move_and_collide(motion, false, 0.001, true)
-		if collision != null:
-			global_position += collision.get_travel()
-		return
-	if Time.get_ticks_msec() < _push_predict_until_msec:
-		var push_motion: Vector3 = _push_predict_velocity * delta
-		var push_hit: KinematicCollision3D = move_and_collide(push_motion, false, 0.001, true)
-		global_position += push_hit.get_travel() if push_hit != null else push_motion
-		return
+## Everyone else: show where the owner had it a moment ago (interpolation delay), gliding between
+## two snapshots so movement is even instead of hopping from snapshot to snapshot.
+func _follow(delta: float) -> void:
 	if _snapshots.is_empty() or _spawner == null:
 		return
-	# Show where the host had it a moment ago (interpolation delay), between two snapshots, so
-	# movement is even instead of hopping from snapshot to snapshot.
-	var render_msec: int = _spawner.get_host_clock_msec() - _spawner.get_config().prop_interpolation_delay_msec
+	var render_msec: int = _spawner.get_host_clock_msec() - _config().prop_interpolation_delay_msec
 	var target_position: Vector3 = _snapshots.back()["p"]
 	var target_rotation: Quaternion = _snapshots.back()["r"]
 	for index: int in range(_snapshots.size() - 1):
@@ -329,7 +348,6 @@ func _client_update(delta: float) -> void:
 		global_position = target_position
 		global_basis = Basis(target_rotation)
 		return
-	# A short glide hides small differences (e.g. after our own push prediction ends).
 	var weight: float = 1.0 - exp(-SNAPSHOT_SMOOTHING * delta)
 	global_position = global_position.lerp(target_position, weight)
 	global_basis = Basis(global_basis.get_rotation_quaternion().slerp(target_rotation, weight))
@@ -337,6 +355,5 @@ func _client_update(delta: float) -> void:
 
 func _on_sleeping_state_changed() -> void:
 	if sleeping and multiplayer.is_server() and _spawner != null \
-			and global_position.y > _spawner.get_config().out_of_world_y + SAFE_HEIGHT_MARGIN:
+			and global_position.y > _config().out_of_world_y + SAFE_HEIGHT_MARGIN:
 		_safe_position = global_position
-

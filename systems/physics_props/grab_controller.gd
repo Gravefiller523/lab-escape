@@ -3,8 +3,8 @@ extends Node
 ## Child "Grab" of every player body (added by the Props autoload). On the PC that owns the body it
 ## plugs into interaction: looking at a prop and pressing use grabs it, pressing use again drops it,
 ## primary (left click) throws it, and drop (Q) always drops it.
-## Light props are moved to the hold point straight away on this PC (prediction) while the host
-## checks the grab; if the host says no, or someone else takes it, we let go.
+## When the host confirms a grab, it hands the prop's physics to this PC (unless several people hold
+## it), so it follows our hands with no delay. If the host says no, or someone takes it, we let go.
 
 signal held_changed(prop: NetProp)
 
@@ -16,6 +16,8 @@ const HOLD_SEND_RATE: float = 30.0
 ## How often (per second) we tell the host we are pushing a prop, and the slowest push that counts.
 const PUSH_SEND_RATE: float = 20.0
 const MIN_PUSH_SPEED: float = 0.05
+## A contact counts as "the side of a prop" when its normal points this little up or down.
+const SIDE_CONTACT_MAX_Y: float = 0.5
 
 const PROMPT_PICK_UP: String = "Pick up"
 const PROMPT_DROP: String = "Drop"
@@ -61,7 +63,6 @@ func try_grab(prop: NetProp) -> void:
 		drop()
 	_set_held(prop)
 	_pending = true
-	_update_hold_point()
 	prop.get_spawner().request_grab(prop)
 
 
@@ -84,13 +85,17 @@ func _let_go(throw_direction: Vector3) -> void:
 		return
 	var prop: NetProp = _held
 	_set_held(null)
-	if is_instance_valid(prop) and prop.get_spawner() != null:
-		prop.get_spawner().request_release(prop, throw_direction)
+	if not is_instance_valid(prop) or prop.get_spawner() == null:
+		return
+	# If our PC runs it, throw it now (no waiting for the host).
+	if not throw_direction.is_zero_approx() and prop.is_simulated_here() and prop.is_lifted() \
+			and not _body.multiplayer.is_server():
+		prop.apply_central_impulse(throw_direction.normalized() * prop.get_spawner().throw_strength(prop))
+	prop.get_spawner().request_release(prop, throw_direction)
 
 
 func _set_held(prop: NetProp) -> void:
 	if _held != null and is_instance_valid(_held):
-		_held.stop_predicting()
 		if _held.hold_changed.is_connected(_on_hold_changed):
 			_held.hold_changed.disconnect(_on_hold_changed)
 	_held = prop
@@ -143,16 +148,18 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(_held):
 		_set_held(null)
 		return
-	_update_hold_point()
+	# Our PC runs it: update every frame. Otherwise (host runs it): send a few times a second.
+	if _held.is_simulated_here():
+		_held.get_spawner().send_hold_point(_held, _body.player_id, _hold_point())
+		return
 	_send_timer -= delta
 	if _send_timer <= 0.0:
 		_send_timer = 1.0 / HOLD_SEND_RATE
 		_held.get_spawner().send_hold_point(_held, _body.player_id, _hold_point())
 
 
-## Where held props float: hold_distance (config) in front of the eyes.
-## Props block us; when we walk into one, tell the host how hard we're pushing (it moves the prop,
-## slowed by weight). Runs after the body moved this frame (children run after their parent).
+## Props block us; when we walk into the SIDE of one, push it (standing on top never pushes).
+## Runs after the body moved this frame (children run after their parent).
 func _push_what_we_walk_into(delta: float) -> void:
 	_push_timer -= delta
 	if _push_timer > 0.0 or delta <= 0.0:
@@ -162,7 +169,11 @@ func _push_what_we_walk_into(delta: float) -> void:
 		var prop := collision.get_collider() as NetProp
 		if prop == null or prop == _held or prop.is_attached() or prop.get_spawner() == null:
 			continue
-		var into := -collision.get_normal()
+		var normal: Vector3 = collision.get_normal()
+		# Floor-like contact (standing on it) or ceiling-like: not a push.
+		if absf(normal.y) > SIDE_CONTACT_MAX_Y:
+			continue
+		var into := -normal
 		into.y = 0.0
 		if into.is_zero_approx():
 			continue
@@ -172,23 +183,13 @@ func _push_what_we_walk_into(delta: float) -> void:
 		if collision.get_remainder().dot(into) / delta > MIN_PUSH_SPEED:
 			_push_timer = 1.0 / PUSH_SEND_RATE
 			var speed: float = _body.tuning.walk_speed * _body.get_movement().get_speed_multiplier()
-			prop.get_spawner().request_push(prop, into, speed)
-			if not _body.multiplayer.is_server():
-				# Move our copy now, the way the host will (slowed by weight), so pushing feels smooth.
-				prop.predict_push(into * speed * NetProp.PUSH_SPEED_FACTOR * prop.support_for(1))
+			prop.get_spawner().request_push(prop, _body.player_id, into, speed)
 
 
+## Where held props float: hold_distance (config) in front of the eyes.
 func _hold_point() -> Vector3:
 	var distance: float = _held.get_spawner().get_config().hold_distance if _held != null else 1.6
 	return _body.get_aim_origin() + _body.get_aim_direction() * distance
-
-
-## Light props follow our hands on this PC right away; heavy ones wait for the host (two holders).
-func _update_hold_point() -> void:
-	if _held.needs_help():
-		_held.stop_predicting()
-	else:
-		_held.start_predicting(_hold_point())
 
 
 ## The host changed who holds our prop: confirmed, or someone took it from us.

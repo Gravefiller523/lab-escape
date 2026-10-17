@@ -30,6 +30,8 @@ var _peer_seen: MultiplayerPeer
 var _clock_offset_msec: float = 0.0
 var _has_clock: bool = false
 var _last_clock_msec: int = 0
+## A player's PC: timer for sending the props it runs.
+var _owned_timer: float = 0.0
 
 
 ## For tests only: a different Net and config. Call before adding the node to the tree.
@@ -105,10 +107,10 @@ func get_loose_count(content_id: StringName) -> int:
 	return count
 
 
-## Host: pushes a prop.
+## Host: pushes a prop (on whichever PC runs its physics).
 func apply_impulse(prop: NetProp, impulse: Vector3) -> void:
 	if multiplayer.is_server() and prop != null:
-		prop.apply_central_impulse(impulse)
+		_impulse_rpc.rpc(prop.net_id, impulse)
 
 
 ## Host: who may hold this prop if `player_id` grabs it now. Returns the new holder list, or an
@@ -129,6 +131,14 @@ func release_all(prop: NetProp) -> void:
 		_set_holders.rpc(prop.net_id, [], prop.last_holder_id, false)
 
 
+## The PC running a held prop says it got stuck: everyone lets go.
+func report_stuck(prop: NetProp) -> void:
+	if multiplayer.is_server():
+		release_all(prop)
+	else:
+		_report_stuck_rpc.rpc_id(1, prop.net_id)
+
+
 ## The moving props the host would send right now (near: props close to a player).
 ## Sleeping props are never sent: they cost nothing.
 func get_snapshot_batch(near: bool) -> Array:
@@ -136,7 +146,8 @@ func get_snapshot_batch(near: bool) -> Array:
 	for prop: NetProp in _props.values():
 		if not is_instance_valid(prop):
 			continue
-		var awake: bool = not prop.sleeping or prop.is_held() or prop.is_attached()
+		# Props run by a player's PC are always sent on (the host's copy just follows them).
+		var awake: bool = not prop.sleeping or prop.is_held() or prop.is_attached() or prop.get_owner_peer() != 1
 		if awake and _is_near_a_player(prop) == near:
 			batch.append([prop.net_id, prop.global_position, prop.global_basis.get_rotation_quaternion()])
 	return batch
@@ -152,13 +163,17 @@ func request_release(prop: NetProp, throw_direction: Vector3) -> void:
 	_request_release_rpc.rpc_id(1, prop.net_id, throw_direction)
 
 
-## Walking into a prop: ask the host to push it (the host slows it by weight).
-func request_push(prop: NetProp, direction: Vector3, speed: float) -> void:
-	_push_rpc.rpc_id(1, prop.net_id, direction, speed)
+## Walking into a prop's side: if this PC runs it, push it now; otherwise ask the host (which
+## usually hands the prop to us, so the next pushes are instant).
+func request_push(prop: NetProp, player_id: int, direction: Vector3, speed: float) -> void:
+	if prop.is_simulated_here():
+		prop.add_push(player_id, direction, speed)
+	else:
+		_push_rpc.rpc_id(1, prop.net_id, direction, speed)
 
 
 func send_hold_point(prop: NetProp, player_id: int, point: Vector3) -> void:
-	if multiplayer.is_server():
+	if prop.is_simulated_here():
 		prop.set_hold_target(player_id, point)
 	else:
 		_hold_point_rpc.rpc_id(1, prop.net_id, point)
@@ -182,6 +197,8 @@ func _request_grab_rpc(net_id: int) -> void:
 		_grab_refused.rpc_id(sender, net_id, refusal[0])
 		return
 	_set_holders.rpc(net_id, holders, body.player_id, false)
+	# One holder: their PC runs it (no delay for them). Several: the host does.
+	_hand_to(prop, sender if holders.size() == 1 else 1)
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -197,9 +214,11 @@ func _request_release_rpc(net_id: int, throw_direction: Vector3) -> void:
 	var holders: Array[int] = prop.get_holder_ids()
 	holders.erase(body.player_id)
 	_set_holders.rpc(net_id, holders, body.player_id, thrown)
-	if thrown:
-		var strength: float = _config.throw_impulse * minf(prop.mass, _config.grab_max_mass)
-		prop.apply_central_impulse(throw_direction.normalized() * strength)
+	# The thrower's PC applies its own throw (it runs the prop); the host only throws what it runs.
+	if thrown and prop.is_simulated_here():
+		prop.apply_central_impulse(throw_direction.normalized() * throw_strength(prop))
+	if holders.size() == 1:
+		_hand_to(prop, peer_of_player(holders[0]))
 
 
 @rpc("any_peer", "call_local", "unreliable_ordered")
@@ -214,7 +233,12 @@ func _push_rpc(net_id: int, direction: Vector3, speed: float) -> void:
 	if body.global_position.distance_to(prop.global_position) > PUSH_REACH:
 		return
 	var fastest: float = body.tuning.sprint_speed * body.get_movement().get_speed_multiplier()
-	prop.add_push(body.player_id, direction, clampf(speed, 0.0, fastest))
+	if prop.get_owner_peer() == 1 and not prop.is_held() and multiplayer.get_remote_sender_id() != 1:
+		# Hand it to the pusher's PC so their pushes are instant from now on.
+		_hand_to(prop, multiplayer.get_remote_sender_id())
+		return
+	if prop.is_simulated_here():
+		prop.add_push(body.player_id, direction, clampf(speed, 0.0, fastest))
 
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
@@ -223,7 +247,7 @@ func _hold_point_rpc(net_id: int, point: Vector3) -> void:
 		return
 	var prop: NetProp = get_prop(net_id)
 	var body: PlayerCharacter = body_of_peer(multiplayer.get_remote_sender_id())
-	if prop != null and body != null:
+	if prop != null and body != null and prop.is_simulated_here():
 		prop.set_hold_target(body.player_id, point)
 
 
@@ -253,6 +277,84 @@ func _grab_refused(net_id: int, reason: String) -> void:
 	var prop: NetProp = get_prop(net_id)
 	if prop != null:
 		Props.grab_refused.emit(prop, reason)
+
+
+# --- Physics ownership (approach B) -----------------------------------------------------------
+
+## How hard a throw is: throw_impulse per kg, counting at most grab_max_mass kg.
+func throw_strength(prop: NetProp) -> float:
+	return _config.throw_impulse * minf(prop.mass, _config.grab_max_mass)
+
+
+## The network peer of a player in this game, or 0.
+func peer_of_player(player_id: int) -> int:
+	var body: PlayerCharacter = get_body_of_player(player_id)
+	return body.get_multiplayer_authority() if body != null else 0
+
+
+## Host: let `peer_id`'s PC run this prop's physics from now on (1 = the host itself).
+func _hand_to(prop: NetProp, peer_id: int) -> void:
+	if not multiplayer.is_server() or peer_id <= 0 or prop.get_owner_peer() == peer_id:
+		return
+	_set_owner.rpc(prop.net_id, peer_id, prop.global_transform, prop.linear_velocity, prop.angular_velocity)
+
+
+## Host -> everyone: who runs this prop's physics now, starting from this state.
+@rpc("authority", "call_local", "reliable")
+func _set_owner(net_id: int, peer_id: int, start: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+	var prop: NetProp = get_prop(net_id)
+	if prop != null:
+		prop.apply_owner(peer_id, start, velocity, spin)
+
+
+## Owner (a player's PC) -> host: done with it (settled, nobody touching it); host takes it back.
+@rpc("any_peer", "call_local", "reliable")
+func _return_owner_rpc(net_id: int, last: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+	var prop: NetProp = get_prop(net_id)
+	if multiplayer.is_server() and prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer():
+		_set_owner.rpc(net_id, 1, last, velocity, spin)
+
+
+## Owner (a player's PC) -> host: where it is now (the host passes it on to everyone else).
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func _owner_snapshot_rpc(net_id: int, host_msec: int, position_now: Vector3, rotation_now: Quaternion) -> void:
+	var prop: NetProp = get_prop(net_id)
+	if multiplayer.is_server() and prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer():
+		prop.apply_snapshot(host_msec, position_now, rotation_now)
+
+
+## Host -> everyone: push this prop (only the PC that runs it does).
+@rpc("authority", "call_local", "reliable")
+func _impulse_rpc(net_id: int, impulse: Vector3) -> void:
+	var prop: NetProp = get_prop(net_id)
+	if prop != null and prop.is_simulated_here():
+		prop.apply_central_impulse(impulse)
+
+
+## Owner -> host: the held prop got stuck.
+@rpc("any_peer", "call_local", "reliable")
+func _report_stuck_rpc(net_id: int) -> void:
+	var prop: NetProp = get_prop(net_id)
+	if multiplayer.is_server() and prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer():
+		release_all(prop)
+
+
+## A player's PC: send the props it runs to the host, and hand back the ones it's done with.
+func _run_owned_props(delta: float) -> void:
+	_owned_timer += delta
+	var send_now: bool = _owned_timer >= 1.0 / float(maxi(_config.prop_sync_rate_near, 1))
+	if send_now:
+		_owned_timer = 0.0
+	for prop: NetProp in _props.values():
+		if not is_instance_valid(prop) or not prop.is_simulated_here():
+			continue
+		if prop.is_idle_here():
+			prop.mark_handback_sent()
+			_return_owner_rpc.rpc_id(1, prop.net_id, prop.global_transform, prop.linear_velocity, prop.angular_velocity)
+			continue
+		if send_now:
+			_owner_snapshot_rpc.rpc_id(1, prop.net_id, get_host_clock_msec(), prop.global_position,
+				prop.global_basis.get_rotation_quaternion())
 
 
 # --- Spawning and syncing ---------------------------------------------------------------------
@@ -305,6 +407,7 @@ func _restart_session() -> void:
 
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server():
+		_run_owned_props(delta)
 		return
 	_handle_fallen_props()
 	if not _net.is_online():
@@ -367,9 +470,14 @@ func _handle_fallen_props() -> void:
 			despawn(prop)
 			continue
 		release_all(prop)
-		prop.linear_velocity = Vector3.ZERO
-		prop.angular_velocity = Vector3.ZERO
-		prop.global_position = prop.get_safe_position()
+		# Back to the host, at its safe spot, for everyone.
+		var safe := Transform3D(prop.global_basis, prop.get_safe_position())
+		if prop.get_owner_peer() != 1:
+			_set_owner.rpc(prop.net_id, 1, safe, Vector3.ZERO, Vector3.ZERO)
+		else:
+			prop.linear_velocity = Vector3.ZERO
+			prop.angular_velocity = Vector3.ZERO
+			prop.global_transform = safe
 		_key_respawned.rpc(prop.net_id)
 
 
@@ -380,13 +488,18 @@ func _key_respawned(net_id: int) -> void:
 		EventBus.key_object_respawned.emit(prop)
 
 
-## Host: players who left let go of what they held.
+## Host: players who left let go of what they held, and props their PC ran come back to the host.
 func _release_missing_players() -> void:
 	if not multiplayer.is_server():
 		return
 	var present: Array[int] = _net.get_player_ids()
+	var peers: PackedInt32Array = multiplayer.get_peers()
 	for prop: NetProp in _props.values():
-		if not is_instance_valid(prop) or not prop.is_held():
+		if not is_instance_valid(prop):
+			continue
+		if prop.get_owner_peer() != 1 and not peers.has(prop.get_owner_peer()):
+			_set_owner.rpc(prop.net_id, 1, prop.global_transform, Vector3.ZERO, Vector3.ZERO)
+		if not prop.is_held():
 			continue
 		var holders: Array[int] = []
 		for holder: int in prop.get_holder_ids():

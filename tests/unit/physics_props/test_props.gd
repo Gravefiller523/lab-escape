@@ -350,3 +350,55 @@ func test_client_push_moves_its_copy_at_once_and_the_host_follows() -> void:
 	await wait_physics_frames(60)
 	assert_lt(crate_on_client.global_position.distance_to(crate_on_host.global_position), 0.5,
 		"once pushing stops, both PCs agree where it is")
+
+
+func test_client_grab_hands_physics_to_the_client_and_back() -> void:
+	var host := _make_pc()
+	var client := _make_pc()
+	var server := ENetMultiplayerPeer.new()
+	assert_eq(server.create_server(PORT + 3, 4), OK)
+	host.multiplayer.multiplayer_peer = server
+	var peer := ENetMultiplayerPeer.new()
+	peer.create_client("127.0.0.1", PORT + 3)
+	client.multiplayer.multiplayer_peer = peer
+	await wait_until(func() -> bool: return _my_body(client) != null, WAIT)
+	var client_body: PlayerCharacter = _my_body(client)
+	client_body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(10)
+	var crate_on_host: NetProp = _props(host).spawn_prop(&"prop_crate", _in_front_of(client_body))
+	await wait_until(func() -> bool: return _props(client).get_prop(crate_on_host.net_id) != null, WAIT)
+	var crate_on_client: NetProp = _props(client).get_prop(crate_on_host.net_id)
+
+	PropsService.grab_of(client_body).try_grab(crate_on_client)
+	await wait_until(func() -> bool: return crate_on_client.is_simulated_here(), WAIT)
+	assert_true(crate_on_client.is_simulated_here(), "the client's PC runs the crate it holds")
+	assert_false(crate_on_client.freeze)
+	assert_eq(crate_on_host.get_owner_peer(), client_body.get_multiplayer_authority())
+	await wait_physics_frames(20)
+	var hold_point: Vector3 = client_body.get_aim_origin() + client_body.get_aim_direction() * _props(client).get_config().hold_distance
+	assert_lt(crate_on_client.global_position.distance_to(hold_point), 0.5, "in the client's hands, no delay")
+	await wait_until(func() -> bool: return crate_on_host.global_position.distance_to(crate_on_client.global_position) < 0.5, WAIT)
+	assert_lt(crate_on_host.global_position.distance_to(crate_on_client.global_position), 0.5, "the host's copy follows")
+
+	PropsService.grab_of(client_body).drop()
+	await wait_until(func() -> bool: return crate_on_host.get_owner_peer() == 1, WAIT)
+	assert_eq(crate_on_host.get_owner_peer(), 1, "once it settled, the host runs it again")
+	assert_false(crate_on_host.freeze)
+
+
+func test_standing_on_a_prop_does_not_push_it() -> void:
+	var pc := _make_pc()
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var body: PlayerCharacter = _my_body(pc)
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(0, 0.41, -8)))
+	await wait_physics_frames(10)
+	var start: Vector3 = crate.global_position
+	body.global_position = start + Vector3(0, 0.5, 0)
+	body.rotation = Vector3.ZERO
+	body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(20)
+	var walk := PlayerInputState.new()
+	walk.move = Vector2(0.3, 0.0)
+	body.set_input_override(walk)
+	await wait_physics_frames(15)
+	assert_lt(start.distance_to(crate.global_position), 0.05, "walking about on top doesn't move it")

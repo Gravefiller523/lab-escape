@@ -4,3 +4,4 @@
 
 # Temp copies Godot makes of locked DLLs
 ~*.dll
+*.tmp

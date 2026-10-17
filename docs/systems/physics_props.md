@@ -88,6 +88,11 @@ flag, cart rules and despawn timer are data.
 **Ownership.** The host simulates every prop. Clients' copies are frozen (kinematic) and smoothly
 follow the host's snapshots.
 
+CHANGED 2026-10-17 (after Zachary's playtest: jittery and late for the joining player): snapshots carry the
+host's clock; clients estimate it and show props `prop_interpolation_delay_msec` (100 ms) behind, gliding
+between two snapshots; `prop_sync_rate_near` 20 -> 30. A client pushing a prop moves its own copy at once
+(`predict_push`) and the host follows. Pushed props move at 90% of the pusher's speed (x weight rule) and
+keep moving for 250 ms after the last push report, so the pusher stays pressed against them.
 **Syncing.** One `PropSync` node on the host sends a batch of snapshots (net_id, position, rotation,
 velocity) with `unreliable_ordered` RPCs. Only awake (moving) props are sent. Props near any player are
 sent `prop_sync_rate_near` times a second; far ones `prop_sync_rate_far`. Sleeping props cost nothing.
@@ -188,6 +193,8 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
 - 2026-10-17: nothing is too heavy to move (`two_player_lift_max_mass` deprecated); walking into props pushes
   them by weight (`add_push`, `support_for`, `request_push`). Tests: `test_nothing_is_too_heavy`,
   `test_walking_into_props_pushes_them_by_weight`.
+- 2026-10-17: smoother for clients (timestamped snapshots, interpolation delay, 30 Hz, push prediction).
+  Test: `test_client_push_moves_its_copy_at_once_and_the_host_follows`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

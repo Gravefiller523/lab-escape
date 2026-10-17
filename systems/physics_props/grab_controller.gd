@@ -173,6 +173,9 @@ func _push_what_we_walk_into(delta: float) -> void:
 			_push_timer = 1.0 / PUSH_SEND_RATE
 			var speed: float = _body.tuning.walk_speed * _body.get_movement().get_speed_multiplier()
 			prop.get_spawner().request_push(prop, into, speed)
+			if not _body.multiplayer.is_server():
+				# Move our copy now, the way the host will (slowed by weight), so pushing feels smooth.
+				prop.predict_push(into * speed * NetProp.PUSH_SPEED_FACTOR * prop.support_for(1))
 
 
 func _hold_point() -> Vector3:

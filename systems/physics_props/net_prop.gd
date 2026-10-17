@@ -15,12 +15,16 @@ const HOLD_DAMPING: float = 22.0
 ## A held prop that stays further than hold_break_distance from its hold point this long is dropped.
 const HOLD_BREAK_SECONDS: float = 0.4
 ## How quickly clients' copies catch up with snapshots, and when they jump instead.
-const SNAPSHOT_SMOOTHING: float = 18.0
+const SNAPSHOT_SMOOTHING: float = 25.0
 const SNAPSHOT_SNAP_DISTANCE: float = 3.0
 ## A resting spot only counts as safe this far above the out-of-world height.
 const SAFE_HEIGHT_MARGIN: float = 5.0
 ## A push counts for this long after the last report (milliseconds), so pushes don't flicker.
-const PUSH_MEMORY_MSEC: int = 150
+const PUSH_MEMORY_MSEC: int = 250
+## Pushed props move a little slower than the pusher, so the pusher stays pressed against them.
+const PUSH_SPEED_FACTOR: float = 0.9
+## Snapshots kept per prop on clients.
+const MAX_SNAPSHOTS: int = 12
 
 ## Unique per spawned prop, set by the host.
 var net_id: int = 0
@@ -37,9 +41,11 @@ var _holders: Array[int] = []
 var _spawner: PropSpawner
 var _anchor: Node3D
 ## Clients: the latest snapshot from the host.
-var _snap_position: Vector3
-var _snap_rotation: Quaternion
-var _has_snapshot: bool = false
+## Clients: recent snapshots from the host, oldest first: {"t": host msec, "p": Vector3, "r": Quaternion}.
+var _snapshots: Array[Dictionary] = []
+## Clients: while this PC is pushing it, move it here straight away instead of waiting for the host.
+var _push_predict_until_msec: int = 0
+var _push_predict_velocity: Vector3 = Vector3.ZERO
 ## The local holder's predicted hold point (clients and host alike); null-like when not predicting.
 var _predicting: bool = false
 var _predicted_target: Vector3
@@ -73,8 +79,6 @@ func _ready() -> void:
 	if data != null:
 		mass = data.mass
 	_safe_position = global_position
-	_snap_position = global_position
-	_snap_rotation = global_basis.get_rotation_quaternion()
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	# Only the host simulates. Clients follow snapshots.
 	freeze = not multiplayer.is_server()
@@ -195,10 +199,19 @@ func _update_holder_exceptions() -> void:
 	_excepted_bodies = holder_bodies
 
 
-func apply_snapshot(position_now: Vector3, rotation_now: Quaternion) -> void:
-	_snap_position = position_now
-	_snap_rotation = rotation_now
-	_has_snapshot = true
+## Clients: a snapshot from the host, stamped with the host's clock (milliseconds).
+func apply_snapshot(host_msec: int, position_now: Vector3, rotation_now: Quaternion) -> void:
+	if not _snapshots.is_empty() and host_msec <= int(_snapshots.back()["t"]):
+		return
+	_snapshots.append({"t": host_msec, "p": position_now, "r": rotation_now})
+	while _snapshots.size() > MAX_SNAPSHOTS:
+		_snapshots.pop_front()
+
+
+## Clients: this PC is pushing it; move it now (the host does the same a moment later).
+func predict_push(velocity: Vector3) -> void:
+	_push_predict_velocity = velocity
+	_push_predict_until_msec = Time.get_ticks_msec() + PUSH_MEMORY_MSEC
 
 
 func start_predicting(target: Vector3) -> void:
@@ -275,7 +288,7 @@ func _apply_pushes() -> void:
 	if _pushes.is_empty() or direction.is_zero_approx():
 		return
 	direction = Vector3(direction.x, 0.0, direction.z).normalized()
-	var wanted: float = speed * support_for(_pushes.size())
+	var wanted: float = speed * PUSH_SPEED_FACTOR * support_for(_pushes.size())
 	var current: float = linear_velocity.dot(direction)
 	if current < wanted:
 		linear_velocity += direction * (wanted - current)
@@ -291,14 +304,35 @@ func _client_update(delta: float) -> void:
 		if collision != null:
 			global_position += collision.get_travel()
 		return
-	if not _has_snapshot:
+	if Time.get_ticks_msec() < _push_predict_until_msec:
+		var push_motion: Vector3 = _push_predict_velocity * delta
+		var push_hit: KinematicCollision3D = move_and_collide(push_motion, false, 0.001, true)
+		global_position += push_hit.get_travel() if push_hit != null else push_motion
 		return
+	if _snapshots.is_empty() or _spawner == null:
+		return
+	# Show where the host had it a moment ago (interpolation delay), between two snapshots, so
+	# movement is even instead of hopping from snapshot to snapshot.
+	var render_msec: int = _spawner.get_host_clock_msec() - _spawner.get_config().prop_interpolation_delay_msec
+	var target_position: Vector3 = _snapshots.back()["p"]
+	var target_rotation: Quaternion = _snapshots.back()["r"]
+	for index: int in range(_snapshots.size() - 1):
+		var before: Dictionary = _snapshots[index]
+		var after: Dictionary = _snapshots[index + 1]
+		if int(before["t"]) <= render_msec and render_msec <= int(after["t"]):
+			var span: float = maxf(float(int(after["t"]) - int(before["t"])), 1.0)
+			var t: float = float(render_msec - int(before["t"])) / span
+			target_position = (before["p"] as Vector3).lerp(after["p"] as Vector3, t)
+			target_rotation = (before["r"] as Quaternion).slerp(after["r"] as Quaternion, t)
+			break
+	if global_position.distance_to(target_position) > SNAPSHOT_SNAP_DISTANCE:
+		global_position = target_position
+		global_basis = Basis(target_rotation)
+		return
+	# A short glide hides small differences (e.g. after our own push prediction ends).
 	var weight: float = 1.0 - exp(-SNAPSHOT_SMOOTHING * delta)
-	if global_position.distance_to(_snap_position) > SNAPSHOT_SNAP_DISTANCE:
-		global_position = _snap_position
-	else:
-		global_position = global_position.lerp(_snap_position, weight)
-	global_basis = Basis(global_basis.get_rotation_quaternion().slerp(_snap_rotation, weight))
+	global_position = global_position.lerp(target_position, weight)
+	global_basis = Basis(global_basis.get_rotation_quaternion().slerp(target_rotation, weight))
 
 
 func _on_sleeping_state_changed() -> void:

@@ -13,6 +13,8 @@ extends Node3D
 const REFUSE_TOO_FAR: String = "Too far away"
 ## A pusher must be this close to the prop (metres, body to prop centre).
 const PUSH_REACH: float = 3.0
+## How fast the clock offset estimate may creep later (ms per ms), to follow a growing delay.
+const CLOCK_CREEP: float = 0.001
 ## Extra reach the host allows for network delay and the size of the prop (metres).
 const REACH_TOLERANCE: float = 1.0
 
@@ -24,6 +26,10 @@ var _next_net_id: int = 1
 var _near_timer: float = 0.0
 var _far_timer: float = 0.0
 var _peer_seen: MultiplayerPeer
+## Clients: estimate of (local clock - host clock), for showing props at the right moment.
+var _clock_offset_msec: float = 0.0
+var _has_clock: bool = false
+var _last_clock_msec: int = 0
 
 
 ## For tests only: a different Net and config. Call before adding the node to the tree.
@@ -284,6 +290,7 @@ func _process(_delta: float) -> void:
 ## A new connection: the host spawns its props again so every new client gets them; a client
 ## drops its copies and waits for the host's.
 func _restart_session() -> void:
+	_has_clock = false
 	var keep: Array[Dictionary] = []
 	for prop: NetProp in get_props():
 		keep.append({"content_id": prop.content_id, "xform": prop.global_transform, "extra": prop.extra})
@@ -314,16 +321,33 @@ func _physics_process(delta: float) -> void:
 
 func _send_batch(batch: Array) -> void:
 	if not batch.is_empty():
-		_receive_snapshots.rpc(batch)
+		_receive_snapshots.rpc(Time.get_ticks_msec(), batch)
 
 
-## Host -> clients: where the moving props are now.
+## The host's clock (milliseconds), as best this PC can tell. On the host, its own clock.
+func get_host_clock_msec() -> int:
+	if multiplayer.is_server() or not _has_clock:
+		return Time.get_ticks_msec()
+	return Time.get_ticks_msec() - int(_clock_offset_msec)
+
+
+## Host -> clients: where the moving props are now, stamped with the host's clock.
 @rpc("authority", "call_remote", "unreliable_ordered")
-func _receive_snapshots(batch: Array) -> void:
+func _receive_snapshots(host_msec: int, batch: Array) -> void:
+	# Clock offset = the smallest (local - host) seen, so network hiccups don't push it later. It
+	# creeps up slowly so it can follow if the delay really grows.
+	var now: int = Time.get_ticks_msec()
+	var sample: float = float(now - host_msec)
+	if not _has_clock:
+		_clock_offset_msec = sample
+		_has_clock = true
+	else:
+		_clock_offset_msec = minf(_clock_offset_msec + float(now - _last_clock_msec) * CLOCK_CREEP, sample)
+	_last_clock_msec = now
 	for entry: Array in batch:
 		var prop: NetProp = get_prop(int(entry[0]))
 		if prop != null:
-			prop.apply_snapshot(entry[1], entry[2])
+			prop.apply_snapshot(host_msec, entry[1], entry[2])
 
 
 func _is_near_a_player(prop: NetProp) -> bool:

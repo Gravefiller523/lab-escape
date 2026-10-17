@@ -74,9 +74,12 @@ extends Resource
 ## Throw strength (impulse per kg, capped by mass).
 @export var throw_impulse: float = 10.0
 ## How often (per second) moving props near players are sent to clients.
-@export var prop_sync_rate_near: int = 20
+@export var prop_sync_rate_near: int = 30
 ## How often (per second) moving props far from every player are sent.
 @export var prop_sync_rate_far: int = 4
+## Clients show props this many milliseconds behind the host, so they can glide evenly between
+## snapshots instead of hopping. Higher = smoother but later.
+@export var prop_interpolation_delay_msec: int = 100
 ## Distance (m) beyond which a prop counts as far.
 @export var prop_far_distance: float = 30.0
 ## Anything below this height (m) has fallen out of the world.

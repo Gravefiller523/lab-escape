@@ -316,3 +316,37 @@ func test_holder_does_not_collide_with_held_prop() -> void:
 	assert_true(crate.get_collision_exceptions().has(body), "no standing on what you hold")
 	PropsService.grab_of(body).drop()
 	assert_false(crate.get_collision_exceptions().has(body), "solid again once dropped")
+
+
+func test_client_push_moves_its_copy_at_once_and_the_host_follows() -> void:
+	var host := _make_pc()
+	var client := _make_pc()
+	var server := ENetMultiplayerPeer.new()
+	assert_eq(server.create_server(PORT + 1, 4), OK)
+	host.multiplayer.multiplayer_peer = server
+	var peer := ENetMultiplayerPeer.new()
+	peer.create_client("127.0.0.1", PORT + 1)
+	client.multiplayer.multiplayer_peer = peer
+	await wait_until(func() -> bool: return _my_body(client) != null, WAIT)
+	var client_body: PlayerCharacter = _my_body(client)
+	client_body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(10)
+	# A crate on the floor just in front of the client (moving the client there instead would
+	# look like cheating to the host's speed check).
+	var ahead: Vector3 = client_body.global_position - client_body.global_basis.z * 1.3
+	var crate_on_host: NetProp = _props(host).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(ahead.x, 0.31, ahead.z)))
+	await wait_until(func() -> bool: return _props(client).get_prop(crate_on_host.net_id) != null, WAIT)
+	await wait_physics_frames(30)
+	var crate_on_client: NetProp = _props(client).get_prop(crate_on_host.net_id)
+	var start: Vector3 = crate_on_host.global_position
+	var walk := PlayerInputState.new()
+	walk.move = Vector2(0, 1)
+	client_body.set_input_override(walk)
+	await wait_physics_frames(20)
+	assert_gt(start.distance_to(crate_on_client.global_position), 0.3, "the client's copy moved right away")
+	await wait_physics_frames(20)
+	assert_gt(start.distance_to(crate_on_host.global_position), 0.3, "the host's real crate followed")
+	client_body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(60)
+	assert_lt(crate_on_client.global_position.distance_to(crate_on_host.global_position), 0.5,
+		"once pushing stops, both PCs agree where it is")

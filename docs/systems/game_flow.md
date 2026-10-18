@@ -145,6 +145,10 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
   generates the layout and it travels with the run and in the join handshake). The grey-box stub floor is gone.
   `use_test_setup` takes an optional floor builder.
 - 2026-10-18: the placeholder department needs 1 lift part per floor (`prop_lift_part_zoology`).
+- 2026-10-18 fixes (Zachary: stuck loading floor 3): going floor to floor, a client could build the new floor into
+  the old scene (same file) and end up in an empty one; it now waits for the new scene node. Several Depart
+  presses at once only move one floor. After 4 s the host gets a toast naming who is still loading.
+  Test: `test_two_lift_presses_go_up_one_floor`.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `GameFlow` (`GameFlowService`, `systems/game_flow/game_flow.gd`),

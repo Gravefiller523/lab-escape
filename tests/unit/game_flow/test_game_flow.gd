@@ -245,3 +245,19 @@ func test_late_joiner_gets_the_current_floor() -> void:
 	assert_eq(_loaded[client][-1], GameFlowService.FLOOR_SCENE)
 	_flow(client).go_to_break_room()
 	assert_eq(_flow(client).get_state(), GameFlowService.State.ON_FLOOR, "a late 'go to the Break Room' from the menu is ignored")
+
+
+func test_two_lift_presses_go_up_one_floor() -> void:
+	var pc := _make_pc(_config())
+	var flow: GameFlowService = _flow(pc)
+	flow.go_to_break_room()
+	await wait_until(_state_is(pc, GameFlowService.State.BREAK_ROOM), WAIT)
+	flow.start_run(3)
+	await wait_until(_state_is(pc, GameFlowService.State.ON_FLOOR), WAIT)
+	EventBus.lift_departed.emit(1)
+	EventBus.lift_departed.emit(1)
+	await wait_physics_frames(2)
+	EventBus.lift_departed.emit(1)
+	await wait_until(func() -> bool: return flow.get_run().floor_number == 2 and flow.get_state() == GameFlowService.State.ON_FLOOR, WAIT)
+	await wait_seconds(0.5)
+	assert_eq(flow.get_run().floor_number, 2, "several presses at once still go up one floor")

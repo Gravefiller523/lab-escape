@@ -34,6 +34,8 @@ const RESULT_ABANDONED: StringName = &"abandoned"
 const CLIENT_LOAD_DELAY: float = 0.15
 ## Most frames to wait for a new scene to appear after changing to it.
 const SCENE_WAIT_FRAMES: int = 10
+## Seconds of waiting for a slow PC before the host is told who it is waiting for.
+const SLOW_LOAD_NOTICE_SECONDS: float = 4.0
 
 ## The state names, for the console and test scene.
 const STATE_NAMES: PackedStringArray = ["BOOT", "MAIN_MENU", "BREAK_ROOM", "ELEVATOR_RIDE", "LOADING_FLOOR",
@@ -54,6 +56,8 @@ var _placeholder: DepartmentData
 var _built_peers: Dictionary[int, bool] = {}
 ## Host: the clients a transition is waiting for (players who join during it are already in the new scene).
 var _transition_peers: PackedInt32Array = []
+## Host: a scene change is under way (the lift or the boss can't start another one).
+var _moving: bool = false
 var _transition_id: int = 0
 ## Client: the host has told us where the game is (so a late "go to the Break Room" is ignored).
 var _synced_from_host: bool = false
@@ -309,6 +313,7 @@ func _load_current_floor() -> void:
 func _transition(path: String, run_data: Dictionary) -> void:
 	_transition_id += 1
 	var id: int = _transition_id
+	_moving = true
 	_built_peers.clear()
 	_prepare_rpc.rpc()
 	await get_tree().create_timer(CLIENT_LOAD_DELAY).timeout
@@ -321,18 +326,35 @@ func _transition(path: String, run_data: Dictionary) -> void:
 	_transition_peers = multiplayer.get_peers()
 	_load_rpc.rpc(path, run_data, id)
 	var waited: float = 0.0
+	var told: bool = false
 	while not _all_built() and waited < _config.floor_load_timeout:
 		await get_tree().process_frame
 		waited += get_process_delta_time()
 		if id != _transition_id:
 			return
+		if not told and waited > SLOW_LOAD_NOTICE_SECONDS:
+			told = true
+			EventBus.toast_requested.emit("Waiting for %s to finish loading..." % ", ".join(_still_loading()))
 	if not _all_built():
 		push_warning("GameFlow: not every PC loaded '%s' in time; going on without them." % path.get_file())
 	await _arrive(path, run_data)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if id == _transition_id and path == FLOOR_SCENE:
+	if id != _transition_id:
+		return
+	_moving = false
+	if path == FLOOR_SCENE:
 		_floor_ready_rpc.rpc()
+
+
+## Host: names of the players whose PC hasn't loaded the new scene yet.
+func _still_loading() -> PackedStringArray:
+	var names: PackedStringArray = []
+	var connected: PackedInt32Array = multiplayer.get_peers()
+	for peer_id: int in _transition_peers:
+		if connected.has(peer_id) and not _built_peers.has(peer_id):
+			names.append(_net.get_display_name(_net.get_player_id_for_peer(peer_id)))
+	return names
 
 
 ## Host: true when every client has loaded the scene of the current transition.
@@ -384,13 +406,15 @@ func _arrive(path: String, run_data: Dictionary) -> void:
 ## Loads the floor scene and builds the floor in it (level_gen).
 func _load_floor(layout_data: Dictionary) -> void:
 	_layout_data = layout_data
+	var old_scene: Node = get_tree().current_scene
 	_load_scene.call(FLOOR_SCENE)
-	# The scene change happens over the next frame or two: wait until the floor scene is there
-	# (tests use a fake scene changer, so give up waiting after a few frames).
+	# The scene change happens over the next frame or two: wait until the NEW floor scene is there.
+	# (Going floor to floor, the old scene has the same file, so check it's a different node. Tests use
+	# a fake scene changer, so give up waiting after a few frames.)
 	for frame: int in SCENE_WAIT_FRAMES:
 		await get_tree().process_frame
 		var current: Node = get_tree().current_scene
-		if current != null and current.scene_file_path == FLOOR_SCENE:
+		if current != null and current != old_scene and current.scene_file_path == FLOOR_SCENE:
 			break
 	_build_floor.call(FloorLayout.from_dict(_layout_data))
 
@@ -550,12 +574,13 @@ func _on_elevator_start_accepted() -> void:
 
 
 func _on_lift_departed(_floor_number: int) -> void:
-	if _net.is_host() and _state == State.ON_FLOOR:
+	# Ignore a second press while everyone is already on the way (two players pressing at once).
+	if _net.is_host() and _state == State.ON_FLOOR and not _moving:
 		_next_floor()
 
 
 func _on_boss_defeated(_boss_id: StringName) -> void:
-	if _net.is_host() and _state == State.BOSS_FIGHT:
+	if _net.is_host() and _state == State.BOSS_FIGHT and not _moving:
 		_after_boss()
 
 

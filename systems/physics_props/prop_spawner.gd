@@ -13,6 +13,9 @@ extends Node3D
 const REFUSE_TOO_FAR: String = "Too far away"
 ## A pusher must be this close to the prop (metres, body to prop centre).
 const PUSH_REACH: float = 3.0
+## Knock-on: one of the asker's props must be this close to the prop it wants (metres, centre to centre;
+## generous because the host's copy of the asker's prop is a little behind).
+const KNOCK_ON_REACH: float = 3.0
 ## How fast the clock offset estimate may creep later (ms per ms), to follow a growing delay.
 const CLOCK_CREEP: float = 0.001
 ## Extra reach the host allows for network delay and the size of the prop (metres).
@@ -32,6 +35,9 @@ var _has_clock: bool = false
 var _last_clock_msec: int = 0
 ## A player's PC: timer for sending the props it runs.
 var _owned_timer: float = 0.0
+## Host: when each prop last changed physics owner (msec), and hand-overs waiting for the cooldown.
+var _owner_changed_msec: Dictionary[int, int] = {}
+var _pending_owner: Dictionary[int, int] = {}
 
 
 ## For tests only: a different Net and config. Call before adding the node to the tree.
@@ -149,7 +155,8 @@ func get_snapshot_batch(near: bool) -> Array:
 		# Props run by a player's PC are always sent on (the host's copy just follows them).
 		var awake: bool = not prop.sleeping or prop.is_held() or prop.is_attached() or prop.get_owner_peer() != 1
 		if awake and _is_near_a_player(prop) == near:
-			batch.append([prop.net_id, prop.global_position, prop.global_basis.get_rotation_quaternion()])
+			batch.append([prop.net_id, prop.global_position, prop.global_basis.get_rotation_quaternion(),
+				prop.get_estimated_velocity()])
 	return batch
 
 
@@ -175,8 +182,9 @@ func request_push(prop: NetProp, player_id: int, direction: Vector3, speed: floa
 func send_hold_point(prop: NetProp, player_id: int, point: Vector3) -> void:
 	if prop.is_simulated_here():
 		prop.set_hold_target(player_id, point)
-	else:
+	elif not multiplayer.is_server():
 		_hold_point_rpc.rpc_id(1, prop.net_id, point)
+	# (On the host while another PC still runs it, e.g. during the hand-over cooldown: nothing to do.)
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -198,7 +206,7 @@ func _request_grab_rpc(net_id: int) -> void:
 		return
 	_set_holders.rpc(net_id, holders, body.player_id, false)
 	# One holder: their PC runs it (no delay for them). Several: the host does.
-	_hand_to(prop, sender if holders.size() == 1 else 1)
+	hand_to(prop, sender if holders.size() == 1 else 1)
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -218,7 +226,7 @@ func _request_release_rpc(net_id: int, throw_direction: Vector3) -> void:
 	if thrown and prop.is_simulated_here():
 		prop.apply_central_impulse(throw_direction.normalized() * throw_strength(prop))
 	if holders.size() == 1:
-		_hand_to(prop, peer_of_player(holders[0]))
+		hand_to(prop, peer_of_player(holders[0]))
 
 
 @rpc("any_peer", "call_local", "unreliable_ordered")
@@ -235,8 +243,8 @@ func _push_rpc(net_id: int, direction: Vector3, speed: float) -> void:
 	var fastest: float = body.tuning.sprint_speed * body.get_movement().get_speed_multiplier()
 	if prop.get_owner_peer() == 1 and not prop.is_held() and multiplayer.get_remote_sender_id() != 1:
 		# Hand it to the pusher's PC so their pushes are instant from now on.
-		_hand_to(prop, multiplayer.get_remote_sender_id())
-		return
+		hand_to(prop, multiplayer.get_remote_sender_id())
+	# Still ours (the hand-over may be waiting for its cooldown): push it here meanwhile.
 	if prop.is_simulated_here():
 		prop.add_push(body.player_id, direction, clampf(speed, 0.0, fastest))
 
@@ -292,11 +300,51 @@ func peer_of_player(player_id: int) -> int:
 	return body.get_multiplayer_authority() if body != null else 0
 
 
-## Host: let `peer_id`'s PC run this prop's physics from now on (1 = the host itself).
-func _hand_to(prop: NetProp, peer_id: int) -> void:
-	if not multiplayer.is_server() or peer_id <= 0 or prop.get_owner_peer() == peer_id:
+## Host: let `peer_id`'s PC run this prop's physics (1 = the host itself). If it changed hands less
+## than prop_owner_cooldown_msec ago, the hand-over waits until then (no ping-pong between PCs when
+## two players keep grabbing the same prop).
+func hand_to(prop: NetProp, peer_id: int) -> void:
+	if not multiplayer.is_server() or peer_id <= 0:
 		return
-	_set_owner.rpc(prop.net_id, peer_id, prop.global_transform, prop.linear_velocity, prop.angular_velocity)
+	if prop.get_owner_peer() == peer_id:
+		_pending_owner.erase(prop.net_id)
+		return
+	var since: int = Time.get_ticks_msec() - int(_owner_changed_msec.get(prop.net_id, -_config.prop_owner_cooldown_msec))
+	if since < _config.prop_owner_cooldown_msec:
+		_pending_owner[prop.net_id] = peer_id
+		return
+	_pending_owner.erase(prop.net_id)
+	_owner_changed_msec[prop.net_id] = Time.get_ticks_msec()
+	_set_owner.rpc(prop.net_id, peer_id, prop.global_transform, prop.get_estimated_velocity(), prop.angular_velocity)
+
+
+## Host: hand-overs that were waiting for the cooldown.
+func _apply_pending_owners() -> void:
+	for net_id: int in _pending_owner.keys():
+		var prop: NetProp = get_prop(net_id)
+		if prop == null:
+			_pending_owner.erase(net_id)
+			continue
+		hand_to(prop, _pending_owner[net_id])
+
+
+## A player's PC: a prop it runs bumped into `prop`; ask to run that one too (knock-on ownership).
+func request_knock_on(prop: NetProp) -> void:
+	_request_knock_on_rpc.rpc_id(1, prop.net_id)
+
+
+## Player's PC -> host: "my prop hit this loose one, let me run it". Granted if it's loose, the host
+## runs it, and one of the sender's props is right next to it.
+@rpc("any_peer", "call_remote", "reliable")
+func _request_knock_on_rpc(net_id: int) -> void:
+	var prop: NetProp = get_prop(net_id)
+	var sender: int = multiplayer.get_remote_sender_id()
+	if not multiplayer.is_server() or prop == null or prop.get_owner_peer() != 1 or prop.is_held() or prop.is_attached():
+		return
+	for other: NetProp in get_props():
+		if other.get_owner_peer() == sender and other.global_position.distance_to(prop.global_position) <= KNOCK_ON_REACH:
+			hand_to(prop, sender)
+			return
 
 
 ## Host -> everyone: who runs this prop's physics now, starting from this state.
@@ -304,6 +352,8 @@ func _hand_to(prop: NetProp, peer_id: int) -> void:
 func _set_owner(net_id: int, peer_id: int, start: Transform3D, velocity: Vector3, spin: Vector3) -> void:
 	var prop: NetProp = get_prop(net_id)
 	if prop != null:
+		if multiplayer.is_server():
+			_owner_changed_msec[net_id] = Time.get_ticks_msec()
 		prop.apply_owner(peer_id, start, velocity, spin)
 
 
@@ -317,10 +367,11 @@ func _return_owner_rpc(net_id: int, last: Transform3D, velocity: Vector3, spin: 
 
 ## Owner (a player's PC) -> host: where it is now (the host passes it on to everyone else).
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func _owner_snapshot_rpc(net_id: int, host_msec: int, position_now: Vector3, rotation_now: Quaternion) -> void:
+func _owner_snapshot_rpc(net_id: int, host_msec: int, position_now: Vector3, rotation_now: Quaternion,
+		velocity: Vector3) -> void:
 	var prop: NetProp = get_prop(net_id)
 	if multiplayer.is_server() and prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer():
-		prop.apply_snapshot(host_msec, position_now, rotation_now)
+		prop.apply_snapshot(host_msec, position_now, rotation_now, velocity)
 
 
 ## Host -> everyone: push this prop (only the PC that runs it does).
@@ -354,7 +405,7 @@ func _run_owned_props(delta: float) -> void:
 			continue
 		if send_now:
 			_owner_snapshot_rpc.rpc_id(1, prop.net_id, get_host_clock_msec(), prop.global_position,
-				prop.global_basis.get_rotation_quaternion())
+				prop.global_basis.get_rotation_quaternion(), prop.linear_velocity)
 
 
 # --- Spawning and syncing ---------------------------------------------------------------------
@@ -410,6 +461,7 @@ func _physics_process(delta: float) -> void:
 		_run_owned_props(delta)
 		return
 	_handle_fallen_props()
+	_apply_pending_owners()
 	if not _net.is_online():
 		return
 	_near_timer += delta
@@ -450,7 +502,7 @@ func _receive_snapshots(host_msec: int, batch: Array) -> void:
 	for entry: Array in batch:
 		var prop: NetProp = get_prop(int(entry[0]))
 		if prop != null:
-			prop.apply_snapshot(host_msec, entry[1], entry[2])
+			prop.apply_snapshot(host_msec, entry[1], entry[2], entry[3])
 
 
 func _is_near_a_player(prop: NetProp) -> bool:

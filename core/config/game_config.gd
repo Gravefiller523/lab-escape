@@ -80,6 +80,9 @@ extends Resource
 ## Clients show props this many milliseconds behind the host, so they can glide evenly between
 ## snapshots instead of hopping. Higher = smoother but later.
 @export var prop_interpolation_delay_msec: int = 50
+## A prop that just changed which PC runs its physics waits this long (msec) before changing again,
+## so two players grabbing it back and forth don't make it hop between PCs.
+@export var prop_owner_cooldown_msec: int = 300
 ## Distance (m) beyond which a prop counts as far.
 @export var prop_far_distance: float = 30.0
 ## Anything below this height (m) has fallen out of the world.

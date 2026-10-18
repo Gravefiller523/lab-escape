@@ -430,3 +430,57 @@ func test_standing_on_a_prop_does_not_push_it() -> void:
 	body.set_input_override(walk)
 	await wait_physics_frames(15)
 	assert_lt(start.distance_to(crate.global_position), 0.05, "walking about on top doesn't move it")
+
+
+func test_hand_over_waits_for_the_cooldown() -> void:
+	var config := _config()
+	config.prop_owner_cooldown_msec = 300
+	var pc := _make_pc(config)
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)))
+	_props(pc).hand_to(crate, 5)
+	assert_eq(crate.get_owner_peer(), 5, "first hand-over is immediate")
+	_props(pc).hand_to(crate, 6)
+	assert_eq(crate.get_owner_peer(), 5, "a second one straight after waits")
+	await wait_seconds(0.4)
+	assert_eq(crate.get_owner_peer(), 6, "and happens once the cooldown is over")
+
+
+func test_snapshots_carry_speed() -> void:
+	var pc := _make_pc()
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 0.31, -3)))
+	await wait_physics_frames(3)
+	crate.apply_central_impulse(Vector3(0, 0, -40))
+	await wait_physics_frames(2)
+	var batch: Array = _props(pc).get_snapshot_batch(true)
+	assert_eq(batch.size(), 1)
+	var entry: Array = batch[0]
+	assert_eq(entry.size(), 4, "net id, position, rotation and speed")
+	assert_lt((entry[3] as Vector3).z, -1.0, "the speed is in there")
+
+
+func test_knock_on_ownership() -> void:
+	var host := _make_pc()
+	var client := _make_pc()
+	var server := ENetMultiplayerPeer.new()
+	assert_eq(server.create_server(PORT + 5, 4), OK)
+	host.multiplayer.multiplayer_peer = server
+	var peer := ENetMultiplayerPeer.new()
+	peer.create_client("127.0.0.1", PORT + 5)
+	client.multiplayer.multiplayer_peer = peer
+	await wait_until(func() -> bool: return _my_body(client) != null, WAIT)
+	var client_body: PlayerCharacter = _my_body(client)
+	client_body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(10)
+	var held_on_host: NetProp = _props(host).spawn_prop(&"prop_crate", _in_front_of(client_body))
+	await wait_until(func() -> bool: return _props(client).get_prop(held_on_host.net_id) != null, WAIT)
+	var held: NetProp = _props(client).get_prop(held_on_host.net_id)
+	PropsService.grab_of(client_body).try_grab(held)
+	await wait_until(func() -> bool: return held.is_simulated_here(), WAIT)
+	await wait_physics_frames(10)
+	# A loose crate right where the held one floats: they bump.
+	var hold_point: Vector3 = client_body.get_aim_origin() + client_body.get_aim_direction() * _props(client).get_config().hold_distance
+	var loose_on_host: NetProp = _props(host).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, hold_point + client_body.get_aim_direction() * 0.55))
+	await wait_until(func() -> bool: return loose_on_host.get_owner_peer() == client_body.get_multiplayer_authority(), WAIT)
+	assert_eq(loose_on_host.get_owner_peer(), client_body.get_multiplayer_authority(),
+		"the bumped crate is now run by the client too")

@@ -111,6 +111,12 @@ grabber. Props of a player who leaves, and key objects that fall out of the worl
 Trade-off: the owner's PC is trusted with that prop's position (fine for co-op among friends). On the
 owner's PC, other props are frozen copies, so a held prop can't knock them over there (the host's copy can).
 Non-owners show props `prop_interpolation_delay_msec` = 50 ms behind (was 100).
+NEW 2026-10-18 (from the research, Zachary approved): **knock-on ownership** (a prop run by a player's PC
+that bumps a loose host-run prop asks the host to run that one too: `request_knock_on`, granted if one of
+the asker's props is within 3 m); **speed in snapshots** (position, rotation and velocity; followers carry a
+late prop along its last speed for up to 0.2 s, and hand-overs keep a flying prop flying via
+`get_estimated_velocity`); **hand-over cooldown** (`prop_owner_cooldown_msec` = 300: a prop that just
+changed PC waits before changing again; `hand_to` is now public for the host).
 Old text kept below for reference.
 **Holding with local prediction (approach A, default).** When a client grabs:
 1. The client immediately moves its own copy toward its hold point each frame (shape-cast against the
@@ -214,6 +220,8 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
 - 2026-10-17: a client's throw is no longer held back (`let_go_here`); held props stay solid and standing on
   your held prop drops it. Tests: `test_held_prop_stays_solid_but_standing_on_it_drops_it`,
   `test_client_throw_flies_as_far_as_a_host_throw`.
+- 2026-10-18: knock-on ownership, velocity in snapshots, hand-over cooldown. Tests:
+  `test_hand_over_waits_for_the_cooldown`, `test_snapshots_carry_speed`, `test_knock_on_ownership`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

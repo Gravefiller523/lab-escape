@@ -31,6 +31,10 @@ const MAX_SNAPSHOTS: int = 12
 const OWNER_IDLE_MSEC: int = 800
 ## "Stopped moving" for handing back (m/s).
 const SETTLED_SPEED: float = 0.15
+## Followers carry a late prop along its last speed for at most this long (seconds).
+const MAX_EXTRAPOLATION_SECONDS: float = 0.2
+## Contacts a prop reports per frame (for knock-on ownership).
+const MAX_CONTACTS: int = 4
 
 ## Unique per spawned prop, set by the host.
 var net_id: int = 0
@@ -61,6 +65,8 @@ var _safe_position: Vector3
 var _stuck_seconds: float = 0.0
 ## Owner (a client): we already asked the host to take it back.
 var _handback_sent: bool = false
+## Props we already asked to take over after bumping into them (net id -> true).
+var _knock_requested: Dictionary[int, bool] = {}
 
 
 ## The NetProp a node belongs to (the prop itself, or one of its children). Null if none.
@@ -85,6 +91,9 @@ func _ready() -> void:
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	freeze = not is_simulated_here()
 	sleeping_state_changed.connect(_on_sleeping_state_changed)
+	body_entered.connect(_on_body_entered)
+	max_contacts_reported = MAX_CONTACTS
+	_update_contact_monitor()
 
 
 func is_held() -> bool:
@@ -198,15 +207,16 @@ func apply_owner(peer_id: int, start: Transform3D, velocity: Vector3, spin: Vect
 		sleeping = false
 	else:
 		freeze = true
+	_update_contact_monitor()
 
 
-## A snapshot from the owner, stamped with the host's clock (milliseconds).
-func apply_snapshot(host_msec: int, position_now: Vector3, rotation_now: Quaternion) -> void:
+## A snapshot from the owner (position, rotation, speed), stamped with the host's clock (milliseconds).
+func apply_snapshot(host_msec: int, position_now: Vector3, rotation_now: Quaternion, velocity: Vector3) -> void:
 	if is_simulated_here():
 		return
 	if not _snapshots.is_empty() and host_msec <= int(_snapshots.back()["t"]):
 		return
-	_snapshots.append({"t": host_msec, "p": position_now, "r": rotation_now})
+	_snapshots.append({"t": host_msec, "p": position_now, "r": rotation_now, "v": velocity})
 	while _snapshots.size() > MAX_SNAPSHOTS:
 		_snapshots.pop_front()
 
@@ -232,6 +242,14 @@ func set_hold_target(player_id: int, target: Vector3) -> void:
 func add_push(player_id: int, direction: Vector3, speed: float) -> void:
 	_pushes[player_id] = {"time": Time.get_ticks_msec(), "direction": direction, "speed": speed}
 	_last_touch_msec = Time.get_ticks_msec()
+
+
+## How fast it is moving: its real speed where it is simulated, otherwise the owner's last report.
+## Used when handing it to another PC, so a flying prop keeps flying.
+func get_estimated_velocity() -> Vector3:
+	if is_simulated_here() or _snapshots.is_empty():
+		return linear_velocity
+	return _snapshots.back()["v"]
 
 
 ## Owner (a client): nobody here has touched it for a while and it has settled.
@@ -322,8 +340,11 @@ func _follow(delta: float) -> void:
 	if _snapshots.is_empty() or _spawner == null:
 		return
 	var render_msec: int = _spawner.get_host_clock_msec() - _config().prop_interpolation_delay_msec
-	var target_position: Vector3 = _snapshots.back()["p"]
-	var target_rotation: Quaternion = _snapshots.back()["r"]
+	# Past the newest snapshot (it's late): carry on along its last known speed for a moment.
+	var newest: Dictionary = _snapshots.back()
+	var ahead_seconds: float = clampf(float(render_msec - int(newest["t"])) / 1000.0, 0.0, MAX_EXTRAPOLATION_SECONDS)
+	var target_position: Vector3 = (newest["p"] as Vector3) + (newest["v"] as Vector3) * ahead_seconds
+	var target_rotation: Quaternion = newest["r"]
 	for index: int in range(_snapshots.size() - 1):
 		var before: Dictionary = _snapshots[index]
 		var after: Dictionary = _snapshots[index + 1]
@@ -340,6 +361,24 @@ func _follow(delta: float) -> void:
 	var weight: float = 1.0 - exp(-SNAPSHOT_SMOOTHING * delta)
 	global_position = global_position.lerp(target_position, weight)
 	global_basis = Basis(global_basis.get_rotation_quaternion().slerp(target_rotation, weight))
+
+
+## A player's PC that runs this prop watches what it bumps into (see _on_body_entered).
+func _update_contact_monitor() -> void:
+	contact_monitor = is_simulated_here() and not multiplayer.is_server()
+	_knock_requested.clear()
+
+
+## Knock-on ownership: on a player's PC, when a prop it runs hits a loose prop the host runs, ask to
+## run that one too, so it gets knocked over here straight away instead of acting like a wall.
+func _on_body_entered(other: Node) -> void:
+	var prop := other as NetProp
+	if prop == null or _spawner == null or not is_simulated_here() or multiplayer.is_server():
+		return
+	if prop.is_simulated_here() or prop.is_held() or prop.is_attached() or _knock_requested.has(prop.net_id):
+		return
+	_knock_requested[prop.net_id] = true
+	_spawner.request_knock_on(prop)
 
 
 func _on_sleeping_state_changed() -> void:

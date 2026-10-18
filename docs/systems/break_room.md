@@ -87,6 +87,8 @@ GUT tests (`tests/unit/break_room/test_break_room.gd`): `test_enough_spawn_point
   with, one per Marker3D under `%FunProps` (its `prop_id` metadata says which). Test: `test_room_has_props_to_play_with`.
 - 2026-10-18: fix (Steam test): props slid through the closing elevator doors. The doors are now
   AnimatableBody3Ds (moving physics bodies) moved in physics steps, so they push props. Test: `test_closed_doors_stop_props`.
+- 2026-10-18 (game_flow branch): "Elevator starting!" no longer says game_flow is missing; the doors reopen only
+  matter in the room's own test scene (in the game, game_flow takes everyone to the first floor).
 
 ## HANDOFF
 **Done (Phase 1a grey box):** `break_room.tscn`: floor, walls, a table, 8 spawn points (more are

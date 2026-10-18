@@ -8,12 +8,12 @@ extends Node3D
 ##
 ## STUBS until other systems exist:
 ## - cargo_lift: the elevator's "who's inside" check is ElevatorZoneStub.
-## - game_flow: when the elevator start is accepted, a sign says so and the doors reopen after a few
-##   seconds, instead of a run starting.
+## - game_flow (when it isn't running the game, e.g. this room's test scene): after an accepted start
+##   the doors reopen after a few seconds.
 ## - cosmetics / voice: the closet and mirror only show a message.
 
 const SPAWN_RING_RADIUS: float = 3.0
-## STUB (game_flow): seconds before the doors reopen after a start, since no run starts yet.
+## Seconds before the doors reopen after a start when no run starts (test scenes).
 const STUB_REOPEN_SECONDS: float = 4.0
 const DOOR_SPEED: float = 2.0
 ## How far from the middle each door panel sits when closed (metres).
@@ -173,9 +173,10 @@ func _accept_start() -> void:
 func _start_accepted() -> void:
 	_starting = true
 	_doors_closed = true
-	_message.text = "Elevator starting!\n(game_flow isn't built yet, so no run starts)"
+	_message.text = "Elevator starting!"
 	EventBus.elevator_start_accepted.emit()
-	# STUB (game_flow): reopen so testing can carry on.
+	# game_flow takes everyone down to the first floor. When it isn't running the game (this room's
+	# own test scene), nothing happens, so the doors reopen and testing can carry on.
 	get_tree().create_timer(STUB_REOPEN_SECONDS).timeout.connect(_reopen_after_stub)
 
 

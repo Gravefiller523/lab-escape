@@ -191,11 +191,16 @@ func _reopen_after_stub() -> void:
 	_message.text = ""
 
 
-func _process(delta: float) -> void:
+## The doors are AnimatableBody3Ds moved in physics steps, so they push props and players out of the
+## way instead of sliding through them.
+func _physics_process(delta: float) -> void:
 	_left_door.position.x = move_toward(_left_door.position.x,
 		-DOOR_CLOSED_X if _doors_closed else _left_open_x, DOOR_SPEED * delta)
 	_right_door.position.x = move_toward(_right_door.position.x,
 		DOOR_CLOSED_X if _doors_closed else _right_open_x, DOOR_SPEED * delta)
+
+
+func _process(_delta: float) -> void:
 	var missing: String = _missing_names()
 	_missing_sign.text = "Everyone's in! Press E at the green button." if missing.is_empty() \
 		else "Not in the elevator:\n" + missing

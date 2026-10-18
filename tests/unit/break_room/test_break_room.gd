@@ -231,3 +231,20 @@ func test_room_has_props_to_play_with() -> void:
 	await wait_until(func() -> bool: return _room(pc).get_prop_spawner().get_props().size() > 0, WAIT)
 	assert_eq(_room(pc).get_prop_spawner().get_props().size(), 4, "one prop per FunProps marker")
 	assert_eq(_room(pc).get_prop_spawner().get_props(&"prop_crate_heavy").size(), 1)
+
+
+func test_closed_doors_stop_props() -> void:
+	var pc := _make_pc(_config())
+	var me: int = _net(pc).local_player_id()
+	await wait_until(func() -> bool: return _body(pc, me) != null, WAIT)
+	assert_true(pc.get_node("BreakRoom/LeftDoor") is AnimatableBody3D, "doors are moving physics bodies")
+	_walk_into_elevator(pc, me)
+	await wait_physics_frames(5)
+	_room(pc).request_start()
+	await wait_seconds(1.5)
+	var props: PropSpawner = _room(pc).get_prop_spawner()
+	var crate: NetProp = props.spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 0.4, -7.5)))
+	await wait_physics_frames(2)
+	props.apply_impulse(crate, Vector3(0, 0, -60))
+	await wait_seconds(1.0)
+	assert_gt(crate.global_position.z, -8.9, "the crate hit the closed doors instead of sliding through")

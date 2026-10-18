@@ -85,6 +85,8 @@ GUT tests (`tests/unit/break_room/test_break_room.gd`): `test_enough_spawn_point
 - 2026-10-18: fix (found in the 2-PC Steam test): the room had no PropSpawner, so `spawn prop_...` failed.
   The room now makes one (`Props` child; NEW `get_prop_spawner()`), and the host spawns a few props to play
   with, one per Marker3D under `%FunProps` (its `prop_id` metadata says which). Test: `test_room_has_props_to_play_with`.
+- 2026-10-18: fix (Steam test): props slid through the closing elevator doors. The doors are now
+  AnimatableBody3Ds (moving physics bodies) moved in physics steps, so they push props. Test: `test_closed_doors_stop_props`.
 
 ## HANDOFF
 **Done (Phase 1a grey box):** `break_room.tscn`: floor, walls, a table, 8 spawn points (more are

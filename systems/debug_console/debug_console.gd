@@ -24,6 +24,8 @@ const SPAWN_SPREAD: float = 0.7
 const MSG_UNKNOWN: String = "Unknown command '%s'. Type help for the list."
 const MSG_NO_CHEATS: String = "Cheats are off in this build (Config: cheats_in_release)."
 const MSG_SENT_TO_HOST: String = "(sent to the host)"
+## Export presets with this custom feature allow cheats (test builds only, never the Steam release).
+const CHEATS_FEATURE: String = "cheats"
 
 ## Command name -> {"handler": Callable, "help": String, "host_only": bool}
 var _commands: Dictionary[StringName, Dictionary] = {}
@@ -31,7 +33,8 @@ var _commands: Dictionary[StringName, Dictionary] = {}
 var _spawners: Dictionary[StringName, Callable] = {}
 var _net: NetService
 var _config: GameConfig
-var _is_editor: bool = OS.has_feature("editor")
+## Editor builds, and test builds exported with the custom feature "cheats" (the "Windows Steam test" preset).
+var _is_editor: bool = OS.has_feature("editor") or OS.has_feature(CHEATS_FEATURE)
 var _history: PackedStringArray = []
 var _history_index: int = -1
 var _panel: PanelContainer
@@ -89,7 +92,8 @@ func run(command_line: String) -> String:
 	return _execute(command_line, _net.local_player_id())
 
 
-## Editor builds, or Config.game.cheats_in_release. In multiplayer only the host's setting matters.
+## Editor builds, test builds with the "cheats" feature, or Config.game.cheats_in_release.
+## In multiplayer only the host's setting matters.
 func cheats_allowed() -> bool:
 	return _is_editor or _config.cheats_in_release
 

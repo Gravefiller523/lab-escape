@@ -5,3 +5,6 @@
 # Temp copies Godot makes of locked DLLs
 ~*.dll
 *.tmp
+
+# Exported game builds
+/build/

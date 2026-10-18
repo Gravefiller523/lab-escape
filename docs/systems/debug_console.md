@@ -16,7 +16,7 @@ func register_command(name: StringName, handler: Callable, help: String, host_on
 ## handler: func(id: StringName, at: Transform3D, count: int, player_id: int) -> String
 func register_spawner(type_key: StringName, handler: Callable) -> void
 func run(command_line: String) -> String
-func cheats_allowed() -> bool        # editor builds, or Config.game.cheats_in_release
+func cheats_allowed() -> bool        # editor builds, CHANGED 2026-10-18: or exports with the custom feature "cheats", or Config.game.cheats_in_release
 func print_line(text: String) -> void
 func is_open() -> bool
 func set_open(open: bool) -> void   # NEW 2026-10-18: opens/closes the window (the ` key does this)
@@ -76,6 +76,9 @@ Test scene: `systems/debug_console/test/console_test.tscn` (floor, player, PropS
 - 2026-10-07: spec created.
 - 2026-10-18: built. NEW: `set_open`, `spread`, `use_test_setup`, `last_remote_output`. CHANGED: the spawn test
   uses a fake `prop` spawner. physics_props registers the `prop` spawner.
+- 2026-10-18: CHANGED: test builds exported with the custom feature `cheats` (the "Windows Steam test"
+  preset in export_presets.cfg) allow cheats, so console cheats work on the 2-PC Steam test. Release presets
+  must not have this feature.
 
 ## HANDOFF
 **Built (2026-10-18):** `systems/debug_console/debug_console.gd` (`DebugConsoleService`, autoload `DebugConsole`,

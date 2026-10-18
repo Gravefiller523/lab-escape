@@ -92,9 +92,8 @@ GUT tests (`tests/unit/steam_session/test_steam_session.gd`, with `fake_steam_ap
   `test_connect_lobby_launch_argument`, `test_rich_presence_follows_floors`.
 
 ## Acceptance criteria
-- [ ] Two PCs on different Steam accounts: host creates a lobby, invites, friend joins from the overlay.
-  *Not tested yet: needs a second PC and Steam account. Creating a real Steam lobby with a
-  SteamMultiplayerPeer host was checked on Zachary's PC (2026-10-17).*
+- [x] Two PCs on different Steam accounts: host creates a lobby, invites, friend joins from the overlay.
+  *Checked by Zachary on 2 PCs (2026-10-18), after the overlay fix (Steam starts at startup in exported builds).*
 - [x] Two local windows connect with `host_local`/`join_local`. *(Checked with 2 instances of the test scene, including a ping RPC.)*
 - [x] Lobby size follows `max_players`; nothing assumes 4. *(GUT test with 8.)*
 - [ ] Rich presence shows in the Steam friends list. *Code done; needs a friend on another account to look.*
@@ -127,8 +126,8 @@ GUT tests (`tests/unit/steam_session/test_steam_session.gd`, with `fake_steam_ap
 friends list, `+connect_lobby` launch argument), a SteamMultiplayerPeer for host and client, local
 ENet mode, names, avatars, rich presence, host-left detection, the test scene, and 7 GUT tests (all pass).
 
-**Known bugs / untested:** nothing failing. Not yet tested: a real Steam join between two PCs,
-invites, rich presence in a friend's list, and what happens on a client when the Steam host quits.
+**Known bugs / untested:** nothing failing. Checked 2026-10-18: a real Steam join between two PCs, invites through the overlay, and a client
+staying error-free when the host quits. Not yet tested: rich presence in a friend's list, and what happens on a client when the Steam host quits.
 Two windows on one PC can't both be signed in to Steam, so all of that needs a second PC with
 another Steam account.
 

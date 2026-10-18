@@ -150,7 +150,8 @@ label yet (delay is judged by ear on 2 PCs).
 
 ## Acceptance criteria
 - [ ] Two Steam PCs: talking is clear with under ~250 ms delay; with Fly, the listener hears a higher, buzzy voice from that player only.
-  *Not tested yet: needs 2 PCs. Fly effect per player is unit-tested.*
+  *Voice works on 2 Steam PCs (Zachary, 2026-10-18; Godot mic over Steam). Still to check by ear: the delay and
+  the Fly effect over Steam. Fly effect per player is unit-tested.*
 - [x] Voice gets quieter with distance and comes from the speaker's position. *(GUT tests; Zachary to check by ear with the echo dummy)*
 - [ ] Push-to-talk and open mic both work; settings change them live. *Both built (P toggles); "settings" waits for settings_input.*
 - [ ] Works with 4 players; 8 tested with local instances (bus count, CPU). *8 buses unit-tested; CPU with 8 not measured yet.*
@@ -193,7 +194,7 @@ or open mic; mute; speaking events; loopback (flat or from an anchor); 3D voices
 distance fade to silence; wall and closed-door muffling; routes through doors and hallways using the
 navmesh. 19 GUT tests, all pass. Never records, saves or uploads mic audio.
 
-**Known limits / not tested:** Steam voice between 2 PCs (needs the second PC); real delay; CPU with 8
+**Known limits / not tested:** voice works on 2 Steam PCs (2026-10-18); not yet judged: real delay, Fly over Steam; CPU with 8
 players; the mic device choice and voice volume (settings_input); ghosts heard by everyone at low
 volume (death_respawn, later). Late joiners don't learn effects set before they joined until upgrades
 re-applies them from the player record (upgrades' job). Mic capture starts only while you are in a

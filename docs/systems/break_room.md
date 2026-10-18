@@ -63,8 +63,8 @@ GUT tests (`tests/unit/break_room/test_break_room.gd`): `test_enough_spawn_point
 `test_force_start_only_after_timer_and_only_host`, NEW `test_solo_player_spawns_in_the_room`.
 
 ## Acceptance criteria
-- [ ] Phase 1a: 2+ players on Steam join into the grey-box Break Room and walk around together.
-  *Done with 2 local windows (2026-10-17). Real Steam on 2 PCs still to do.*
+- [x] Phase 1a: 2+ players on Steam join into the grey-box Break Room and walk around together.
+  *Done with 2 local windows (2026-10-17) and on real Steam with 2 PCs (Zachary, 2026-10-18).*
 - [x] Elevator only starts when everyone is inside; force start works after the timer. *(GUT tests)*
 - [ ] Returning after a run puts everyone back here. *Needs game_flow.*
 
@@ -111,7 +111,7 @@ press them, and the "who's missing" sign has a copy on the elevator's back wall.
 - cosmetics / voice: the closet and mirror only show a message.
 - ui: toasts are shown by the test scene.
 
-**Known limits:** walls only, no ceiling or real art; grey-box sizes may change. Not tested on real Steam yet.
+**Known limits:** walls only, no ceiling or real art; grey-box sizes may change. Checked on real Steam with 2 PCs (2026-10-18).
 
 **For the next systems:**
 - **ui (main menu, next):** after Host/Join, load `break_room.tscn` as the scene. The `PlayerSpawner`

@@ -207,8 +207,8 @@ The proof scene has 4 light crates (all the same mass for now), the heavy crate,
 a pit (no kill zone: things fall out of the world), and R to reset the props.
 
 ## Acceptance criteria
-- [ ] Two players on two PCs can pass one box with no visible lag for the holder and smooth motion for the watcher.
-  *Two local windows work (checked 2026-10-17). Zachary to judge the feel; two PCs on Steam still to do.*
+- [x] Two players on two PCs can pass one box with no visible lag for the holder and smooth motion for the watcher.
+  *Two local windows (2026-10-17) and 2 PCs on real Steam (Zachary, 2026-10-18).*
 - [x] Held props collide with walls and can knock other props over and be stacked. *(the host's spring-pulled body really collides; check by eye)*
 - [x] A lift part dropped in the pit reappears at a safe spot for everyone. *(GUT)*
 - [ ] 150 props on a floor (most asleep) keep the game smooth with 4 players; tested at 8. *Not measured yet.*

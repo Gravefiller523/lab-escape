@@ -124,7 +124,7 @@ game_flow's EventBus signals on that PC only; press them in the host window), "G
 - [x] CHANGED 2026-10-17: joining during a run is accepted with the joiner waiting for the next floor; reconnecting players get their record back. *(GUT tests; two-window check still to do by eye)*
 - [x] Works with `max_players` set to 8 (tested with local instances). *(test_roster_limit_follows_config: 8 ENet players in one test; 3 separate windows also checked)*
 - [x] No system other than net_core and steam_session touches `multiplayer.multiplayer_peer`. *(checked with a search, 2026-10-17)*
-- [ ] Not yet: the same on real Steam between 2 PCs (needs a second PC).
+- [x] The same on real Steam between 2 PCs. *(Zachary, 2026-10-18)*
 
 ## Open design questions
 - CHANGED 2026-10-17 (decided): new players can join any time there is room; mid-run joiners spectate until the next floor. Reconnects are allowed mid-run.
@@ -147,7 +147,7 @@ tests (all pass), and the roster test scene. Checked with 3 local windows.
 **Known bugs / limits:**
 - Over Steam the host trusts Steam for player ids. In local mode it trusts the client's hello (fine for testing only).
 - In local mode the "Steam ID" is a random ENet number, so names show as "Player 705903177".
-- Not tested on real Steam between two PCs yet.
+- Checked on real Steam between two PCs (2026-10-18).
 - If the host leaves, everyone's run ends (no host migration; spec default).
 
 **Stubbed:** the test scene's run and floor buttons stand in for game_flow.

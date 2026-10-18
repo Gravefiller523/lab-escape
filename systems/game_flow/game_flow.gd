@@ -45,6 +45,8 @@ var _run: RunState
 var _placeholder: DepartmentData
 ## Host: clients that have loaded the scene of the current transition.
 var _built_peers: Dictionary[int, bool] = {}
+## Host: the clients a transition is waiting for (players who join during it are already in the new scene).
+var _transition_peers: PackedInt32Array = []
 var _transition_id: int = 0
 ## Client: the host has told us where the game is (so a late "go to the Break Room" is ignored).
 var _synced_from_host: bool = false
@@ -71,7 +73,7 @@ func _ready() -> void:
 	EventBus.lift_departed.connect(_on_lift_departed)
 	EventBus.boss_defeated.connect(_on_boss_defeated)
 	EventBus.team_wiped.connect(_on_team_wiped)
-	EventBus.player_joined.connect(_on_player_joined)
+	_net.set_join_handlers(_join_info, _prepare_for_join)
 	if _net == Net:
 		_take_charge_of_start_scene.call_deferred()
 		_register_console_commands.call_deferred()
@@ -294,6 +296,7 @@ func _transition(path: String, run_data: Dictionary) -> void:
 	await get_tree().create_timer(CLIENT_LOAD_DELAY).timeout
 	if id != _transition_id:
 		return
+	_transition_peers = multiplayer.get_peers()
 	_load_rpc.rpc(path, run_data, id)
 	var waited: float = 0.0
 	while not _all_built() and waited < _config.floor_load_timeout:
@@ -312,8 +315,9 @@ func _transition(path: String, run_data: Dictionary) -> void:
 
 ## Host: true when every client has loaded the scene of the current transition.
 func _all_built() -> bool:
-	for peer_id: int in multiplayer.get_peers():
-		if not _built_peers.has(peer_id):
+	var connected: PackedInt32Array = multiplayer.get_peers()
+	for peer_id: int in _transition_peers:
+		if connected.has(peer_id) and not _built_peers.has(peer_id):
 			return false
 	return true
 
@@ -385,13 +389,32 @@ func _run_ended_rpc(result: StringName) -> void:
 	EventBus.run_ended.emit(result)
 
 
-## Host -> one player who just joined: where the game is now (they spectate a floor until the next one).
-@rpc("authority", "call_remote", "reliable")
-func _sync_joiner_rpc(state: int, run_data: Dictionary) -> void:
+# --- Joining (with net_core's handshake) -----------------------------------------------------------
+
+## Host: what a joining PC needs before Godot sends it anything (Net.set_join_handlers).
+func _join_info() -> Dictionary:
+	if _state in [State.BOOT, State.MAIN_MENU]:
+		return {}
+	return {"state": int(_state), "run": _run.to_dict() if _run != null else {}}
+
+
+## Joining PC, before the connection opens: go to the host's scene (on a floor, you spectate
+## until the next one). Net waits for this, so the host's players and props arrive into that scene.
+func _prepare_for_join(info: Dictionary) -> void:
+	if info.is_empty():
+		return
 	_synced_from_host = true
+	var state: int = int(info.get("state", State.BREAK_ROOM))
+	var run_data: Dictionary = info.get("run", {})
 	if run_data.is_empty():
 		_enter_break_room()
-		return
+	else:
+		_join_run(state, run_data)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+func _join_run(state: int, run_data: Dictionary) -> void:
 	_run = RunState.from_dict(run_data)
 	EventBus.run_started.emit(_run.run_seed)
 	match state as State:
@@ -400,7 +423,12 @@ func _sync_joiner_rpc(state: int, run_data: Dictionary) -> void:
 			_set_state(state as State)
 			if state != State.LOADING_FLOOR:
 				EventBus.floor_ready.emit(_run.floor_number, _run.get_department_id())
+		State.RUN_SUMMARY:
+			_load_scene.call(STUB_FLOOR_SCENE)
+			_set_state(State.RUN_SUMMARY)
 		_:
+			# The elevator ride: the host is still in the Break Room.
+			_load_scene.call(BREAK_ROOM_SCENE)
 			_set_state(state as State)
 
 
@@ -496,14 +524,6 @@ func _on_team_wiped() -> void:
 	if _net.is_host() and _state in [State.ON_FLOOR, State.BOSS_FIGHT, State.LOADING_FLOOR]:
 		end_run(RESULT_WIPED)
 
-
-## Host: tell a player who just joined where the game is.
-func _on_player_joined(player_id: int) -> void:
-	if not _net.is_host() or player_id == _net.local_player_id() or _state in [State.BOOT, State.MAIN_MENU]:
-		return
-	var peer_id: int = _net.get_peer_id(player_id)
-	if peer_id != 0:
-		_sync_joiner_rpc.rpc_id(peer_id, _state, _run.to_dict() if _run != null else {})
 
 
 # --- Console ------------------------------------------------------------------------------------

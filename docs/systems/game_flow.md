@@ -86,8 +86,9 @@ runs automatically.
   (`PlayerCharacter.stop_syncing()`) and the host goes to a loading screen, which removes its bodies
   and props on every PC; (2) 0.15 s later the clients load the new scene and report; (3) when they all
   have it (or after `floor_load_timeout`), the host loads it, then floors start with `floor_ready`.
-- NEW 2026-10-18: a player who joins after the Break Room gets the current state and run from the host
-  and loads that scene; on a floor they spectate until the next one.
+- NEW 2026-10-18: a player who joins gets the current state and run from the host and loads that scene
+  before the connection opens (net_core's joining handshake, `Net.set_join_handlers`); on a floor they
+  spectate until the next one. A scene change only waits for the clients that were there when it began.
 - NEW 2026-10-18: GameFlow is only "in charge" once it has loaded the main menu or the Break Room (or
   the game started in one). In other scenes (systems' test scenes, GUT) it ignores EventBus events.
 
@@ -129,17 +130,17 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
   `floors_per_department`.
 - DEFAULT 2026-10-18: a PC that doesn't finish loading in `floor_load_timeout` seconds is not kicked; the
   floor starts without waiting for it.
-- OPEN 2026-10-18 (net_core): Godot sends a new player everything already spawned the moment they
-  connect, before they have loaded the right scene. A player joining mid-floor gets errors for that
-  and doesn't see the bodies and crates already there (fine again from the next floor). Joining the
-  Break Room works by luck of timing. Fix in net_core: hold back replication until the joiner has
-  loaded the scene (Godot's SceneMultiplayer "authentication" step).
+- ~~OPEN 2026-10-18 (net_core): mid-floor joiners got everything before loading the floor.~~ FIXED 2026-10-18:
+  net_core's joining handshake asks GameFlow for the state and run (`_join_info`), and the joiner loads that
+  scene (`_prepare_for_join`) before the connection opens. Joining the Break Room uses it too.
 
 ## Changelog
 - 2026-10-07: spec created.
 - 2026-10-18: built (Phase 1b). Changes marked above: `run_seed` naming, the scene-change order, the
   stub floor, the placeholder department, console commands, the NEW helper functions. New GameConfig
   numbers: `elevator_ride_seconds`, `run_summary_seconds`, `floor_load_timeout`.
+- 2026-10-18: joiners go through net_core's handshake instead of a sync RPC after joining (the old way
+  lost the floor's players and props and printed errors).
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `GameFlow` (`GameFlowService`, `systems/game_flow/game_flow.gd`),

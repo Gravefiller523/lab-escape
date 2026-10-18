@@ -9,7 +9,7 @@ func _department() -> DepartmentData:
 	department.id = &"department_test_levels"
 	department.rooms_per_floor_min = 6
 	department.rooms_per_floor_max = 10
-	department.required_room_kinds = PackedStringArray(["start", "lift"])
+	department.required_room_kinds = PackedStringArray(["lift"])
 	return department
 
 
@@ -45,9 +45,7 @@ func test_same_seed_same_layout() -> void:
 func test_required_rooms_always_present() -> void:
 	for run_seed: int in SEEDS:
 		var kinds: Array[StringName] = _kinds(_layout(run_seed))
-		assert_eq(kinds[0], &"start", "seed %d starts with the start room" % run_seed)
-		assert_true(kinds.has(&"lift"), "seed %d has a lift room" % run_seed)
-		assert_eq(kinds.count(&"start"), 1)
+		assert_eq(kinds[0], &"lift", "seed %d starts in the lift room (players arrive in the elevator)" % run_seed)
 		assert_eq(kinds.count(&"lift"), 1)
 
 
@@ -115,7 +113,10 @@ func test_markers_sorted_same_order() -> void:
 		orders.append(names)
 	assert_eq(orders[0], orders[1], "the same floor gives the same marker order")
 	assert_gt(orders[0].size(), 0)
-	assert_eq(Level.get_markers(&"player_spawn").size(), 8, "the start room has 8 player spawns")
+	assert_eq(Level.get_markers(&"player_spawn").size(), 8, "the lift room has 8 player spawns")
+	for marker: RoomMarker in Level.get_markers(&"player_spawn"):
+		assert_eq(Level.get_room_for_position(marker.global_position).room_kind, &"lift", "players start in the elevator")
+	assert_gt(Level.get_markers(&"lift_part").size(), 0, "there are places for the lift part")
 	assert_eq(Level.get_markers(&"lift").size(), 1)
 	assert_not_null(Level.get_room_for_position(Level.get_markers(&"lift")[0].global_position))
 	assert_eq(Level.get_room_for_position(Level.get_markers(&"lift")[0].global_position).room_kind, &"lift")
@@ -147,10 +148,10 @@ func test_every_room_follows_cart_rules() -> void:
 			assert_gt(area, float(Config.game.max_players) * 2.0 + 6.0, "%s fits a cart and every player" % room.id)
 
 
-func test_boss_floor_is_the_arena() -> void:
+func test_boss_floor_is_the_lift_and_the_arena() -> void:
 	var layout: FloorLayout = LevelGenerator.generate_boss_floor(_department(), 6, 99)
 	assert_true(layout.is_boss_floor)
-	assert_eq(_kinds(layout), [&"boss_arena"] as Array[StringName])
+	assert_eq(_kinds(layout), [&"lift", &"boss_arena"] as Array[StringName], "the elevator opens into the arena")
 
 
 func test_new_room_file_used_without_code() -> void:

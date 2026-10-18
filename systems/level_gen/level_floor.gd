@@ -2,9 +2,12 @@ class_name LevelFloor
 extends Node3D
 ## The scene every floor is built in (Level.FLOOR_SCENE). game_flow loads it on every PC and calls
 ## Level.build(), which puts the rooms in. It has the light, the player and prop spawners, and:
-## - on floor_ready (host): players appear at the player_spawn markers;
+## - on floor_ready (host): players appear at the player_spawn markers (inside the lift room: every
+##   floor starts in the elevator);
 ## - STUB for physics_props: a crate (or the marker's "prop_id") at each prop_spawn marker;
-## - STUB for cargo_lift: a "Depart" button at each lift marker (emits lift_departed on every PC);
+## - STUB for cargo_lift: the department's lift parts at the lift_part markers farthest from the lift,
+##   and a "Depart" button at the lift marker. It only leaves (lift_departed on every PC) once the parts
+##   are in the lift room and every player is in there too. Not on boss floors.
 ## - STUB for bosses: a "Defeat the boss" button at each boss_spawn marker (emits boss_defeated).
 ## Nodes for markers are made on every PC with the same names (markers come in the same order).
 
@@ -14,6 +17,8 @@ const STUB_BUTTON_HEIGHT: float = 1.2
 var _players: PlayerSpawner
 var _props: PropSpawner
 var _prompt: Label
+## Host: the lift parts spawned on this floor.
+var _parts: Array[NetProp] = []
 
 
 func _ready() -> void:
@@ -48,7 +53,10 @@ func _exit_tree() -> void:
 
 ## Every PC: the rooms are in. Add the stand-in lift and boss buttons.
 func _on_floor_built() -> void:
-	var lifts: Array[RoomMarker] = Level.get_markers(&"lift")
+	var layout: FloorLayout = Level.get_layout()
+	var lifts: Array[RoomMarker] = []
+	if layout != null and not layout.is_boss_floor:
+		lifts = Level.get_markers(&"lift")
 	for index: int in lifts.size():
 		_stub_button("LiftStub%d" % index, lifts[index], "Depart (stub lift)", Color(0.2, 0.75, 0.3), _on_lift_used)
 	var bosses: Array[RoomMarker] = Level.get_markers(&"boss_spawn")
@@ -67,6 +75,52 @@ func _on_floor_ready(_floor_number: int, _department_id: StringName) -> void:
 	for marker: RoomMarker in Level.get_markers(&"prop_spawn"):
 		var prop_id := StringName(str(marker.params.get("prop_id", DEFAULT_PROP_ID)))
 		_props.spawn_prop(prop_id, marker.global_transform)
+	_spawn_lift_parts()
+
+
+## Host, STUB for cargo_lift: the lift parts go at the lift_part markers farthest from the lift.
+func _spawn_lift_parts() -> void:
+	var layout: FloorLayout = Level.get_layout()
+	var department: DepartmentData = GameFlow.get_department(layout.department_id) if layout != null else null
+	var lifts: Array[RoomMarker] = Level.get_markers(&"lift")
+	var spots: Array[RoomMarker] = Level.get_markers(&"lift_part")
+	if layout == null or layout.is_boss_floor or department == null or lifts.is_empty() or spots.is_empty():
+		return
+	if department.lift_part_prop_id == &"":
+		push_warning("LevelFloor: department '%s' has no lift_part_prop_id." % department.id)
+		return
+	var lift_at: Vector3 = lifts[0].global_position
+	# Farthest first; a stable sort keeps the marker order for ties, so every run is the same.
+	var order: Array[RoomMarker] = spots.duplicate()
+	order.sort_custom(func(a: RoomMarker, b: RoomMarker) -> bool:
+		return a.global_position.distance_to(lift_at) > b.global_position.distance_to(lift_at))
+	for index: int in department.lift_parts_per_floor:
+		var part: NetProp = _props.spawn_prop(department.lift_part_prop_id, order[index % order.size()].global_transform)
+		if part != null:
+			_parts.append(part)
+
+
+## Host: what still stops the lift leaving, or "" if it can go.
+func lift_blocker() -> String:
+	var delivered: int = 0
+	for part: NetProp in _parts:
+		if is_instance_valid(part) and _in_lift_room(part.global_position):
+			delivered += 1
+	if delivered < _parts.size():
+		return "Bring the lift part to the elevator first (%d/%d)." % [delivered, _parts.size()]
+	var missing: PackedStringArray = []
+	for player_id: int in Net.get_player_ids():
+		var body: PlayerCharacter = PlayerCharacter.find(player_id)
+		if body != null and not _in_lift_room(body.global_position):
+			missing.append(Net.get_display_name(player_id))
+	if not missing.is_empty():
+		return "Everyone into the elevator first. Waiting for: %s" % ", ".join(missing)
+	return ""
+
+
+func _in_lift_room(point: Vector3) -> bool:
+	var room: RoomData = Level.get_room_for_position(point)
+	return room != null and room.room_kind == LevelGenerator.KIND_LIFT
 
 
 func _process(_delta: float) -> void:
@@ -76,8 +130,20 @@ func _process(_delta: float) -> void:
 	_prompt.text = "" if prompt.is_empty() else "E: %s" % prompt
 
 
-func _on_lift_used(_player_id: int) -> void:
-	_lift_departed_rpc.rpc()
+func _on_lift_used(player_id: int) -> void:
+	var blocker: String = lift_blocker()
+	if blocker.is_empty():
+		_lift_departed_rpc.rpc()
+		return
+	var peer_id: int = Net.get_peer_id(player_id)
+	if peer_id != 0:
+		_note_rpc.rpc_id(peer_id, blocker)
+
+
+## Host -> the player who pressed Depart: why the lift can't go yet.
+@rpc("authority", "call_local", "reliable")
+func _note_rpc(text: String) -> void:
+	EventBus.toast_requested.emit(text)
 
 
 func _on_boss_used(_player_id: int) -> void:

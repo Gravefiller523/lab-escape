@@ -19,11 +19,14 @@ extends ContentData
 @export var task_ids: Array[StringName] = []
 ## Lift parts needed to leave each regular floor.
 @export var lift_parts_per_floor: int = 3
+## The prop players carry back to the lift (a PropData id, e.g. "prop_lift_part_zoology").
+@export var lift_part_prop_id: StringName = &""
 ## How many rooms a regular floor has (the generator picks between these).
 @export var rooms_per_floor_min: int = 6
 @export var rooms_per_floor_max: int = 10
-## Room kinds every regular floor must have, e.g. ["start", "lift"].
-@export var required_room_kinds: PackedStringArray = PackedStringArray(["start", "lift"])
+## Room kinds every regular floor must have. Every floor starts in its "lift" room (players arrive
+## in the elevator), so "lift" is always there; others listed here go as far from it as possible.
+@export var required_room_kinds: PackedStringArray = PackedStringArray(["lift"])
 ## Special room kinds that may appear, with their chance (0 to 1) per floor,
 ## e.g. {"supply": 0.6, "cafeteria": 0.3, "hr": 0.2, "armory": 0.2}.
 @export var optional_room_chances: Dictionary = {}

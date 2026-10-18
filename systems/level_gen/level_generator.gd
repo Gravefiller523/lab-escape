@@ -3,12 +3,16 @@ extends RefCounted
 ## Makes floor layouts: which rooms go where. Pure (no scene tree), so it is easy to test, and it
 ## only runs on the host. The same department, floor and seed always give the same layout.
 ##
-## How a floor grows: the start room goes at cell (0, 0). Then rooms are added one at a time, each
-## joined to a free doorway of a room already placed (the new room must have a doorway facing back,
-## and must fit in empty cells): first "filler" rooms (normal, corridor), then the special rooms the
-## department rolled (optional_room_chances), and last the required rooms (the lift), as far from
-## the start as possible. Doorways nothing joined get a wall plug when the floor is built.
+## How a floor grows: players arrive in the elevator, so the lift room goes at cell (0, 0). Then rooms
+## are added one at a time, each joined to a free doorway of a room already placed (the new room must
+## have a doorway facing back, and must fit in empty cells): first "filler" rooms (normal, corridor),
+## then the special rooms the department rolled (optional_room_chances), and last any other required
+## rooms, as far from the lift as possible. Doorways nothing joined get a wall plug when built.
+## A boss floor is the lift room with the boss arena joined to it.
 
+## The room every floor starts in: the cargo lift (the elevator players arrive in).
+const KIND_LIFT: StringName = &"lift"
+## An old name for the first room: treated like "lift" in required_room_kinds.
 const KIND_START: StringName = &"start"
 const KIND_BOSS_ARENA: StringName = &"boss_arena"
 ## Room kinds used to fill a floor up to its room count.
@@ -37,9 +41,9 @@ static func generate(department: DepartmentData, floor_in_department: int, floor
 	var pool: Array[RoomData] = room_pool(department, floor_in_department)
 	var layout := _new_layout(department, floor_number, run_seed, false)
 	var floor_plan := _Plan.new(layout, game.room_cell_size)
-	var starts: Array[RoomData] = _of_kind(pool, [KIND_START])
+	var starts: Array[RoomData] = _of_kind(pool, [KIND_LIFT])
 	if starts.is_empty():
-		push_warning("LevelGenerator: department '%s' has no start room." % department.id)
+		push_warning("LevelGenerator: department '%s' has no lift room." % department.id)
 		return layout
 	floor_plan.place(_pick(starts, rng), Vector2i.ZERO, rng.randi_range(0, 3))
 
@@ -53,7 +57,7 @@ static func generate(department: DepartmentData, floor_in_department: int, floor
 			specials.append(StringName(str(kind)))
 	var required: Array[StringName] = []
 	for kind: String in department.required_room_kinds:
-		if StringName(kind) != KIND_START:
+		if StringName(kind) != KIND_START and StringName(kind) != KIND_LIFT:
 			required.append(StringName(kind))
 
 	# Fillers, joined to random free doorways.
@@ -75,19 +79,22 @@ static func generate(department: DepartmentData, floor_in_department: int, floor
 	return layout
 
 
-## A boss floor: one boss arena (picked from the department's rooms) and nothing else.
+## A boss floor: the lift room (players arrive in the elevator) with a boss arena joined to it.
 static func generate_boss_floor(department: DepartmentData, floor_number: int, run_seed: int,
 		config: GameConfig = null) -> FloorLayout:
 	var game: GameConfig = config if config != null else Config.game
 	var rng: RandomNumberGenerator = SeededRng.make(run_seed, &"level_layout", floor_number)
 	var pool: Array[RoomData] = room_pool(department, 1000)
 	var layout := _new_layout(department, floor_number, run_seed, true)
+	var lifts: Array[RoomData] = _of_kind(pool, [KIND_LIFT])
 	var arenas: Array[RoomData] = _of_kind(pool, [KIND_BOSS_ARENA])
-	if arenas.is_empty():
-		push_warning("LevelGenerator: department '%s' has no boss arena; using a start room." % department.id)
-		arenas = _of_kind(pool, [KIND_START])
-	if not arenas.is_empty():
-		_Plan.new(layout, game.room_cell_size).place(_pick(arenas, rng), Vector2i.ZERO, rng.randi_range(0, 3))
+	if lifts.is_empty() or arenas.is_empty():
+		push_warning("LevelGenerator: department '%s' needs a lift room and a boss arena." % department.id)
+		return layout
+	var floor_plan := _Plan.new(layout, game.room_cell_size)
+	floor_plan.place(_pick(lifts, rng), Vector2i.ZERO, rng.randi_range(0, 3))
+	if not floor_plan.place_somewhere(arenas, rng, true):
+		push_warning("LevelGenerator: couldn't join a boss arena to the lift room.")
 	return layout
 
 

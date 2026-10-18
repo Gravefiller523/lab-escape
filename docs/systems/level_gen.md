@@ -70,10 +70,10 @@ Place a `start` room, grow outward through matching doorways on a grid of `room_
 `required_room_kinds` (start, lift), roll `optional_room_chances` (supply, cafeteria, hr, armory), fill
 up to `rooms_per_floor_min..max`, seal unused doorways with wall plugs. Pools are sorted by id so the
 same seed always gives the same layout.
-CHANGED 2026-10-18, the order: start room at cell (0, 0); fillers (`normal`, `corridor`) joined to random
-free doorways; then the rolled special rooms; then the other required kinds (the lift) at the free doorway
-farthest from the start. Unused doorways get wall plugs when the floor is built (not in the layout). A boss
-floor is one `boss_arena` room (a start room if the department has no arena). `player_count` isn't used yet.
+CHANGED 2026-10-18 (Zachary: every floor starts in the elevator): the lift room at cell (0, 0) (players arrive in it); fillers (`normal`, `corridor`) joined to random
+free doorways; then the rolled special rooms; then any other required kinds at the free doorway
+farthest from the lift (`required_room_kinds` default is now `["lift"]`; "start" counts as "lift"). Unused doorways get wall plugs when the floor is built (not in the layout). A boss
+floor is the lift room with a `boss_arena` joined to it. `player_count` isn't used yet.
 
 **Cart rules every room must follow** (checked by a GUT test over every room scene):
 - every `RoomDoorway.width` ≥ `Config.game.cart_width` + 0.4 m;
@@ -103,11 +103,15 @@ on the host. Reconnecting players receive the current layout on join.
 net_core (host check). Stub rooms: three grey-box rooms (start, corridor, lift) with doorways and markers.
 Debug: `seed`, `floor <n>`, and a `show_markers` toggle.
 DONE 2026-10-18: five shared grey-box rooms in `content/rooms/` (scenes in `systems/level_gen/rooms/`):
-`room_start_grey` (8 player spawns), `room_hall_grey`, `room_corridor_grey` (1x2), `room_lift_grey`,
-`room_arena_grey` (2x2). `seed` and `floor` are game_flow's console commands; `show_markers` isn't done
+`room_lift_grey` (the elevator: 8 player spawns, the `lift` marker, one doorway), `room_hall_grey`,
+`room_corridor_grey` (1x2), `room_arena_grey` (2x2). Halls and corridors have a `lift_part` marker.
+(`room_start_grey` was dropped the same day: floors start in the lift room.) `seed` and `floor` are game_flow's console commands; `show_markers` isn't done
 (the viewer scene shows them).
-- STUBS in `LevelFloor`: crates at `prop_spawn` markers (physics_props should do it), a "Depart" button at
-  `lift` markers (cargo_lift) and a "Defeat the boss" button at `boss_spawn` markers (bosses).
+- STUBS in `LevelFloor`: crates at `prop_spawn` markers (physics_props should do it); for cargo_lift: the
+  department's `lift_parts_per_floor` lift parts (`lift_part_prop_id`) at the `lift_part` markers farthest from
+  the lift, and a "Depart" button at the `lift` marker that only leaves once the parts and every player are in
+  the lift room (`LevelFloor.lift_blocker()` says what's missing, as a toast to whoever pressed it); no lift
+  on boss floors; and a "Defeat the boss" button at `boss_spawn` markers (bosses).
 
 ## Test scene and GUT tests
 Test scene `systems/level_gen/test/gen_viewer.tscn`: generate with a seed field and "next seed" button, top-down camera, markers drawn as coloured gizmos.
@@ -132,6 +136,9 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 ## Changelog
 - 2026-10-07: spec created.
 - 2026-10-18: built (Phase 1b). Changes marked above.
+- 2026-10-18 (Zachary): every floor starts in the elevator (lift room first), the lift part spawns far away
+  and must be carried back. DepartmentData: NEW `lift_part_prop_id`, `required_room_kinds` default `["lift"]`.
+  Test: `tests/integration/test_floor_lift_stub.gd`.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,
@@ -149,8 +156,9 @@ props at `prop_spawn` markers). Joiners get the layout in net_core's join handsh
 **Other system touched (on this branch):** game_flow: floors come from level_gen; its grey-box stub floor is gone.
 
 **For the next systems:**
-- **cargo_lift:** put the lift in the `room_lift_grey` scene (or spawn it at the `lift` marker) and
-  remove LevelFloor's "Depart" stub. Emit `lift_departed` on every PC.
+- **cargo_lift:** put the lift in the `room_lift_grey` scene (or spawn it at the `lift` marker), spawn the
+  parts (see LevelFloor's stub: farthest `lift_part` markers first) and remove LevelFloor's stub. Every floor
+  starts in the lift room. Emit `lift_departed` on every PC.
 - **physics_props:** spawn props at `prop_spawn` markers on `floor_ready` (the `prop_id` param) and
   remove LevelFloor's stub.
 - **enemies:** `enemy_spawn` markers; add navigation regions to rooms.

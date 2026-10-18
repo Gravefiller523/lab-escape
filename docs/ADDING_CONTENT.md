@@ -113,6 +113,12 @@ never stairs, between doorways; room for a cart to turn. The lift room must fit 
 `cafeteria`, `supply`, `boss_arena`), `department_ids`, `weight`, `min_floor`, `max_per_floor`.
 Add its id to the department's `room_ids` (or leave `department_ids` empty to share it).
 **Test:** level_gen's viewer scene, then `floor 1` in the console.
+NEW 2026-10-18, the grid rules: the scene's origin is the footprint corner with the smallest x and z, at
+floor height; the footprint covers `size_cells` cells along +x and +z (one cell = `room_cell_size`,
+12 m). Put each `RoomDoorway` on the footprint's edge, in the middle of a cell's edge, at y = 0.
+For a quick grey-box room, put the `GreyboxRoom` script on the root (it builds the floor and walls and
+leaves a gap at every doorway); see `systems/level_gen/rooms/` for examples. Navigation regions come
+with the enemies system.
 
 ## Department
 A department is a bundle. Make its rooms, enemies, boss, loot tables and stock first, then one

@@ -112,3 +112,23 @@ func test_pause_disables_player_input() -> void:
 	UI.close_screen()
 	await wait_physics_frames(20)
 	assert_lt(body.global_position.z, start.z - 0.5, "walks again after closing it")
+
+
+func test_pause_menu_hosts_local_in_test_scenes() -> void:
+	_flow.in_main_menu = false
+	UI.show_screen(UIService.SCREEN_PAUSE)
+	await wait_process_frames(2)
+	var menu: Node = UI.get_child(UI.get_child_count() - 2)
+	var port_edit := menu.find_child("PortEdit", true, false) as LineEdit
+	port_edit.text = str(TEST_PORT + 1)
+	assert_not_null(menu.find_child("JoinLocalButton", true, false), "join local is there too")
+	(menu.find_child("HostLocalButton", true, false) as Button).pressed.emit()
+	await wait_process_frames(2)
+	assert_true(Net.is_online(), "now hosting")
+	assert_false(UI.is_screen_open(), "the pause menu closes")
+	assert_eq(_flow.break_room_calls, 0, "the test scene stays open")
+
+	UI.show_screen(UIService.SCREEN_PAUSE)
+	await wait_process_frames(2)
+	menu = UI.get_child(UI.get_child_count() - 2)
+	assert_null(menu.find_child("HostLocalButton", true, false), "no local testing buttons once connected")

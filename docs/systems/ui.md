@@ -85,6 +85,9 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
 - 2026-10-17: Phase 1a slice built: main menu, small pause menu, toasts, the main scene and the
   game_flow scene-change stub. Added `get_open_screen`, `leave_game`, `get_toast_text`, `use_flow`.
 - 2026-10-17 (voice branch): the Esc menu shows voice's `MicSensitivityPanel` (mic sensitivity slider and level bar).
+- 2026-10-18 (debug_console branch, asked by Zachary): when you play solo, the Esc menu also shows "Testing on one PC"
+  (address, port, Host local, Join local), so a test scene run with F6 can become a 2-window test. The scene stays
+  open. Test: `test_pause_menu_hosts_local_in_test_scenes`.
 
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and

@@ -6,6 +6,7 @@ extends Node
 const BREAK_ROOM_SCENE: PackedScene = preload("res://systems/break_room/break_room.tscn")
 
 var _status: Label
+var _prompt: Label
 var _toast: Label
 var _toast_left: float = 0.0
 var _overview: Camera3D
@@ -45,6 +46,10 @@ func _process(delta: float) -> void:
 	elif SteamSession.get_lobby_id() != 0:
 		connection = "Steam lobby %d" % SteamSession.get_lobby_id()
 	_status.text = "%s | players: %d | %s" % ["HOST" if Net.is_host() else "CLIENT", Net.get_player_count(), connection]
+	# STUB (ui HUD): the "E: ..." prompt, drawn here until the HUD exists.
+	var controller: InteractionController = Interaction.get_local_controller()
+	var prompt: String = controller.get_prompt() if controller != null else ""
+	_prompt.text = "" if prompt.is_empty() else "E: %s" % prompt
 	_toast_left -= delta
 	if _toast_left <= 0.0:
 		_toast.text = ""
@@ -67,11 +72,26 @@ func _build_ui() -> void:
 	_status = Label.new()
 	column.add_child(_status)
 	var help := Label.new()
-	help.text = "WASD move, Shift sprint, Space jump, Ctrl crouch, E use, Esc frees the mouse."
+	help.text = "WASD move, Shift sprint, Space jump, Ctrl crouch, E use (look at it), Esc frees the mouse."
 	column.add_child(help)
 	_toast = Label.new()
 	_toast.add_theme_color_override("font_color", Color(1, 0.9, 0.4))
 	column.add_child(_toast)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(center)
+	var middle := VBoxContainer.new()
+	middle.custom_minimum_size = Vector2(300, 80)
+	center.add_child(middle)
+	var crosshair := Label.new()
+	crosshair.text = "+"
+	crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	middle.add_child(crosshair)
+	_prompt = Label.new()
+	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_prompt.add_theme_font_size_override("font_size", 22)
+	middle.add_child(_prompt)
 
 
 func _add_button(parent: Control, text: String, action: Callable) -> void:

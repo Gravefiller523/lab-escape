@@ -3,8 +3,10 @@ extends Node3D
 ## The Break Room: the lobby room where players arrive, walk around and step into the elevator to
 ## start a run (systems/break_room/break_room.tscn). Phase 1a grey box.
 ##
+## The start button, the "Start anyway" button, the jacket closet and the mirror are Interactables
+## (interaction system): look at one and press E. Their `used` signal fires on the host.
+##
 ## STUBS until other systems exist:
-## - interaction: stand next to a button and press Use (E) to press it.
 ## - cargo_lift: the elevator's "who's inside" check is ElevatorZoneStub.
 ## - game_flow: when the elevator start is accepted, a sign says so and the doors reopen after a few
 ##   seconds, instead of a run starting.
@@ -23,8 +25,6 @@ var _config: GameConfig
 var _occupied_since_msec: int = -1
 var _doors_closed: bool = false
 var _starting: bool = false
-## Which button areas the local player is standing in.
-var _near: Dictionary[StringName, bool] = {}
 ## Door x positions, read from the scene: open is where they start, closed is DOOR_CLOSED_X.
 var _left_open_x: float = 0.0
 var _right_open_x: float = 0.0
@@ -39,6 +39,10 @@ var _right_open_x: float = 0.0
 @onready var _force_button: Node3D = %ForceButton
 @onready var _whiteboard: Label3D = %WhiteboardText
 @onready var _message: Label3D = %MessageSign
+@onready var _start_use: Interactable = %StartUse
+@onready var _force_use: Interactable = %ForceUse
+@onready var _closet_use: Interactable = %ClosetUse
+@onready var _mirror_use: Interactable = %MirrorUse
 
 
 ## For tests only: use a different Net and config. Call before adding the node to the tree.
@@ -57,12 +61,19 @@ func _ready() -> void:
 	_spawner.spawn_points = get_spawn_points()
 	_left_open_x = _left_door.position.x
 	_right_open_x = _right_door.position.x
-	for area_name: StringName in [&"StartButtonArea", &"ForceButtonArea", &"ClosetArea", &"MirrorArea"]:
-		var area := get_node("%" + String(area_name)) as Area3D
-		area.collision_layer = PhysicsLayers.bit(PhysicsLayers.TRIGGERS)
-		area.collision_mask = PhysicsLayers.bit(PhysicsLayers.PLAYERS)
-		area.body_entered.connect(_on_area_body.bind(area_name, true))
-		area.body_exited.connect(_on_area_body.bind(area_name, false))
+	for use: Interactable in [_start_use, _force_use, _closet_use, _mirror_use]:
+		var body := use.get_anchor() as CollisionObject3D
+		body.collision_layer = PhysicsLayers.bit(PhysicsLayers.INTERACTABLES)
+		body.collision_mask = 0
+	# "Start anyway" starts hidden (see _process).
+	(_force_use.get_anchor() as CollisionObject3D).collision_layer = 0
+	_start_use.used.connect(_on_start_used)
+	# Only the host's own player may press "Start anyway", and only once the timer has passed.
+	_force_use.use_condition = func(player_id: int) -> bool:
+		return player_id == _net.local_player_id() and can_force_start()
+	_force_use.used.connect(func(_player_id: int) -> void: request_force_start())
+	_closet_use.used.connect(_show_note_to.bind("Jacket closet: coming with the cosmetics system."))
+	_mirror_use.used.connect(_show_note_to.bind("Mirror voice test: coming with the voice system."))
 	_zone.occupants_changed.connect(_on_occupants_changed)
 	EventBus.run_ended.connect(_on_run_ended)
 	_whiteboard.text = "Last run:\n(no runs yet)"
@@ -125,10 +136,22 @@ func _request_start_rpc() -> void:
 		return
 	if _net.sender_player_id() == 0:
 		return
+	_try_start(multiplayer.get_remote_sender_id())
+
+
+## Host: someone pressed the start button (looked at it and pressed E).
+func _on_start_used(player_id: int) -> void:
+	if _starting:
+		return
+	_try_start(_net.get_peer_id(player_id))
+
+
+## Host: start if everyone is inside, otherwise tell the presser (peer) who is missing.
+func _try_start(peer_id: int) -> void:
 	if _zone.contains_all_players():
 		_accept_start()
-	else:
-		_start_refused.rpc_id(multiplayer.get_remote_sender_id(), _missing_names())
+	elif peer_id != 0:
+		_start_refused.rpc_id(peer_id, _missing_names())
 
 
 func _accept_start() -> void:
@@ -168,23 +191,12 @@ func _process(delta: float) -> void:
 	_missing_sign.text = "Everyone's in! Press E at the green button." if missing.is_empty() \
 		else "Not in the elevator:\n" + missing
 	_missing_sign_inside.text = _missing_sign.text
-	_force_button.visible = can_force_start()
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not event.is_action_pressed(InputActions.USE):
-		return
-	# STUB (interaction): pressing Use while standing next to something presses it.
-	if _near.get(&"StartButtonArea", false):
-		request_start()
-	elif _near.get(&"ForceButtonArea", false) and can_force_start():
-		request_force_start()
-	elif _near.get(&"ClosetArea", false):
-		EventBus.toast_requested.emit("Jacket closet: coming with the cosmetics system.")
-		_message.text = "Jacket closet: coming later (cosmetics)."
-	elif _near.get(&"MirrorArea", false):
-		EventBus.toast_requested.emit("Mirror voice test: coming with the voice system.")
-		_message.text = "Mirror voice test: coming later (voice)."
+	var can_force: bool = can_force_start()
+	if _force_button.visible != can_force:
+		_force_button.visible = can_force
+		# Hidden: nobody can look at it or press it.
+		(_force_use.get_anchor() as CollisionObject3D).collision_layer = \
+			PhysicsLayers.bit(PhysicsLayers.INTERACTABLES) if can_force else 0
 
 
 func _missing_names() -> String:
@@ -192,12 +204,6 @@ func _missing_names() -> String:
 	for player_id: int in _zone.get_missing_players():
 		names.append(_net.get_display_name(player_id))
 	return ", ".join(names)
-
-
-func _on_area_body(body: Node3D, area_name: StringName, entered: bool) -> void:
-	var player := body as PlayerCharacter
-	if player != null and player.is_local():
-		_near[area_name] = entered
 
 
 func _on_occupants_changed() -> void:
@@ -209,3 +215,16 @@ func _on_occupants_changed() -> void:
 
 func _on_run_ended(result: StringName) -> void:
 	_whiteboard.text = "Last run:\n%s" % String(result).capitalize()
+
+
+## Host: show a short message to the player who used something (closet, mirror placeholders).
+func _show_note_to(player_id: int, text: String) -> void:
+	var peer_id: int = _net.get_peer_id(player_id)
+	if peer_id != 0:
+		_show_note.rpc_id(peer_id, text)
+
+
+@rpc("authority", "call_local", "reliable")
+func _show_note(text: String) -> void:
+	EventBus.toast_requested.emit(text)
+	_message.text = text

@@ -68,18 +68,18 @@ func _walk_into_elevator(pc: Node, player_id: int) -> void:
 	body.global_position = Vector3(zone.global_position.x, 0.1, zone.global_position.z)
 
 
-## Stands a body next to one of the room's buttons (StartButtonArea or ForceButtonArea).
-func _walk_to(pc: Node, player_id: int, area_name: String) -> void:
-	var area := pc.get_node("BreakRoom/" + area_name) as Area3D
-	_body(pc, player_id).global_position = Vector3(area.global_position.x, 0.1, area.global_position.z)
+## Stands a body about a metre in front of something usable (path inside the Break Room), on the room side.
+func _walk_to(pc: Node, player_id: int, use_body: String) -> void:
+	var target := pc.get_node("BreakRoom/" + use_body) as Node3D
+	var spot: Vector3 = target.global_position
+	spot.x -= signf(spot.x) * 1.0
+	_body(pc, player_id).global_position = Vector3(spot.x, 0.1, spot.z)
 
 
-## Presses Use (E) in that PC's window.
-func _press_use(pc: Node) -> void:
-	var event := InputEventAction.new()
-	event.action = InputActions.USE
-	event.pressed = true
-	(pc as Viewport).push_input(event)
+## What pressing E while looking at it does (through the player's InteractionController).
+func _use(pc: Node, player_id: int, use_body: String) -> bool:
+	var controller: InteractionController = InteractionService.controller_of(_body(pc, player_id))
+	return controller.press_use(pc.get_node("BreakRoom/" + use_body) as Node3D)
 
 
 func after_each() -> void:
@@ -168,12 +168,13 @@ func test_start_button_is_inside_the_elevator() -> void:
 	var pc := _make_pc(_config())
 	var me: int = _net(pc).local_player_id()
 	await wait_until(func() -> bool: return _body(pc, me) != null, WAIT)
-	_walk_to(pc, me, "StartButtonArea")
+	_walk_to(pc, me, "StartButton/UseBody")
 	await wait_physics_frames(5)
 	assert_true(_room(pc).get_elevator_zone().get_players_inside().has(me), "next to the button = inside the elevator")
 	watch_signals(EventBus)
-	_press_use(pc)
-	assert_signal_emitted(EventBus, "elevator_start_accepted", "pressing E there starts the elevator")
+	assert_true(_use(pc, me, "StartButton/UseBody"), "the start button is an Interactable")
+	await wait_physics_frames(2)
+	assert_signal_emitted(EventBus, "elevator_start_accepted", "using it there starts the elevator")
 
 
 func test_start_anyway_button_is_inside_the_elevator() -> void:
@@ -181,10 +182,45 @@ func test_start_anyway_button_is_inside_the_elevator() -> void:
 	var client := _client(_config(4, 0.3))
 	var host_id: int = _net(host).local_player_id()
 	await wait_until(func() -> bool: return _body(client, _net(client).local_player_id()) != null, WAIT)
-	_walk_to(host, host_id, "ForceButtonArea")
+	var force_body := host.get_node("BreakRoom/ForceButton/UseBody") as CollisionObject3D
+	assert_eq(force_body.collision_layer, 0, "hidden Start anyway can't be looked at")
+	_walk_to(host, host_id, "ForceButton/UseBody")
 	await wait_physics_frames(5)
 	assert_true(_room(host).get_elevator_zone().get_players_inside().has(host_id))
 	await wait_seconds(0.5)
+	await wait_process_frames(2)
+	assert_ne(force_body.collision_layer, 0, "it can be used once it shows")
 	watch_signals(EventBus)
-	_press_use(host)
-	assert_signal_emitted(EventBus, "elevator_start_accepted", "host pressed Start anyway from inside")
+	_use(host, host_id, "ForceButton/UseBody")
+	await wait_physics_frames(2)
+	assert_signal_emitted(EventBus, "elevator_start_accepted", "host used Start anyway from inside")
+
+
+func test_only_the_host_can_use_start_anyway() -> void:
+	var host := _host(_config(4, 0.3))
+	var client := _client(_config(4, 0.3))
+	var host_id: int = _net(host).local_player_id()
+	await wait_until(func() -> bool: return _body(client, _net(client).local_player_id()) != null, WAIT)
+	var client_id: int = _net(client).local_player_id()
+	await wait_until(func() -> bool: return _body(host, client_id) != null, WAIT)
+	_walk_into_elevator(host, host_id)
+	await wait_seconds(0.5)
+	assert_true(_room(host).can_force_start())
+	var force_use := host.get_node("BreakRoom/ForceButton/UseBody/ForceUse") as Interactable
+	assert_false(force_use.allows(client_id), "a client's use is refused by the host")
+	assert_true(force_use.allows(host_id))
+
+
+func test_closet_note_goes_to_whoever_used_it() -> void:
+	var host := _host(_config())
+	var client := _client(_config())
+	var host_id: int = _net(host).local_player_id()
+	await wait_until(func() -> bool: return _body(client, _net(client).local_player_id()) != null, WAIT)
+	_walk_to(host, host_id, "ClosetUseBody")
+	await wait_physics_frames(10)
+	_use(host, host_id, "ClosetUseBody")
+	var host_sign := host.get_node("BreakRoom/MessageSign") as Label3D
+	await wait_until(func() -> bool: return not host_sign.text.is_empty(), WAIT)
+	assert_string_contains(host_sign.text, "Jacket closet")
+	await wait_physics_frames(5)
+	assert_eq((client.get_node("BreakRoom/MessageSign") as Label3D).text, "", "only the player who used it sees it")

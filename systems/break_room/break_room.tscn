@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://systems/break_room/break_room.gd" id="1_room"]
 [ext_resource type="Script" path="res://systems/break_room/stubs/elevator_zone_stub.gd" id="2_zone"]
 [ext_resource type="Script" path="res://systems/player/player_spawner.gd" id="3_spawner"]
+[ext_resource type="Script" path="res://systems/interaction/interactable.gd" id="4_interactable"]
 
 [sub_resource type="Environment" id="Environment_room"]
 background_mode = 1
@@ -50,10 +51,13 @@ albedo_color = Color(0.55, 0.4, 0.27, 1)
 size = Vector3(3.8, 3, 3.8)
 
 [sub_resource type="BoxShape3D" id="Shape_button"]
-size = Vector3(1.6, 2, 1.6)
+size = Vector3(0.2, 0.6, 0.6)
 
 [sub_resource type="BoxShape3D" id="Shape_closet"]
-size = Vector3(1.6, 2, 2.4)
+size = Vector3(0.95, 2.45, 2.05)
+
+[sub_resource type="BoxShape3D" id="Shape_mirror"]
+size = Vector3(0.2, 2.05, 1.45)
 
 [node name="BreakRoom" type="Node3D"]
 script = ExtResource("1_room")
@@ -174,12 +178,15 @@ pixel_size = 0.004
 text = "Start
 (press E)"
 
-[node name="StartButtonArea" type="Area3D" parent="."]
-unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 1, -10.5)
+[node name="UseBody" type="StaticBody3D" parent="StartButton"]
 
-[node name="Shape" type="CollisionShape3D" parent="StartButtonArea"]
+[node name="Shape" type="CollisionShape3D" parent="StartButton/UseBody"]
 shape = SubResource("Shape_button")
+
+[node name="StartUse" type="Node" parent="StartButton/UseBody"]
+unique_name_in_owner = true
+script = ExtResource("4_interactable")
+prompt_text = "Start the elevator"
 
 [node name="ForceButton" type="Node3D" parent="."]
 unique_name_in_owner = true
@@ -197,12 +204,15 @@ pixel_size = 0.004
 text = "Start anyway (host)
 (press E)"
 
-[node name="ForceButtonArea" type="Area3D" parent="."]
-unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2, 1, -10.5)
+[node name="UseBody" type="StaticBody3D" parent="ForceButton"]
 
-[node name="Shape" type="CollisionShape3D" parent="ForceButtonArea"]
+[node name="Shape" type="CollisionShape3D" parent="ForceButton/UseBody"]
 shape = SubResource("Shape_button")
+
+[node name="ForceUse" type="Node" parent="ForceButton/UseBody"]
+unique_name_in_owner = true
+script = ExtResource("4_interactable")
+prompt_text = "Start anyway (players outside are moved in)"
 
 [node name="MissingSign" type="Label3D" parent="."]
 unique_name_in_owner = true
@@ -243,12 +253,16 @@ pixel_size = 0.004
 text = "Jacket closet
 (coming later)"
 
-[node name="ClosetArea" type="Area3D" parent="."]
-unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.6, 1, 0)
+[node name="ClosetUseBody" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 1.2, 0)
 
-[node name="Shape" type="CollisionShape3D" parent="ClosetArea"]
+[node name="Shape" type="CollisionShape3D" parent="ClosetUseBody"]
 shape = SubResource("Shape_closet")
+
+[node name="ClosetUse" type="Node" parent="ClosetUseBody"]
+unique_name_in_owner = true
+script = ExtResource("4_interactable")
+prompt_text = "Open the jacket closet"
 
 [node name="MirrorLabel" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.6, 2.7, 0)
@@ -257,12 +271,16 @@ pixel_size = 0.004
 text = "Mirror: voice test
 (coming later)"
 
-[node name="MirrorArea" type="Area3D" parent="."]
-unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, 0)
+[node name="MirrorUseBody" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.95, 1.5, 0)
 
-[node name="Shape" type="CollisionShape3D" parent="MirrorArea"]
-shape = SubResource("Shape_closet")
+[node name="Shape" type="CollisionShape3D" parent="MirrorUseBody"]
+shape = SubResource("Shape_mirror")
+
+[node name="MirrorUse" type="Node" parent="MirrorUseBody"]
+unique_name_in_owner = true
+script = ExtResource("4_interactable")
+prompt_text = "Test your voice in the mirror"
 
 [node name="WhiteboardText" type="Label3D" parent="."]
 unique_name_in_owner = true

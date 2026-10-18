@@ -19,6 +19,8 @@ func request_start() -> void                  # local; the elevator button calls
 func request_force_start() -> void            # host only button, appears after Config.game.afk_force_start_after seconds
 func use_net(net: NetService, config: GameConfig) -> void   # NEW 2026-10-17: tests only
 ```
+CHANGED 2026-10-18: the start button, "Start anyway", the jacket closet and the mirror are Interactables
+(interaction system): look at one and press E. `request_start()` still works for code that wants it.
 NEW 2026-10-17: the AFK timer counts from when the first player stepped into the elevator (it
 resets when the elevator is empty again).
 Contents of the scene: spawn points, elevator (ElevatorZone + button + doors), jacket closet
@@ -46,7 +48,8 @@ Decorations are scene edits by the break_room owner. Cosmetics come from cosmeti
   "Start anyway". Players left outside are moved into the elevator (teleported) at start.
 
 ## Dependencies and stubs
-cargo_lift (ElevatorZone; stub: an Area3D counting players), cosmetics (closet; stub: a toast), player (spawner).
+cargo_lift (ElevatorZone; stub: an Area3D counting players), cosmetics (closet; stub: a toast), player (spawner),
+interaction (Interactable, NEW 2026-10-18).
 
 ## Test scene and GUT tests
 The Break Room scene itself is the test scene (run with 2 to 4 local instances).
@@ -72,6 +75,12 @@ GUT tests (`tests/unit/break_room/test_break_room.gd`): `test_enough_spawn_point
 - 2026-10-07: spec created.
 - 2026-10-17: Phase 1a grey box built. `get_elevator_zone()` returns `ElevatorZoneStub` for now;
   added the test-only `use_net`; separate test scene with Host/Join buttons.
+- 2026-10-18: switched to the interaction system. The stand-near areas (`StartButtonArea`, `ForceButtonArea`,
+  `ClosetArea`, `MirrorArea`) are gone; each thing has a `StaticBody3D` with an `Interactable` (`%StartUse`,
+  `%ForceUse`, `%ClosetUse`, `%MirrorUse`). "Start anyway" can only be used by the host's own player and
+  can't be looked at while hidden. Closet and mirror messages go to whoever used them. The test scene shows the
+  "E: ..." prompt and a crosshair. Tests: NEW `test_only_the_host_can_use_start_anyway`,
+  `test_closet_note_goes_to_whoever_used_it`; the two button tests now use the InteractionController.
 
 ## HANDOFF
 **Done (Phase 1a grey box):** `break_room.tscn`: floor, walls, a table, 8 spawn points (more are
@@ -88,7 +97,8 @@ press them, and the "who's missing" sign has a copy on the elevator's back wall.
 `test_start_button_is_inside_the_elevator`, `test_start_anyway_button_is_inside_the_elevator`.
 
 **Stubbed:**
-- interaction: stand next to a button and press E (no "Press E" prompt or look-at check yet).
+- ~~interaction~~ DONE 2026-10-18: look at a button and press E (Interactables).
+- ui HUD: the "E: ..." prompt and crosshair only show in the test scene until the HUD exists.
 - cargo_lift: `ElevatorZoneStub` (`stubs/elevator_zone_stub.gd`) has the same functions as
   `ElevatorZone` minus props. Swap the scene's ElevatorZone node for the real one.
 - game_flow: after a start is accepted, the doors reopen after 4 seconds instead of a run starting.

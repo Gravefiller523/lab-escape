@@ -91,6 +91,9 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
 - 2026-10-18 (game_flow branch): `GameFlowStub` now passes the ui's calls on to the GameFlow autoload
   (`go_to_break_room`, `return_to_main_menu`); `is_in_break_room` is true in every scene GameFlow runs, so
   losing the host on a floor also goes back to the menu.
+- 2026-10-18: fix (found by Zachary): a joiner's main menu stayed on screen ("Connecting...") because the
+  handshake loads the host's scene first. The menu now closes whenever game_flow leaves the menu state, and
+  on "lobby joined". Test: `test_main_menu_closes_once_you_are_in_the_game`.
 
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and

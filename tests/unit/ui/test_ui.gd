@@ -132,3 +132,16 @@ func test_pause_menu_hosts_local_in_test_scenes() -> void:
 	await wait_process_frames(2)
 	menu = UI.get_child(UI.get_child_count() - 2)
 	assert_null(menu.find_child("HostLocalButton", true, false), "no local testing buttons once connected")
+
+
+func test_main_menu_closes_once_you_are_in_the_game() -> void:
+	UI.show_screen(UIService.SCREEN_MAIN_MENU)
+	assert_eq(UI.get_open_screen(), UIService.SCREEN_MAIN_MENU)
+	# Joining loads the host's scene during the handshake, before "lobby joined" arrives.
+	EventBus.game_state_changed.emit(GameFlowService.State.MAIN_MENU, GameFlowService.State.BREAK_ROOM)
+	assert_false(UI.is_screen_open(), "the menu doesn't stay on top of the Break Room")
+	_flow.in_main_menu = false
+	UI.show_screen(UIService.SCREEN_MAIN_MENU)
+	SteamSession.lobby_joined.emit(1)
+	assert_false(UI.is_screen_open(), "nor when 'lobby joined' comes after the scene changed")
+	assert_eq(_flow.break_room_calls, 0, "and it doesn't load the Break Room again")

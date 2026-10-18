@@ -47,6 +47,11 @@ func _ready() -> void:
 	SteamSession.lobby_created.connect(func(_lobby_id: int) -> void: _enter_break_room())
 	SteamSession.lobby_joined.connect(func(_lobby_id: int) -> void: _enter_break_room())
 	SteamSession.lobby_join_failed.connect(func(reason: String) -> void: toast(reason, 5.0))
+	# Joining can take you straight into the game (net_core's handshake loads the host's scene first):
+	# the main menu must not stay on top.
+	EventBus.game_state_changed.connect(func(_old_state: int, new_state: int) -> void:
+		if _open_name == SCREEN_MAIN_MENU and new_state not in [GameFlowService.State.BOOT, GameFlowService.State.MAIN_MENU]:
+			close_screen())
 	SteamSession.connection_lost.connect(func() -> void: _back_to_menu("Lost connection to the host."))
 	Net.join_refused.connect(func(reason: String) -> void: _back_to_menu(reason))
 
@@ -141,9 +146,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## After hosting or joining from the main menu. (In the Break Room or a test scene we stay put.)
 func _enter_break_room() -> void:
+	if _open_name == SCREEN_MAIN_MENU:
+		close_screen()
 	if not _flow.is_in_main_menu(get_tree()):
 		return
-	close_screen()
 	_flow.go_to_break_room(get_tree())
 
 

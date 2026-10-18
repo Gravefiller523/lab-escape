@@ -35,7 +35,7 @@ func total_floors(run: RunState) -> int
 func place_on_floor(run: RunState, floor_number: int) -> bool   # moves a RunState to a floor of the whole run
 func use_test_setup(net: NetService, config: GameConfig, scene_loader: Callable) -> void   # tests only
 const RESULT_ESCAPED, RESULT_WIPED, RESULT_ABANDONED   # run_ended results
-const MAIN_MENU_SCENE, BREAK_ROOM_SCENE, STUB_FLOOR_SCENE, LOADING_SCENE
+const MAIN_MENU_SCENE, BREAK_ROOM_SCENE, FLOOR_SCENE, LOADING_SCENE   # FLOOR_SCENE: CHANGED 2026-10-18, was STUB_FLOOR_SCENE
 ```
 `RunState` (`class_name RunState extends RefCounted`):
 ```gdscript
@@ -95,7 +95,7 @@ runs automatically.
 ## Dependencies and stubs
 - net_core (host checks, roster), level_gen (generate/build), break_room scene, ui main menu scene.
 - Stub: a fake level_gen that builds one empty box room with a lift marker, so the state machine can be tested alone.
-  DONE 2026-10-18: `stubs/stub_floor.tscn` (`StubFloor`): a grey box room with 3 crates and a button that
+  DONE 2026-10-18, then REPLACED the same day by level_gen's floor scene: `stubs/stub_floor.tscn` (`StubFloor`): a grey box room with 3 crates and a button that
   stands in for cargo_lift ("Depart", emits `lift_departed` on every PC) or, on boss floors, bosses
   ("Defeat the boss", emits `boss_defeated`). It spawns players and crates on `floor_ready`.
 - STUB (department content): with no DepartmentData in the rotation, runs use one placeholder
@@ -141,6 +141,9 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
   numbers: `elevator_ride_seconds`, `run_summary_seconds`, `floor_load_timeout`.
 - 2026-10-18: joiners go through net_core's handshake instead of a sync RPC after joining (the old way
   lost the floor's players and props and printed errors).
+- 2026-10-18 (level_gen branch): floors come from level_gen (`FLOOR_SCENE` = `Level.FLOOR_SCENE`; the host
+  generates the layout and it travels with the run and in the join handshake). The grey-box stub floor is gone.
+  `use_test_setup` takes an optional floor builder.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `GameFlow` (`GameFlowService`, `systems/game_flow/game_flow.gd`),

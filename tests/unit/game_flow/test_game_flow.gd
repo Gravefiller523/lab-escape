@@ -122,7 +122,7 @@ func test_state_order_menu_breakroom_run_floor() -> void:
 	assert_signal_emitted(EventBus, "run_started")
 	await wait_until(_state_is(pc, GameFlowService.State.ON_FLOOR), WAIT)
 	assert_eq(flow.get_state(), GameFlowService.State.ON_FLOOR)
-	assert_eq(_loaded[pc][-1], GameFlowService.STUB_FLOOR_SCENE)
+	assert_eq(_loaded[pc][-1], GameFlowService.FLOOR_SCENE)
 	assert_signal_emitted(EventBus, "floor_loading")
 	assert_signal_emitted(EventBus, "floor_ready")
 	assert_eq(flow.get_run().floor_number, 1)
@@ -227,7 +227,7 @@ func test_client_follows_the_host_through_the_run() -> void:
 	assert_eq(_flow(client).get_state(), GameFlowService.State.ON_FLOOR)
 	assert_eq(_flow(host).get_state(), GameFlowService.State.ON_FLOOR)
 	assert_eq(_flow(client).get_run().run_seed, 5, "the client has the host's run")
-	assert_eq(_loaded[client][-1], GameFlowService.STUB_FLOOR_SCENE, "and loaded the floor itself")
+	assert_eq(_loaded[client][-1], GameFlowService.FLOOR_SCENE, "and loaded the floor itself")
 
 
 func test_late_joiner_gets_the_current_floor() -> void:
@@ -242,6 +242,6 @@ func test_late_joiner_gets_the_current_floor() -> void:
 	await wait_until(_state_is(client, GameFlowService.State.ON_FLOOR), WAIT)
 	assert_eq(_flow(client).get_state(), GameFlowService.State.ON_FLOOR, "joined straight onto the floor")
 	assert_eq(_flow(client).get_run().run_seed, 9)
-	assert_eq(_loaded[client][-1], GameFlowService.STUB_FLOOR_SCENE)
+	assert_eq(_loaded[client][-1], GameFlowService.FLOOR_SCENE)
 	_flow(client).go_to_break_room()
 	assert_eq(_flow(client).get_state(), GameFlowService.State.ON_FLOOR, "a late 'go to the Break Room' from the menu is ignored")

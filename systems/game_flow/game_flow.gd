@@ -10,16 +10,15 @@ extends Node
 ## the way, so test scenes and GUT tests are left alone.
 ##
 ## STUBS until other systems exist:
-## - level_gen: every floor is the grey box in stubs/stub_floor.tscn.
-## - cargo_lift and bosses: that box has "Depart" and "Defeat the boss" buttons (see StubFloor).
+## - cargo_lift and bosses: level_gen's floor scene has "Depart" and "Defeat the boss" stand-in buttons.
 ## - departments: with no department content yet, runs use one placeholder department.
 
 enum State { BOOT, MAIN_MENU, BREAK_ROOM, ELEVATOR_RIDE, LOADING_FLOOR, ON_FLOOR, BOSS_FIGHT, RUN_SUMMARY }
 
 const MAIN_MENU_SCENE: String = "res://systems/ui/main_menu_background.tscn"
 const BREAK_ROOM_SCENE: String = "res://systems/break_room/break_room.tscn"
-## STUB (level_gen): every floor is this grey box until level_gen exists.
-const STUB_FLOOR_SCENE: String = "res://systems/game_flow/stubs/stub_floor.tscn"
+## Every floor is this scene; level_gen builds the rooms into it.
+const FLOOR_SCENE: String = LevelService.FLOOR_SCENE
 ## Where the host waits while the clients change scene.
 const LOADING_SCENE: String = "res://systems/game_flow/loading_screen.tscn"
 ## STUB (department content): used when no DepartmentData is in the run rotation.
@@ -31,6 +30,8 @@ const RESULT_ABANDONED: StringName = &"abandoned"
 ## Seconds between "stop sending player updates" and the clients changing scene (see _transition),
 ## so updates already on their way arrive while everyone still has the old scene.
 const CLIENT_LOAD_DELAY: float = 0.15
+## Most frames to wait for a new scene to appear after changing to it.
+const SCENE_WAIT_FRAMES: int = 10
 
 ## The state names, for the console and test scene.
 const STATE_NAMES: PackedStringArray = ["BOOT", "MAIN_MENU", "BREAK_ROOM", "ELEVATOR_RIDE", "LOADING_FLOOR",
@@ -40,6 +41,10 @@ var _net: NetService
 var _config: GameConfig
 ## How scenes are changed: func(path: String) -> void. Tests swap in a fake.
 var _load_scene: Callable
+## How a floor is built from its layout: func(layout: FloorLayout) -> void. Tests swap in a fake.
+var _build_floor: Callable
+## The current floor's layout (FloorLayout.to_dict()), sent to players who join.
+var _layout_data: Dictionary = {}
 var _state: State = State.BOOT
 var _run: RunState
 var _placeholder: DepartmentData
@@ -54,11 +59,14 @@ var _peer_seen: MultiplayerPeer
 var _was_host: bool = true
 
 
-## For tests only: a different Net and config, and a fake scene changer. Call before adding to the tree.
-func use_test_setup(net: NetService, config: GameConfig, scene_loader: Callable) -> void:
+## For tests only: a different Net and config, a fake scene changer and floor builder. Call before
+## adding to the tree.
+func use_test_setup(net: NetService, config: GameConfig, scene_loader: Callable,
+		floor_builder: Callable = Callable()) -> void:
 	_net = net
 	_config = config
 	_load_scene = scene_loader
+	_build_floor = floor_builder if floor_builder.is_valid() else func(_layout: FloorLayout) -> void: pass
 
 
 func _ready() -> void:
@@ -68,6 +76,8 @@ func _ready() -> void:
 		_config = Config.game
 	if not _load_scene.is_valid():
 		_load_scene = func(path: String) -> void: get_tree().change_scene_to_file(path)
+	if not _build_floor.is_valid():
+		_build_floor = func(layout: FloorLayout) -> void: Level.build(layout)
 	_peer_seen = multiplayer.multiplayer_peer
 	EventBus.elevator_start_accepted.connect(_on_elevator_start_accepted)
 	EventBus.lift_departed.connect(_on_lift_departed)
@@ -274,7 +284,17 @@ func _after_boss() -> void:
 func _load_current_floor() -> void:
 	if not _net.is_host() or _run == null:
 		return
-	_transition(STUB_FLOOR_SCENE, _run.to_dict())
+	# level_gen makes the layout here, on the host; it travels with the run to every PC.
+	var department: DepartmentData = get_current_department()
+	var layout: FloorLayout
+	if _run.is_boss_floor:
+		layout = LevelGenerator.generate_boss_floor(department, _run.floor_number, _run.run_seed, _config)
+	else:
+		layout = LevelGenerator.generate(department, _run.floor_in_department, _run.floor_number, _run.run_seed,
+			_net.get_player_count(), _config)
+	var data: Dictionary = _run.to_dict()
+	data["layout"] = layout.to_dict()
+	_transition(FLOOR_SCENE, data)
 
 
 ## Host: move everyone to a scene, in an order that never sends anyone updates for things they
@@ -306,10 +326,10 @@ func _transition(path: String, run_data: Dictionary) -> void:
 			return
 	if not _all_built():
 		push_warning("GameFlow: not every PC loaded '%s' in time; going on without them." % path.get_file())
-	_arrive(path, run_data)
+	await _arrive(path, run_data)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if id == _transition_id and path == STUB_FLOOR_SCENE:
+	if id == _transition_id and path == FLOOR_SCENE:
 		_floor_ready_rpc.rpc()
 
 
@@ -335,7 +355,7 @@ func _prepare_rpc() -> void:
 @rpc("authority", "call_remote", "reliable")
 func _load_rpc(path: String, run_data: Dictionary, id: int) -> void:
 	_synced_from_host = true
-	_arrive(path, run_data)
+	await _arrive(path, run_data)
 	# Let the new scene finish its _ready (its spawners must exist before the host spawns things).
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -356,7 +376,21 @@ func _arrive(path: String, run_data: Dictionary) -> void:
 	_run = RunState.from_dict(run_data)
 	_set_state(State.LOADING_FLOOR)
 	EventBus.floor_loading.emit(_run.floor_number, _run.get_department_id())
-	_load_scene.call(path)
+	await _load_floor(run_data.get("layout", {}))
+
+
+## Loads the floor scene and builds the floor in it (level_gen).
+func _load_floor(layout_data: Dictionary) -> void:
+	_layout_data = layout_data
+	_load_scene.call(FLOOR_SCENE)
+	# The scene change happens over the next frame or two: wait until the floor scene is there
+	# (tests use a fake scene changer, so give up waiting after a few frames).
+	for frame: int in SCENE_WAIT_FRAMES:
+		await get_tree().process_frame
+		var current: Node = get_tree().current_scene
+		if current != null and current.scene_file_path == FLOOR_SCENE:
+			break
+	_build_floor.call(FloorLayout.from_dict(_layout_data))
 
 # --- RPCs (host -> everyone) --------------------------------------------------------------------
 
@@ -395,7 +429,7 @@ func _run_ended_rpc(result: StringName) -> void:
 func _join_info() -> Dictionary:
 	if _state in [State.BOOT, State.MAIN_MENU]:
 		return {}
-	return {"state": int(_state), "run": _run.to_dict() if _run != null else {}}
+	return {"state": int(_state), "run": _run.to_dict() if _run != null else {}, "layout": _layout_data}
 
 
 ## Joining PC, before the connection opens: go to the host's scene (on a floor, you spectate
@@ -409,23 +443,23 @@ func _prepare_for_join(info: Dictionary) -> void:
 	if run_data.is_empty():
 		_enter_break_room()
 	else:
-		_join_run(state, run_data)
+		await _join_run(state, run_data, info.get("layout", {}))
 	await get_tree().process_frame
 	await get_tree().process_frame
 
 
-func _join_run(state: int, run_data: Dictionary) -> void:
+func _join_run(state: int, run_data: Dictionary, layout_data: Dictionary) -> void:
 	_run = RunState.from_dict(run_data)
 	EventBus.run_started.emit(_run.run_seed)
 	match state as State:
 		State.LOADING_FLOOR, State.ON_FLOOR, State.BOSS_FIGHT:
-			_load_scene.call(STUB_FLOOR_SCENE)
 			_set_state(state as State)
+			await _load_floor(layout_data)
 			if state != State.LOADING_FLOOR:
 				EventBus.floor_ready.emit(_run.floor_number, _run.get_department_id())
 		State.RUN_SUMMARY:
-			_load_scene.call(STUB_FLOOR_SCENE)
 			_set_state(State.RUN_SUMMARY)
+			await _load_floor(layout_data)
 		_:
 			# The elevator ride: the host is still in the Break Room.
 			_load_scene.call(BREAK_ROOM_SCENE)

@@ -137,6 +137,9 @@ launch options `-- host` / `-- join`.
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-18 (physics_props branch): physics interpolation is on for the project (smooth motion between physics
+  steps on high-refresh screens). The local camera is top-level and follows the body's interpolated position in
+  `_process`, with mouse look applied directly; teleports and snaps call `reset_physics_interpolation()`.
 - 2026-10-17 (physics_props branch): bodies now collide with props (PROPS added to the collision mask), so
   players bump into props and can stand on them. physics_props adds a collision exception for the prop you hold.
 - 2026-10-17: Phase 1a (walking) built. `MovementMode.physics_update` takes a `PlayerInputState`.

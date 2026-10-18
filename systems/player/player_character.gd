@@ -79,6 +79,12 @@ func _ready() -> void:
 
 	var local: bool = is_local()
 	_camera.current = local
+	if local:
+		# Physics interpolation smooths the body between physics steps. The camera follows the
+		# smoothed body in _process, but takes mouse look straight away (no interpolation delay).
+		_camera.top_level = true
+		_camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+		_update_camera()
 	# You don't see your own body from inside it.
 	_body_mesh.visible = not local
 	if local and DisplayServer.get_name() != "headless":
@@ -202,6 +208,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		_jump_queued = true
 
 
+func _process(_delta: float) -> void:
+	if is_local():
+		_update_camera()
+
+
+## Local camera: at the smoothed (interpolated) head position, turned by the latest mouse look.
+func _update_camera() -> void:
+	var smoothed: Transform3D = get_global_transform_interpolated() if is_inside_tree() else global_transform
+	var eye: Vector3 = smoothed.origin + Vector3(0.0, _head.position.y, 0.0)
+	_camera.global_transform = Transform3D(Basis.from_euler(Vector3(_head.rotation.x, rotation.y, 0.0)), eye)
+
+
 func _physics_process(delta: float) -> void:
 	if is_local():
 		_movement.physics_update(_gather_input(), delta)
@@ -239,6 +257,7 @@ func _gather_input() -> PlayerInputState:
 func _follow_synced(delta: float) -> void:
 	if global_position.distance_to(sync_position) > tuning.remote_snap_distance:
 		global_position = sync_position
+		reset_physics_interpolation()
 	else:
 		var weight: float = 1.0 - exp(-tuning.remote_smoothing * delta)
 		global_position = global_position.lerp(sync_position, weight)
@@ -279,6 +298,7 @@ func _teleport_owner(xform: Transform3D) -> void:
 		return
 	global_transform = xform
 	velocity = Vector3.ZERO
+	reset_physics_interpolation()
 	sync_position = global_position
 	sync_yaw = rotation.y
 

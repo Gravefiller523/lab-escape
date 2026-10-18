@@ -5,7 +5,8 @@ extends Node
 ## HOST only, after the host has checked distance, `enabled` and `use_condition`.
 ## If clients need to see the result (a door opening), the object's owner syncs that itself.
 
-## Fires on the host when a player has used this.
+## Fires on the host when a player has used this. (Emitted by the InteractionController.)
+@warning_ignore("unused_signal")
 signal used(player_id: int)
 
 ## Shown after "Press E to ...", e.g. "Open door".
@@ -41,6 +42,8 @@ func get_anchor() -> Node3D:
 func allows(player_id: int) -> bool:
 	if not enabled:
 		return false
-	if use_condition.is_valid() and not bool(use_condition.call(player_id)):
-		return false
+	if use_condition.is_valid():
+		var allowed: bool = use_condition.call(player_id)
+		if not allowed:
+			return false
 	return true

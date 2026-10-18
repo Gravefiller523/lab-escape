@@ -52,13 +52,13 @@ static func of(node: Node) -> PlayerCharacter:
 
 
 ## The spawned body of a player on this PC. Null if not spawned.
-static func find(player_id: int) -> PlayerCharacter:
+static func find(wanted_id: int) -> PlayerCharacter:
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null:
 		return null
 	for node: Node in tree.get_nodes_in_group(GROUP):
 		var body := node as PlayerCharacter
-		if body != null and body.player_id == player_id and not body.is_queued_for_deletion():
+		if body != null and body.player_id == wanted_id and not body.is_queued_for_deletion():
 			return body
 	return null
 

@@ -38,11 +38,11 @@ func to_dict() -> Dictionary:
 
 static func from_dict(data: Dictionary) -> RunState:
 	var run := RunState.new()
-	run.run_seed = int(data.get("seed", 0))
+	run.run_seed = data.get("seed", 0)
 	for id: Variant in data.get("department_ids", []):
 		run.department_ids.append(StringName(str(id)))
-	run.floor_number = int(data.get("floor_number", 0))
-	run.department_index = int(data.get("department_index", 0))
-	run.floor_in_department = int(data.get("floor_in_department", 0))
-	run.is_boss_floor = bool(data.get("is_boss_floor", false))
+	run.floor_number = data.get("floor_number", 0)
+	run.department_index = data.get("department_index", 0)
+	run.floor_in_department = data.get("floor_in_department", 0)
+	run.is_boss_floor = data.get("is_boss_floor", false)
 	return run

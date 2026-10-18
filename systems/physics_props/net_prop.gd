@@ -272,11 +272,18 @@ func apply_snapshot(sequence: int, host_msec: int, position_now: Vector3, rotati
 	# Only updates from the current owner count; a previous owner's late ones are ignored.
 	if is_simulated_here() or sequence != _owner_seq:
 		return
-	if not _snapshots.is_empty() and host_msec <= int(_snapshots.back()["t"]):
+	var last: Dictionary = _snapshots.back() if not _snapshots.is_empty() else {}
+	if not last.is_empty() and host_msec <= _time_of(last):
 		return
 	_snapshots.append({"t": host_msec, "p": position_now, "r": rotation_now, "v": velocity})
 	while _snapshots.size() > MAX_SNAPSHOTS:
 		_snapshots.pop_front()
+
+
+## A snapshot's host time (milliseconds).
+static func _time_of(snapshot: Dictionary) -> int:
+	var msec: int = snapshot["t"]
+	return msec
 
 
 ## Owner: this PC's player let go. Stop pulling it toward their hands right now (don't wait for the
@@ -442,11 +449,13 @@ func _apply_pushes() -> void:
 	var speed: float = 0.0
 	for player_id: int in _pushes.keys():
 		var push: Dictionary = _pushes[player_id]
-		if now - int(push["time"]) > PUSH_MEMORY_MSEC:
+		var pushed_at: int = push["time"]
+		if now - pushed_at > PUSH_MEMORY_MSEC:
 			_pushes.erase(player_id)
 			continue
 		direction += push["direction"] as Vector3
-		speed = maxf(speed, float(push["speed"]))
+		var push_speed: float = push["speed"]
+		speed = maxf(speed, push_speed)
 	if _pushes.is_empty() or direction.is_zero_approx():
 		return
 	direction = Vector3(direction.x, 0.0, direction.z).normalized()
@@ -463,19 +472,19 @@ func _follow(delta: float) -> void:
 	if _snapshots.is_empty() or _spawner == null:
 		return
 	# Like Source: at least two update intervals behind, so one late update never causes a stop.
-	var delay: int = maxi(_config().prop_interpolation_delay_msec, 2000 / maxi(_config().prop_sync_rate_near, 1))
+	var delay: int = maxi(_config().prop_interpolation_delay_msec, floori(2000.0 / float(maxi(_config().prop_sync_rate_near, 1))))
 	var render_msec: int = _spawner.get_host_clock_msec() - delay
 	# Past the newest snapshot (it's late): carry on along its last known speed for a moment.
 	var newest: Dictionary = _snapshots.back()
-	var ahead_seconds: float = clampf(float(render_msec - int(newest["t"])) / 1000.0, 0.0, MAX_EXTRAPOLATION_SECONDS)
+	var ahead_seconds: float = clampf(float(render_msec - _time_of(newest)) / 1000.0, 0.0, MAX_EXTRAPOLATION_SECONDS)
 	var target_position: Vector3 = (newest["p"] as Vector3) + (newest["v"] as Vector3) * ahead_seconds
 	var target_rotation: Quaternion = newest["r"]
 	for index: int in range(_snapshots.size() - 1):
 		var before: Dictionary = _snapshots[index]
 		var after: Dictionary = _snapshots[index + 1]
-		if int(before["t"]) <= render_msec and render_msec <= int(after["t"]):
-			var span: float = maxf(float(int(after["t"]) - int(before["t"])), 1.0)
-			var t: float = float(render_msec - int(before["t"])) / span
+		if _time_of(before) <= render_msec and render_msec <= _time_of(after):
+			var span: float = maxf(float(_time_of(after) - _time_of(before)), 1.0)
+			var t: float = float(render_msec - _time_of(before)) / span
 			target_position = (before["p"] as Vector3).lerp(after["p"] as Vector3, t)
 			target_rotation = (before["r"] as Quaternion).slerp(after["r"] as Quaternion, t)
 			break

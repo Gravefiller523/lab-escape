@@ -70,10 +70,11 @@ func _process(_delta: float) -> void:
 	if PlayerCharacter.find(Net.local_player_id()) == null and not _overview.current:
 		_overview.make_current()
 	var me: int = Net.local_player_id()
+	var fly_on: bool = _fly_on.get(me, false)
 	_status.text = "%s | players: %d | mic: %s | loopback: %s | echo dummy: %s | Fly: %s | door: %s" % [
 		"HOST" if Net.is_host() else "CLIENT", Net.get_player_count(),
 		"push-to-talk (hold V)" if Voice.is_push_to_talk() else "open mic",
-		_on_off(Voice.is_loopback() and not _echo_on), _on_off(_echo_on), _on_off(_fly_on.get(me, false)),
+		_on_off(Voice.is_loopback() and not _echo_on), _on_off(_echo_on), _on_off(fly_on),
 		"open" if _door.is_open else "CLOSED"]
 	_hearing_label.text = ""
 	if _echo_on:

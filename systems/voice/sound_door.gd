@@ -35,8 +35,8 @@ func blocks_segment(from: Vector3, to: Vector3) -> bool:
 		var box := shape_node.shape as BoxShape3D
 		if box == null:
 			continue
-		var to_local: Transform3D = shape_node.global_transform.affine_inverse()
+		var into_shape: Transform3D = shape_node.global_transform.affine_inverse()
 		var bounds := AABB(-box.size * 0.5, box.size)
-		if bounds.intersects_segment(to_local * from, to_local * to):
+		if bounds.intersects_segment(into_shape * from, into_shape * to):
 			return true
 	return false

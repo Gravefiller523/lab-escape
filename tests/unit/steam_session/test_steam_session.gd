@@ -116,11 +116,13 @@ func test_connect_lobby_launch_argument() -> void:
 func test_rich_presence_follows_floors() -> void:
 	var fake := FakeSteamApi.new()
 	fake.steam_available = true
-	var session := _make_session(fake)
+	_make_session(fake)
 	EventBus.floor_ready.emit(3, &"department_does_not_exist")
-	assert_eq(fake.presence.get("status", ""), "department_does_not_exist, floor 3")
+	var on_floor: String = fake.presence.get("status", "")
+	assert_eq(on_floor, "department_does_not_exist, floor 3")
 	EventBus.run_ended.emit(&"wiped")
-	assert_eq(fake.presence.get("status", ""), SteamSessionService.PRESENCE_BREAK_ROOM)
+	var after_run: String = fake.presence.get("status", "")
+	assert_eq(after_run, SteamSessionService.PRESENCE_BREAK_ROOM)
 
 
 func test_leaving_leaves_an_offline_peer() -> void:

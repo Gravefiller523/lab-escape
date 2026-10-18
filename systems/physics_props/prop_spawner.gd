@@ -121,6 +121,7 @@ func apply_impulse(prop: NetProp, impulse: Vector3) -> void:
 
 ## Host: who may hold this prop if `player_id` grabs it now. Returns the new holder list, or an
 ## empty list plus a reason in `refusal` (refusal[0]) when the grab is refused.
+@warning_ignore("unused_parameter")
 func decide_grab(prop: NetProp, player_id: int, refusal: Array[String]) -> Array[int]:
 	var holders: Array[int] = prop.get_holder_ids()
 	if prop.get_true_mass() <= _config.grab_max_mass:
@@ -268,7 +269,8 @@ func _set_holders(net_id: int, holder_list: Array, last_holder: int, thrown: boo
 		return
 	var holders: Array[int] = []
 	for holder: Variant in holder_list:
-		holders.append(int(holder))
+		var holder_id: int = holder
+		holders.append(holder_id)
 	var before: Array[int] = prop.get_holder_ids()
 	prop.apply_holders(holders, last_holder)
 	for player_id: int in holders:
@@ -312,7 +314,8 @@ func hand_to(prop: NetProp, peer_id: int) -> void:
 	if prop.get_owner_peer() == peer_id:
 		_pending_owner.erase(prop.net_id)
 		return
-	var since: int = Time.get_ticks_msec() - int(_owner_changed_msec.get(prop.net_id, -_config.prop_owner_cooldown_msec))
+	var changed_at: int = _owner_changed_msec.get(prop.net_id, -_config.prop_owner_cooldown_msec)
+	var since: int = Time.get_ticks_msec() - changed_at
 	if since < _config.prop_owner_cooldown_msec:
 		_pending_owner[prop.net_id] = peer_id
 		return
@@ -427,7 +430,7 @@ func _make_prop(spawn_data: Variant) -> Node:
 	var prop_id := StringName(str(info["content_id"]))
 	var prop_data := ContentRegistry.get_content(prop_id) as PropData
 	var prop := prop_data.scene.instantiate() as NetProp
-	prop.net_id = int(info["net_id"])
+	prop.net_id = info["net_id"]
 	prop.name = "Prop%d" % prop.net_id
 	prop.content_id = prop_id
 	prop.data = prop_data
@@ -470,7 +473,8 @@ func _prop_state(net_id: int, owner_peer: int, sequence: int, xform: Transform3D
 	prop.apply_join_state(owner_peer, sequence, xform, velocity, spin)
 	var holders: Array[int] = []
 	for holder: Variant in holder_list:
-		holders.append(int(holder))
+		var holder_id: int = holder
+		holders.append(holder_id)
 	prop.apply_holders(holders, last_holder)
 
 
@@ -494,7 +498,10 @@ func _restart_session() -> void:
 	_next_net_id = 1
 	if multiplayer.is_server():
 		for entry: Dictionary in keep:
-			spawn_prop(entry["content_id"], entry["xform"], entry["extra"])
+			var content_id: StringName = entry["content_id"]
+			var xform: Transform3D = entry["xform"]
+			var extra: Dictionary = entry["extra"]
+			spawn_prop(content_id, xform, extra)
 
 
 func _physics_process(delta: float) -> void:
@@ -541,9 +548,14 @@ func _receive_snapshots(host_msec: int, batch: Array) -> void:
 		_clock_offset_msec = minf(_clock_offset_msec + float(now - _last_clock_msec) * CLOCK_CREEP, sample)
 	_last_clock_msec = now
 	for entry: Array in batch:
-		var prop: NetProp = get_prop(int(entry[0]))
+		var net_id: int = entry[0]
+		var prop: NetProp = get_prop(net_id)
 		if prop != null:
-			prop.apply_snapshot(int(entry[4]), host_msec, entry[1], entry[2], entry[3])
+			var sequence: int = entry[4]
+			var position_now: Vector3 = entry[1]
+			var rotation_now: Quaternion = entry[2]
+			var velocity: Vector3 = entry[3]
+			prop.apply_snapshot(sequence, host_msec, position_now, rotation_now, velocity)
 
 
 func _is_near_a_player(prop: NetProp) -> bool:

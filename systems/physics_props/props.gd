@@ -5,6 +5,7 @@ extends Node
 ## Spec: docs/systems/physics_props.md.
 
 ## Local: the host refused one of our grabs (the GrabController lets go).
+@warning_ignore("unused_signal")
 signal grab_refused(prop: NetProp, reason: String)
 
 var _spawners: Array[PropSpawner] = []

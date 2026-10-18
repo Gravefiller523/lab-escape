@@ -21,6 +21,8 @@ const SPAWN_REACH: float = 20.0
 const SPAWN_LIFT: float = 0.5
 const SPAWN_SPREAD: float = 0.7
 
+## The content registry's script, for its static type_key_for_id() (the autoload has no class_name).
+const REGISTRY_SCRIPT := preload("res://core/autoload/content_registry.gd")
 const MSG_UNKNOWN: String = "Unknown command '%s'. Type help for the list."
 const MSG_NO_CHEATS: String = "Cheats are off in this build (Config: cheats_in_release)."
 const MSG_SENT_TO_HOST: String = "(sent to the host)"
@@ -86,7 +88,8 @@ func run(command_line: String) -> String:
 	var command := StringName(parts[0].to_lower())
 	if not _commands.has(command):
 		return MSG_UNKNOWN % parts[0]
-	if bool(_commands[command]["host_only"]) and not _net.is_host():
+	var host_only: bool = _commands[command]["host_only"]
+	if host_only and not _net.is_host():
 		_run_on_host.rpc_id(1, command_line)
 		return MSG_SENT_TO_HOST
 	return _execute(command_line, _net.local_player_id())
@@ -133,7 +136,8 @@ func _execute(command_line: String, player_id: int) -> String:
 	var entry: Dictionary = _commands.get(command, {})
 	if entry.is_empty():
 		return MSG_UNKNOWN % parts[0]
-	if bool(entry["host_only"]) and not cheats_allowed():
+	var host_only: bool = entry["host_only"]
+	if host_only and not cheats_allowed():
 		return MSG_NO_CHEATS
 	var handler: Callable = entry["handler"]
 	return str(handler.call(parts.slice(1), player_id))
@@ -176,7 +180,8 @@ func _cmd_help(_args: PackedStringArray, _player_id: int) -> String:
 	var lines: PackedStringArray = []
 	for command: StringName in names:
 		var entry: Dictionary = _commands[command]
-		lines.append(("%s   (cheat)" if bool(entry["host_only"]) else "%s") % str(entry["help"]))
+		var cheat: bool = entry["host_only"]
+		lines.append(("%s   (cheat)" if cheat else "%s") % str(entry["help"]))
 	return "\n".join(lines)
 
 
@@ -205,7 +210,7 @@ func _cmd_spawn(args: PackedStringArray, player_id: int) -> String:
 	var count: int = clampi(args[1].to_int(), 1, 100) if args.size() > 1 and args[1].is_valid_int() else 1
 	if not ContentRegistry.has_content(id):
 		return "No content called '%s'. Try: list" % id
-	var type_key: StringName = ContentRegistry.type_key_for_id(id)
+	var type_key: StringName = REGISTRY_SCRIPT.type_key_for_id(id)
 	if not _spawners.has(type_key):
 		return "Nothing can spawn '%s' content yet (no spawner registered for it)." % type_key
 	var handler: Callable = _spawners[type_key]
@@ -271,7 +276,7 @@ func _spawn_point(player_id: int) -> Transform3D:
 
 ## Spread `count` spawned things in a little grid around a point (for spawners that want it).
 static func spread(at: Transform3D, index: int) -> Transform3D:
-	var row: int = int(index / 4)
+	var row: int = floori(float(index) / 4.0)
 	var column: int = index % 4
 	return at.translated(Vector3((float(column) - 1.5) * SPAWN_SPREAD, float(row) * SPAWN_SPREAD, 0.0))
 

@@ -429,17 +429,18 @@ func _receive_roster(data: Dictionary) -> void:
 	var records: Array = data.get("records", [])
 	var peers: Dictionary = data.get("peers", {})
 	for record_data: Dictionary in records:
-		var player_id: int = int(record_data.get("player_id", 0))
+		var player_id: int = record_data.get("player_id", 0)
 		# Keep the same PlayerRecord object when we already had one, so references stay valid.
 		var record: PlayerRecord = old_records.get(player_id, PlayerRecord.new())
 		record.apply_dict(record_data)
 		_records[player_id] = record
 		_order.append(player_id)
 		if peers.has(player_id):
-			_peer_by_player[player_id] = int(peers[player_id])
-			_player_by_peer[int(peers[player_id])] = player_id
-	_run_active = bool(data.get("run_active", false))
-	_joining_open = bool(data.get("joining_open", true))
+			var peer_id: int = peers[player_id]
+			_peer_by_player[player_id] = peer_id
+			_player_by_peer[peer_id] = player_id
+	_run_active = data.get("run_active", false)
+	_joining_open = data.get("joining_open", true)
 	var new_ids: Array[int] = get_player_ids()
 	for player_id: int in old_ids:
 		if not new_ids.has(player_id):
@@ -457,7 +458,7 @@ func _receive_roster(data: Dictionary) -> void:
 func _receive_record(record_data: Dictionary, peer_id: int, field: StringName) -> void:
 	if is_host():
 		return
-	var player_id: int = int(record_data.get("player_id", 0))
+	var player_id: int = record_data.get("player_id", 0)
 	var record: PlayerRecord = _records.get(player_id)
 	var was_connected: bool = record != null and record.connected
 	if record == null:

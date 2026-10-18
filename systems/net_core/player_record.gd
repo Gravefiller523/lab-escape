@@ -40,12 +40,12 @@ static func from_dict(data: Dictionary) -> PlayerRecord:
 ## Copies every field found in data onto this record (missing fields are left alone).
 ## Used by Net to update a record in place, so other systems' references stay valid.
 func apply_dict(data: Dictionary) -> void:
-	player_id = int(data.get("player_id", player_id))
+	player_id = data.get("player_id", player_id)
 	display_name = str(data.get("display_name", display_name))
-	slot_index = int(data.get("slot_index", slot_index))
-	connected = bool(data.get("connected", connected))
-	is_alive = bool(data.get("is_alive", is_alive))
-	waiting_for_next_floor = bool(data.get("waiting_for_next_floor", waiting_for_next_floor))
+	slot_index = data.get("slot_index", slot_index)
+	connected = data.get("connected", connected)
+	is_alive = data.get("is_alive", is_alive)
+	waiting_for_next_floor = data.get("waiting_for_next_floor", waiting_for_next_floor)
 	if data.has("upgrade_ids"):
 		var upgrades: Array = data["upgrade_ids"]
 		upgrade_ids.clear()

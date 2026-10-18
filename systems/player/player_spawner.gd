@@ -95,9 +95,10 @@ func get_body(player_id: int) -> PlayerCharacter:
 func _make_body(data: Variant) -> Node:
 	var info: Dictionary = data
 	var body := PLAYER_SCENE.instantiate() as PlayerCharacter
-	body.player_id = int(info["player_id"])
+	body.player_id = info["player_id"]
 	body.name = str(body.player_id)
-	body.set_multiplayer_authority(int(info["peer_id"]))
+	var peer_id: int = info["peer_id"]
+	body.set_multiplayer_authority(peer_id)
 	body.transform = info["xform"]
 	return body
 

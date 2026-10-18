@@ -139,5 +139,5 @@ static func _count_doors(doors: Array[SoundDoor], route: PackedVector3Array) -> 
 	return count
 
 
-static func _door_muffle(closed_doors: int, config: GameConfig) -> float:
-	return clampf(float(closed_doors) * config.voice_closed_door_muffle, 0.0, 1.0)
+static func _door_muffle(door_count: int, config: GameConfig) -> float:
+	return clampf(float(door_count) * config.voice_closed_door_muffle, 0.0, 1.0)

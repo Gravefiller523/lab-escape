@@ -38,11 +38,11 @@ var _started_early: bool = false
 ## the Steam overlay (Shift+Tab) needs; then this only checks that it worked.
 func init(app_id: int) -> bool:
 	var result: Dictionary = Steam.get_steam_init_result()
-	var status: int = int(result.get("status", -1))
+	var status: int = result.get("status", -1)
 	_started_early = status == Steam.STEAM_API_INIT_RESULT_OK
 	if not _started_early:
 		result = Steam.steamInitEx(app_id, true)
-		status = int(result.get("status", -1))
+		status = result.get("status", -1)
 	if status != Steam.STEAM_API_INIT_RESULT_OK:
 		print("SteamSession: Steam not started (%s)." % str(result.get("verbal", status)))
 		return false

@@ -85,11 +85,16 @@ func test_spawn_routes_by_prefix() -> void:
 		return "fake spawned %d" % count)
 	assert_eq(console.run("spawn prop_crate 3"), "fake spawned 3")
 	assert_eq(calls.size(), 1)
-	assert_eq(calls[0]["id"], &"prop_crate")
-	assert_eq(calls[0]["count"], 3)
-	assert_eq(calls[0]["player_id"], Net.local_player_id())
+	var first: Dictionary = calls[0]
+	var first_id: StringName = first["id"]
+	var first_count: int = first["count"]
+	var first_player: int = first["player_id"]
+	assert_eq(first_id, &"prop_crate")
+	assert_eq(first_count, 3)
+	assert_eq(first_player, Net.local_player_id())
 	console.run("spawn prop_crate 5000")
-	assert_eq(calls[1]["count"], 100, "count is capped at 100")
+	var capped: int = (calls[1] as Dictionary)["count"]
+	assert_eq(capped, 100, "count is capped at 100")
 	assert_string_contains(console.run("spawn prop_does_not_exist"), "No content called")
 	assert_eq(calls.size(), 2, "unknown ids never reach a spawner")
 

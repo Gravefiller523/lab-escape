@@ -86,7 +86,7 @@ func test_out_of_range_rejected_on_host() -> void:
 	far.max_distance = 1.0
 	await wait_physics_frames(5)
 	watch_signals(far)
-	_controller(body).request_use(far.get_parent(), 0.0)
+	_controller(body).request_use(far.get_anchor(), 0.0)
 	assert_signal_not_emitted(far, "used", "too far away")
 	assert_eq(_controller(body).get_prompt(), "", "no prompt when out of reach")
 
@@ -96,9 +96,9 @@ func test_hold_requires_full_time() -> void:
 	var lever := _button(1.5, null, "Pull lever", 1.0)
 	await wait_physics_frames(2)
 	watch_signals(lever)
-	_controller(body).request_use(lever.get_parent(), 0.5)
+	_controller(body).request_use(lever.get_anchor(), 0.5)
 	assert_signal_not_emitted(lever, "used", "not held long enough")
-	_controller(body).request_use(lever.get_parent(), 1.0)
+	_controller(body).request_use(lever.get_anchor(), 1.0)
 	assert_signal_emitted(lever, "used")
 
 
@@ -108,11 +108,11 @@ func test_use_condition_blocks() -> void:
 	button.use_condition = func(_player_id: int) -> bool: return false
 	await wait_physics_frames(2)
 	watch_signals(button)
-	_controller(body).request_use(button.get_parent(), 0.0)
+	_controller(body).request_use(button.get_anchor(), 0.0)
 	assert_signal_not_emitted(button, "used")
 	button.use_condition = Callable()
 	button.enabled = false
-	_controller(body).request_use(button.get_parent(), 0.0)
+	_controller(body).request_use(button.get_anchor(), 0.0)
 	assert_signal_not_emitted(button, "used", "disabled")
 
 
@@ -129,7 +129,7 @@ func test_handler_priority_order() -> void:
 		calls.append("high")
 		return true)
 	watch_signals(button)
-	controller.press_use(button.get_parent())
+	controller.press_use(button.get_anchor())
 	assert_eq(calls, ["high"] as Array[String], "the higher priority ran first and took the press")
 	assert_signal_not_emitted(button, "used", "the Interactable never got it")
 

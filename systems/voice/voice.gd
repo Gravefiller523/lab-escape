@@ -267,7 +267,8 @@ func get_hearing(player_id: int) -> VoiceHearing:
 ## The distance effects on a player's bus: [reverb, echo]. Empty if none.
 func get_echo_effects(player_id: int) -> Array[AudioEffect]:
 	var effects: Array[AudioEffect] = []
-	effects.assign(_echo_effects.get(player_id, []))
+	var found: Array = _echo_effects.get(player_id, [])
+	effects.assign(found)
 	return effects
 
 
@@ -603,12 +604,14 @@ func _update_volumes(delta: float) -> void:
 				continue
 			_hearing[player_id] = hearing
 			speaker.global_position = hearing.source
-		var muffle: float = move_toward(_muffle_now.get(player_id, hearing.muffle), hearing.muffle,
+		var muffle_before: float = _muffle_now.get(player_id, hearing.muffle)
+		var muffle: float = move_toward(muffle_before, hearing.muffle,
 			MUFFLE_FADE_PER_SECOND * delta)
 		_muffle_now[player_id] = muffle
 		var weight: float = 1.0 - exp(-SOURCE_GLIDE_SPEED * delta)
 		speaker.global_position = speaker.global_position.lerp(hearing.source, weight)
-		var distance: float = lerpf(_distance_now.get(player_id, hearing.distance), hearing.distance,
+		var distance_before: float = _distance_now.get(player_id, hearing.distance)
+		var distance: float = lerpf(distance_before, hearing.distance,
 			1.0 - exp(-DISTANCE_GLIDE_SPEED * delta))
 		_distance_now[player_id] = distance
 		var gain: float = hearing_gain(distance, muffle, _config, hearing.closed_doors)
@@ -710,9 +713,9 @@ func _process_steam(wants_mic: bool, push_held: bool) -> void:
 		_set_transmitting(false)
 		return
 	var voice: Dictionary = Steam.getVoice(STEAM_VOICE_BUFFER)
-	var written: int = int(voice.get("written", 0))
-	_last_get_voice_result = int(voice.get("result", -1))
-	if int(voice.get("result", -1)) != STEAM_VOICE_OK or written <= 0:
+	var written: int = voice.get("written", 0)
+	_last_get_voice_result = voice.get("result", -1)
+	if _last_get_voice_result != STEAM_VOICE_OK or written <= 0:
 		_set_transmitting(false)
 		return
 	var bytes: PackedByteArray = voice.get("buffer", PackedByteArray())
@@ -763,11 +766,11 @@ func _stop_steam() -> void:
 
 func _decompress(bytes: PackedByteArray) -> PackedVector2Array:
 	var result: Dictionary = Steam.decompressVoice(bytes, VoiceCodec.SAMPLE_RATE, STEAM_DECOMPRESSED_BUFFER)
-	_last_decompress_result = int(result.get("result", -1))
-	if int(result.get("result", -1)) != STEAM_VOICE_OK:
+	_last_decompress_result = result.get("result", -1)
+	if _last_decompress_result != STEAM_VOICE_OK:
 		return PackedVector2Array()
 	var raw: PackedByteArray = result.get("uncompressed", PackedByteArray())
-	var size: int = int(result.get("size", raw.size()))
+	var size: int = result.get("size", raw.size())
 	return VoiceCodec.decode(raw.slice(0, size))
 
 

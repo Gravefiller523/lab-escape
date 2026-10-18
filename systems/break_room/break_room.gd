@@ -253,7 +253,7 @@ func _spawn_fun_props() -> void:
 	for marker: Node in _fun_props.get_children():
 		var spot := marker as Node3D
 		if spot != null and spot.has_meta(&"prop_id"):
-			_props.spawn_prop(StringName(spot.get_meta(&"prop_id")), spot.global_transform)
+			_props.spawn_prop(StringName(str(spot.get_meta(&"prop_id"))), spot.global_transform)
 
 
 ## The room's PropSpawner (the debug console's `spawn prop_...` uses it through Props).

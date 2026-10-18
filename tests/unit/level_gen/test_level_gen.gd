@@ -72,7 +72,7 @@ func test_all_doorways_connected_or_sealed() -> void:
 		for node: Node in RoomShape.all_children(parent):
 			if node.name.begins_with("Plug"):
 				plugs += 1
-		var unconnected: int = links.filter(func(link: Dictionary) -> bool: return not bool(link["connected"])).size()
+		var unconnected: int = links.filter(func(link: Dictionary) -> bool: return link["connected"] == false).size()
 		assert_eq(plugs, unconnected, "seed %d: every doorway that leads nowhere is plugged" % run_seed)
 		# Every room can be reached from the start through connected doorways.
 		var reached: Dictionary[int, bool] = {0: true}
@@ -80,13 +80,16 @@ func test_all_doorways_connected_or_sealed() -> void:
 		while grew:
 			grew = false
 			for link: Dictionary in links:
-				if not bool(link["connected"]) or not reached.has(int(link["placement"])):
+				var joined: bool = link["connected"]
+				var from_room: int = link["placement"]
+				if not joined or not reached.has(from_room):
 					continue
 				var next: Vector2i = (link["cell"] as Vector2i) + (link["dir"] as Vector2i)
 				for other: Dictionary in links:
+					var to_room: int = other["placement"]
 					if other["cell"] == next and other["dir"] == -(link["dir"] as Vector2i) \
-							and not reached.has(int(other["placement"])):
-						reached[int(other["placement"])] = true
+							and not reached.has(to_room):
+						reached[to_room] = true
 						grew = true
 		assert_eq(reached.size(), layout.placements.size(), "seed %d: every room is reachable" % run_seed)
 	Level.clear()

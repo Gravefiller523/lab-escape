@@ -85,7 +85,7 @@ static func _check_references(object: Resource, label: String, by_id: Dictionary
 static func _check_one_reference(value: Variant, field: String, field_stem: String, label: String, by_id: Dictionary, known_type_keys: Array[StringName], problems: PackedStringArray) -> void:
 	if not (value is String or value is StringName):
 		return
-	var ref: String = String(value)
+	var ref: String = str(value)
 	if ref.is_empty():
 		return
 	if not by_id.has(StringName(ref)):
@@ -110,7 +110,7 @@ static func _is_empty_value(value: Variant) -> bool:
 	if value == null:
 		return true
 	if value is String or value is StringName:
-		return String(value).is_empty()
+		return str(value).is_empty()
 	if value is Array:
 		return (value as Array).is_empty()
 	if value is PackedStringArray:

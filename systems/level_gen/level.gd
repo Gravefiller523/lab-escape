@@ -54,7 +54,8 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 		_room_nodes.append(node)
 		_markers.append_array(_markers_in(node))
 	for link: Dictionary in LevelGenerator.doorway_links(layout, cell):
-		if not bool(link["connected"]):
+		var connected: bool = link["connected"]
+		if not connected:
 			_add_plug(link, cell)
 	floor_built.emit()
 
@@ -122,11 +123,12 @@ func _markers_in(room_node: Node) -> Array[RoomMarker]:
 func _add_plug(link: Dictionary, cell_size: float) -> void:
 	var cell: Vector2i = link["cell"]
 	var dir: Vector2i = link["dir"]
-	var width: float = float(link["width"]) + 0.1
-	var height: float = float(link["height"])
+	var door_width: float = link["width"]
+	var width: float = door_width + 0.1
+	var height: float = link["height"]
 	var center := (Vector2(cell) + Vector2(0.5, 0.5) + Vector2(dir) * 0.5) * cell_size
 	var body := StaticBody3D.new()
-	body.name = "Plug%d_%s" % [int(link["placement"]), str(link["name"])]
+	body.name = "Plug%s_%s" % [str(link["placement"]), str(link["name"])]
 	body.position = Vector3(center.x, height / 2.0, center.y)
 	body.collision_layer = PhysicsLayers.bit(PhysicsLayers.WORLD)
 	body.collision_mask = 0

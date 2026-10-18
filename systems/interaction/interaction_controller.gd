@@ -83,7 +83,8 @@ func unregister_prompt_provider(provider: Callable) -> void:
 func press_use(target: Node3D) -> bool:
 	for entry: Dictionary in _handlers:
 		var handler: Callable = entry["callable"]
-		if bool(handler.call(target)):
+		var handled: bool = handler.call(target)
+		if handled:
 			return true
 	var interactable: Interactable = Interactable.of(target) if target != null else null
 	if interactable == null or interactable.hold_seconds > 0.0:
@@ -108,7 +109,9 @@ func _multiplayer_root() -> Node:
 
 
 static func _higher_first(a: Dictionary, b: Dictionary) -> bool:
-	return int(a["priority"]) > int(b["priority"])
+	var first: int = a["priority"]
+	var second: int = b["priority"]
+	return first > second
 
 
 func _physics_process(delta: float) -> void:

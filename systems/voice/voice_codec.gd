@@ -23,7 +23,7 @@ static func encode(frames: PackedVector2Array, from_rate: float) -> PackedByteAr
 
 ## 16-bit mono bytes (any sample rate) -> frames for an AudioStreamGenerator at that rate.
 static func decode(bytes: PackedByteArray) -> PackedVector2Array:
-	var count: int = int(bytes.size() / BYTES_PER_SAMPLE)
+	var count: int = floori(float(bytes.size()) / float(BYTES_PER_SAMPLE))
 	var frames := PackedVector2Array()
 	frames.resize(count)
 	for index: int in count:

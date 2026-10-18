@@ -400,7 +400,8 @@ func _arrive(path: String, run_data: Dictionary) -> void:
 	_run = RunState.from_dict(run_data)
 	_set_state(State.LOADING_FLOOR)
 	EventBus.floor_loading.emit(_run.floor_number, _run.get_department_id())
-	await _load_floor(run_data.get("layout", {}))
+	var layout_data: Dictionary = run_data.get("layout", {})
+	await _load_floor(layout_data)
 
 
 ## Loads the floor scene and builds the floor in it (level_gen).
@@ -464,12 +465,13 @@ func _prepare_for_join(info: Dictionary) -> void:
 	if info.is_empty():
 		return
 	_synced_from_host = true
-	var state: int = int(info.get("state", State.BREAK_ROOM))
+	var state: int = info.get("state", State.BREAK_ROOM)
 	var run_data: Dictionary = info.get("run", {})
 	if run_data.is_empty():
 		_enter_break_room()
 	else:
-		await _join_run(state, run_data, info.get("layout", {}))
+		var layout_data: Dictionary = info.get("layout", {})
+		await _join_run(state, run_data, layout_data)
 	await get_tree().process_frame
 	await get_tree().process_frame
 

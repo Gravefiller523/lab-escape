@@ -558,9 +558,12 @@ func test_heavier_props_are_thrown_less_far() -> void:
 	var part: NetProp = _props(pc).spawn_prop(&"prop_lift_part_zoology", Transform3D(Basis.IDENTITY, Vector3(1, 1, -3)))
 	var heavy: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(3, 1, -3)))
 	var speed_of := func(prop: NetProp) -> float: return _props(pc).throw_strength(prop) / prop.get_true_mass()
-	assert_gt(float(speed_of.call(part)), float(speed_of.call(crate)), "6 kg flies faster than 10 kg")
-	assert_gt(float(speed_of.call(crate)), float(speed_of.call(heavy)), "10 kg flies faster than 80 kg")
-	assert_almost_eq(float(speed_of.call(crate)), 10.0, 1.0, "a 10 kg crate flies about 10 m/s")
+	var part_speed: float = speed_of.call(part)
+	var crate_speed: float = speed_of.call(crate)
+	var heavy_speed: float = speed_of.call(heavy)
+	assert_gt(part_speed, crate_speed, "6 kg flies faster than 10 kg")
+	assert_gt(crate_speed, heavy_speed, "10 kg flies faster than 80 kg")
+	assert_almost_eq(crate_speed, 10.0, 1.0, "a 10 kg crate flies about 10 m/s")
 
 
 func test_cannot_pick_up_what_you_stand_on() -> void:

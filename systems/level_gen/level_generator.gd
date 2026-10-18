@@ -53,7 +53,8 @@ static func generate(department: DepartmentData, floor_in_department: int, floor
 	var chance_kinds: Array = department.optional_room_chances.keys()
 	chance_kinds.sort()
 	for kind: Variant in chance_kinds:
-		if rng.randf() < float(department.optional_room_chances[kind]):
+		var chance: float = department.optional_room_chances[kind]
+		if rng.randf() < chance:
 			specials.append(StringName(str(kind)))
 	var required: Array[StringName] = []
 	for kind: String in department.required_room_kinds:
@@ -117,7 +118,9 @@ static func doorway_links(layout: FloorLayout, cell_size: float) -> Array[Dictio
 			all.append(entry)
 	var edges: Dictionary[String, bool] = {}
 	for entry: Dictionary in all:
-		edges[floor_plan.edge_key(entry["cell"], entry["dir"])] = true
+		var cell: Vector2i = entry["cell"]
+		var dir: Vector2i = entry["dir"]
+		edges[floor_plan.edge_key(cell, dir)] = true
 	for entry: Dictionary in all:
 		var cell: Vector2i = entry["cell"]
 		var dir: Vector2i = entry["dir"]

@@ -518,7 +518,7 @@ func _set_up_join_handshake() -> void:
 
 ## Both sides: a connection is being set up. The host tells the joiner where the game is.
 func _on_peer_authenticating(peer_id: int) -> void:
-	if not multiplayer.is_server():
+	if not is_inside_tree() or not multiplayer.is_server():
 		return
 	var info: Dictionary = _join_info_provider.call() if _join_info_provider.is_valid() else {}
 	(multiplayer as SceneMultiplayer).send_auth(peer_id, var_to_bytes(info))

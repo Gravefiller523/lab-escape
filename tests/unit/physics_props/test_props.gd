@@ -305,17 +305,45 @@ func test_players_can_stand_on_props_and_bump_into_them() -> void:
 	assert_gt(body.global_position.z, crate.global_position.z, "the crate stopped the player")
 
 
-func test_holder_does_not_collide_with_held_prop() -> void:
+func test_held_prop_stays_solid_but_standing_on_it_drops_it() -> void:
 	var pc := _make_pc()
 	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
 	var body: PlayerCharacter = _my_body(pc)
 	body.set_input_override(PlayerInputState.new())
 	await wait_physics_frames(5)
 	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", _in_front_of(body))
-	PropsService.grab_of(body).try_grab(crate)
-	assert_true(crate.get_collision_exceptions().has(body), "no standing on what you hold")
-	PropsService.grab_of(body).drop()
-	assert_false(crate.get_collision_exceptions().has(body), "solid again once dropped")
+	var grab: GrabController = PropsService.grab_of(body)
+	grab.try_grab(crate)
+	assert_false(crate.get_collision_exceptions().has(body), "a held prop still collides with its holder")
+	# Put the player on top of the crate they hold: they drop it.
+	body.global_position = crate.global_position + Vector3(0, 0.35, 0)
+	await wait_until(func() -> bool: return grab.get_held() == null, WAIT)
+	assert_null(grab.get_held(), "standing on what you hold makes you drop it")
+
+
+func test_client_throw_flies_as_far_as_a_host_throw() -> void:
+	var host := _make_pc()
+	var client := _make_pc()
+	var server := ENetMultiplayerPeer.new()
+	assert_eq(server.create_server(PORT + 4, 4), OK)
+	host.multiplayer.multiplayer_peer = server
+	var peer := ENetMultiplayerPeer.new()
+	peer.create_client("127.0.0.1", PORT + 4)
+	client.multiplayer.multiplayer_peer = peer
+	await wait_until(func() -> bool: return _my_body(client) != null, WAIT)
+	var client_body: PlayerCharacter = _my_body(client)
+	client_body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(10)
+	var crate_on_host: NetProp = _props(host).spawn_prop(&"prop_crate", _in_front_of(client_body))
+	await wait_until(func() -> bool: return _props(client).get_prop(crate_on_host.net_id) != null, WAIT)
+	var crate: NetProp = _props(client).get_prop(crate_on_host.net_id)
+	PropsService.grab_of(client_body).try_grab(crate)
+	await wait_until(func() -> bool: return crate.is_simulated_here(), WAIT)
+	await wait_physics_frames(20)
+	PropsService.grab_of(client_body).throw()
+	await wait_physics_frames(3)
+	var expected: float = _props(client).throw_strength(crate) / crate.mass
+	assert_gt(crate.linear_velocity.length(), expected * 0.7, "full throw speed, not held back")
 
 
 func test_client_push_moves_its_copy_at_once_and_the_host_follows() -> void:

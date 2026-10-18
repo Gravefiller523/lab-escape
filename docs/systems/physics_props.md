@@ -139,8 +139,8 @@ is no longer used (a 300 kg prop with 1 holder: 10%). Heavy props aren't predict
 
 **Solid props (NEW 2026-10-17):** players collide with props (the player mask has PROPS), so you bump
 into them and can stand on them, but props don't react to players (their mask has no PLAYERS): walking
-into a prop can't shove it through a wall. You move props by holding them. A prop you hold ignores your
-body (collision exception), so you can't stand on or push yourself with it.
+into a prop can't shove it through a wall. You move props by holding them. CHANGED 2026-10-17 (Zachary): a prop you hold stays solid against you;
+instead, stepping onto the prop you hold drops it (Half-Life 2's rule), so you can't ride it.
 **Pushing (NEW 2026-10-17, Zachary):** walking into a prop pushes it. CHANGED: only walking into its **side**
 counts (contacts whose normal points up or down by more than 0.5 are ignored), so standing or walking on
 top of a prop never moves it. With approach B the pusher's PC runs the pushed prop. The walker's GrabController sees the
@@ -211,6 +211,9 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
 - 2026-10-17: approach B (physics ownership hand-off), side-only pushing, 50 ms interpolation delay. Added
   `get_owner_peer`, `is_simulated_here`, `throw_strength`, `peer_of_player`, `report_stuck`. Tests:
   `test_client_grab_hands_physics_to_the_client_and_back`, `test_standing_on_a_prop_does_not_push_it`.
+- 2026-10-17: a client's throw is no longer held back (`let_go_here`); held props stay solid and standing on
+  your held prop drops it. Tests: `test_held_prop_stays_solid_but_standing_on_it_drops_it`,
+  `test_client_throw_flies_as_far_as_a_host_throw`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

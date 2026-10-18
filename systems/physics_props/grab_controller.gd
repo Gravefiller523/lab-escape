@@ -87,6 +87,7 @@ func _let_go(throw_direction: Vector3) -> void:
 	_set_held(null)
 	if not is_instance_valid(prop) or prop.get_spawner() == null:
 		return
+	prop.let_go_here(_body.player_id)
 	# If our PC runs it, throw it now (no waiting for the host).
 	if not throw_direction.is_zero_approx() and prop.is_simulated_here() and prop.is_lifted() \
 			and not _body.multiplayer.is_server():
@@ -148,6 +149,10 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(_held):
 		_set_held(null)
 		return
+	if _standing_on_held():
+		# Half-Life 2 rule: you can't ride what you hold, so stepping onto it drops it.
+		drop()
+		return
 	# Our PC runs it: update every frame. Otherwise (host runs it): send a few times a second.
 	if _held.is_simulated_here():
 		_held.get_spawner().send_hold_point(_held, _body.player_id, _hold_point())
@@ -184,6 +189,15 @@ func _push_what_we_walk_into(delta: float) -> void:
 			_push_timer = 1.0 / PUSH_SEND_RATE
 			var speed: float = _body.tuning.walk_speed * _body.get_movement().get_speed_multiplier()
 			prop.get_spawner().request_push(prop, _body.player_id, into, speed)
+
+
+## True if our feet are on the prop we hold.
+func _standing_on_held() -> bool:
+	for index: int in _body.get_slide_collision_count():
+		var collision: KinematicCollision3D = _body.get_slide_collision(index)
+		if collision.get_collider() == _held and collision.get_normal().y > SIDE_CONTACT_MAX_Y:
+			return true
+	return false
 
 
 ## Where held props float: hold_distance (config) in front of the eyes.

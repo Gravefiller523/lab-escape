@@ -59,8 +59,6 @@ var _last_touch_msec: int = 0
 ## Host: last place it was resting safely (for key objects).
 var _safe_position: Vector3
 var _stuck_seconds: float = 0.0
-## Holders' bodies we ignore collisions with.
-var _excepted_bodies: Array[PlayerCharacter] = []
 ## Owner (a client): we already asked the host to take it back.
 var _handback_sent: bool = false
 
@@ -181,7 +179,6 @@ func apply_holders(holders: Array[int], last_holder: int) -> void:
 	gravity_scale = 1.0 - get_support()
 	angular_damp = 8.0 if is_held() else 0.0
 	_last_touch_msec = Time.get_ticks_msec()
-	_update_holder_exceptions()
 	hold_changed.emit()
 
 
@@ -214,6 +211,15 @@ func apply_snapshot(host_msec: int, position_now: Vector3, rotation_now: Quatern
 		_snapshots.pop_front()
 
 
+## Owner: this PC's player let go. Stop pulling it toward their hands right now (don't wait for the
+## host to confirm), so a throw flies at full speed instead of being held back for a moment.
+func let_go_here(player_id: int) -> void:
+	_hold_targets.erase(player_id)
+	if _hold_targets.is_empty():
+		gravity_scale = 1.0
+		angular_damp = 0.0
+
+
 ## Owner: where a holder wants it now.
 func set_hold_target(player_id: int, target: Vector3) -> void:
 	if _holders.has(player_id):
@@ -241,23 +247,6 @@ func mark_handback_sent() -> void:
 
 func _config() -> GameConfig:
 	return _spawner.get_config() if _spawner != null else Config.game
-
-
-## Holders don't collide with what they hold (no standing on it, no pushing yourself with it).
-func _update_holder_exceptions() -> void:
-	if _spawner == null:
-		return
-	var holder_bodies: Array[PlayerCharacter] = []
-	for player_id: int in _holders:
-		var body: PlayerCharacter = _spawner.get_body_of_player(player_id)
-		if body != null:
-			holder_bodies.append(body)
-	for body: PlayerCharacter in _excepted_bodies:
-		if is_instance_valid(body) and not holder_bodies.has(body):
-			remove_collision_exception_with(body)
-	for body: PlayerCharacter in holder_bodies:
-		add_collision_exception_with(body)
-	_excepted_bodies = holder_bodies
 
 
 func _physics_process(delta: float) -> void:

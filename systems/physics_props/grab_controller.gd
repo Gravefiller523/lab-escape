@@ -22,6 +22,9 @@ const SIDE_CONTACT_MAX_Y: float = 0.5
 const MAX_HOLD_PITCH: float = 1.309
 ## A held prop is always at least this far (metres) beyond its own size from your eyes.
 const MIN_HOLD_GAP: float = 0.2
+## "Standing on it": a ray from just above our feet going this far down (metres).
+const FEET_RAY_START: float = 0.1
+const FEET_RAY_LENGTH: float = 0.3
 
 const PROMPT_PICK_UP: String = "Pick up"
 const PROMPT_DROP: String = "Drop"
@@ -62,6 +65,9 @@ func get_held() -> NetProp:
 ## Local: grab a prop (it moves to your hands now; the host confirms or refuses).
 func try_grab(prop: NetProp) -> void:
 	if prop == null or prop.get_spawner() == null or prop.is_attached():
+		return
+	# Half-Life 2: you can't pick up what you're standing on.
+	if _standing_on(prop):
 		return
 	if _held != null:
 		drop()
@@ -127,7 +133,7 @@ func _prompt_for(target: Node3D) -> String:
 	if _held != null:
 		return PROMPT_DROP
 	var prop: NetProp = NetProp.of(target) if target != null else null
-	if prop == null or prop.is_attached() or prop.get_spawner() == null:
+	if prop == null or prop.is_attached() or prop.get_spawner() == null or _standing_on(prop):
 		return ""
 	if prop.needs_help():
 		return PROMPT_HELP_LIFT % prop.get_holder_ids().size() if prop.is_held() else PROMPT_HEAVY
@@ -153,7 +159,7 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(_held):
 		_set_held(null)
 		return
-	if _standing_on_held():
+	if _standing_on(_held):
 		# Half-Life 2 rule: you can't ride what you hold, so stepping onto it drops it.
 		drop()
 		return
@@ -195,13 +201,20 @@ func _push_what_we_walk_into(delta: float) -> void:
 			prop.get_spawner().request_push(prop, _body.player_id, into, speed)
 
 
-## True if our feet are on the prop we hold.
-func _standing_on_held() -> bool:
+## True if our feet are on this prop.
+func _standing_on(prop: NetProp) -> bool:
+	if prop == null:
+		return false
 	for index: int in _body.get_slide_collision_count():
 		var collision: KinematicCollision3D = _body.get_slide_collision(index)
-		if collision.get_collider() == _held and collision.get_normal().y > SIDE_CONTACT_MAX_Y:
+		if collision.get_collider() == prop and collision.get_normal().y > SIDE_CONTACT_MAX_Y:
 			return true
-	return false
+	# Standing still reports no collisions, so also look straight down from our feet.
+	var feet: Vector3 = _body.global_position + Vector3.UP * FEET_RAY_START
+	var query := PhysicsRayQueryParameters3D.create(feet, feet + Vector3.DOWN * FEET_RAY_LENGTH,
+		PhysicsLayers.bit(PhysicsLayers.PROPS))
+	var hit: Dictionary = _body.get_world_3d().direct_space_state.intersect_ray(query)
+	return not hit.is_empty() and hit.get("collider") == prop
 
 
 ## Where held props float: hold_distance (config) in front of the eyes.

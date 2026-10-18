@@ -75,8 +75,11 @@ extends Resource
 @export var hold_distance: float = 1.6
 ## If a held object gets stuck this far (m) from where it should be, it is dropped.
 @export var hold_break_distance: float = 1.5
-## Throw strength (impulse per kg, capped by mass).
+## @deprecated Not used any more (2026-10-18): see throw_force.
 @export var throw_impulse: float = 10.0
+## Throw strength, Half-Life 2 style: the push is throw_force x a weight factor (0.5 at 0.5 kg up to 4
+## at 15 kg and above), so a 10 kg crate flies about 10 m/s and heavier things go less far.
+@export var throw_force: float = 34.0
 ## How often (per second) moving props near players are sent to clients.
 @export var prop_sync_rate_near: int = 40
 ## How often (per second) moving props far from every player are sent.

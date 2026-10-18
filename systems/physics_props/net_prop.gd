@@ -43,6 +43,11 @@ const HOLD_MAX_SPIN: float = 62.8
 const RELEASE_MAX_SPIN: float = 12.6
 ## A thrown prop gets up to this much random spin (radians a second on each axis).
 const THROW_SPIN: float = 3.0
+## Claiming ahead: look this far ahead in time (seconds), with this much extra room (metres), this
+## often (seconds).
+const CLAIM_LOOKAHEAD: float = 0.15
+const CLAIM_MARGIN: float = 0.15
+const CLAIM_INTERVAL: float = 0.05
 
 ## Unique per spawned prop, set by the host.
 var net_id: int = 0
@@ -60,6 +65,8 @@ var _spawner: PropSpawner
 var _anchor: Node3D
 ## The network peer whose PC runs this prop's physics (1 = the host).
 var _owner_peer: int = 1
+## Goes up by one every time the owner changes (Glenn Fiedler's "ownership sequence").
+var _owner_seq: int = 0
 ## Recent snapshots from the owner, oldest first: {"t": host-clock msec, "p": Vector3, "r": Quaternion}.
 var _snapshots: Array[Dictionary] = []
 ## Owner: where each holder wants it (player id -> point).
@@ -79,6 +86,8 @@ var _knock_requested: Dictionary[int, bool] = {}
 var _true_mass: float = 1.0
 ## Cached size for holding (see get_radius); below 0 = not worked out yet.
 var _radius: float = -1.0
+## Owner (a player's PC): time until the next look-ahead for props to claim.
+var _claim_timer: float = 0.0
 ## Owner: each holder's pick-up angle (relative to their facing) and their current facing.
 var _hold_rotation_offsets: Dictionary[int, Quaternion] = {}
 var _hold_facings: Dictionary[int, Quaternion] = {}
@@ -177,6 +186,11 @@ func get_owner_peer() -> int:
 	return _owner_peer
 
 
+## The prop's ownership number: goes up every time a different PC starts running it.
+func get_owner_sequence() -> int:
+	return _owner_seq
+
+
 ## True if this PC runs this prop's physics right now.
 func is_simulated_here() -> bool:
 	return _owner_peer == multiplayer.get_unique_id()
@@ -221,8 +235,11 @@ func _apply_held_physics() -> void:
 
 
 ## A new physics owner, starting from this state (sent by the host to every PC).
-func apply_owner(peer_id: int, start: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+func apply_owner(peer_id: int, sequence: int, start: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+	if sequence < _owner_seq:
+		return
 	_owner_peer = peer_id
+	_owner_seq = sequence
 	_snapshots.clear()
 	_last_touch_msec = Time.get_ticks_msec()
 	if _anchor != null:
@@ -241,8 +258,9 @@ func apply_owner(peer_id: int, start: Transform3D, velocity: Vector3, spin: Vect
 
 
 ## A snapshot from the owner (position, rotation, speed), stamped with the host's clock (milliseconds).
-func apply_snapshot(host_msec: int, position_now: Vector3, rotation_now: Quaternion, velocity: Vector3) -> void:
-	if is_simulated_here():
+func apply_snapshot(sequence: int, host_msec: int, position_now: Vector3, rotation_now: Quaternion, velocity: Vector3) -> void:
+	# Only updates from the current owner count; a previous owner's late ones are ignored.
+	if is_simulated_here() or sequence != _owner_seq:
 		return
 	if not _snapshots.is_empty() and host_msec <= int(_snapshots.back()["t"]):
 		return
@@ -371,6 +389,8 @@ func _physics_process(delta: float) -> void:
 ## Owner: pull a held prop toward its holders' hold point with a spring, and drop it if stuck.
 ## Heavy props that aren't fully lifted are pulled more weakly and more slowly (they drag).
 func _simulate(delta: float) -> void:
+	if not multiplayer.is_server():
+		_claim_ahead(delta)
 	_apply_pushes()
 	var support: float = get_support()
 	if support <= 0.0 or _hold_targets.is_empty():
@@ -460,6 +480,42 @@ func _follow(delta: float) -> void:
 	global_basis = Basis(global_basis.get_rotation_quaternion().slerp(target_rotation, weight))
 
 
+## Props this one is about to hit: its own shape where it will be in CLAIM_LOOKAHEAD seconds at its
+## current speed, plus CLAIM_MARGIN metres of extra room.
+func find_props_ahead() -> Array[NetProp]:
+	var found: Array[NetProp] = []
+	var shape_node: CollisionShape3D = null
+	for child: Node in get_children():
+		if child is CollisionShape3D:
+			shape_node = child as CollisionShape3D
+			break
+	if shape_node == null or shape_node.shape == null or not is_inside_tree():
+		return found
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = shape_node.shape
+	# Where it will be in CLAIM_LOOKAHEAD seconds (touching right now is handled by _on_body_entered).
+	query.transform = shape_node.global_transform.translated(linear_velocity * CLAIM_LOOKAHEAD)
+	query.margin = CLAIM_MARGIN
+	query.collision_mask = PhysicsLayers.bit(PhysicsLayers.PROPS)
+	query.exclude = [get_rid()]
+	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(query, MAX_CONTACTS):
+		var prop := hit.get("collider") as NetProp
+		if prop != null and not found.has(prop):
+			found.append(prop)
+	return found
+
+
+## Owner (a player's PC): claim loose props just BEFORE this one reaches them, so they never act like
+## a wall here (the claim takes a moment to come back from the host).
+func _claim_ahead(delta: float) -> void:
+	_claim_timer -= delta
+	if _claim_timer > 0.0 or linear_velocity.length() < SETTLED_SPEED:
+		return
+	_claim_timer = CLAIM_INTERVAL
+	for prop: NetProp in find_props_ahead():
+		_request_knock_on(prop)
+
+
 ## A player's PC that runs this prop watches what it bumps into (see _on_body_entered).
 func _update_contact_monitor() -> void:
 	contact_monitor = is_simulated_here() and not multiplayer.is_server()
@@ -472,7 +528,11 @@ func _on_body_entered(other: Node) -> void:
 	var prop := other as NetProp
 	if prop == null or _spawner == null or not is_simulated_here() or multiplayer.is_server():
 		return
-	if prop.is_simulated_here() or prop.is_held() or prop.is_attached() or _knock_requested.has(prop.net_id):
+	_request_knock_on(prop)
+
+
+func _request_knock_on(prop: NetProp) -> void:
+	if _spawner == null or prop.is_simulated_here() or prop.is_held() or prop.is_attached() or _knock_requested.has(prop.net_id):
 		return
 	_knock_requested[prop.net_id] = true
 	_spawner.request_knock_on(prop)

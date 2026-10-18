@@ -455,7 +455,7 @@ func test_snapshots_carry_speed() -> void:
 	var batch: Array = _props(pc).get_snapshot_batch(true)
 	assert_eq(batch.size(), 1)
 	var entry: Array = batch[0]
-	assert_eq(entry.size(), 4, "net id, position, rotation and speed")
+	assert_eq(entry.size(), 5, "net id, position, rotation, speed and ownership number")
 	assert_lt((entry[3] as Vector3).z, -1.0, "the speed is in there")
 
 
@@ -550,3 +550,54 @@ func test_held_prop_comes_closer_near_a_wall() -> void:
 	await wait_physics_frames(30)
 	var near: float = body.get_aim_origin().distance_to(crate.global_position)
 	assert_lt(near, far - 0.3, "pulled in instead of pressed into the wall")
+
+
+func test_heavier_props_are_thrown_less_far() -> void:
+	var pc := _make_pc()
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)))
+	var part: NetProp = _props(pc).spawn_prop(&"prop_lift_part_zoology", Transform3D(Basis.IDENTITY, Vector3(1, 1, -3)))
+	var heavy: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(3, 1, -3)))
+	var speed_of := func(prop: NetProp) -> float: return _props(pc).throw_strength(prop) / prop.get_true_mass()
+	assert_gt(float(speed_of.call(part)), float(speed_of.call(crate)), "6 kg flies faster than 10 kg")
+	assert_gt(float(speed_of.call(crate)), float(speed_of.call(heavy)), "10 kg flies faster than 80 kg")
+	assert_almost_eq(float(speed_of.call(crate)), 10.0, 1.0, "a 10 kg crate flies about 10 m/s")
+
+
+func test_cannot_pick_up_what_you_stand_on() -> void:
+	var pc := _make_pc()
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var body: PlayerCharacter = _my_body(pc)
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(0, 0.41, -8)))
+	await wait_physics_frames(10)
+	body.global_position = crate.global_position + Vector3(0, 0.5, 0)
+	body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(20)
+	PropsService.grab_of(body).try_grab(crate)
+	assert_null(PropsService.grab_of(body).get_held(), "standing on it: no pick-up")
+	assert_false(crate.is_held())
+
+
+func test_old_owner_updates_are_ignored() -> void:
+	var pc := _make_pc()
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)))
+	_props(pc).hand_to(crate, 5)
+	var first: int = crate.get_owner_sequence()
+	await wait_seconds(0.4)
+	_props(pc).hand_to(crate, 6)
+	assert_eq(crate.get_owner_sequence(), first + 1, "the ownership number went up")
+	crate.apply_snapshot(first, 1000, Vector3(9, 9, 9), Quaternion.IDENTITY, Vector3(7, 0, 0))
+	assert_eq(crate.get_estimated_velocity(), Vector3.ZERO, "an update from the previous owner is ignored")
+	crate.apply_snapshot(first + 1, 1001, Vector3(0, 1, -3), Quaternion.IDENTITY, Vector3(2, 0, 0))
+	assert_eq(crate.get_estimated_velocity(), Vector3(2, 0, 0), "the current owner's update counts")
+
+
+func test_props_about_to_be_hit_are_found_ahead() -> void:
+	var pc := _make_pc()
+	var mover: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 2, -3)))
+	var target: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(1.2, 2, -3)))
+	await wait_physics_frames(2)
+	mover.gravity_scale = 0.0
+	target.gravity_scale = 0.0
+	mover.linear_velocity = Vector3(4, 0, 0)
+	await wait_physics_frames(1)
+	assert_true(mover.find_props_ahead().has(target), "found before they touch")

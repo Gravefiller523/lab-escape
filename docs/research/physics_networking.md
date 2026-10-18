@@ -52,6 +52,10 @@ interpolation fixes this; a first-person camera should follow the body's interpo
 
 All of this is now in physics_props (and the player camera).
 
+Also adopted: Glenn Fiedler's "ownership sequence" idea from his Networked Physics articles (each prop's
+owner number goes up on every hand-over, and updates with an old number are ignored), and claiming objects
+just before contact (an extension of the knock-on ownership idea). Source: https://gafferongames.com/categories/networked-physics/
+
 More sources:
 - Source SDK 2013, weapon_physcannon.cpp: https://github.com/ValveSoftware/source-sdk-2013
 - Valve wiki, Player pickup: https://developer.valvesoftware.com/wiki/Player_pickup

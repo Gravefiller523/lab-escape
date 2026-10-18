@@ -156,7 +156,7 @@ func get_snapshot_batch(near: bool) -> Array:
 		var awake: bool = not prop.sleeping or prop.is_held() or prop.is_attached() or prop.get_owner_peer() != 1
 		if awake and _is_near_a_player(prop) == near:
 			batch.append([prop.net_id, prop.global_position, prop.global_basis.get_rotation_quaternion(),
-				prop.get_estimated_velocity()])
+				prop.get_estimated_velocity(), prop.get_owner_sequence()])
 	return batch
 
 
@@ -291,7 +291,10 @@ func _grab_refused(net_id: int, reason: String) -> void:
 
 ## How hard a throw is: throw_impulse per kg, counting at most grab_max_mass kg.
 func throw_strength(prop: NetProp) -> float:
-	return _config.throw_impulse * minf(prop.get_true_mass(), _config.grab_max_mass)
+	# Half-Life 2's rule: the force grows with weight up to 15 kg (factor 0.5 to 4), so light things
+	# fly fast and far and heavy things only go a little way.
+	var factor: float = remap(clampf(prop.get_true_mass(), 0.5, 15.0), 0.5, 15.0, 0.5, 4.0)
+	return _config.throw_force * factor
 
 
 ## The network peer of a player in this game, or 0.
@@ -315,7 +318,7 @@ func hand_to(prop: NetProp, peer_id: int) -> void:
 		return
 	_pending_owner.erase(prop.net_id)
 	_owner_changed_msec[prop.net_id] = Time.get_ticks_msec()
-	_set_owner.rpc(prop.net_id, peer_id, prop.global_transform, prop.get_estimated_velocity(), prop.angular_velocity)
+	_broadcast_owner(prop, peer_id, prop.global_transform, prop.get_estimated_velocity(), prop.angular_velocity)
 
 
 ## Host: hand-overs that were waiting for the cooldown.
@@ -347,31 +350,38 @@ func _request_knock_on_rpc(net_id: int) -> void:
 			return
 
 
-## Host -> everyone: who runs this prop's physics now, starting from this state.
+## Host: a new physics owner, with the next ownership number (Glenn Fiedler's "ownership sequence"),
+## so every PC can ignore late updates from the previous owner.
+func _broadcast_owner(prop: NetProp, peer_id: int, start: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+	_set_owner.rpc(prop.net_id, peer_id, prop.get_owner_sequence() + 1, start, velocity, spin)
+
+
+## Host -> everyone: who runs this prop's physics now (and its ownership number), from this state.
 @rpc("authority", "call_local", "reliable")
-func _set_owner(net_id: int, peer_id: int, start: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+func _set_owner(net_id: int, peer_id: int, sequence: int, start: Transform3D, velocity: Vector3, spin: Vector3) -> void:
 	var prop: NetProp = get_prop(net_id)
 	if prop != null:
 		if multiplayer.is_server():
 			_owner_changed_msec[net_id] = Time.get_ticks_msec()
-		prop.apply_owner(peer_id, start, velocity, spin)
+		prop.apply_owner(peer_id, sequence, start, velocity, spin)
 
 
 ## Owner (a player's PC) -> host: done with it (settled, nobody touching it); host takes it back.
 @rpc("any_peer", "call_local", "reliable")
-func _return_owner_rpc(net_id: int, last: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+func _return_owner_rpc(net_id: int, sequence: int, last: Transform3D, velocity: Vector3, spin: Vector3) -> void:
 	var prop: NetProp = get_prop(net_id)
-	if multiplayer.is_server() and prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer():
-		_set_owner.rpc(net_id, 1, last, velocity, spin)
+	if multiplayer.is_server() and prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer() \
+			and sequence == prop.get_owner_sequence():
+		_broadcast_owner(prop, 1, last, velocity, spin)
 
 
 ## Owner (a player's PC) -> host: where it is now (the host passes it on to everyone else).
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func _owner_snapshot_rpc(net_id: int, host_msec: int, position_now: Vector3, rotation_now: Quaternion,
-		velocity: Vector3) -> void:
+func _owner_snapshot_rpc(net_id: int, sequence: int, host_msec: int, position_now: Vector3,
+		rotation_now: Quaternion, velocity: Vector3) -> void:
 	var prop: NetProp = get_prop(net_id)
 	if multiplayer.is_server() and prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer():
-		prop.apply_snapshot(host_msec, position_now, rotation_now, velocity)
+		prop.apply_snapshot(sequence, host_msec, position_now, rotation_now, velocity)
 
 
 ## Host -> everyone: push this prop (only the PC that runs it does).
@@ -401,10 +411,11 @@ func _run_owned_props(delta: float) -> void:
 			continue
 		if prop.is_idle_here():
 			prop.mark_handback_sent()
-			_return_owner_rpc.rpc_id(1, prop.net_id, prop.global_transform, prop.linear_velocity, prop.angular_velocity)
+			_return_owner_rpc.rpc_id(1, prop.net_id, prop.get_owner_sequence(), prop.global_transform,
+				prop.linear_velocity, prop.angular_velocity)
 			continue
 		if send_now:
-			_owner_snapshot_rpc.rpc_id(1, prop.net_id, get_host_clock_msec(), prop.global_position,
+			_owner_snapshot_rpc.rpc_id(1, prop.net_id, prop.get_owner_sequence(), get_host_clock_msec(), prop.global_position,
 				prop.global_basis.get_rotation_quaternion(), prop.linear_velocity)
 
 
@@ -502,7 +513,7 @@ func _receive_snapshots(host_msec: int, batch: Array) -> void:
 	for entry: Array in batch:
 		var prop: NetProp = get_prop(int(entry[0]))
 		if prop != null:
-			prop.apply_snapshot(host_msec, entry[1], entry[2], entry[3])
+			prop.apply_snapshot(int(entry[4]), host_msec, entry[1], entry[2], entry[3])
 
 
 func _is_near_a_player(prop: NetProp) -> bool:
@@ -525,11 +536,12 @@ func _handle_fallen_props() -> void:
 		# Back to the host, at its safe spot, for everyone.
 		var safe := Transform3D(prop.global_basis, prop.get_safe_position())
 		if prop.get_owner_peer() != 1:
-			_set_owner.rpc(prop.net_id, 1, safe, Vector3.ZERO, Vector3.ZERO)
+			_broadcast_owner(prop, 1, safe, Vector3.ZERO, Vector3.ZERO)
 		else:
 			prop.linear_velocity = Vector3.ZERO
 			prop.angular_velocity = Vector3.ZERO
 			prop.global_transform = safe
+			prop.reset_physics_interpolation()
 		_key_respawned.rpc(prop.net_id)
 
 
@@ -550,7 +562,7 @@ func _release_missing_players() -> void:
 		if not is_instance_valid(prop):
 			continue
 		if prop.get_owner_peer() != 1 and not peers.has(prop.get_owner_peer()):
-			_set_owner.rpc(prop.net_id, 1, prop.global_transform, Vector3.ZERO, Vector3.ZERO)
+			_broadcast_owner(prop, 1, prop.global_transform, Vector3.ZERO, Vector3.ZERO)
 		if not prop.is_held():
 			continue
 		var holders: Array[int] = []

@@ -120,6 +120,14 @@ fully lifted its physics mass is 1 kg (`NetProp.HELD_MASS`) so it nudges things 
 prop's size in front of the eyes, pitch limited to 75 degrees, pulled in when a wall is in the way. Letting go
 caps its speed at `held_prop_release_max_speed` (10.5 m/s) and spin at 720 deg/s (no flinging); a throw
 adds a little random spin. Heavy props that aren't fully lifted still use the weaker pull (they drag).
+**More from the research (NEW 2026-10-18, Zachary):** (1) every instant move of a prop (key-object respawn,
+new owner, big follower snaps) calls `reset_physics_interpolation()` so it doesn't smear; (2) throws follow
+Half-Life 2: push = `throw_force` (34) x a weight factor (0.5 at 0.5 kg to 4 at 15 kg+), so a 10 kg crate flies
+~10 m/s and heavier things less far (`throw_impulse` is deprecated); (3) you can't pick up a prop you're
+standing on (no prompt either); (4) **ownership sequence** (Glenn Fiedler): each prop's number goes up every
+time its owner changes; snapshots and hand-backs carry it and anything with an old number is ignored;
+(5) **claim ahead**: a prop run by a player's PC looks 0.15 s ahead along its speed (plus 0.15 m) 20 times a
+second and claims loose props it is about to hit (`find_props_ahead`), so they're already its own on contact.
 **Smoothness:** physics interpolation is on for the project; followers show props at least two update
 intervals behind (Source's rule), `prop_sync_rate_near` 30 -> 40, with only a light extra glide.
 NEW 2026-10-18 (from the research, Zachary approved): **knock-on ownership** (a prop run by a player's PC
@@ -238,6 +246,10 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
   `get_true_mass`, `get_radius`, `throw_now`. Tests: `test_held_prop_turns_with_the_holder`,
   `test_held_prop_is_light_and_heavy_again_when_dropped`, `test_dropping_a_fast_prop_does_not_fling_it`,
   `test_held_prop_comes_closer_near_a_wall`.
+- 2026-10-18: interpolation resets on teleports, Half-Life 2 throw strength (`throw_force`), no pick-up of what
+  you stand on, ownership sequence numbers, claim-ahead. Tests: `test_heavier_props_are_thrown_less_far`,
+  `test_cannot_pick_up_what_you_stand_on`, `test_old_owner_updates_are_ignored`,
+  `test_props_about_to_be_hit_are_found_ahead`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

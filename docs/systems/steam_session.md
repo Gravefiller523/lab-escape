@@ -126,8 +126,8 @@ GUT tests (`tests/unit/steam_session/test_steam_session.gd`, with `fake_steam_ap
 friends list, `+connect_lobby` launch argument), a SteamMultiplayerPeer for host and client, local
 ENet mode, names, avatars, rich presence, host-left detection, the test scene, and 7 GUT tests (all pass).
 
-**Known bugs / untested:** nothing failing. Checked 2026-10-18: a real Steam join between two PCs, invites through the overlay, and a client
-staying error-free when the host quits. Not yet tested: rich presence in a friend's list, and what happens on a client when the Steam host quits.
+**Known bugs / untested:** nothing failing. Checked 2026-10-18: a real Steam join between two PCs and invites through the overlay.
+Not yet tested: rich presence in a friend's list, and what happens on a client when the Steam host quits.
 Two windows on one PC can't both be signed in to Steam, so all of that needs a second PC with
 another Steam account.
 

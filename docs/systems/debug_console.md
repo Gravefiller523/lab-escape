@@ -19,6 +19,10 @@ func run(command_line: String) -> String
 func cheats_allowed() -> bool        # editor builds, or Config.game.cheats_in_release
 func print_line(text: String) -> void
 func is_open() -> bool
+func set_open(open: bool) -> void   # NEW 2026-10-18: opens/closes the window (the ` key does this)
+static func spread(at: Transform3D, index: int) -> Transform3D   # NEW: lays out the index-th of several spawns in a grid
+func use_test_setup(net: NetService, config: GameConfig, is_editor: bool) -> void   # NEW: tests only
+var last_remote_output: String   # NEW: the last output the host sent back (tests)
 ```
 
 Built-in commands: `help`, `list <type>` (ids of a content type), `validate` (runs ContentValidator
@@ -52,15 +56,48 @@ net_core (host check and sending commands). Works in solo with no other system p
 
 ## Test scene and GUT tests
 GUT tests: `test_register_and_run_command`, `test_unknown_command_message`, `test_spawn_routes_by_prefix`
-(fake spawner for `mutation`), `test_client_host_only_command_goes_to_host`, `test_cheats_blocked_in_release_by_default`.
+(CHANGED: fake spawner for `prop`, since no mutation content exists yet), `test_client_host_only_command_goes_to_host`, `test_cheats_blocked_in_release_by_default`.
+NEW extra tests: `test_spawn_without_spawner_says_so`, `test_spread_lays_things_out_apart`, `test_validate_matches_content_test`,
+`test_list_shows_ids`, and `tests/integration/test_console_spawns_props.gd` (real console + real props).
+Test scene: `systems/debug_console/test/console_test.tscn` (floor, player, PropSpawner, a `hello` test cheat; launch options `host`, `join`, `port=`).
 
 ## Acceptance criteria
-- [ ] `spawn <any id>` works for every type with a registered spawner, with no console code per content.
-- [ ] `validate` prints the same problems as the GUT content test.
-- [ ] Cheats can't run in a release build unless the config allows it.
+- [x] `spawn <any id>` works for every type with a registered spawner, with no console code per content.
+- [x] `validate` prints the same problems as the GUT content test.
+- [x] Cheats can't run in a release build unless the config allows it.
 
 ## Open design questions
 - DEFAULT: in multiplayer only the host's cheat setting matters.
+- DEFAULT: `seed` is a stub that says there is no run until game_flow exists; game_flow should replace it
+  (register_command(&"seed", ...) again overwrites the built-in).
+- DEFAULT: `net` shows ping only in local (ENet) mode; Steam ping can be added with steam_session later.
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-18: built. NEW: `set_open`, `spread`, `use_test_setup`, `last_remote_output`. CHANGED: the spawn test
+  uses a fake `prop` spawner. physics_props registers the `prop` spawner.
+
+## HANDOFF
+**Built (2026-10-18):** `systems/debug_console/debug_console.gd` (`DebugConsoleService`, autoload `DebugConsole`,
+a CanvasLayer on layer 20). Press `` ` `` to open/close, Esc closes, Up/Down go through history
+(saved in `user://console_history.txt`). While open, the local player's input is turned off.
+
+**How it works:** commands live in a dictionary (name -> handler, help, host_only). `host_only` means "cheat":
+on a client it is sent to the host (`_run_on_host` RPC), which checks the host's `cheats_allowed()`, runs it as
+the sending player and sends the text back (`_print_remote`). `spawn <id> [count]` finds the type with
+`ContentRegistry.type_key_for_id` and calls that type's registered spawner at the point the player looks at
+(ray from the aim, lifted 0.5 m), count 1–100.
+
+**Foundation / project.godot changes:** autoload line `DebugConsole` added last (after Props). No core changes.
+
+**Other system touched (with this branch):** physics_props `props.gd` registers the `prop` spawner (deferred,
+in `_ready`).
+
+**Stubs:** `seed` (no runs yet). No other spawners exist yet: items, enemies, bosses, upgrades and objectives
+register theirs when they are built.
+
+**For other systems:** register cheats in your autoload's `_ready` with
+`DebugConsole.register_command(&"god", _cmd_god, "god: can't take damage")` (handler
+`func(args: PackedStringArray, player_id: int) -> String`). It runs on the host for the player who typed it.
+Spawnable content types call `DebugConsole.register_spawner(&"<type>", handler)` and can use
+`DebugConsoleService.spread(at, index)` for several at once.

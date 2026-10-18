@@ -250,6 +250,8 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
   you stand on, ownership sequence numbers, claim-ahead. Tests: `test_heavier_props_are_thrown_less_far`,
   `test_cannot_pick_up_what_you_stand_on`, `test_old_owner_updates_are_ignored`,
   `test_props_about_to_be_hit_are_found_ahead`.
+- 2026-10-18: NEW: the Props autoload registers the `prop` spawner with the debug console, so `spawn prop_<name> [count]`
+  works (host only, laid out with `DebugConsoleService.spread`). Test: `tests/integration/test_console_spawns_props.gd`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

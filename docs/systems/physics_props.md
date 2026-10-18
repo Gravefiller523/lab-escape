@@ -255,6 +255,8 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
 - 2026-10-18: fix (found by Zachary): a player who joins after props were moved saw them where they first spawned.
   Each new copy on a client now asks the host for the prop's current place, owner, owner number and holders
   (NEW `NetProp.apply_join_state`). Test: `test_late_joiner_sees_props_where_they_are_now`.
+- 2026-10-18: fix: a PropSpawner in a level being unloaded (the host left) ignores roster changes instead of
+  erroring. Test: `test_unloaded_level_ignores_roster_changes`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

@@ -69,3 +69,8 @@ common/physics_interpolation=true
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+
+[steam]
+
+initialization/app_data/app_id=480
+initialization/processes/initialize_on_startup.template=true

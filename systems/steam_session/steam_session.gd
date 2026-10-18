@@ -55,6 +55,8 @@ func use_backend(api: SteamApi, config: GameConfig) -> void:
 
 
 func _ready() -> void:
+	# Steam's callbacks keep running while a solo game is paused.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	if _config == null:
 		_config = Config.game
 	if _api == null:
@@ -83,6 +85,11 @@ func _ready() -> void:
 
 	if _steam_ok:
 		_join_from_launch_args.call_deferred()
+
+
+func _process(_delta: float) -> void:
+	if _steam_ok:
+		_api.run_callbacks()
 
 
 func _exit_tree() -> void:

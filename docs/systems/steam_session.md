@@ -116,6 +116,11 @@ GUT tests (`tests/unit/steam_session/test_steam_session.gd`, with `fake_steam_ap
   `LOCAL_LOBBY_ID` and the test-only `use_backend`. `lobby_joined` now means "connected to the host".
   Local-mode ids are peer ids. Lobbies stay joinable during runs (mid-run joining decision). Headless
   runs skip Steam. Rich presence also listens to `run_ended` and sets `steam_player_group`/`connect`.
+- 2026-10-18: Steam overlay (Shift+Tab) didn't open in the 2-PC test. Exported builds now let GodotSteam start
+  Steam at startup, before the game window (project.godot `[steam]`: `app_id=480`,
+  `initialize_on_startup.template=true`), as GodotSteam recommends for the overlay with Forward+. `SteamApi.init` then
+  only checks it worked, and SteamSession runs Steam's callbacks each frame (`SteamApi.run_callbacks`, NEW).
+  Editor and test runs are unchanged.
 
 ## HANDOFF
 **Done:** the SteamSession autoload, with Steam lobbies (host, join by id, invites, "Join game" from the

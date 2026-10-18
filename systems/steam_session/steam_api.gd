@@ -28,12 +28,21 @@ const MEMBER_KICKED: int = 8
 const MEMBER_BANNED: int = 16
 
 var _connected: bool = false
+## True when GodotSteam started Steam before the game window (exported builds, see project.godot
+## [steam]): then we must run Steam's callbacks ourselves each frame.
+var _started_early: bool = false
 
 
 ## Starts Steam. Returns true if Steam is running and logged in.
+## Exported builds start Steam before the renderer (GodotSteam's "initialize on startup"), which
+## the Steam overlay (Shift+Tab) needs; then this only checks that it worked.
 func init(app_id: int) -> bool:
-	var result: Dictionary = Steam.steamInitEx(app_id, true)
+	var result: Dictionary = Steam.get_steam_init_result()
 	var status: int = int(result.get("status", -1))
+	_started_early = status == Steam.STEAM_API_INIT_RESULT_OK
+	if not _started_early:
+		result = Steam.steamInitEx(app_id, true)
+		status = int(result.get("status", -1))
 	if status != Steam.STEAM_API_INIT_RESULT_OK:
 		print("SteamSession: Steam not started (%s)." % str(result.get("verbal", status)))
 		return false
@@ -143,3 +152,9 @@ func _on_lobby_chat_update(lobby_id: int, changed_id: int, _making_change_id: in
 
 func _on_avatar_loaded(steam_id: int, size: int, data: PackedByteArray) -> void:
 	avatar_loaded.emit(steam_id, size, data)
+
+
+## Call every frame: runs Steam's callbacks when Steam was started early (otherwise GodotSteam does it).
+func run_callbacks() -> void:
+	if _started_early:
+		Steam.run_callbacks()

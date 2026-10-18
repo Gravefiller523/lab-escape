@@ -257,6 +257,16 @@ func apply_owner(peer_id: int, sequence: int, start: Transform3D, velocity: Vect
 	_update_contact_monitor()
 
 
+## A copy that just appeared on a client (often a late joiner): jump to where the host says it is now and
+## take on its current owner and owner number, so the owner's updates aren't ignored as old ones.
+func apply_join_state(owner_peer: int, sequence: int, xform: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+	if sequence < _owner_seq:
+		return
+	global_transform = xform
+	reset_physics_interpolation()
+	apply_owner(owner_peer, sequence, xform, velocity, spin)
+
+
 ## A snapshot from the owner (position, rotation, speed), stamped with the host's clock (milliseconds).
 func apply_snapshot(sequence: int, host_msec: int, position_now: Vector3, rotation_now: Quaternion, velocity: Vector3) -> void:
 	# Only updates from the current owner count; a previous owner's late ones are ignored.

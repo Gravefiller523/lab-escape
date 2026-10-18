@@ -252,6 +252,9 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
   `test_props_about_to_be_hit_are_found_ahead`.
 - 2026-10-18: NEW: the Props autoload registers the `prop` spawner with the debug console, so `spawn prop_<name> [count]`
   works (host only, laid out with `DebugConsoleService.spread`). Test: `tests/integration/test_console_spawns_props.gd`.
+- 2026-10-18: fix (found by Zachary): a player who joins after props were moved saw them where they first spawned.
+  Each new copy on a client now asks the host for the prop's current place, owner, owner number and holders
+  (NEW `NetProp.apply_join_state`). Test: `test_late_joiner_sees_props_where_they_are_now`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

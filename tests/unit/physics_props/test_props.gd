@@ -601,3 +601,32 @@ func test_props_about_to_be_hit_are_found_ahead() -> void:
 	mover.linear_velocity = Vector3(4, 0, 0)
 	await wait_physics_frames(1)
 	assert_true(mover.find_props_ahead().has(target), "found before they touch")
+
+
+func test_late_joiner_sees_props_where_they_are_now() -> void:
+	var host := _make_pc()
+	var server := ENetMultiplayerPeer.new()
+	assert_eq(server.create_server(PORT + 6, 4), OK)
+	host.multiplayer.multiplayer_peer = server
+	await wait_physics_frames(2)
+	var crate: NetProp = _props(host).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 0.4, -3)))
+	await wait_physics_frames(5)
+	# Moved (and handed around a few times) before anyone else joins.
+	var moved_to := Transform3D(Basis(Vector3.UP, 0.8), Vector3(4, 0.4, -6))
+	crate.apply_owner(1, 3, moved_to, Vector3.ZERO, Vector3.ZERO)
+	crate.global_transform = moved_to
+	await wait_physics_frames(5)
+
+	var client := _make_pc()
+	var peer := ENetMultiplayerPeer.new()
+	peer.create_client("127.0.0.1", PORT + 6)
+	client.multiplayer.multiplayer_peer = peer
+	await wait_until(func() -> bool: return _props(client).get_prop(crate.net_id) != null, WAIT)
+	var copy: NetProp = _props(client).get_prop(crate.net_id)
+	await wait_until(func() -> bool: return copy.get_owner_sequence() == 3, WAIT)
+	assert_eq(copy.get_owner_sequence(), 3, "the joiner takes on the current owner number")
+	assert_lt(copy.global_position.distance_to(crate.global_position), 0.1, "it is where the host has it, not where it spawned")
+
+	_props(host).apply_impulse(crate, Vector3(0, 0, 40))
+	await wait_until(func() -> bool: return copy.global_position.distance_to(moved_to.origin) > 0.5, WAIT)
+	assert_gt(copy.global_position.distance_to(moved_to.origin), 0.5, "and it follows the host's updates after that")

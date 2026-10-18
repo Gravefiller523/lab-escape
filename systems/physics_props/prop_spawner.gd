@@ -437,11 +437,41 @@ func _make_prop(spawn_data: Variant) -> Node:
 	_props[prop.net_id] = prop
 	_next_net_id = maxi(_next_net_id, prop.net_id + 1)
 	prop.tree_exiting.connect(_on_prop_exiting.bind(prop.net_id))
+	# The spawn data only says where it first appeared; a client asks where it is now.
+	if not multiplayer.is_server():
+		_request_state_rpc.rpc_id.call_deferred(1, prop.net_id)
 	return prop
 
 
 func _on_prop_exiting(net_id: int) -> void:
 	_props.erase(net_id)
+
+
+## Client -> host: send me this prop's current state (where it is, who runs it, who holds it).
+@rpc("any_peer", "call_remote", "reliable")
+func _request_state_rpc(net_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var prop: NetProp = get_prop(net_id)
+	if prop == null:
+		return
+	_prop_state.rpc_id(multiplayer.get_remote_sender_id(), net_id, prop.get_owner_peer(), prop.get_owner_sequence(),
+		prop.global_transform, prop.get_estimated_velocity(), prop.angular_velocity, prop.get_holder_ids(),
+		prop.last_holder_id)
+
+
+## Host -> one client: a prop's current state, so props moved before you joined are in the right place.
+@rpc("authority", "call_remote", "reliable")
+func _prop_state(net_id: int, owner_peer: int, sequence: int, xform: Transform3D, velocity: Vector3, spin: Vector3,
+		holder_list: Array, last_holder: int) -> void:
+	var prop: NetProp = get_prop(net_id)
+	if prop == null:
+		return
+	prop.apply_join_state(owner_peer, sequence, xform, velocity, spin)
+	var holders: Array[int] = []
+	for holder: Variant in holder_list:
+		holders.append(int(holder))
+	prop.apply_holders(holders, last_holder)
 
 
 func _process(_delta: float) -> void:

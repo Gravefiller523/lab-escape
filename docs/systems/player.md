@@ -25,6 +25,7 @@ func get_movement() -> PlayerMovement
 func teleport(xform: Transform3D) -> void           # host calls; tells the owning PC to move
 func set_input_enabled(enabled: bool) -> void       # local; menus and console turn input off
 func set_body_visible(visible: bool) -> void        # ghosts while dead
+func stop_syncing() -> void                         # NEW 2026-10-18: stop sending this body's updates (game_flow, before a scene change)
 static func of(node: Node) -> PlayerCharacter       # climbs parents until it finds one
 static func find(player_id: int) -> PlayerCharacter # null if not spawned
 var tuning: PlayerTuning                            # NEW 2026-10-17: movement numbers (player_tuning.tres)
@@ -151,6 +152,8 @@ launch options `-- host` / `-- join`.
 - 2026-10-18: fix (Steam test): a prop moving into you could push you through a wall and off the map. After each
   move, if your body crossed a wall (a ray at `WALL_CHECK_HEIGHT` = 0.5 m, WORLD layer), the move is undone.
   Test: `test_a_prop_cannot_push_you_through_a_wall`.
+- 2026-10-18 (game_flow branch): NEW `stop_syncing()`: game_flow calls it on every body before a scene change,
+  so no PC gets updates for a body it no longer has (Godot prints errors for those).
 
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,

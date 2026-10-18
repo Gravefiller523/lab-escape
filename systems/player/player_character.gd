@@ -145,6 +145,15 @@ func set_input_enabled(enabled: bool) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if enabled else Input.MOUSE_MODE_VISIBLE
 
 
+## Stop sending this body's updates to other PCs (game_flow calls it on every body just before a
+## scene change, so nobody gets updates for a body they no longer have). On the host this also hides
+## the body from clients. Not undone: the body is about to be removed with its scene.
+func stop_syncing() -> void:
+	var sync := get_node_or_null(^"Sync") as MultiplayerSynchronizer
+	if sync != null:
+		sync.public_visibility = false
+
+
 ## Hides the body (ghosts while dead). Your own body is always hidden from you.
 func set_body_visible(body_visible: bool) -> void:
 	_body_mesh.visible = body_visible and not is_local()

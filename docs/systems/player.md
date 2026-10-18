@@ -170,7 +170,7 @@ reading settings from settings_input (it uses `player_tuning.tres` values for mo
 a real pause menu (Esc just frees the mouse, clicking takes it back).
 
 **Known bugs / limits:** the speed check only looks at sideways movement (falling is allowed to be fast).
-Not tested on real Steam between two PCs yet. Players do collide with each other.
+Checked on real Steam between two PCs (2026-10-18). Players do collide with each other.
 
 **Stubbed:** settings (`_on_settings_changed` does nothing yet); the test scene's "Start run" and
 "Next floor" buttons stand in for game_flow.

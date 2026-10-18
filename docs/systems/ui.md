@@ -88,6 +88,9 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
 - 2026-10-18 (debug_console branch, asked by Zachary): when you play solo, the Esc menu also shows "Testing on one PC"
   (address, port, Host local, Join local), so a test scene run with F6 can become a 2-window test. The scene stays
   open. Test: `test_pause_menu_hosts_local_in_test_scenes`.
+- 2026-10-18 (game_flow branch): `GameFlowStub` now passes the ui's calls on to the GameFlow autoload
+  (`go_to_break_room`, `return_to_main_menu`); `is_in_break_room` is true in every scene GameFlow runs, so
+  losing the host on a floor also goes back to the menu.
 
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and

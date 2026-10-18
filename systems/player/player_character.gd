@@ -9,6 +9,8 @@ extends CharacterBody3D
 ## faster than possible.
 
 const GROUP: StringName = &"players"
+## Height above the feet (metres) of the "did I just go through a wall" check. Below a crouching head.
+const WALL_CHECK_HEIGHT: float = 0.5
 const ATTACH_POINTS: Array[StringName] = [&"head", &"face", &"back", &"left_arm", &"right_arm",
 	&"legs", &"feet", &"body"]
 
@@ -222,7 +224,9 @@ func _update_camera() -> void:
 
 func _physics_process(delta: float) -> void:
 	if is_local():
+		var before: Vector3 = global_position
 		_movement.physics_update(_gather_input(), delta)
+		_stay_out_of_walls(before)
 		sync_position = global_position
 		sync_yaw = rotation.y
 		sync_pitch = _head.rotation.x
@@ -314,3 +318,17 @@ func _knockback_owner(impulse: Vector3) -> void:
 ## STUB until settings_input exists: nothing to read yet; tuning defaults are used.
 func _on_settings_changed(_section: StringName) -> void:
 	pass
+
+
+## Props don't collide with players (so players can't shove them through walls), but a prop moving into
+## you pushes you out of it, and that push could carry you through a wall and off the map. If this
+## step's move crossed a wall, undo it.
+func _stay_out_of_walls(before: Vector3) -> void:
+	var lift := Vector3.UP * WALL_CHECK_HEIGHT
+	var query := PhysicsRayQueryParameters3D.create(before + lift, global_position + lift,
+		PhysicsLayers.bit(PhysicsLayers.WORLD))
+	query.exclude = [get_rid()]
+	if get_world_3d().direct_space_state.intersect_ray(query).is_empty():
+		return
+	global_position = before
+	velocity = Vector3(0.0, velocity.y, 0.0)

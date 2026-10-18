@@ -142,3 +142,37 @@ func test_height_multiplier_makes_body_taller() -> void:
 	giraffe.height_multiplier = 1.5
 	body.get_movement().set_modifier(&"giraffe", giraffe)
 	assert_almost_eq(body.get_movement().get_height(), normal * 1.5, 0.01)
+
+
+## A wall (WORLD) across x = `x`, 0.3 m thick.
+func _wall_at(x: float) -> void:
+	var wall := StaticBody3D.new()
+	wall.collision_layer = PhysicsLayers.bit(PhysicsLayers.WORLD)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.3, 3, 10)
+	shape.shape = box
+	wall.add_child(shape)
+	wall.position = Vector3(x, 1.5, 0)
+	_world.add_child(wall)
+
+
+func test_a_prop_cannot_push_you_through_a_wall() -> void:
+	var body := _spawn_body()
+	_wall_at(1.5)
+	await _settle(body)
+	# A prop moving into the player toward the wall (props don't collide with players, so it keeps going).
+	var prop := AnimatableBody3D.new()
+	prop.collision_layer = PhysicsLayers.bit(PhysicsLayers.PROPS)
+	prop.collision_mask = 0
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.8, 0.8, 0.8)
+	shape.shape = box
+	prop.add_child(shape)
+	prop.position = Vector3(-1.5, 0.5, 0)
+	_world.add_child(prop)
+	for step: int in 90:
+		prop.position.x += 4.0 / 60.0
+		await wait_physics_frames(1)
+	assert_lt(body.global_position.x, 1.5, "still on this side of the wall")

@@ -148,6 +148,9 @@ launch options `-- host` / `-- join`.
   joiners waiting for `floor_ready`), `get_body`, and the test-only `set_input_override` and `use_net`.
 - 2026-10-18: fix: when the host leaves while you're in a level, the level's PlayerSpawner no longer tries to
   spawn you as it is unloaded (it ignores `player_joined` when out of the tree). Test: `test_unloaded_level_spawns_nobody`.
+- 2026-10-18: fix (Steam test): a prop moving into you could push you through a wall and off the map. After each
+  move, if your body crossed a wall (a ray at `WALL_CHECK_HEIGHT` = 0.5 m, WORLD layer), the move is undone.
+  Test: `test_a_prop_cannot_push_you_through_a_wall`.
 
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,

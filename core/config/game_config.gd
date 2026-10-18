@@ -8,6 +8,8 @@ extends Resource
 @export_group("Players")
 ## Most players in one lobby. Never assume 4 anywhere in code: read this.
 @export_range(1, 16) var max_players: int = 4
+## Seconds a joining PC has to load the host's current scene before its connection gives up.
+@export var join_load_timeout: float = 30.0
 
 @export_group("Run")
 ## Floors per department, before its boss floor.

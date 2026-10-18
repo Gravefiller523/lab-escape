@@ -199,3 +199,21 @@ func test_joiner_before_run_does_not_wait() -> void:
 	var client := _client(_config())
 	await wait_until(_count_is(host, 2), WAIT)
 	assert_false(host.is_waiting_for_next_floor(client.local_player_id()))
+
+
+func test_joiner_gets_ready_before_the_connection_opens() -> void:
+	var host: NetService = _host(_config())
+	host.set_join_handlers(func() -> Dictionary: return {"scene": "floor_3"}, Callable())
+	var client: NetService = _make_pc(_config())
+	var got: Array[String] = []
+	var connected_before_ready: Array[bool] = []
+	client.set_join_handlers(Callable(), func(info: Dictionary) -> void:
+		got.append(str(info.get("scene", "")))
+		connected_before_ready.append(not client.multiplayer.get_peers().is_empty())
+		await get_tree().create_timer(0.3).timeout
+		got.append("ready"))
+	_join(client)
+	await wait_until(_count_is(host, 2), WAIT)
+	assert_eq(got, ["floor_3", "ready"] as Array[String], "the joiner got the host's info and finished getting ready")
+	assert_eq(connected_before_ready, [false] as Array[bool], "nothing was connected while it got ready")
+	assert_eq(client.get_player_count(), 2, "then the connection opened and the hello went through")

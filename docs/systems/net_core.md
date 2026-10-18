@@ -44,6 +44,9 @@ func set_waiting_for_next_floor(player_id: int, waiting: bool) -> void   # NEW 2
 func clear_run_records() -> void           # host; at run start and end
 func kick(player_id: int) -> void          # host
 func use_config(config: GameConfig) -> void   # NEW 2026-10-17: tests only; call before adding the node to the tree
+## NEW 2026-10-18: get a joining PC into the right scene before Godot sends it anything there (game_flow).
+## provider (host): func() -> Dictionary; preparer (client): func(info: Dictionary) -> void, may await.
+func set_join_handlers(provider: Callable, preparer: Callable) -> void
 ```
 NEW 2026-10-17: the autoload script is `systems/net_core/net.gd` with `class_name NetService` (a class
 can't have the same name as its autoload). Net notices when steam_session changes the connection
@@ -78,6 +81,11 @@ Owns PlayerRecords during a session. Saves nothing to disk.
 None.
 
 ## Multiplayer
+- NEW 2026-10-18, the joining handshake: Godot sends a new peer everything already spawned the moment it
+  connects, so a joiner that hasn't loaded that scene loses those spawns (and Godot prints errors). Net uses
+  SceneMultiplayer's "authentication" step: the host sends the joiner its join info (game_flow: the state and
+  run), the joiner loads that scene, says "ready", and only then does the connection open (spawns, RPCs, the
+  hello). It gives up after `join_load_timeout` (GameConfig, 30 s).
 - The host owns the roster and records, and sends the full roster to each new peer, then changes as they happen (reliable RPCs).
 - NEW 2026-10-17: a client says hello to the host once connected (its player id and name). Over
   Steam the host ignores the claimed id and uses `SteamSession.get_steam_id_for_peer()`. In local
@@ -137,6 +145,8 @@ game_flow's EventBus signals on that PC only; press them in the host window), "G
   `get_waiting_player_ids`, `set_waiting_for_next_floor`, the `record_changed` and `join_refused`
   signals, and the client hello. Listens to `run_started`/`floor_loading` instead of `game_state_changed`.
 - 2026-10-17: built. Also added `get_record_ids`, `PlayerRecord.apply_dict` and the test-only `use_config`.
+- 2026-10-18 (asked by Zachary): joining handshake so mid-floor joiners load the floor before anything is sent
+  to them. NEW `set_join_handlers()`, GameConfig `join_load_timeout`. Test: `test_joiner_gets_ready_before_the_connection_opens`.
 
 ## HANDOFF
 **Done:** the `Net` autoload: roster, slot indexes (lowest free slot, reused), PlayerRecords synced

@@ -37,6 +37,10 @@ var _run_active: bool = false
 var _local_identity: int = 0
 ## Our own player id while we are the host (0 as a client).
 var _host_self_id: int = 0
+## Host: what a joining PC needs to know before anything is sent to it. func() -> Dictionary.
+var _join_info_provider: Callable
+## Client: gets ready with that before the connection opens (may await). func(info: Dictionary) -> void.
+var _join_preparer: Callable
 
 
 ## For tests only: use a custom config. Call before adding the node to the tree.
@@ -53,12 +57,21 @@ func _ready() -> void:
 	EventBus.run_ended.connect(_on_run_ended)
 	EventBus.floor_loading.connect(_on_floor_loading)
 	_reset_session()
+	_set_up_join_handshake()
 
 
 func _process(_delta: float) -> void:
 	# steam_session sets and clears the connection; when it changes, start a fresh roster.
 	if multiplayer.multiplayer_peer != _peer_seen:
 		_reset_session()
+
+
+## Lets game_flow get a joining PC into the right scene before Godot sends it anything there.
+## provider (host): func() -> Dictionary; preparer (client): func(info: Dictionary) -> void, may await.
+## Without them, joining works as before.
+func set_join_handlers(provider: Callable, preparer: Callable) -> void:
+	_join_info_provider = provider
+	_join_preparer = preparer
 
 
 # --- Helpers every system uses -----------------------------------------------------------------
@@ -486,3 +499,42 @@ func _refused(reason: String) -> void:
 	if is_online():
 		multiplayer.multiplayer_peer.close()
 		multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+
+
+# --- Joining handshake --------------------------------------------------------------------------
+# Godot sends a new peer everything already spawned (players, props) the moment it connects. If the
+# joiner hasn't loaded that scene yet, those spawns are lost and Godot prints errors. So we use
+# SceneMultiplayer's "authentication" step: the connection only opens (and spawns, RPCs, the hello
+# are sent) once the joiner has loaded the scene the host told it about.
+
+func _set_up_join_handshake() -> void:
+	var scene_multiplayer := multiplayer as SceneMultiplayer
+	if scene_multiplayer == null:
+		return
+	scene_multiplayer.auth_callback = _on_auth_data
+	scene_multiplayer.auth_timeout = _config.join_load_timeout
+	scene_multiplayer.peer_authenticating.connect(_on_peer_authenticating)
+
+
+## Both sides: a connection is being set up. The host tells the joiner where the game is.
+func _on_peer_authenticating(peer_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var info: Dictionary = _join_info_provider.call() if _join_info_provider.is_valid() else {}
+	(multiplayer as SceneMultiplayer).send_auth(peer_id, var_to_bytes(info))
+
+
+## Handshake messages. Client: the host's info -> get ready -> "ready". Host: "ready" -> open it.
+func _on_auth_data(peer_id: int, data: PackedByteArray) -> void:
+	var scene_multiplayer := multiplayer as SceneMultiplayer
+	if multiplayer.is_server():
+		scene_multiplayer.complete_auth(peer_id)
+		return
+	var raw: Variant = bytes_to_var(data)
+	var info: Dictionary = raw if raw is Dictionary else {}
+	if _join_preparer.is_valid():
+		await _join_preparer.call(info)
+	if multiplayer.multiplayer_peer == null or scene_multiplayer.get_authenticating_peers().find(peer_id) < 0:
+		return
+	scene_multiplayer.send_auth(peer_id, "ready".to_utf8_buffer())
+	scene_multiplayer.complete_auth(peer_id)

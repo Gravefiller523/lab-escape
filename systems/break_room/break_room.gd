@@ -43,6 +43,8 @@ var _right_open_x: float = 0.0
 @onready var _force_use: Interactable = %ForceUse
 @onready var _closet_use: Interactable = %ClosetUse
 @onready var _mirror_use: Interactable = %MirrorUse
+@onready var _fun_props: Node3D = %FunProps
+var _props: PropSpawner
 
 
 ## For tests only: use a different Net and config. Call before adding the node to the tree.
@@ -59,6 +61,13 @@ func _ready() -> void:
 	_spawner.use_net(_net)
 	_zone.use_net(_net)
 	_spawner.spawn_points = get_spawn_points()
+	# The room's props (physics_props). Made here so tests can give it their own Net.
+	_props = PropSpawner.new()
+	_props.name = "Props"
+	_props.use_net(_net, _config)
+	add_child(_props)
+	if multiplayer.is_server():
+		_spawn_fun_props.call_deferred()
 	_left_open_x = _left_door.position.x
 	_right_open_x = _right_door.position.x
 	for use: Interactable in [_start_use, _force_use, _closet_use, _mirror_use]:
@@ -228,3 +237,19 @@ func _show_note_to(player_id: int, text: String) -> void:
 func _show_note(text: String) -> void:
 	EventBus.toast_requested.emit(text)
 	_message.text = text
+
+
+## Host: a few props to play with. Each Marker3D under FunProps has a "prop_id" (scene data, not code).
+func _spawn_fun_props() -> void:
+	# Checked again here: in tests a PC can become a client between _ready and this call.
+	if not multiplayer.is_server():
+		return
+	for marker: Node in _fun_props.get_children():
+		var spot := marker as Node3D
+		if spot != null and spot.has_meta(&"prop_id"):
+			_props.spawn_prop(StringName(spot.get_meta(&"prop_id")), spot.global_transform)
+
+
+## The room's PropSpawner (the debug console's `spawn prop_...` uses it through Props).
+func get_prop_spawner() -> PropSpawner:
+	return _props

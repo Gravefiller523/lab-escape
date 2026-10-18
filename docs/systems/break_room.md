@@ -18,6 +18,7 @@ func can_force_start() -> bool                # host: AFK timer passed
 func request_start() -> void                  # local; the elevator button calls it
 func request_force_start() -> void            # host only button, appears after Config.game.afk_force_start_after seconds
 func use_net(net: NetService, config: GameConfig) -> void   # NEW 2026-10-17: tests only
+func get_prop_spawner() -> PropSpawner      # NEW 2026-10-18: the room's props (fun props + console spawns)
 ```
 CHANGED 2026-10-18: the start button, "Start anyway", the jacket closet and the mirror are Interactables
 (interaction system): look at one and press E. `request_start()` still works for code that wants it.
@@ -81,6 +82,9 @@ GUT tests (`tests/unit/break_room/test_break_room.gd`): `test_enough_spawn_point
   can't be looked at while hidden. Closet and mirror messages go to whoever used them. The test scene shows the
   "E: ..." prompt and a crosshair. Tests: NEW `test_only_the_host_can_use_start_anyway`,
   `test_closet_note_goes_to_whoever_used_it`; the two button tests now use the InteractionController.
+- 2026-10-18: fix (found in the 2-PC Steam test): the room had no PropSpawner, so `spawn prop_...` failed.
+  The room now makes one (`Props` child; NEW `get_prop_spawner()`), and the host spawns a few props to play
+  with, one per Marker3D under `%FunProps` (its `prop_id` metadata says which). Test: `test_room_has_props_to_play_with`.
 
 ## HANDOFF
 **Done (Phase 1a grey box):** `break_room.tscn`: floor, walls, a table, 8 spawn points (more are

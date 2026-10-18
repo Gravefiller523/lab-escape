@@ -224,3 +224,10 @@ func test_closet_note_goes_to_whoever_used_it() -> void:
 	assert_string_contains(host_sign.text, "Jacket closet")
 	await wait_physics_frames(5)
 	assert_eq((client.get_node("BreakRoom/MessageSign") as Label3D).text, "", "only the player who used it sees it")
+
+
+func test_room_has_props_to_play_with() -> void:
+	var pc := _make_pc(_config())
+	await wait_until(func() -> bool: return _room(pc).get_prop_spawner().get_props().size() > 0, WAIT)
+	assert_eq(_room(pc).get_prop_spawner().get_props().size(), 4, "one prop per FunProps marker")
+	assert_eq(_room(pc).get_prop_spawner().get_props(&"prop_crate_heavy").size(), 1)

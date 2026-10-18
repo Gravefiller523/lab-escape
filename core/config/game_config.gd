@@ -65,6 +65,10 @@ extends Resource
 @export var heavy_lift_per_holder: float = 30.0
 ## Fastest (m/s) a held object can be carried; heavy ones go slower with fewer helpers.
 @export var held_prop_max_speed: float = 8.0
+## How fast (m/s) a fully lifted prop may move to keep up with your hands (Half-Life 2: about 19).
+@export var held_prop_track_speed: float = 20.0
+## A dropped prop moves at most this fast (m/s), so you can't fling things by spinning around.
+@export var held_prop_release_max_speed: float = 10.5
 ## How far away (m) a player can grab something.
 @export var grab_reach: float = 2.5
 ## How far in front of the camera (m) a held object floats.
@@ -74,7 +78,7 @@ extends Resource
 ## Throw strength (impulse per kg, capped by mass).
 @export var throw_impulse: float = 10.0
 ## How often (per second) moving props near players are sent to clients.
-@export var prop_sync_rate_near: int = 30
+@export var prop_sync_rate_near: int = 40
 ## How often (per second) moving props far from every player are sent.
 @export var prop_sync_rate_far: int = 4
 ## Clients show props this many milliseconds behind the host, so they can glide evenly between

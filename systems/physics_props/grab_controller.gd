@@ -18,6 +18,10 @@ const PUSH_SEND_RATE: float = 20.0
 const MIN_PUSH_SPEED: float = 0.05
 ## A contact counts as "the side of a prop" when its normal points this little up or down.
 const SIDE_CONTACT_MAX_Y: float = 0.5
+## Half-Life 2 holds props at most 75 degrees up or down.
+const MAX_HOLD_PITCH: float = 1.309
+## A held prop is always at least this far (metres) beyond its own size from your eyes.
+const MIN_HOLD_GAP: float = 0.2
 
 const PROMPT_PICK_UP: String = "Pick up"
 const PROMPT_DROP: String = "Drop"
@@ -91,7 +95,7 @@ func _let_go(throw_direction: Vector3) -> void:
 	# If our PC runs it, throw it now (no waiting for the host).
 	if not throw_direction.is_zero_approx() and prop.is_simulated_here() and prop.is_lifted() \
 			and not _body.multiplayer.is_server():
-		prop.apply_central_impulse(throw_direction.normalized() * prop.get_spawner().throw_strength(prop))
+		prop.throw_now(throw_direction, prop.get_spawner().throw_strength(prop))
 	prop.get_spawner().request_release(prop, throw_direction)
 
 
@@ -155,12 +159,12 @@ func _physics_process(delta: float) -> void:
 		return
 	# Our PC runs it: update every frame. Otherwise (host runs it): send a few times a second.
 	if _held.is_simulated_here():
-		_held.get_spawner().send_hold_point(_held, _body.player_id, _hold_point())
+		_held.get_spawner().send_hold_point(_held, _body.player_id, _hold_point(), _body.rotation.y)
 		return
 	_send_timer -= delta
 	if _send_timer <= 0.0:
 		_send_timer = 1.0 / HOLD_SEND_RATE
-		_held.get_spawner().send_hold_point(_held, _body.player_id, _hold_point())
+		_held.get_spawner().send_hold_point(_held, _body.player_id, _hold_point(), _body.rotation.y)
 
 
 ## Props block us; when we walk into the SIDE of one, push it (standing on top never pushes).
@@ -202,8 +206,22 @@ func _standing_on_held() -> bool:
 
 ## Where held props float: hold_distance (config) in front of the eyes.
 func _hold_point() -> Vector3:
-	var distance: float = _held.get_spawner().get_config().hold_distance if _held != null else 1.6
-	return _body.get_aim_origin() + _body.get_aim_direction() * distance
+	var origin: Vector3 = _body.get_aim_origin()
+	var direction: Vector3 = _body.get_aim_direction()
+	# Half-Life 2: don't hold it straight up or down past 75 degrees.
+	var flat := Vector3(direction.x, 0.0, direction.z).normalized()
+	var pitch: float = clampf(asin(clampf(direction.y, -1.0, 1.0)), -MAX_HOLD_PITCH, MAX_HOLD_PITCH)
+	direction = (flat * cos(pitch) + Vector3.UP * sin(pitch)).normalized()
+	# Further away for bigger props, so they never press into you.
+	var radius: float = _held.get_radius()
+	var distance: float = _held.get_spawner().get_config().hold_distance + radius
+	# A wall in front: bring it in closer instead of pushing it into the wall.
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * distance,
+		PhysicsLayers.bit(PhysicsLayers.WORLD))
+	var hit: Dictionary = _body.get_world_3d().direct_space_state.intersect_ray(query)
+	if not hit.is_empty():
+		distance = maxf(origin.distance_to(hit["position"] as Vector3) - radius, radius + MIN_HOLD_GAP)
+	return origin + direction * distance
 
 
 ## The host changed who holds our prop: confirmed, or someone took it from us.

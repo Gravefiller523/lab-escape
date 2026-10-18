@@ -111,6 +111,17 @@ grabber. Props of a player who leaves, and key objects that fall out of the worl
 Trade-off: the owner's PC is trusted with that prop's position (fine for co-op among friends). On the
 owner's PC, other props are frozen copies, so a held prop can't knock them over there (the host's copy can).
 Non-owners show props `prop_interpolation_delay_msec` = 50 ms behind (was 100).
+**Holding, Half-Life 2 style (NEW 2026-10-18, from Valve's Source SDK `weapon_physcannon.cpp`):** a fully lifted
+prop is steered each physics step with the velocity that reaches the hold point by the next step (capped at
+`held_prop_track_speed` = 20 m/s), instead of a spring. It keeps the angle it was picked up at relative to
+the holder's facing (yaw only) and turns with them (spin capped at 3600 deg/s, angular damping 10). While
+fully lifted its physics mass is 1 kg (`NetProp.HELD_MASS`) so it nudges things gently; its real weight
+(`get_true_mass()`) still decides the carry rules and throws. The hold point is `hold_distance` + the
+prop's size in front of the eyes, pitch limited to 75 degrees, pulled in when a wall is in the way. Letting go
+caps its speed at `held_prop_release_max_speed` (10.5 m/s) and spin at 720 deg/s (no flinging); a throw
+adds a little random spin. Heavy props that aren't fully lifted still use the weaker pull (they drag).
+**Smoothness:** physics interpolation is on for the project; followers show props at least two update
+intervals behind (Source's rule), `prop_sync_rate_near` 30 -> 40, with only a light extra glide.
 NEW 2026-10-18 (from the research, Zachary approved): **knock-on ownership** (a prop run by a player's PC
 that bumps a loose host-run prop asks the host to run that one too: `request_knock_on`, granted if one of
 the asker's props is within 3 m); **speed in snapshots** (position, rotation and velocity; followers carry a
@@ -222,6 +233,11 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
   `test_client_throw_flies_as_far_as_a_host_throw`.
 - 2026-10-18: knock-on ownership, velocity in snapshots, hand-over cooldown. Tests:
   `test_hand_over_waits_for_the_cooldown`, `test_snapshots_carry_speed`, `test_knock_on_ownership`.
+- 2026-10-18: Half-Life 2 style holding (shadow control, pick-up angle, 1 kg while held, size- and wall-aware
+  hold point, release caps, throw spin), physics interpolation, Source-style interpolation delay. Added
+  `get_true_mass`, `get_radius`, `throw_now`. Tests: `test_held_prop_turns_with_the_holder`,
+  `test_held_prop_is_light_and_heavy_again_when_dropped`, `test_dropping_a_fast_prop_does_not_fling_it`,
+  `test_held_prop_comes_closer_near_a_wall`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

@@ -123,7 +123,7 @@ func apply_impulse(prop: NetProp, impulse: Vector3) -> void:
 ## empty list plus a reason in `refusal` (refusal[0]) when the grab is refused.
 func decide_grab(prop: NetProp, player_id: int, refusal: Array[String]) -> Array[int]:
 	var holders: Array[int] = prop.get_holder_ids()
-	if prop.mass <= _config.grab_max_mass:
+	if prop.get_true_mass() <= _config.grab_max_mass:
 		return [player_id] as Array[int]
 	# Heavy: everyone who grabs helps (no limit).
 	if not holders.has(player_id):
@@ -179,11 +179,11 @@ func request_push(prop: NetProp, player_id: int, direction: Vector3, speed: floa
 		_push_rpc.rpc_id(1, prop.net_id, direction, speed)
 
 
-func send_hold_point(prop: NetProp, player_id: int, point: Vector3) -> void:
+func send_hold_point(prop: NetProp, player_id: int, point: Vector3, yaw: float) -> void:
 	if prop.is_simulated_here():
-		prop.set_hold_target(player_id, point)
+		prop.set_hold_target(player_id, point, yaw)
 	elif not multiplayer.is_server():
-		_hold_point_rpc.rpc_id(1, prop.net_id, point)
+		_hold_point_rpc.rpc_id(1, prop.net_id, point, yaw)
 	# (On the host while another PC still runs it, e.g. during the hand-over cooldown: nothing to do.)
 
 
@@ -224,7 +224,7 @@ func _request_release_rpc(net_id: int, throw_direction: Vector3) -> void:
 	_set_holders.rpc(net_id, holders, body.player_id, thrown)
 	# The thrower's PC applies its own throw (it runs the prop); the host only throws what it runs.
 	if thrown and prop.is_simulated_here():
-		prop.apply_central_impulse(throw_direction.normalized() * throw_strength(prop))
+		prop.throw_now(throw_direction, throw_strength(prop))
 	if holders.size() == 1:
 		hand_to(prop, peer_of_player(holders[0]))
 
@@ -250,13 +250,13 @@ func _push_rpc(net_id: int, direction: Vector3, speed: float) -> void:
 
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func _hold_point_rpc(net_id: int, point: Vector3) -> void:
+func _hold_point_rpc(net_id: int, point: Vector3, yaw: float) -> void:
 	if not multiplayer.is_server():
 		return
 	var prop: NetProp = get_prop(net_id)
 	var body: PlayerCharacter = body_of_peer(multiplayer.get_remote_sender_id())
 	if prop != null and body != null and prop.is_simulated_here():
-		prop.set_hold_target(body.player_id, point)
+		prop.set_hold_target(body.player_id, point, yaw)
 
 
 ## Host -> everyone: who holds this prop now. `thrown` = the last holder threw it.
@@ -291,7 +291,7 @@ func _grab_refused(net_id: int, reason: String) -> void:
 
 ## How hard a throw is: throw_impulse per kg, counting at most grab_max_mass kg.
 func throw_strength(prop: NetProp) -> float:
-	return _config.throw_impulse * minf(prop.mass, _config.grab_max_mass)
+	return _config.throw_impulse * minf(prop.get_true_mass(), _config.grab_max_mass)
 
 
 ## The network peer of a player in this game, or 0.

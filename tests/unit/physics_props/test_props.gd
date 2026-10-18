@@ -101,7 +101,7 @@ func test_spawn_assigns_unique_net_id() -> void:
 func test_nothing_is_too_heavy() -> void:
 	var pc := _make_pc()
 	var heavy: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)))
-	heavy.mass = 300.0
+	heavy.set_true_mass(300.0)
 	var refusal: Array[String] = []
 	assert_eq(_props(pc).decide_grab(heavy, 1, refusal), [1] as Array[int], "even 300 kg can be grabbed")
 	assert_true(refusal.is_empty())
@@ -160,7 +160,7 @@ func test_each_helper_carries_more_of_the_weight() -> void:
 	var heavy: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)))
 	heavy.apply_holders([1] as Array[int], 1)
 	var one: float = heavy.get_support()
-	assert_almost_eq(one, config.heavy_lift_per_holder / heavy.mass, 0.001, "1 person: a little")
+	assert_almost_eq(one, config.heavy_lift_per_holder / heavy.get_true_mass(), 0.001, "1 person: a little")
 	assert_false(heavy.is_lifted(), "1 person only drags it")
 	heavy.apply_holders([1, 2] as Array[int], 2)
 	var two: float = heavy.get_support()
@@ -183,7 +183,7 @@ func test_heavy_prop_moves_faster_with_more_helpers() -> void:
 		heavy.apply_holders(ids, ids[0])
 		var start: Vector3 = heavy.global_position
 		for player_id: int in ids:
-			heavy.set_hold_target(player_id, start + Vector3(0, 1.0, -5.0))
+			heavy.set_hold_target(player_id, start + Vector3(0, 1.0, -5.0), 0.0)
 		await wait_physics_frames(20)
 		speeds.append(heavy.global_position.distance_to(start))
 		heavy.apply_holders([] as Array[int], 0)
@@ -342,7 +342,7 @@ func test_client_throw_flies_as_far_as_a_host_throw() -> void:
 	await wait_physics_frames(20)
 	PropsService.grab_of(client_body).throw()
 	await wait_physics_frames(3)
-	var expected: float = _props(client).throw_strength(crate) / crate.mass
+	var expected: float = _props(client).throw_strength(crate) / crate.get_true_mass()
 	assert_gt(crate.linear_velocity.length(), expected * 0.7, "full throw speed, not held back")
 
 
@@ -484,3 +484,69 @@ func test_knock_on_ownership() -> void:
 	await wait_until(func() -> bool: return loose_on_host.get_owner_peer() == client_body.get_multiplayer_authority(), WAIT)
 	assert_eq(loose_on_host.get_owner_peer(), client_body.get_multiplayer_authority(),
 		"the bumped crate is now run by the client too")
+
+
+## A body holding a fresh light crate in front of it (solo, host).
+func _holding(pc: Node) -> Array:
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var body: PlayerCharacter = _my_body(pc)
+	body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(5)
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", _in_front_of(body))
+	PropsService.grab_of(body).try_grab(crate)
+	await wait_physics_frames(20)
+	return [body, crate]
+
+
+func test_held_prop_turns_with_the_holder() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var crate: NetProp = held[1]
+	var before: float = crate.global_basis.get_euler().y
+	body.rotate_y(deg_to_rad(90.0))
+	await wait_physics_frames(20)
+	var turned: float = wrapf(crate.global_basis.get_euler().y - before, -PI, PI)
+	assert_almost_eq(turned, deg_to_rad(90.0), deg_to_rad(10.0), "it kept its angle to the holder")
+
+
+func test_held_prop_is_light_and_heavy_again_when_dropped() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var crate: NetProp = held[1]
+	assert_almost_eq(crate.mass, NetProp.HELD_MASS, 0.001, "light while held, so it nudges things gently")
+	PropsService.grab_of(body).drop()
+	await wait_physics_frames(2)
+	assert_almost_eq(crate.mass, crate.get_true_mass(), 0.001, "real weight once dropped")
+
+
+func test_dropping_a_fast_prop_does_not_fling_it() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var crate: NetProp = held[1]
+	crate.linear_velocity = Vector3(0, 0, -40)
+	PropsService.grab_of(body).drop()
+	assert_lte(crate.linear_velocity.length(), _props(pc).get_config().held_prop_release_max_speed + 0.01)
+
+
+func test_held_prop_comes_closer_near_a_wall() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var crate: NetProp = held[1]
+	var far: float = body.get_aim_origin().distance_to(crate.global_position)
+	# A wall right in front of the player's eyes.
+	var wall := StaticBody3D.new()
+	wall.collision_layer = PhysicsLayers.bit(PhysicsLayers.WORLD)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(4, 4, 0.2)
+	shape.shape = box
+	wall.add_child(shape)
+	pc.get_node("Level").add_child(wall)
+	wall.global_position = body.get_aim_origin() + body.get_aim_direction() * 1.3
+	await wait_physics_frames(30)
+	var near: float = body.get_aim_origin().distance_to(crate.global_position)
+	assert_lt(near, far - 0.3, "pulled in instead of pressed into the wall")

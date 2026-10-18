@@ -16,7 +16,7 @@ const HOLD_DAMPING: float = 22.0
 ## A held prop that stays further than hold_break_distance from its hold point this long is dropped.
 const HOLD_BREAK_SECONDS: float = 0.4
 ## How quickly copies catch up with snapshots, and when they jump instead.
-const SNAPSHOT_SMOOTHING: float = 25.0
+const SNAPSHOT_SMOOTHING: float = 40.0
 const SNAPSHOT_SNAP_DISTANCE: float = 3.0
 ## A resting spot only counts as safe this far above the out-of-world height.
 const SAFE_HEIGHT_MARGIN: float = 5.0
@@ -35,6 +35,14 @@ const SETTLED_SPEED: float = 0.15
 const MAX_EXTRAPOLATION_SECONDS: float = 0.2
 ## Contacts a prop reports per frame (for knock-on ownership).
 const MAX_CONTACTS: int = 4
+## Half-Life 2 numbers: held props weigh 1 kg (so they push gently), spin is damped while held, the
+## hold turns at most 3600 degrees a second, and a dropped prop spins at most 720 degrees a second.
+const HELD_MASS: float = 1.0
+const HELD_ANGULAR_DAMP: float = 10.0
+const HOLD_MAX_SPIN: float = 62.8
+const RELEASE_MAX_SPIN: float = 12.6
+## A thrown prop gets up to this much random spin (radians a second on each axis).
+const THROW_SPIN: float = 3.0
 
 ## Unique per spawned prop, set by the host.
 var net_id: int = 0
@@ -67,6 +75,13 @@ var _stuck_seconds: float = 0.0
 var _handback_sent: bool = false
 ## Props we already asked to take over after bumping into them (net id -> true).
 var _knock_requested: Dictionary[int, bool] = {}
+## Its real weight (kg). While fully lifted, `mass` is set to HELD_MASS instead.
+var _true_mass: float = 1.0
+## Cached size for holding (see get_radius); below 0 = not worked out yet.
+var _radius: float = -1.0
+## Owner: each holder's pick-up angle (relative to their facing) and their current facing.
+var _hold_rotation_offsets: Dictionary[int, Quaternion] = {}
+var _hold_facings: Dictionary[int, Quaternion] = {}
 
 
 ## The NetProp a node belongs to (the prop itself, or one of its children). Null if none.
@@ -87,6 +102,7 @@ func _ready() -> void:
 		| PhysicsLayers.bit(PhysicsLayers.CARTS) | PhysicsLayers.bit(PhysicsLayers.ENEMIES)
 	if data != null:
 		mass = data.mass
+	_true_mass = mass
 	_safe_position = global_position
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	freeze = not is_simulated_here()
@@ -107,7 +123,7 @@ func get_holder_ids() -> Array[int]:
 
 ## True for heavy props (above grab_max_mass): one person can only drag them slowly; helpers speed it up.
 func needs_help() -> bool:
-	return mass > _config().grab_max_mass
+	return _true_mass > _config().grab_max_mass
 
 
 ## How much of its weight its holders carry, 0 to 1. Normal props: 1 while held. Heavy props: each
@@ -122,7 +138,7 @@ func support_for(people: int) -> float:
 		return 0.0
 	if not needs_help():
 		return 1.0
-	return clampf(float(people) * _config().heavy_lift_per_holder / mass, 0.0, 1.0)
+	return clampf(float(people) * _config().heavy_lift_per_holder / _true_mass, 0.0, 1.0)
 
 
 ## True while it is fully off the ground in its holders' hands.
@@ -184,11 +200,24 @@ func apply_holders(holders: Array[int], last_holder: int) -> void:
 	for player_id: int in _hold_targets.keys():
 		if not _holders.has(player_id):
 			_hold_targets.erase(player_id)
-	# The holders carry part (or all) of its weight; the rest still pulls it down.
-	gravity_scale = 1.0 - get_support()
-	angular_damp = 8.0 if is_held() else 0.0
+			_hold_rotation_offsets.erase(player_id)
+			_hold_facings.erase(player_id)
+	_apply_held_physics()
 	_last_touch_msec = Time.get_ticks_msec()
 	hold_changed.emit()
+
+
+## Held props behave like Half-Life 2's: the holders carry part (or all) of the weight, and a fully
+## lifted prop counts as very light (HELD_MASS) so it nudges other things gently instead of
+## bulldozing them. Let go: real weight back, and no flinging it by spinning around.
+func _apply_held_physics() -> void:
+	var was_held_light: bool = not is_equal_approx(mass, _true_mass)
+	gravity_scale = 1.0 - get_support()
+	angular_damp = HELD_ANGULAR_DAMP if is_held() else 0.0
+	mass = HELD_MASS if is_lifted() else _true_mass
+	if was_held_light and not is_lifted():
+		linear_velocity = linear_velocity.limit_length(_config().held_prop_release_max_speed)
+		angular_velocity = angular_velocity.limit_length(RELEASE_MAX_SPIN)
 
 
 ## A new physics owner, starting from this state (sent by the host to every PC).
@@ -201,6 +230,7 @@ func apply_owner(peer_id: int, start: Transform3D, velocity: Vector3, spin: Vect
 	_handback_sent = false
 	if is_simulated_here():
 		global_transform = start
+		reset_physics_interpolation()
 		freeze = false
 		linear_velocity = velocity
 		angular_velocity = spin
@@ -228,13 +258,40 @@ func let_go_here(player_id: int) -> void:
 	if _hold_targets.is_empty():
 		gravity_scale = 1.0
 		angular_damp = 0.0
+		mass = _true_mass
+		linear_velocity = linear_velocity.limit_length(_config().held_prop_release_max_speed)
+		angular_velocity = angular_velocity.limit_length(RELEASE_MAX_SPIN)
 
 
 ## Owner: where a holder wants it now.
-func set_hold_target(player_id: int, target: Vector3) -> void:
-	if _holders.has(player_id):
-		_hold_targets[player_id] = target
-		_last_touch_msec = Time.get_ticks_msec()
+## `yaw` is the holder's facing (radians): like Half-Life 2, the prop keeps the angle it was picked up
+## at, relative to the holder, so it turns as they turn.
+func set_hold_target(player_id: int, target: Vector3, yaw: float) -> void:
+	if not _holders.has(player_id):
+		return
+	_hold_targets[player_id] = target
+	var facing := Quaternion(Vector3.UP, yaw)
+	if not _hold_rotation_offsets.has(player_id):
+		_hold_rotation_offsets[player_id] = facing.inverse() * global_basis.get_rotation_quaternion()
+	_hold_facings[player_id] = facing
+	_last_touch_msec = Time.get_ticks_msec()
+
+
+## Owner: turn toward the first holder's facing times the angle it was picked up at (yaw only).
+func _steer_rotation(delta: float) -> void:
+	if _holders.is_empty() or not _hold_facings.has(_holders[0]):
+		return
+	var holder: int = _holders[0]
+	var wanted: Quaternion = (_hold_facings[holder] as Quaternion) * (_hold_rotation_offsets[holder] as Quaternion)
+	var current: Quaternion = global_basis.get_rotation_quaternion()
+	var difference: Quaternion = (wanted * current.inverse()).normalized()
+	if difference.w < 0.0:
+		difference = -difference
+	var angle: float = difference.get_angle()
+	if angle < 0.001:
+		angular_velocity = Vector3.ZERO
+		return
+	angular_velocity = (difference.get_axis() * angle / maxf(delta, 0.001)).limit_length(HOLD_MAX_SPIN)
 
 
 ## Owner: a player walking into this prop's side pushes it along `direction` at up to `speed` m/s,
@@ -261,6 +318,36 @@ func is_idle_here() -> bool:
 ## Owner (a client): we've asked the host to take it back (don't ask again).
 func mark_handback_sent() -> void:
 	_handback_sent = true
+
+
+## Its real weight in kg (while it is lifted, the physics body weighs HELD_MASS instead).
+func get_true_mass() -> float:
+	return _true_mass
+
+
+## About how far it reaches from its centre (metres), from its collision shape.
+func get_radius() -> float:
+	if _radius < 0.0:
+		_radius = 0.3
+		for child: Node in get_children():
+			var shape_node := child as CollisionShape3D
+			if shape_node != null and shape_node.shape != null:
+				var size: Vector3 = shape_node.shape.get_debug_mesh().get_aabb().size
+				_radius = maxf(size.x, maxf(size.y, size.z)) / 2.0
+				break
+	return _radius
+
+
+## Owner: throw it (an impulse along `direction`, plus a little random spin like Half-Life 2).
+func throw_now(direction: Vector3, strength: float) -> void:
+	apply_central_impulse(direction.normalized() * strength)
+	angular_velocity += Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * THROW_SPIN
+
+
+## For tests: pretend it weighs this much.
+func set_true_mass(kilograms: float) -> void:
+	_true_mass = kilograms
+	mass = kilograms
 
 
 func _config() -> GameConfig:
@@ -295,11 +382,17 @@ func _simulate(delta: float) -> void:
 	target /= float(_hold_targets.size())
 	var config: GameConfig = _config()
 	var offset: Vector3 = target - global_position
-	# A spring that grows with mass, plus damping so it settles instead of wobbling.
-	apply_central_force((offset * HOLD_STIFFNESS - linear_velocity * HOLD_DAMPING) * mass * support)
 	var max_speed: float = config.held_prop_max_speed * support
-	if linear_velocity.length() > max_speed:
-		linear_velocity = linear_velocity.limit_length(max_speed)
+	if support >= 1.0:
+		# Half-Life 2's "shadow control": each physics step, set the speed that gets it exactly to
+		# the hold point by the next step (capped). Tight, no spring wobble, and it still collides.
+		linear_velocity = (offset / maxf(delta, 0.001)).limit_length(config.held_prop_track_speed)
+		_steer_rotation(delta)
+	else:
+		# Not fully lifted (a heavy prop with too few helpers): a weaker pull, so it drags.
+		apply_central_force((offset * HOLD_STIFFNESS - linear_velocity * HOLD_DAMPING) * mass * support)
+		if linear_velocity.length() > max_speed:
+			linear_velocity = linear_velocity.limit_length(max_speed)
 	if support >= 1.0 and offset.length() > config.hold_break_distance:
 		_stuck_seconds += delta
 		if _stuck_seconds > HOLD_BREAK_SECONDS and _spawner != null:
@@ -339,7 +432,9 @@ func _apply_pushes() -> void:
 func _follow(delta: float) -> void:
 	if _snapshots.is_empty() or _spawner == null:
 		return
-	var render_msec: int = _spawner.get_host_clock_msec() - _config().prop_interpolation_delay_msec
+	# Like Source: at least two update intervals behind, so one late update never causes a stop.
+	var delay: int = maxi(_config().prop_interpolation_delay_msec, 2000 / maxi(_config().prop_sync_rate_near, 1))
+	var render_msec: int = _spawner.get_host_clock_msec() - delay
 	# Past the newest snapshot (it's late): carry on along its last known speed for a moment.
 	var newest: Dictionary = _snapshots.back()
 	var ahead_seconds: float = clampf(float(render_msec - int(newest["t"])) / 1000.0, 0.0, MAX_EXTRAPOLATION_SECONDS)
@@ -355,9 +450,11 @@ func _follow(delta: float) -> void:
 			target_rotation = (before["r"] as Quaternion).slerp(after["r"] as Quaternion, t)
 			break
 	if global_position.distance_to(target_position) > SNAPSHOT_SNAP_DISTANCE:
-		global_position = target_position
-		global_basis = Basis(target_rotation)
+		global_transform = Transform3D(Basis(target_rotation), target_position)
+		reset_physics_interpolation()
 		return
+	# The snapshots are already interpolated, and physics interpolation smooths between physics
+	# steps, so only a light glide is added (it hides the small jump when the owner changes).
 	var weight: float = 1.0 - exp(-SNAPSHOT_SMOOTHING * delta)
 	global_position = global_position.lerp(target_position, weight)
 	global_basis = Basis(global_basis.get_rotation_quaternion().slerp(target_rotation, weight))

@@ -609,13 +609,16 @@ func test_late_joiner_sees_props_where_they_are_now() -> void:
 	assert_eq(server.create_server(PORT + 6, 4), OK)
 	host.multiplayer.multiplayer_peer = server
 	await wait_physics_frames(2)
-	var crate: NetProp = _props(host).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 0.4, -3)))
+	var start := Vector3(0, 0.4, -3)
+	var crate: NetProp = _props(host).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, start))
 	await wait_physics_frames(5)
-	# Moved (and handed around a few times) before anyone else joins.
-	var moved_to := Transform3D(Basis(Vector3.UP, 0.8), Vector3(4, 0.4, -6))
-	crate.apply_owner(1, 3, moved_to, Vector3.ZERO, Vector3.ZERO)
-	crate.global_transform = moved_to
-	await wait_physics_frames(5)
+	# Handed around a few times and knocked across the floor before anyone else joins.
+	crate.apply_owner(1, 3, crate.global_transform, Vector3.ZERO, Vector3.ZERO)
+	_props(host).apply_impulse(crate, Vector3(60, 0, -40))
+	await wait_physics_frames(3)
+	await wait_until(func() -> bool: return crate.sleeping, WAIT)
+	var moved_to: Transform3D = crate.global_transform
+	assert_gt(moved_to.origin.distance_to(start), 0.5, "the crate was moved")
 
 	var client := _make_pc()
 	var peer := ENetMultiplayerPeer.new()
@@ -624,6 +627,7 @@ func test_late_joiner_sees_props_where_they_are_now() -> void:
 	await wait_until(func() -> bool: return _props(client).get_prop(crate.net_id) != null, WAIT)
 	var copy: NetProp = _props(client).get_prop(crate.net_id)
 	await wait_until(func() -> bool: return copy.get_owner_sequence() == 3, WAIT)
+	await wait_until(func() -> bool: return copy.global_position.distance_to(crate.global_position) < 0.1, WAIT)
 	assert_eq(copy.get_owner_sequence(), 3, "the joiner takes on the current owner number")
 	assert_lt(copy.global_position.distance_to(crate.global_position), 0.1, "it is where the host has it, not where it spawned")
 

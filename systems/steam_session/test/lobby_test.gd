@@ -129,4 +129,6 @@ func _on_ping() -> void:
 
 @rpc("any_peer", "call_local", "reliable")
 func _receive_ping(from_id: int) -> void:
+	if not is_inside_tree():
+		return
 	_add_log("Ping from %s (%d)" % [SteamSession.get_persona_name(from_id), from_id])

@@ -307,6 +307,8 @@ func _check_speed() -> void:
 ## Host -> owner: move there (spawn points, lift, anti-cheat).
 @rpc("any_peer", "call_local", "reliable")
 func _teleport_owner(xform: Transform3D) -> void:
+	if not is_inside_tree():
+		return
 	if multiplayer.get_remote_sender_id() != 1 or not is_local():
 		return
 	global_transform = xform
@@ -319,6 +321,8 @@ func _teleport_owner(xform: Transform3D) -> void:
 ## Host -> owner: a push (explosions, enemy hits).
 @rpc("any_peer", "call_local", "reliable")
 func _knockback_owner(impulse: Vector3) -> void:
+	if not is_inside_tree():
+		return
 	if multiplayer.get_remote_sender_id() != 1 or not is_local():
 		return
 	velocity += impulse

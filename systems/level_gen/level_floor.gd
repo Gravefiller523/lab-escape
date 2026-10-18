@@ -143,6 +143,8 @@ func _on_lift_used(player_id: int) -> void:
 ## Host -> the player who pressed Depart: why the lift can't go yet.
 @rpc("authority", "call_local", "reliable")
 func _note_rpc(text: String) -> void:
+	if not is_inside_tree():
+		return
 	EventBus.toast_requested.emit(text)
 
 
@@ -153,6 +155,8 @@ func _on_boss_used(_player_id: int) -> void:
 ## Host -> everyone: what cargo_lift will announce for real.
 @rpc("authority", "call_local", "reliable")
 func _lift_departed_rpc() -> void:
+	if not is_inside_tree():
+		return
 	var run: RunState = GameFlow.get_run()
 	EventBus.lift_departed.emit(run.floor_number if run != null else 0)
 
@@ -160,6 +164,8 @@ func _lift_departed_rpc() -> void:
 ## Host -> everyone: what bosses will announce for real.
 @rpc("authority", "call_local", "reliable")
 func _boss_defeated_rpc() -> void:
+	if not is_inside_tree():
+		return
 	var department: DepartmentData = GameFlow.get_current_department()
 	EventBus.boss_defeated.emit(department.boss_id if department != null else &"")
 

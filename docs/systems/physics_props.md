@@ -257,6 +257,9 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
   (NEW `NetProp.apply_join_state`). Test: `test_late_joiner_sees_props_where_they_are_now`.
 - 2026-10-18: fix: a PropSpawner in a level being unloaded (the host left) ignores roster changes instead of
   erroring. Test: `test_unloaded_level_ignores_roster_changes`.
+- 2026-10-18 fix (Zachary: error at a floor change): a message can reach a PropSpawner (or another scene node)
+  that is already leaving the tree with its scene; every RPC handler on scene nodes now ignores it then
+  (PropSpawner, LevelFloor, BreakRoom, PlayerCharacter, InteractionController, test scenes).
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

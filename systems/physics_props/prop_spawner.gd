@@ -190,6 +190,8 @@ func send_hold_point(prop: NetProp, player_id: int, point: Vector3, yaw: float) 
 
 @rpc("any_peer", "call_local", "reliable")
 func _request_grab_rpc(net_id: int) -> void:
+	if not is_inside_tree():
+		return
 	if not multiplayer.is_server():
 		return
 	var sender: int = multiplayer.get_remote_sender_id()
@@ -212,6 +214,8 @@ func _request_grab_rpc(net_id: int) -> void:
 
 @rpc("any_peer", "call_local", "reliable")
 func _request_release_rpc(net_id: int, throw_direction: Vector3) -> void:
+	if not is_inside_tree():
+		return
 	if not multiplayer.is_server():
 		return
 	var prop: NetProp = get_prop(net_id)
@@ -232,6 +236,8 @@ func _request_release_rpc(net_id: int, throw_direction: Vector3) -> void:
 
 @rpc("any_peer", "call_local", "unreliable_ordered")
 func _push_rpc(net_id: int, direction: Vector3, speed: float) -> void:
+	if not is_inside_tree():
+		return
 	if not multiplayer.is_server():
 		return
 	var prop: NetProp = get_prop(net_id)
@@ -252,6 +258,8 @@ func _push_rpc(net_id: int, direction: Vector3, speed: float) -> void:
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func _hold_point_rpc(net_id: int, point: Vector3, yaw: float) -> void:
+	if not is_inside_tree():
+		return
 	if not multiplayer.is_server():
 		return
 	var prop: NetProp = get_prop(net_id)
@@ -264,6 +272,8 @@ func _hold_point_rpc(net_id: int, point: Vector3, yaw: float) -> void:
 ## (Plain Array: typed arrays don't survive the network.)
 @rpc("authority", "call_local", "reliable")
 func _set_holders(net_id: int, holder_list: Array, last_holder: int, thrown: bool) -> void:
+	if not is_inside_tree():
+		return
 	var prop: NetProp = get_prop(net_id)
 	if prop == null:
 		return
@@ -284,6 +294,8 @@ func _set_holders(net_id: int, holder_list: Array, last_holder: int, thrown: boo
 ## Host -> one client: your grab was refused (the GrabController snaps the prop back).
 @rpc("authority", "call_local", "reliable")
 func _grab_refused(net_id: int, reason: String) -> void:
+	if not is_inside_tree():
+		return
 	var prop: NetProp = get_prop(net_id)
 	if prop != null:
 		Props.grab_refused.emit(prop, reason)
@@ -343,6 +355,8 @@ func request_knock_on(prop: NetProp) -> void:
 ## runs it, and one of the sender's props is right next to it.
 @rpc("any_peer", "call_remote", "reliable")
 func _request_knock_on_rpc(net_id: int) -> void:
+	if not is_inside_tree():
+		return
 	var prop: NetProp = get_prop(net_id)
 	var sender: int = multiplayer.get_remote_sender_id()
 	if not multiplayer.is_server() or prop == null or prop.get_owner_peer() != 1 or prop.is_held() or prop.is_attached():
@@ -362,6 +376,8 @@ func _broadcast_owner(prop: NetProp, peer_id: int, start: Transform3D, velocity:
 ## Host -> everyone: who runs this prop's physics now (and its ownership number), from this state.
 @rpc("authority", "call_local", "reliable")
 func _set_owner(net_id: int, peer_id: int, sequence: int, start: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+	if not is_inside_tree():
+		return
 	var prop: NetProp = get_prop(net_id)
 	if prop != null:
 		if multiplayer.is_server():
@@ -372,6 +388,8 @@ func _set_owner(net_id: int, peer_id: int, sequence: int, start: Transform3D, ve
 ## Owner (a player's PC) -> host: done with it (settled, nobody touching it); host takes it back.
 @rpc("any_peer", "call_local", "reliable")
 func _return_owner_rpc(net_id: int, sequence: int, last: Transform3D, velocity: Vector3, spin: Vector3) -> void:
+	if not is_inside_tree():
+		return
 	var prop: NetProp = get_prop(net_id)
 	if multiplayer.is_server() and prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer() \
 			and sequence == prop.get_owner_sequence():
@@ -382,6 +400,8 @@ func _return_owner_rpc(net_id: int, sequence: int, last: Transform3D, velocity: 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func _owner_snapshot_rpc(net_id: int, sequence: int, host_msec: int, position_now: Vector3,
 		rotation_now: Quaternion, velocity: Vector3) -> void:
+	if not is_inside_tree():
+		return
 	var prop: NetProp = get_prop(net_id)
 	if multiplayer.is_server() and prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer():
 		prop.apply_snapshot(sequence, host_msec, position_now, rotation_now, velocity)
@@ -390,6 +410,8 @@ func _owner_snapshot_rpc(net_id: int, sequence: int, host_msec: int, position_no
 ## Host -> everyone: push this prop (only the PC that runs it does).
 @rpc("authority", "call_local", "reliable")
 func _impulse_rpc(net_id: int, impulse: Vector3) -> void:
+	if not is_inside_tree():
+		return
 	var prop: NetProp = get_prop(net_id)
 	if prop != null and prop.is_simulated_here():
 		prop.apply_central_impulse(impulse)
@@ -398,6 +420,8 @@ func _impulse_rpc(net_id: int, impulse: Vector3) -> void:
 ## Owner -> host: the held prop got stuck.
 @rpc("any_peer", "call_local", "reliable")
 func _report_stuck_rpc(net_id: int) -> void:
+	if not is_inside_tree():
+		return
 	var prop: NetProp = get_prop(net_id)
 	if multiplayer.is_server() and prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer():
 		release_all(prop)
@@ -453,6 +477,8 @@ func _on_prop_exiting(net_id: int) -> void:
 ## Client -> host: send me this prop's current state (where it is, who runs it, who holds it).
 @rpc("any_peer", "call_remote", "reliable")
 func _request_state_rpc(net_id: int) -> void:
+	if not is_inside_tree():
+		return
 	if not multiplayer.is_server():
 		return
 	var prop: NetProp = get_prop(net_id)
@@ -467,6 +493,8 @@ func _request_state_rpc(net_id: int) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _prop_state(net_id: int, owner_peer: int, sequence: int, xform: Transform3D, velocity: Vector3, spin: Vector3,
 		holder_list: Array, last_holder: int) -> void:
+	if not is_inside_tree():
+		return
 	var prop: NetProp = get_prop(net_id)
 	if prop == null:
 		return
@@ -537,6 +565,8 @@ func get_host_clock_msec() -> int:
 ## Host -> clients: where the moving props are now, stamped with the host's clock.
 @rpc("authority", "call_remote", "unreliable_ordered")
 func _receive_snapshots(host_msec: int, batch: Array) -> void:
+	if not is_inside_tree():
+		return
 	# Clock offset = the smallest (local - host) seen, so network hiccups don't push it later. It
 	# creeps up slowly so it can follow if the delay really grows.
 	var now: int = Time.get_ticks_msec()
@@ -589,6 +619,8 @@ func _handle_fallen_props() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _key_respawned(net_id: int) -> void:
+	if not is_inside_tree():
+		return
 	var prop: NetProp = get_prop(net_id)
 	if prop != null:
 		EventBus.key_object_respawned.emit(prop)

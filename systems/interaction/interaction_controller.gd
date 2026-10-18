@@ -171,6 +171,8 @@ func _in_reach(interactable: Interactable, tolerance: float) -> bool:
 ## held long enough, enabled and allowed, then fires used(player_id) on the host only.
 @rpc("any_peer", "call_local", "reliable")
 func _request_use_rpc(target_path: NodePath, held_seconds: float) -> void:
+	if not is_inside_tree():
+		return
 	if not multiplayer.is_server() or _body == null:
 		return
 	if multiplayer.get_remote_sender_id() != _body.get_multiplayer_authority():

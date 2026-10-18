@@ -59,6 +59,8 @@ func _on_used(player_id: int, what: String) -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _announce(player_name: String, what: String) -> void:
+	if not is_inside_tree():
+		return
 	_lamp_index = (_lamp_index + 1) % LAMP_COLORS.size()
 	_lamp.light_color = LAMP_COLORS[_lamp_index]
 	_log.text = "%s used the %s (the host checked it)\n%s" % [player_name, what, _log.text]

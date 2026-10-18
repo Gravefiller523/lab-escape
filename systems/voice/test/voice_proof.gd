@@ -126,6 +126,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 ## STUB for upgrades: in the game, upgrades calls Voice.set_voice_effect on every PC.
 @rpc("any_peer", "call_local", "reliable")
 func _set_fly(player_id: int, enabled: bool) -> void:
+	if not is_inside_tree():
+		return
 	_fly_on[player_id] = enabled
 	if enabled:
 		var fly := VoiceEffectData.new()
@@ -140,6 +142,8 @@ func _set_fly(player_id: int, enabled: bool) -> void:
 ## STUB for the doors system: anyone may open or close the test door, on every PC.
 @rpc("any_peer", "call_local", "reliable")
 func _set_door(open: bool) -> void:
+	if not is_inside_tree():
+		return
 	_door.is_open = open
 	_door_body.collision_layer = 0 if open else PhysicsLayers.bit(PhysicsLayers.WORLD)
 	_door_body.visible = not open

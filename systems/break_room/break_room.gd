@@ -141,6 +141,8 @@ func request_force_start() -> void:
 
 @rpc("any_peer", "call_local", "reliable")
 func _request_start_rpc() -> void:
+	if not is_inside_tree():
+		return
 	if not _net.is_host() or _starting:
 		return
 	if _net.sender_player_id() == 0:
@@ -171,6 +173,8 @@ func _accept_start() -> void:
 ## Host -> everyone: the elevator start was accepted.
 @rpc("authority", "call_local", "reliable")
 func _start_accepted() -> void:
+	if not is_inside_tree():
+		return
 	_starting = true
 	_doors_closed = true
 	_message.text = "Elevator starting!"
@@ -182,6 +186,8 @@ func _start_accepted() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _start_refused(missing_names: String) -> void:
+	if not is_inside_tree():
+		return
 	_message.text = "Can't start yet. Waiting for:\n" + missing_names
 	EventBus.toast_requested.emit("Waiting for: " + missing_names)
 
@@ -241,6 +247,8 @@ func _show_note_to(player_id: int, text: String) -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _show_note(text: String) -> void:
+	if not is_inside_tree():
+		return
 	EventBus.toast_requested.emit(text)
 	_message.text = text
 

@@ -83,6 +83,11 @@ var _distance_now: Dictionary[int, float] = {}
 ## player_id -> [AudioEffectReverb, AudioEffectDelay] on their bus.
 var _echo_effects: Dictionary[int, Array] = {}
 var _hearing_timer: float = 0.0
+## For the console's `voice` command: what happened so far (helps find problems on real Steam).
+var _sent_packets: int = 0
+var _received_packets: Dictionary[int, int] = {}
+var _last_get_voice_result: int = -1
+var _last_decompress_result: int = -1
 
 
 ## For tests only: a fake Net and config, a different bus name prefix, and no microphone.
@@ -105,6 +110,8 @@ func _ready() -> void:
 	EventBus.player_spawned.connect(_on_player_spawned)
 	EventBus.settings_changed.connect(_on_settings_changed)
 	sync_players()
+	if _live:
+		_register_console_command.call_deferred()
 
 
 func _notification(what: int) -> void:
@@ -677,6 +684,7 @@ func _process_local(wants_mic: bool, push_held: bool) -> void:
 	var bytes: PackedByteArray = VoiceCodec.encode(frames, AudioServer.get_mix_rate())
 	if _net.get_player_count() > 1:
 		_receive_voice.rpc(bytes, false)
+		_sent_packets += 1
 	if _loopback_playback != null:
 		_push_frames(_loopback_playback, VoiceCodec.decode(bytes))
 
@@ -693,6 +701,7 @@ func _process_steam(wants_mic: bool, push_held: bool) -> void:
 		return
 	var voice: Dictionary = Steam.getVoice(STEAM_VOICE_BUFFER)
 	var written: int = int(voice.get("written", 0))
+	_last_get_voice_result = int(voice.get("result", -1))
 	if int(voice.get("result", -1)) != STEAM_VOICE_OK or written <= 0:
 		_set_transmitting(false)
 		return
@@ -702,6 +711,7 @@ func _process_steam(wants_mic: bool, push_held: bool) -> void:
 	_input_level = 1.0
 	if _net.get_player_count() > 1:
 		_receive_voice.rpc(bytes, true)
+		_sent_packets += 1
 	if _loopback_playback != null:
 		_push_frames(_loopback_playback, _decompress(bytes))
 
@@ -743,6 +753,7 @@ func _stop_steam() -> void:
 
 func _decompress(bytes: PackedByteArray) -> PackedVector2Array:
 	var result: Dictionary = Steam.decompressVoice(bytes, VoiceCodec.SAMPLE_RATE, STEAM_DECOMPRESSED_BUFFER)
+	_last_decompress_result = int(result.get("result", -1))
 	if int(result.get("result", -1)) != STEAM_VOICE_OK:
 		return PackedVector2Array()
 	var raw: PackedByteArray = result.get("uncompressed", PackedByteArray())
@@ -757,6 +768,7 @@ func _receive_voice(bytes: PackedByteArray, compressed: bool) -> void:
 	var player_id: int = _net.sender_player_id()
 	if player_id == 0 or player_id == _net.local_player_id():
 		return
+	_received_packets[player_id] = _received_packets.get(player_id, 0) + 1
 	feed_voice(player_id, _decompress(bytes) if compressed else VoiceCodec.decode(bytes))
 
 
@@ -778,3 +790,46 @@ func _update_speaking() -> void:
 ## STUB until settings_input: nothing to read yet (push-to-talk, mic device, volume, reduce effects).
 func _on_settings_changed(_section: StringName) -> void:
 	pass
+
+
+# --- Console ---------------------------------------------------------------------------------
+
+## Steam's voice result codes (EVoiceResult), for the `voice` command.
+const STEAM_VOICE_RESULT_NAMES: PackedStringArray = ["OK", "not initialised", "not recording", "no data yet",
+	"buffer too small", "data corrupted", "restricted (this Steam account can't use voice)", "unsupported codec",
+	"receiver out of date", "receiver did not answer"]
+
+
+func _register_console_command() -> void:
+	DebugConsole.register_command(&"voice", _cmd_voice, "voice: voice chat status (to find problems)", false)
+
+
+## The `voice` console command: how voice is set up here and what has been sent and received.
+func _cmd_voice(_args: PackedStringArray, _player_id: int) -> String:
+	var lines: PackedStringArray = []
+	var steam: bool = _use_steam_voice()
+	lines.append("Voice mode: %s | push-to-talk: %s | sending now: %s" % ["Steam" if steam else "local (Godot mic)",
+		"on (hold the key)" if _push_to_talk else "off (open mic)", "yes" if _transmitting else "no"])
+	if steam:
+		lines.append("Steam recording: %s | last getVoice: %s | last decompress: %s" % [
+			"yes" if _steam_recording else "no", _steam_result_name(_last_get_voice_result),
+			_steam_result_name(_last_decompress_result)])
+	else:
+		lines.append("Godot mic open: %s | level: %d%%" % ["yes" if _mic_player != null else "no", int(_input_level * 100.0)])
+	lines.append("Voice packets sent: %d" % _sent_packets)
+	for player_id: int in _net.get_player_ids():
+		if player_id == _net.local_player_id():
+			continue
+		lines.append("  %s: received %d packets | speaker: %s | muted: %s | volume: %d%%" % [
+			_net.get_display_name(player_id), _received_packets.get(player_id, 0),
+			"yes" if _speakers.has(player_id) else "not yet", "yes" if is_player_muted(player_id) else "no",
+			int(get_voice_volume(player_id) * 100.0)])
+	return "\n".join(lines)
+
+
+static func _steam_result_name(result: int) -> String:
+	if result < 0:
+		return "none yet"
+	if result < STEAM_VOICE_RESULT_NAMES.size():
+		return "%d (%s)" % [result, STEAM_VOICE_RESULT_NAMES[result]]
+	return str(result)

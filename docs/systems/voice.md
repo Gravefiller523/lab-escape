@@ -177,6 +177,8 @@ label yet (delay is judged by ear on 2 PCs).
 - 2026-10-17: full volume (and no extra treble loss, reverb or echo) out to 10 m when no closed door is in
   the way (`voice_full_volume_distance` 4 -> 10); the same curve then runs 10 -> 46 m (`voice_max_distance` 40 -> 46, the same drop per metre as the old 4 -> 40 m). Through a closed
   door: full to 4 m (`voice_closed_door_full_volume_distance`), silent past 15 m.
+- 2026-10-18: NEW console command `voice` (status for finding problems on real Steam: mode, recording, Steam's
+  last voice result codes, packets sent and received per player). Test: `test_console_voice_command_reports_status`.
 
 ## HANDOFF
 **Done (Phase 1a proof):** the `Voice` autoload: one bus per player (`Voice_<slot>`) with pitch,

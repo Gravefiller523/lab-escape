@@ -345,3 +345,10 @@ func test_closed_door_starts_fading_sooner() -> void:
 	var config := GameConfig.new()
 	assert_eq(VoiceService.hearing_gain(8.0, 0.0, config, 0), 1.0, "no door: still full volume at 8 m")
 	assert_lt(VoiceService.hearing_gain(8.0, 0.0, config, 1), 1.0, "closed door: fading from 4 m")
+
+
+func test_console_voice_command_reports_status() -> void:
+	await wait_process_frames(2)
+	var output: String = DebugConsole.run("voice")
+	assert_string_contains(output, "Voice mode:")
+	assert_string_contains(output, "Voice packets sent:")

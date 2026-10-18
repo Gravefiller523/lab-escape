@@ -23,6 +23,8 @@ const FLOOR_SCENE: String = LevelService.FLOOR_SCENE
 const LOADING_SCENE: String = "res://systems/game_flow/loading_screen.tscn"
 ## STUB (department content): used when no DepartmentData is in the run rotation.
 const PLACEHOLDER_DEPARTMENT_ID: StringName = &"department_placeholder"
+## STUB (department content): the placeholder department's lift part.
+const PLACEHOLDER_LIFT_PART_ID: StringName = &"prop_lift_part_zoology"
 
 const RESULT_ESCAPED: StringName = &"escaped"
 const RESULT_WIPED: StringName = &"wiped"
@@ -506,6 +508,9 @@ func _placeholder_department() -> DepartmentData:
 		_placeholder.id = PLACEHOLDER_DEPARTMENT_ID
 		_placeholder.display_name = "Placeholder department"
 		_placeholder.floor_count = _config.floors_per_department
+		# One part to fetch per floor (Zachary, 2026-10-18), using the only lift part prop there is so far.
+		_placeholder.lift_parts_per_floor = 1
+		_placeholder.lift_part_prop_id = PLACEHOLDER_LIFT_PART_ID
 	return _placeholder
 
 

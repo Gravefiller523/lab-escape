@@ -144,6 +144,7 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
 - 2026-10-18 (level_gen branch): floors come from level_gen (`FLOOR_SCENE` = `Level.FLOOR_SCENE`; the host
   generates the layout and it travels with the run and in the join handshake). The grey-box stub floor is gone.
   `use_test_setup` takes an optional floor builder.
+- 2026-10-18: the placeholder department needs 1 lift part per floor (`prop_lift_part_zoology`).
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `GameFlow` (`GameFlowService`, `systems/game_flow/game_flow.gd`),

@@ -12,6 +12,7 @@ var _spawners: Array[PropSpawner] = []
 
 func _ready() -> void:
 	EventBus.player_spawned.connect(_on_player_spawned)
+	_register_console_spawner.call_deferred()
 
 
 ## The current level's spawner (the most recently added one). Null if the level has none.
@@ -85,3 +86,18 @@ func _on_player_spawned(_player_id: int, player_node: Node3D) -> void:
 	var controller := GrabController.new()
 	controller.name = GrabController.NODE_NAME
 	body.add_child(controller)
+
+
+## Makes `spawn prop_<name> [count]` work in the debug console (host only; the console checks cheats).
+func _register_console_spawner() -> void:
+	DebugConsole.register_spawner(&"prop", _console_spawn)
+
+
+func _console_spawn(id: StringName, at: Transform3D, count: int, _player_id: int) -> String:
+	if get_spawner() == null:
+		return "This level has no PropSpawner, so props can't be spawned here."
+	var spawned: int = 0
+	for index: int in count:
+		if spawn_prop(id, DebugConsoleService.spread(at, index)) != null:
+			spawned += 1
+	return "Spawned %d x %s." % [spawned, id]

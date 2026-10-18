@@ -89,7 +89,8 @@ so far: `buzz` (Fly: band-pass + light distortion + fast chorus) and `deep`.
   `set_mic_sensitivity(0..1)` (default `voice_mic_sensitivity` = 0.7; 0 needs a loud voice, 1 picks up a
   whisper). `MicSensitivityPanel` is a ready-made slider with a live level bar and the threshold line;
   it's in the voice test scene and the Esc menu. Push-to-talk (hold V) always sends, whatever the
-  threshold. Over Steam, Steam decides when you're talking and the threshold doesn't apply.
+  threshold. CHANGED 2026-10-18: over Steam too by default (`voice_use_steam_recording` = false); only with that on
+  does Steam record, and then Steam decides when you're talking and the threshold doesn't apply.
 - Everything changes smoothly (muffle fades, the voice glides to the doorway) and is worked out on
   each listener's PC: no extra network traffic. All numbers are in `config/game_config.tres`.
 Launch presets in `systems/voice/presets/`: `buzz` (Fly: band-pass + tremolo), `robot` (cybernetic
@@ -179,6 +180,10 @@ label yet (delay is judged by ear on 2 PCs).
   door: full to 4 m (`voice_closed_door_full_volume_distance`), silent past 15 m.
 - 2026-10-18: NEW console command `voice` (status for finding problems on real Steam: mode, recording, Steam's
   last voice result codes, packets sent and received per player). Test: `test_console_voice_command_reports_status`.
+- 2026-10-18: CHANGED (2-PC Steam test: Steam's recording gave "no data" and nothing was sent): over Steam,
+  voice now uses Godot's mic and the same 16 kHz audio as local mode, so the mic sensitivity slider works there
+  too. NEW GameConfig `voice_use_steam_recording` (default false) switches Steam's recording back on.
+  Test: `test_steam_recording_is_off_by_default`.
 
 ## HANDOFF
 **Done (Phase 1a proof):** the `Voice` autoload: one bus per player (`Voice_<slot>`) with pitch,

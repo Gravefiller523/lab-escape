@@ -352,3 +352,8 @@ func test_console_voice_command_reports_status() -> void:
 	var output: String = DebugConsole.run("voice")
 	assert_string_contains(output, "Voice mode:")
 	assert_string_contains(output, "Voice packets sent:")
+
+
+func test_steam_recording_is_off_by_default() -> void:
+	assert_false(GameConfig.new().voice_use_steam_recording, "Godot's mic is used over Steam too")
+	assert_false(Config.game.voice_use_steam_recording, "and the live config agrees")

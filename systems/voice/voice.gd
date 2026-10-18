@@ -4,8 +4,8 @@ extends Node
 ##
 ## Every player gets their own audio bus ("Voice_<slot>") with their effects (pitch, presets like
 ## Fly's "buzz"), so effects apply to that player only. Remote voices play from the speaker's head
-## in 3D. Over Steam, Steam records and compresses the mic; in local mode (no Steam) Godot records the
-## mic and sends plain 16 kHz audio. Nothing is ever saved to disk. Spec: docs/systems/voice.md.
+## in 3D. Godot records the mic and sends plain 16 kHz audio, in local mode and over Steam. Steam's own
+## recording can be switched on with Config.game.voice_use_steam_recording. Nothing is ever saved to disk. Spec: docs/systems/voice.md.
 
 const MIC_BUS: StringName = &"VoiceMic"
 ## audio owns this bus; until it exists, voices go to Master.
@@ -658,7 +658,7 @@ func _process(delta: float) -> void:
 
 
 func _use_steam_voice() -> bool:
-	return SteamSession.is_steam_running() and multiplayer.multiplayer_peer is SteamMultiplayerPeer
+	return _config.voice_use_steam_recording and SteamSession.is_steam_running() and multiplayer.multiplayer_peer is SteamMultiplayerPeer
 
 
 func _process_local(wants_mic: bool, push_held: bool) -> void:
@@ -808,7 +808,9 @@ func _register_console_command() -> void:
 func _cmd_voice(_args: PackedStringArray, _player_id: int) -> String:
 	var lines: PackedStringArray = []
 	var steam: bool = _use_steam_voice()
-	lines.append("Voice mode: %s | push-to-talk: %s | sending now: %s" % ["Steam" if steam else "local (Godot mic)",
+	var over_steam: bool = multiplayer.multiplayer_peer is SteamMultiplayerPeer
+	var mode: String = "Steam recording" if steam else ("Godot mic, sent over Steam" if over_steam else "Godot mic")
+	lines.append("Voice mode: %s | push-to-talk: %s | sending now: %s" % [mode,
 		"on (hold the key)" if _push_to_talk else "off (open mic)", "yes" if _transmitting else "no"])
 	if steam:
 		lines.append("Steam recording: %s | last getVoice: %s | last decompress: %s" % [

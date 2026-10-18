@@ -123,6 +123,10 @@ extends Resource
 ## Open mic: how easily your voice is picked up, 0 to 1. Higher = quieter talking is sent too.
 ## Lower it if background noise keeps your mic on. (settings_input will let players change it.)
 @export_range(0.0, 1.0) var voice_mic_sensitivity: float = 0.7
+## Over Steam: true = Steam records and compresses the mic (Steam's own voice settings decide when you talk);
+## false = Godot records the mic the same way as local mode (our sensitivity slider applies) and sends it
+## over Steam. False since the 2026-10-18 Steam test, where Steam's recording gave no audio.
+@export var voice_use_steam_recording: bool = false
 ## Physics layer number (1 to 32) of things that block sound: level walls and floors (1 = world).
 @export_range(1, 32) var voice_sound_blocker_layer: int = 1
 ## A fully muffled voice (behind a wall) is this loud, 0 to 1.

@@ -357,3 +357,21 @@ func test_console_voice_command_reports_status() -> void:
 func test_steam_recording_is_off_by_default() -> void:
 	assert_false(GameConfig.new().voice_use_steam_recording, "Godot's mic is used over Steam too")
 	assert_false(Config.game.voice_use_steam_recording, "and the live config agrees")
+
+
+func test_speaker_freed_with_its_body_is_no_error() -> void:
+	# Bodies (and the voice speakers on their heads) are freed at every scene change.
+	var body := PLAYER_SCENE.instantiate() as PlayerCharacter
+	body.player_id = 22
+	body.name = "22"
+	body.set_multiplayer_authority(99)
+	add_child(body)
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.make_current()
+	assert_true(_voice.feed_voice(22, _tone()))
+	body.free()
+	await wait_physics_frames(5)
+	await wait_process_frames(5)
+	assert_eq(_voice.get_voice_volume(22), 1.0, "a freed speaker is skipped (no 'cast a freed object' error)")
+	assert_true(_voice.feed_voice(22, _tone()), "and the voice carries on (flat until they get a new body)")

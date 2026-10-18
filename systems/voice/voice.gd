@@ -182,7 +182,7 @@ func is_player_muted(player_id: int) -> bool:
 ## from that spot in the world and fades with distance like another player's would (echo dummy).
 func set_loopback(enabled: bool, anchor: Node3D = null) -> void:
 	_loopback = enabled
-	if _loopback_player != null:
+	if is_instance_valid(_loopback_player):
 		_loopback_player.queue_free()
 		_loopback_player = null
 		_loopback_playback = null
@@ -392,9 +392,11 @@ func _create_bus(player_id: int) -> void:
 
 
 func _remove_player(player_id: int) -> void:
-	var speaker: Node = _speakers.get(player_id)
-	if speaker != null and is_instance_valid(speaker):
-		speaker.queue_free()
+	# Variant, not Node: the speaker may already be freed with its body, and a freed object can't be
+	# put in a typed variable or cast.
+	var speaker: Variant = _speakers.get(player_id)
+	if is_instance_valid(speaker):
+		(speaker as Node).queue_free()
 	_speakers.erase(player_id)
 	_playbacks.erase(player_id)
 	_last_heard_msec.erase(player_id)
@@ -487,8 +489,8 @@ func _make_generator() -> AudioStreamGenerator:
 
 ## The speaker node for a remote player: 3D at their head if they have a body, flat otherwise.
 func _ensure_speaker(player_id: int) -> AudioStreamGeneratorPlayback:
-	var existing: Node = _speakers.get(player_id)
-	if existing != null and is_instance_valid(existing):
+	var existing: Variant = _speakers.get(player_id)
+	if is_instance_valid(existing):
 		return _playbacks.get(player_id)
 	var body: PlayerCharacter = PlayerCharacter.find(player_id)
 	var player: Node
@@ -529,11 +531,17 @@ func _setup_distance_fade(speaker: AudioStreamPlayer3D) -> void:
 func _speakers_3d() -> Dictionary[int, AudioStreamPlayer3D]:
 	var result: Dictionary[int, AudioStreamPlayer3D] = {}
 	for player_id: int in _speakers.keys():
-		var speaker := _speakers[player_id] as AudioStreamPlayer3D
-		if speaker != null and is_instance_valid(speaker) and speaker.is_inside_tree():
+		# The speaker sits on the player's body, so it is freed with it (scene changes): check first.
+		var entry: Variant = _speakers[player_id]
+		if not is_instance_valid(entry):
+			continue
+		var speaker := entry as AudioStreamPlayer3D
+		if speaker != null and speaker.is_inside_tree():
 			result[player_id] = speaker
-	var loopback := _loopback_player as AudioStreamPlayer3D
-	if loopback != null and is_instance_valid(loopback) and loopback.is_inside_tree():
+	var loopback: AudioStreamPlayer3D = null
+	if is_instance_valid(_loopback_player):
+		loopback = _loopback_player as AudioStreamPlayer3D
+	if loopback != null and loopback.is_inside_tree():
 		result[_net.local_player_id()] = loopback
 	return result
 
@@ -626,9 +634,11 @@ func _push_frames(playback: AudioStreamGeneratorPlayback, frames: PackedVector2A
 
 func _on_player_spawned(player_id: int, _player_node: Node3D) -> void:
 	# Move this player's voice onto their (new) body next time they speak.
-	var speaker: Node = _speakers.get(player_id)
-	if speaker != null and is_instance_valid(speaker):
-		speaker.queue_free()
+	# Variant, not Node: the speaker may already be freed with its body, and a freed object can't be
+	# put in a typed variable or cast.
+	var speaker: Variant = _speakers.get(player_id)
+	if is_instance_valid(speaker):
+		(speaker as Node).queue_free()
 	_speakers.erase(player_id)
 	_playbacks.erase(player_id)
 

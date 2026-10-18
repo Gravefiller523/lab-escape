@@ -185,6 +185,9 @@ label yet (delay is judged by ear on 2 PCs).
   voice now uses Godot's mic and the same 16 kHz audio as local mode, so the mic sensitivity slider works there
   too. NEW GameConfig `voice_use_steam_recording` (default false) switches Steam's recording back on.
   Test: `test_steam_recording_is_off_by_default`.
+- 2026-10-18 fix (Zachary: the game froze at the elevator / floor 3): a voice speaker sits on its player's body,
+  so it is freed at every scene change, and casting the freed node was a script error (which pauses the game
+  in the editor). Freed speakers are now skipped. Test: `test_speaker_freed_with_its_body_is_no_error`.
 
 ## HANDOFF
 **Done (Phase 1a proof):** the `Voice` autoload: one bus per player (`Voice_<slot>`) with pitch,

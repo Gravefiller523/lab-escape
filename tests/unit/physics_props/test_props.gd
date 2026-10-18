@@ -634,3 +634,14 @@ func test_late_joiner_sees_props_where_they_are_now() -> void:
 	_props(host).apply_impulse(crate, Vector3(0, 0, 40))
 	await wait_until(func() -> bool: return copy.global_position.distance_to(moved_to.origin) > 0.5, WAIT)
 	assert_gt(copy.global_position.distance_to(moved_to.origin), 0.5, "and it follows the host's updates after that")
+
+
+func test_unloaded_level_ignores_roster_changes() -> void:
+	# Like when the host leaves: the level is taken out of the tree while Net resets to solo.
+	var pc := _make_pc()
+	await wait_physics_frames(2)
+	var level: Node = pc.get_node("Level")
+	pc.remove_child(level)
+	_net(pc).roster_changed.emit()
+	assert_not_null(level.get_node("Props"), "no error, nothing happened")
+	level.free()

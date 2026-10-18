@@ -584,7 +584,8 @@ func _key_respawned(net_id: int) -> void:
 
 ## Host: players who left let go of what they held, and props their PC ran come back to the host.
 func _release_missing_players() -> void:
-	if not multiplayer.is_server():
+	# A level being unloaded (e.g. the host left) has no multiplayer any more.
+	if not is_inside_tree() or not multiplayer.is_server():
 		return
 	var present: Array[int] = _net.get_player_ids()
 	var peers: PackedInt32Array = multiplayer.get_peers()

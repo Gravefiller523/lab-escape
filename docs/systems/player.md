@@ -146,6 +146,8 @@ launch options `-- host` / `-- join`.
   Added `PlayerTuning` (`player_tuning.tres`), `PlayerInputState`, the sync_* values, the modifier
   getters, `get_wanted_mode`, `load_mode`, the spawner's exports and auto-spawning (including mid-run
   joiners waiting for `floor_ready`), `get_body`, and the test-only `set_input_override` and `use_net`.
+- 2026-10-18: fix: when the host leaves while you're in a level, the level's PlayerSpawner no longer tries to
+  spawn you as it is unloaded (it ignores `player_joined` when out of the tree). Test: `test_unloaded_level_spawns_nobody`.
 
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,

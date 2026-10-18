@@ -204,3 +204,14 @@ func test_eight_bodies_can_spawn() -> void:
 	await wait_physics_frames(5)
 	assert_eq(_bodies(pc).size(), 8)
 	assert_not_null(spawner.get_body(1006))
+
+
+func test_unloaded_level_spawns_nobody() -> void:
+	# Like when the host leaves: the level is taken out of the tree while Net resets to solo.
+	var pc := _make_pc()
+	await wait_until(_body_count_is(pc, 1), WAIT)
+	var players: Node = pc.get_node("Players")
+	pc.remove_child(players)
+	EventBus.player_joined.emit(_net(pc).local_player_id())
+	assert_eq(players.get_child_count(), 2, "nothing new was spawned (the spawner and the old body only)")
+	players.free()

@@ -148,6 +148,9 @@ func _clear_local_bodies() -> void:
 
 
 func _on_player_joined(player_id: int) -> void:
+	# A level being unloaded (e.g. the host left and we go back to the menu) spawns nobody.
+	if not is_inside_tree():
+		return
 	if auto_spawn and _net.is_host() and not _net.is_waiting_for_next_floor(player_id):
 		spawn_player(player_id, _next_spawn_transform())
 

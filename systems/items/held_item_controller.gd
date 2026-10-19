@@ -19,7 +19,7 @@ const AIM_TOLERANCE: float = 1.5
 ## The host allows this much early use (seconds) for network timing.
 const COOLDOWN_TOLERANCE: float = 0.1
 const PICKUP_REACH: float = 3.0
-const VIEW_OFFSET: Vector3 = Vector3(0.32, -0.28, -0.55)
+const VIEW_OFFSET: Vector3 = Vector3(0.3, -0.3, -0.6)
 const SWING_SECONDS: float = 0.25
 
 var _body: PlayerCharacter

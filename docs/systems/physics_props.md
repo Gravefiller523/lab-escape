@@ -268,6 +268,10 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
   for everyone ("The vacuum tube shattered!"). NEW: `NetProp.is_fragile()`, `PropSpawner.request_break()`. Test:
   `test_fragile_props_shatter_when_dropped_hard`.
 
+- 2026-10-19 (items branch): `Props.spawn_item` is real: item pickups (ItemData.world_scene, a NetProp with an
+  ItemPickup child) spawn like props (`PropSpawner.spawn_item`; `spawn_prop` also accepts item ids and makes a PropData
+  from the ItemData, mass = `world_mass`).
+
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,
 net ids, near/far snapshot batches of moving props only, host spring holding, grab rules, throw,

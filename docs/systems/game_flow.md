@@ -159,6 +159,9 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
   level builder. NEW: `get_last_run_result()`, `WORLD_SCENE`, `LEVEL_BREAK_ROOM`, `LEVEL_FLOOR`. Joiners load
   the world and the current level in the join handshake. STUBS in GameWorld: crates at prop_spawn markers
   (physics_props), "Defeat the boss" button (bosses), the HUD prompt.
+- 2026-10-19 (cargo_lift slots): the host picks how many lift slots break each floor (`_lift_break_count`:
+  `SeededRng(run_seed, &"lift_break_count", floor)` between the department's `lift_breaks_min` and `lift_breaks_max`)
+  and passes it to `CargoLift.arrive`. REMOVED the private `PLACEHOLDER_LIFT_PART_ID` const.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `GameFlow` (`GameFlowService`, `systems/game_flow/game_flow.gd`),

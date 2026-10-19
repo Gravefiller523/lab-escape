@@ -63,6 +63,8 @@ var extra: Dictionary = {}
 var _holders: Array[int] = []
 var _spawner: PropSpawner
 var _anchor: Node3D
+## Fragile props: how fast it was moving one physics step ago (the speed it hit something at).
+var _last_speed: float = 0.0
 ## The network peer whose PC runs this prop's physics (1 = the host).
 var _owner_peer: int = 1
 ## Goes up by one every time the owner changes (Glenn Fiedler's "ownership sequence").
@@ -286,6 +288,11 @@ static func _time_of(snapshot: Dictionary) -> int:
 	return msec
 
 
+## NEW 2026-10-19: shatters when it hits something at PropData.fragile_break_speed or faster.
+func is_fragile() -> bool:
+	return data != null and data.fragile_break_speed > 0.0
+
+
 ## Owner: this PC's player let go. Stop pulling it toward their hands right now (don't wait for the
 ## host to confirm), so a throw flies at full speed instead of being held back for a moment.
 func let_go_here(player_id: int) -> void:
@@ -399,6 +406,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if is_simulated_here():
 		_simulate(delta)
+		_last_speed = linear_velocity.length()
 	else:
 		_follow(delta)
 
@@ -537,13 +545,18 @@ func _claim_ahead(delta: float) -> void:
 
 ## A player's PC that runs this prop watches what it bumps into (see _on_body_entered).
 func _update_contact_monitor() -> void:
-	contact_monitor = is_simulated_here() and not multiplayer.is_server()
+	contact_monitor = is_simulated_here() and (not multiplayer.is_server() or is_fragile())
 	_knock_requested.clear()
 
 
 ## Knock-on ownership: on a player's PC, when a prop it runs hits a loose prop the host runs, ask to
 ## run that one too, so it gets knocked over here straight away instead of acting like a wall.
 func _on_body_entered(other: Node) -> void:
+	# Fragile: hitting anything hard enough shatters it (decided where it is simulated; the host breaks it).
+	if is_fragile() and is_simulated_here() and not is_held() and _spawner != null \
+			and _last_speed >= data.fragile_break_speed:
+		_spawner.request_break(self)
+		return
 	var prop := other as NetProp
 	if prop == null or _spawner == null or not is_simulated_here() or multiplayer.is_server():
 		return

@@ -25,8 +25,6 @@ const WORLD_SCENE: String = "res://systems/game_flow/game_world.tscn"
 const BREAK_ROOM_SCENE: String = "res://systems/break_room/break_room.tscn"
 ## STUB (department content): used when no DepartmentData is in the run rotation.
 const PLACEHOLDER_DEPARTMENT_ID: StringName = &"department_placeholder"
-## STUB (department content): the placeholder department's lift part.
-const PLACEHOLDER_LIFT_PART_ID: StringName = &"prop_lift_part_zoology"
 
 const RESULT_ESCAPED: StringName = &"escaped"
 const RESULT_WIPED: StringName = &"wiped"
@@ -359,12 +357,21 @@ func _host_arrive(level: Dictionary) -> void:
 		elif _run != null and _run.is_boss_floor:
 			lift.arrive(0, false, true)
 		else:
-			var department: DepartmentData = get_current_department()
-			lift.arrive(department.lift_parts_per_floor if department != null else 1, false)
+			lift.arrive(_lift_break_count(), false)
 	if world != null:
 		# Players who join from now on (or waited for this floor) appear here.
 		world.get_player_spawner().spawn_points = _spawn_points_for(level, world)
 	_arrived_rpc.rpc(level)
+
+
+## Host: how many of the lift's slots break on this floor: the department's lift_breaks_min to max,
+## picked with the run's seed (the same run always breaks the same number).
+func _lift_break_count() -> int:
+	var department: DepartmentData = get_current_department()
+	if department == null or _run == null:
+		return 1
+	var rng: RandomNumberGenerator = SeededRng.make(_run.run_seed, &"lift_break_count", _run.floor_number)
+	return rng.randi_range(department.lift_breaks_min, maxi(department.lift_breaks_max, department.lift_breaks_min))
 
 
 ## Host: drops props that are not in the lift (they stay behind with the old level).
@@ -611,9 +618,7 @@ func _placeholder_department() -> DepartmentData:
 		_placeholder.id = PLACEHOLDER_DEPARTMENT_ID
 		_placeholder.display_name = "Placeholder department"
 		_placeholder.floor_count = _config.floors_per_department
-		# One part to fetch per floor (Zachary, 2026-10-18), using the only lift part prop there is so far.
-		_placeholder.lift_parts_per_floor = 1
-		_placeholder.lift_part_prop_id = PLACEHOLDER_LIFT_PART_ID
+		# 1 to 3 of the lift's slots break on each floor (Zachary, 2026-10-19): the DepartmentData defaults.
 	return _placeholder
 
 

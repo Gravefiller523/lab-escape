@@ -255,7 +255,10 @@ func test_late_joiner_gets_the_current_floor() -> void:
 
 
 func test_two_lift_presses_go_up_one_floor() -> void:
-	var pc := _make_pc(_config())
+	var config := _config()
+	# A ride long enough that the third press lands while everyone is still on the way.
+	config.lift_ride_seconds = 0.5
+	var pc := _make_pc(config)
 	var flow: GameFlowService = _flow(pc)
 	flow.go_to_break_room()
 	await wait_until(_state_is(pc, GameFlowService.State.BREAK_ROOM), WAIT)

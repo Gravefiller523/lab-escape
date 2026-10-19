@@ -25,8 +25,13 @@ class_name CargoLift extends Node3D           # scene: systems/cargo_lift/cargo_
 signal parts_changed(delivered: int, needed: int)
 signal state_changed()                         # NEW: broken / riding / doors changed
 static func current() -> CargoLift             # NEW: the lift in the game (null if none)
-func get_parts_needed() -> int                # DepartmentData.lift_parts_per_floor
-func get_parts_delivered() -> int
+func get_parts_needed() -> int                # CHANGED 2026-10-19 (slots): how many slots broke this floor
+func get_parts_delivered() -> int             # how many of them are fixed
+static func lift_part_kinds() -> Dictionary[StringName, PropData]  # NEW (slots): slot name -> part, from the registry
+func get_slot_names() -> Array[StringName]    # NEW (slots): every slot (one per lift-part kind)
+func get_broken_slots() -> Array[StringName]  # NEW (slots): slots still waiting for their part
+func get_slot_part(slot: StringName) -> PropData  # NEW (slots): the part that fits a slot
+func is_charged(prop: NetProp) -> bool        # NEW (slots): a part that needs charging has been charged
 func is_ready() -> bool
 func is_broken() -> bool                       # NEW
 func is_riding() -> bool                       # NEW
@@ -35,12 +40,12 @@ func request_depart() -> void                 # local; the Go button calls it (t
 func depart_blocker() -> String               # NEW, host: why Go won't work now, or ""
 func get_zone() -> ElevatorZone
 func get_spawn_points() -> Array[Node3D]      # NEW: 8 spots inside (players arrive here on floors)
-func arrive(parts_needed: int, in_break_room: bool, waiting_for_boss: bool = false) -> void  # NEW, host (game_flow)
+func arrive(break_count: int, in_break_room: bool, waiting_for_boss: bool = false) -> void  # NEW, host (game_flow); CHANGED (slots): how many slots break
 func depart_now() -> void                     # NEW, host (game_flow): ride without Go (back after a run)
 func gather_players() -> void                 # NEW, host: bring everyone outside into the lift
 func can_force_start() -> bool                # NEW, host: Break Room "Start anyway" allowed
 func use_net(net: NetService, config: GameConfig) -> void   # NEW: tests only
-const MSG_BROKEN, MSG_WAITING, MSG_BOSS, INSIDE, WALL, LIFT_PART_TAG
+const MSG_BROKEN, MSG_WAITING, MSG_BOSS, MSG_FLAT (NEW), INSIDE, WALL, LIFT_PART_TAG
 ```
 NEW 2026-10-19, the design (Zachary): the cargo lift IS the elevator. You board it in the Break Room;
 it rides up one floor and arrives broken. Players find the part (spawned at the floor's `lift_part`
@@ -57,6 +62,17 @@ The lift: an open cargo cage 5 x 5 m inside, 3.4 m tall: floor, back wall with t
 socket, Go), side railings with invisible walls (nobody falls out), roof, sliding gate on the -z side.
 Lift parts are props tagged `lift_part` (is_key_object = true). Dropping one into the lift's part
 socket (an Area3D) installs it: the prop is despawned and the count goes up.
+CHANGED 2026-10-19 (slots, Zachary): the back wall has a **3 x 3 panel of slots, one per kind of lift part**
+(gear, fuse, light, button, counterweight, vacuum tube, cable spool, battery, lever). Each floor **1 to 3 random
+slots break** (`DepartmentData.lift_breaks_min/max`; the count from `SeededRng(run_seed, &"lift_break_count", floor)`,
+which slots from `SeededRng(run_seed, &"lift_breaks", floor)`); broken (empty) slots **spark** and flicker. The host
+spawns each broken slot's part at a far `lift_part` marker. A part only fits its own slot ("BROKEN: LEVER" on the
+label tells you which). Special parts: the **counterweight** is 80 kg (needs a group to lift, can't go in a cart);
+the **vacuum tube** shatters if thrown or dropped hard (`fragile_break_speed`, then a new one spawns far away);
+the **battery** must sit on the blue **charger** (built at a seeded `charger` marker) for `needs_charge_seconds`
+(8) before it fits (it glows when charged; "The battery is flat…" otherwise). Every second the host checks each
+broken slot's part still exists and spawns a new one if it was lost (fell out of the world, shattered).
+A new part kind is just a new PropData with `lift_slot` set and the `lift_part` tag: the lift adds its slot.
 CHANGED 2026-10-19: the carry-over below is not needed: the lift never unloads (see above).
 
 **Carry-over:** when it departs, the host records every prop inside the zone (`content_id`, transform
@@ -72,6 +88,9 @@ the new floor's lift. Players are teleported to matching spots. Dead players com
 
 ## Data it owns and saves
 Uses `DepartmentData.lift_parts_per_floor` and lift-part `PropData`. Saves nothing.
+CHANGED 2026-10-19 (slots): uses `DepartmentData.lift_breaks_min`, `lift_breaks_max`, `lift_part_ids` (empty = every
+lift part) and `PropData.lift_slot`, `needs_charge_seconds`, `fragile_break_speed`. `lift_parts_per_floor` and
+`lift_part_prop_id` are deprecated.
 
 ## Adding content
 Department-themed lift parts are props tagged `lift_part`. New lift looks are new scenes using `CargoLift`. No code.
@@ -93,6 +112,9 @@ GUT tests: `test_part_in_socket_counts`, `test_not_ready_without_all_parts`, `te
 DONE 2026-10-19 (`tests/unit/cargo_lift/test_cargo_lift.gd`): `test_part_in_socket_counts`,
 `test_crates_dont_count_as_parts`, `test_depart_needs_all_players`, `test_go_departs_and_every_pc_sees_it`,
 `test_props_inside_are_found`, `test_boss_floor_waits_for_the_boss`, `test_force_start_after_the_timer`.
+NEW 2026-10-19 (slots): unit tests for a slot per part kind, the wrong part not fitting, a flat battery not fitting
+and the same seed breaking the same slots; `tests/integration/test_lift_parts.gd`: parts spawn far away, the battery
+charges on the charger, a lost part comes back. physics_props: `test_fragile_props_shatter_when_dropped_hard`.
 Not yet: dead players (needs death_respawn), carts (needs carts).
 
 ## Acceptance criteria
@@ -109,6 +131,11 @@ Not yet: dead players (needs death_respawn), carts (needs carts).
 - 2026-10-19: built to Zachary's design (the lift is the elevator, slot the part, wait for everyone, everything
   inside rides along, moving shaft, level loads during the ride). New GameConfig: `lift_ride_seconds`, `lift_ride_speed`.
   The `prop_lift_part_zoology` content file got the `lift_part` tag.
+- 2026-10-19 (Zachary): a slot per part kind and 1 to 3 random slots break per floor (sparking). NEW: 9 lift-part
+  props, `lift_part_kinds()`, `get_slot_names()`, `get_broken_slots()`, `get_slot_part()`, `is_charged()`, `MSG_FLAT`,
+  the charger. CHANGED: `arrive(break_count, …)` (was parts_needed). PropData: NEW `lift_slot`, `fragile_break_speed`,
+  `needs_charge_seconds`. DepartmentData: NEW `lift_breaks_min`, `lift_breaks_max`, `lift_part_ids`; deprecated
+  `lift_parts_per_floor`, `lift_part_prop_id`. `prop_lift_part_zoology` lost the `lift_part` tag (it has no slot).
 
 ## HANDOFF
 **Built (2026-10-19):** `CargoLift` (`cargo_lift.gd`, scene `cargo_lift.tscn`, geometry made in code with fixed
@@ -124,6 +151,14 @@ run; the Break Room and the floors are loaded around it (lined up with it by the
 **Other systems touched (this branch):** game_flow (game world, levels around the lift), break_room ("floor 0":
 its elevator moved onto the lift), level_gen (no per-floor scene; `room_lift_grey` just holds the lift), player
 (host teleports aren't undone by the speed check).
+
+**Slots (2026-10-19):** 9 part kinds in `content/props/prop_lift_*.tres` (scenes in `systems/cargo_lift/parts/`,
+grey-box shapes). 1 to 3 break per floor; each spawns far away; sparks on broken slots; the counterweight needs a
+group, the vacuum tube shatters (physics_props' new fragile props), the battery charges on the charger (a `charger`
+marker in `room_hall_grey` and `room_corridor_grey`); lost parts come back. Foundation changes: PropData
+`lift_slot`, `fragile_break_speed`, `needs_charge_seconds`; DepartmentData `lift_breaks_min`, `lift_breaks_max`,
+`lift_part_ids` (+ two deprecated fields). physics_props: `NetProp.is_fragile()`, `PropSpawner.request_break()`.
+game_flow: `_lift_break_count()` picks how many break. Placeholder art: Meshy models can replace the part meshes later.
 
 **Not done yet:** the screen rumble while riding and the jolt on arrival (Zachary's suggestion 7; later), dead
 players (death_respawn), carts (carts).

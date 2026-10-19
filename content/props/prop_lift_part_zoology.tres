@@ -8,7 +8,6 @@ script = ExtResource("1_data")
 id = &"prop_lift_part_zoology"
 display_name = "Lift part (Zoology)"
 description = "A part for the cargo lift. Comes back if it falls out of the world."
-tags = PackedStringArray("lift_part")
 scene = ExtResource("2_scene")
 mass = 6.0
 is_key_object = true

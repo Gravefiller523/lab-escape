@@ -142,6 +142,8 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-19 (cargo_lift branch): REMOVED `Level.FLOOR_SCENE` and `LevelFloor` (floors are built into game_flow's
   game world, moved and turned so the lift room lines up with the cargo lift). `get_room_for_position` works on a
   moved floor. `room_lift_grey` just holds the lift (its `lift` marker; players arrive inside the lift).
+- 2026-10-19 (cargo_lift slots): NEW marker kind `charger` (where the lift's battery charger may go), one in
+  `room_hall_grey` and one in `room_corridor_grey`.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

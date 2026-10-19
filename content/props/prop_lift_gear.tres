@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/props/prop_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/cargo_lift/parts/gear.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"prop_lift_gear"
+display_name = "Gear"
+description = "A big cog from the lift's winch. Slots into the GEAR socket."
+tags = PackedStringArray("lift_part")
+scene = ExtResource("2_scene")
+mass = 4.0
+is_key_object = true
+lift_slot = &"gear"
+

@@ -65,7 +65,8 @@ func clear() -> void:
 		var parent: Node = _rooms_root.get_parent()
 		if parent != null:
 			parent.remove_child(_rooms_root)
-		_rooms_root.queue_free()
+		# Out of the tree already, so it can go right away (queue_free would leave it lying around a frame).
+		_rooms_root.free()
 	_rooms_root = null
 	_room_nodes.clear()
 	_markers.clear()

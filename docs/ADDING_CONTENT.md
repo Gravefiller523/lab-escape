@@ -87,7 +87,9 @@ Items and attacks point to it with `status_id`.
 **Copy:** `prop_crate.tres`. **Fill in:** `scene` (copy an existing prop scene: root is `NetProp`
 with a collision shape and mesh), `mass` (kg; above 40 needs two players, above 120 can't be lifted),
 `is_key_object` (lift parts, keycards), `cart_allowed`, `despawn_after_seconds`, `gem_value` (gems only),
-`grants_upgrade` (glowing gems and robot parts). **Tags that systems look for:** `meat`, `lift_part`,
+`grants_upgrade` (glowing gems and robot parts). NEW 2026-10-19: `lift_slot` (a lift part: the slot it fits; a new
+slot name adds a new slot to the lift), `fragile_break_speed` (above 0: shatters when it hits something this fast,
+m/s), `needs_charge_seconds` (above 0: must sit on the lift charger this long before it fits). **Tags that systems look for:** `meat`, `lift_part`,
 `keycard`, `glowing_gem`, `robot_part`. **Test:** `spawn prop_<name>`.
 
 ## Enemy
@@ -106,7 +108,7 @@ the boss scene's attack nodes, `minion_enemy_ids`, `minions_per_wave`, `minion_w
 **Copy:** a similar room scene and its `.tres`. **Scene must have:** floor/walls, a baked
 `NavigationRegion3D`, `RoomDoorway` markers on the edges, and `RoomMarker`s (kind: `player_spawn`,
 `enemy_spawn`, `prop_spawn`, `item_spawn`, `vendor`, `supply_counter`, `printer`, `cart`, `lift`,
-`lift_part`, `keycard`, `locked_door`, `task`, `boss_spawn`, `minion_spawn`).
+`lift_part`, `keycard`, `locked_door`, `task`, `boss_spawn`, `minion_spawn`, NEW 2026-10-19 `charger` (where the lift charger may go)).
 **Cart rules (checked by a test):** doorways at least cart width + 0.4 m (1.6 m by default); ramps,
 never stairs, between doorways; room for a cart to turn. The lift room must fit a cart plus every player.
 **Fill in:** `scene`, `size_cells`, `room_kind` (`normal`, `lift` (every floor starts in it: give it a `lift`
@@ -124,7 +126,7 @@ with the enemies system.
 ## Department
 A department is a bundle. Make its rooms, enemies, boss, loot tables and stock first, then one
 `DepartmentData`: `floor_count`, `room_ids`, `enemy_spawns`, `boss_id`, `loot_id`, `stock_id`,
-`task_ids`, `lift_parts_per_floor`, NEW 2026-10-18 `lift_part_prop_id` (the prop carried back to the lift; CHANGED 2026-10-19: give that PropData the tag `lift_part` so the lift socket takes it), `rooms_per_floor_min/max`, `required_room_kinds`,
+`task_ids`, `lift_parts_per_floor`, NEW 2026-10-19 `lift_breaks_min`/`lift_breaks_max` (how many lift slots break per floor, 1 to 3) and `lift_part_ids` (which lift parts can break here; empty = all; `lift_parts_per_floor` and `lift_part_prop_id` are deprecated), NEW 2026-10-18 `lift_part_prop_id` (the prop carried back to the lift; CHANGED 2026-10-19: give that PropData the tag `lift_part` so the lift socket takes it), `rooms_per_floor_min/max`, `required_room_kinds`,
 `optional_room_chances` (e.g. `{"supply": 0.6}`), `tile_library`, `music`, colours, `order_hint`,
 `in_run_rotation`. Put its art in `assets/<kind>/<department>/`. **Test:** `floor 1 department_<name>`.
 

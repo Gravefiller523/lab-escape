@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://core/data/items/item_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/items/behaviours/item_behaviour_data.gd" id="9_base"]
+[ext_resource type="PackedScene" path="res://systems/items/world/energy_drink.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://systems/items/held/energy_drink.tscn" id="3_held"]
+[ext_resource type="Script" path="res://core/data/items/behaviours/consume_behaviour_data.gd" id="4_consume"]
+[ext_resource type="Script" path="res://core/data/items/behaviours/use_on_object_behaviour_data.gd" id="5_use"]
+
+[sub_resource type="Resource" id="Drink_1"]
+script = ExtResource("4_consume")
+trigger = 0
+cooldown = 0.5
+status_id = &"status_speed_boost"
+
+[sub_resource type="Resource" id="Pour_1"]
+script = ExtResource("5_use")
+trigger = 1
+cooldown = 0.5
+interaction_tag = &"water"
+reach = 2.2
+spends_use = true
+
+[resource]
+script = ExtResource("1_data")
+id = &"item_energy_drink"
+display_name = "Energy drink"
+description = "Left click: drink it (speed boost). Right click: pour it on something (it waters mutated plants)."
+category = 2
+world_scene = ExtResource("2_world")
+held_scene = ExtResource("3_held")
+behaviours = Array[ExtResource("9_base")]([SubResource("Drink_1"), SubResource("Pour_1")])
+uses = 1
+world_mass = 0.4

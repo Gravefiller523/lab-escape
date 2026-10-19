@@ -1,0 +1,45 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://systems/enemies/states/idle_state.gd" id="2_idle"]
+[ext_resource type="Script" path="res://systems/enemies/states/patrol_state.gd" id="3_patrol"]
+[ext_resource type="Script" path="res://systems/enemies/states/chase_state.gd" id="4_chase"]
+[ext_resource type="Script" path="res://systems/enemies/states/swarm_state.gd" id="5_swarm"]
+[ext_resource type="Script" path="res://systems/enemies/states/attack_melee_state.gd" id="6_attack"]
+[ext_resource type="Script" path="res://systems/enemies/states/flee_state.gd" id="7_flee"]
+
+[sub_resource type="SphereShape3D" id="Shape_1"]
+radius = 0.1
+
+[sub_resource type="StandardMaterial3D" id="Mat_1"]
+albedo_color = Color(0.15, 0.3, 0.15, 1)
+
+[sub_resource type="SphereMesh" id="Mesh_1"]
+material = SubResource("Mat_1")
+radius = 0.1
+height = 0.16
+
+[node name="Fly" type="CharacterBody3D"]
+script = ExtResource("1_enemy")
+flying = true
+hover_height = 1.6
+attack_knockback = 0.0
+hurtbox_radius = 0.25
+hurtbox_height = 0.5
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_1")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_1")
+
+[node name="States" type="Node" parent="."]
+
+[node name="idle" type="Node" parent="States"]
+script = ExtResource("2_idle")
+
+[node name="swarm" type="Node" parent="States"]
+script = ExtResource("5_swarm")
+
+[node name="attack_melee" type="Node" parent="States"]
+script = ExtResource("6_attack")

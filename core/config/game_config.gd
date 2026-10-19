@@ -39,7 +39,8 @@ extends Resource
 
 @export_group("Inventory")
 ## Inventory slots every player starts a run with (fists are always available on top).
-@export var base_inventory_slots: int = 1
+## CHANGED 2026-10-19 (Zachary): 2 slots (was 1). An empty slot means your fists are out.
+@export var base_inventory_slots: int = 2
 ## The item used when the active slot is empty.
 @export var unarmed_item_id: StringName = &"item_fists"
 

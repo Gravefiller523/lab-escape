@@ -8,7 +8,7 @@ extends Node3D
 ## STUBS until other systems exist:
 ## - physics_props: a crate (or the marker's "prop_id") at each prop_spawn marker on floor_ready (host);
 ## - bosses: a "Defeat the boss" button at each boss_spawn marker (emits boss_defeated on every PC);
-## - ui HUD: the "E: ..." prompt and a crosshair.
+## (CHANGED 2026-10-19: the "E: ..." prompt and crosshair stub is gone: the ui HUD shows them.)
 
 const LIFT_SCENE: PackedScene = preload("res://systems/cargo_lift/cargo_lift.tscn")
 const DEFAULT_PROP_ID: StringName = &"prop_crate"
@@ -18,7 +18,6 @@ var _level_root: Node3D
 var _lift: CargoLift
 var _players: PlayerSpawner
 var _props: PropSpawner
-var _prompt: Label
 
 
 const GROUP: StringName = &"game_world"
@@ -64,7 +63,6 @@ func _ready() -> void:
 	_props.name = "Props"
 	add_child(_props)
 	EventBus.floor_ready.connect(_on_floor_ready)
-	_build_hud()
 
 
 func get_lift() -> CargoLift:
@@ -126,13 +124,6 @@ func _on_floor_ready(_floor_number: int, _department_id: StringName) -> void:
 		_props.spawn_prop(prop_id, marker.global_transform)
 
 
-func _process(_delta: float) -> void:
-	# STUB (ui HUD): the "E: ..." prompt.
-	var controller: InteractionController = Interaction.get_local_controller()
-	var prompt: String = controller.get_prompt() if controller != null else ""
-	_prompt.text = "" if prompt.is_empty() else "E: %s" % prompt
-
-
 func _on_boss_used(_player_id: int) -> void:
 	_boss_defeated_rpc.rpc()
 
@@ -182,23 +173,3 @@ func _stub_button(node_name: String, marker: RoomMarker, prompt: String, color: 
 	body.add_child(use)
 	_level_root.add_child(body)
 	body.global_position = marker.global_position + Vector3.UP * STUB_BUTTON_HEIGHT
-
-
-func _build_hud() -> void:
-	var layer := CanvasLayer.new()
-	add_child(layer)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(center)
-	var middle := VBoxContainer.new()
-	middle.custom_minimum_size = Vector2(300, 80)
-	center.add_child(middle)
-	var crosshair := Label.new()
-	crosshair.text = "+"
-	crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	middle.add_child(crosshair)
-	_prompt = Label.new()
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_prompt.add_theme_font_size_override("font_size", 22)
-	middle.add_child(_prompt)

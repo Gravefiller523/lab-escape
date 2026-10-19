@@ -10,6 +10,10 @@ extends Resource
 @export_range(1, 16) var max_players: int = 4
 ## Seconds a joining PC has to load the host's current scene before its connection gives up.
 @export var join_load_timeout: float = 30.0
+## NEW 2026-10-19 (ui): other players' names float above their heads when you are this close (metres).
+@export var nameplate_range: float = 5.0
+## NEW 2026-10-19 (ui): how long a nameplate takes to fade in or out as you cross that distance (seconds).
+@export var nameplate_fade_seconds: float = 0.4
 
 @export_group("Run")
 ## Floors per department, before its boss floor.

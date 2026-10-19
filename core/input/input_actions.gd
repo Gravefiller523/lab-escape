@@ -24,6 +24,8 @@ const SLOT_NEXT: StringName = &"slot_next"
 const SLOT_PREV: StringName = &"slot_prev"
 ## NEW 2026-10-19 (inventory): put the held item away and get your fists out (again: take it back out).
 const HOLSTER: StringName = &"holster"
+## NEW 2026-10-19 (items, Zachary): put the item pickup you look at (or carry) into your inventory. E still picks it up like a prop.
+const EQUIP: StringName = &"equip"
 const PUSH_TO_TALK: StringName = &"push_to_talk"
 const PAUSE: StringName = &"pause"
 const DEBUG_CONSOLE: StringName = &"debug_console"
@@ -43,6 +45,7 @@ const DEFAULT_KEYS: Dictionary = {
 	DROP: KEY_Q,
 	PUSH_TO_TALK: KEY_V,
 	HOLSTER: KEY_ALT,
+	EQUIP: KEY_F,
 	PAUSE: KEY_ESCAPE,
 	DEBUG_CONSOLE: KEY_QUOTELEFT,
 }

@@ -5,15 +5,17 @@ extends Node
 ## - On your PC: left click (PRIMARY) / right click (SECONDARY) uses the item's behaviour for that button.
 ##   The swing plays at once; the host checks the cooldown, the item and where you aimed, then runs the
 ##   real effect (damage, throw, drink, use on an object). Everyone then sees the swing.
-## - On your PC: E on an item lying in the world takes it into your inventory (swaps when full).
+## - On your PC (CHANGED 2026-10-19, Zachary): E picks an item up like any prop (carry it, throw it); F equips it
+##   into your inventory (the one you look at, or the one you carry), swapping when full.
 ## Nothing happens while you hold a prop (the left click throws it) or a menu is open.
 
 signal item_action(item_id: StringName, trigger: int)
 
 const NODE_NAME: String = "HeldItem"
-## Above physics_props' grab (50): E on an item pickup takes it instead of carrying it.
-const USE_PRIORITY: int = 60
-const PROMPT_TAKE: String = "Take %s"
+## Above physics_props' grab (50), so the prompt can add the F hint (E itself is left to grabbing).
+const PROMPT_PRIORITY: int = 60
+## The prompt over an item pickup: grabbing's text plus the F hint.
+const PROMPT_EQUIP: String = "%s %s   [F] Equip"
 ## The host allows this much extra distance between where you say you aimed from and your eyes (lag).
 const AIM_TOLERANCE: float = 1.5
 ## The host allows this much early use (seconds) for network timing.
@@ -43,8 +45,7 @@ func _hook_into_interaction() -> void:
 	var interaction: InteractionController = InteractionService.controller_of(_body)
 	if interaction == null:
 		return
-	interaction.register_use_handler(USE_PRIORITY, _on_use)
-	interaction.register_prompt_provider(USE_PRIORITY, _prompt_for)
+	interaction.register_prompt_provider(PROMPT_PRIORITY, _prompt_for)
 
 
 ## The item in this player's hand (fists when the slot is empty or holstered). Null if unknown.
@@ -79,7 +80,13 @@ func use(trigger: int) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _body == null or not _body.is_local() or UI.is_screen_open() or _holding_prop():
+	if _body == null or not _body.is_local() or UI.is_screen_open():
+		return
+	if event.is_action_pressed(InputActions.EQUIP):
+		if equip_target():
+			get_viewport().set_input_as_handled()
+		return
+	if _holding_prop():
 		return
 	if event.is_action_pressed(InputActions.PRIMARY):
 		use(ItemBehaviourData.Trigger.PRIMARY)
@@ -100,24 +107,39 @@ func _process(_delta: float) -> void:
 
 # --- Picking up ---------------------------------------------------------------------------------
 
-func _prompt_for(target: Node3D) -> String:
-	if _holding_prop():
-		return ""
-	var item: ItemData = ItemPickup.item_of(ItemPickup.prop_of(target))
-	return PROMPT_TAKE % item.display_name if item != null else ""
+## NEW 2026-10-19, local: F. Equip the item pickup you carry, or else the one you look at. False if neither.
+func equip_target() -> bool:
+	var grab: GrabController = PropsService.grab_of(_body)
+	var prop: NetProp = ItemPickup.prop_of(grab.get_held()) if grab != null and grab.get_held() != null else null
+	if prop != null:
+		grab.drop()
+	elif not _holding_prop():
+		var interaction: InteractionController = InteractionService.controller_of(_body)
+		prop = ItemPickup.prop_of(interaction.get_target()) if interaction != null else null
+	return equip(prop)
 
 
-func _on_use(target: Node3D) -> bool:
-	if _holding_prop():
-		return false
-	var prop: NetProp = ItemPickup.prop_of(target)
-	if prop == null:
+## Local: put this item pickup in your inventory (the host checks it). False if it isn't one.
+func equip(prop: NetProp) -> bool:
+	if ItemPickup.item_of(prop) == null:
 		return false
 	if multiplayer.is_server():
 		_host_take(prop.net_id, true)
 	else:
 		_take_rpc.rpc_id(1, prop.net_id)
 	return true
+
+
+## E prompt over an item pickup: what grabbing would say, plus the F hint.
+func _prompt_for(target: Node3D) -> String:
+	var grab: GrabController = PropsService.grab_of(_body)
+	var held: NetProp = grab.get_held() if grab != null else null
+	var prop: NetProp = ItemPickup.prop_of(held if held != null else target)
+	var item: ItemData = ItemPickup.item_of(prop)
+	if item == null:
+		return ""
+	var grab_text: String = GrabController.PROMPT_DROP if held != null else GrabController.PROMPT_PICK_UP
+	return PROMPT_EQUIP % [grab_text, item.display_name]
 
 
 ## Owner -> host: "put that item pickup in my inventory".
@@ -132,8 +154,14 @@ func _host_take(net_id: int, local_call: bool) -> void:
 		return
 	var prop: NetProp = Props.get_prop(net_id)
 	var item: ItemData = ItemPickup.item_of(prop)
-	if item == null or prop.is_held() or prop.global_position.distance_to(_body.get_aim_origin()) > PICKUP_REACH:
+	if item == null or prop.global_position.distance_to(_body.get_aim_origin()) > PICKUP_REACH:
 		return
+	# Carried by someone else: not yours to take. Carried by you: let go first.
+	var holders: Array[int] = prop.get_holder_ids()
+	if not holders.is_empty() and holders != [_body.player_id]:
+		return
+	if not holders.is_empty():
+		prop.get_spawner().release_all(prop)
 	var inventory: InventoryComponent = InventoryComponent.of(_body)
 	if inventory == null:
 		return

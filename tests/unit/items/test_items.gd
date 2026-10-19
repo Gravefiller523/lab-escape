@@ -181,15 +181,30 @@ func test_crowbar_pries_but_stays() -> void:
 	assert_ne(_inventory().find_item(&"item_crowbar"), -1, "the crowbar isn't used up")
 
 
-func test_take_a_pickup_with_e() -> void:
+func test_e_picks_an_item_up_like_a_prop() -> void:
 	var prop: NetProp = Props.spawn_item(&"item_knife", Transform3D(Basis.IDENTITY, Vector3(0, 0.2, -1.2)))
-	assert_not_null(prop)
 	await wait_physics_frames(2)
 	var controller: InteractionController = InteractionService.controller_of(_body)
 	assert_true(controller.press_use(prop))
 	await wait_physics_frames(2)
+	assert_eq(PropsService.grab_of(_body).get_held(), prop, "E carries it like any prop")
+	assert_eq(_inventory().find_item(&"item_knife"), -1, "it is not in the inventory")
+
+
+func test_f_equips_the_item_you_look_at_or_carry() -> void:
+	var knife: NetProp = Props.spawn_item(&"item_knife", Transform3D(Basis.IDENTITY, Vector3(0, 0.2, -1.2)))
+	var plant: NetProp = Props.spawn_item(&"item_potted_plant", Transform3D(Basis.IDENTITY, Vector3(1, 0.2, -1.2)))
+	await wait_physics_frames(2)
+	assert_true(_held().equip(knife), "F on a pickup")
+	await wait_physics_frames(2)
 	assert_ne(_inventory().find_item(&"item_knife"), -1, "the knife is in the inventory")
 	assert_eq(Props.get_props(&"item_knife").size(), 0, "and gone from the floor")
+	PropsService.grab_of(_body).try_grab(plant)
+	await wait_physics_frames(3)
+	assert_true(_held().equip_target(), "F while carrying it")
+	await wait_physics_frames(3)
+	assert_ne(_inventory().find_item(&"item_potted_plant"), -1, "the carried plant went into the inventory")
+	assert_null(PropsService.grab_of(_body).get_held(), "and your hands are free")
 
 
 func test_new_item_file_needs_no_code() -> void:

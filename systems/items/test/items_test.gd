@@ -1,6 +1,6 @@
 extends Node3D
 ## Test scene for items (run alone with F6). A range with:
-##   a table of item pickups (look at one and press E to take it),
+##   a table of item pickups (E picks one up like a prop; F equips it into your inventory),
 ##   3 red dummies (100 health; their health floats above them),
 ##   a mutated plant (right click with an energy drink to water it: it grows steps),
 ##   boarded-up planks (right click with the crowbar to pry them off).
@@ -162,7 +162,7 @@ func _build_world() -> void:
 	_boards.add_child(pry)
 	_add_label(Vector3(6, 2.2, -3), "Mutated plant\n(energy drink, right click)")
 	_add_label(Vector3(-6, 2.3, -3), "Boarded up\n(crowbar, right click)")
-	_add_label(Vector3(0, 1.8, 2.0), "Take items (E)")
+	_add_label(Vector3(0, 1.8, 2.0), "Items: E pick up, F equip")
 
 
 func _add_box(node_name: String, center: Vector3, size: Vector3, color: Color) -> StaticBody3D:
@@ -203,7 +203,7 @@ func _build_ui() -> void:
 	var help := Label.new()
 	help.position = Vector2(12, 12)
 	help.text = "F1 crowbar  F2 knife  F3 potted plant  F4 energy drink  F7 hot coffee  F8 reset\n" \
-		+ "Left click: use   Right click: second use   E: take   Alt: holster   Q: drop   1/2 or wheel: slots"
+		+ "Left click: use   Right click: second use   E: pick up   F: equip   Alt: holster   Q: drop   1/2 or wheel: slots"
 	layer.add_child(help)
 	_status = Label.new()
 	_status.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)

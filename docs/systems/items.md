@@ -17,6 +17,8 @@ signal item_action(item_id: StringName, trigger: int)
 func get_active_item() -> ItemData
 func is_on_cooldown(trigger: int) -> bool
 func use(trigger: int) -> void                   # NEW 2026-10-19, local: what clicking does (tests call it)
+func equip_target() -> bool                      # NEW 2026-10-19, local: F (the carried pickup, else the one you look at)
+func equip(prop: NetProp) -> bool                # NEW 2026-10-19, local: put this pickup in your inventory
 
 class_name ItemBehaviour extends RefCounted      # runtime building block, one per behaviour data class
 func can_use(user: PlayerCharacter, data: ItemBehaviourData) -> bool
@@ -26,7 +28,7 @@ static func for_data(data: ItemBehaviourData) -> ItemBehaviour   # NEW 2026-10-1
 static func find_in_reach(user, aim_origin, aim_dir, reach, mask, width = 0.6, also_skip = []) -> Dictionary   # NEW: shared sweep helper
 
 class_name ItemPickup extends Node               # child of an item's world_scene (root is NetProp)
-# Prompt "Take <name>" (HeldItemController, use priority 60, above grabbing); on use (host):
+# CHANGED 2026-10-19: E grabs it like a prop; F equips it (HeldItemController.equip / equip_target); host:
 # InventoryComponent.pick_up (swaps when full), then Props.despawn. CHANGED 2026-10-19: a marker node; helpers
 static func prop_of(node: Node) -> NetProp
 static func item_of(prop: NetProp) -> ItemData
@@ -60,7 +62,9 @@ Melee sweeps a 0.6 m box out to `reach` (hurtboxes and props; no wall in between
 other players (no friendly fire from melee). Thrown items fly as their world pickup (`Props.spawn_item`) with a host-only
 `ThrownItem` rider: the first hurtbox it touches takes the damage and status (teammates too), a `breaks_on_impact` item
 is gone after its first hit or hard bump. The held model sits in front of your camera (you) or at the `right_arm`
-attach point (others). E on an item pickup takes it (priority 60, above grabbing). Console: `spawn item_<name>`, and
+attach point (others). CHANGED 2026-10-19 (Zachary): E picks an item pickup up like any prop (carry, throw); **F** (InputActions `EQUIP`) puts
+the pickup you look at, or the one you carry, into your inventory (swapping when full). The prompt over a pickup says
+"Pick up <name>   [F] Equip" (prompt provider at priority 60). Console: `spawn item_<name>`, and
 inventory's `give`. STUB (player movement): the mutated plant grows a spiral of steps, not a climbable ladder.
 
 ## EventBus
@@ -95,7 +99,7 @@ GUT tests: `test_melee_hits_in_reach_only`, `test_cooldown_blocks_spam`, `test_t
 DONE 2026-10-19: `systems/items/test/items_test.tscn` (a table of pickups, 3 dummies, the mutated plant, boards to pry;
 F1 crowbar, F2 knife, F3 potted plant, F4 energy drink, F7 hot coffee, F8 reset). GUT (`tests/unit/items/test_items.gd`, 15):
 all of the above plus `test_fists_do_damage_too`, `test_melee_does_not_hurt_teammates`, `test_thrown_plant_hurts_what_it_hits`,
-`test_crowbar_pries_but_stays`, `test_take_a_pickup_with_e`, `test_held_model_shows_in_your_view`, `test_item_used_event`.
+`test_crowbar_pries_but_stays`, `test_e_picks_an_item_up_like_a_prop`, `test_f_equips_the_item_you_look_at_or_carry`, `test_held_model_shows_in_your_view`, `test_item_used_event`.
 
 ## Acceptance criteria
 - [ ] All launch items (except laser pointer) work on 2 PCs from data.
@@ -112,6 +116,7 @@ all of the above plus `test_fists_do_damage_too`, `test_melee_does_not_hurt_team
 - 2026-10-19: built (Phase 1b). Changes marked above. Foundation: ItemData `world_mass`. physics_props: `Props.spawn_item`
   is real now (`PropSpawner.spawn_item`; `spawn_prop` also takes item ids, a PropData is made from the ItemData).
   inventory: NEW `take_one(index)` (throwing). Content: the 6 launch items in `content/items/`.
+- 2026-10-19 (Zachary): F equips an item pickup (new InputActions `EQUIP`, F); E picks it up like a prop.
 
 ## HANDOFF
 **Built (2026-10-19):** `HeldItemController`, `ItemBehaviour` + the melee, throw, consume and use-on-object runtime pieces,
@@ -119,7 +124,7 @@ all of the above plus `test_fists_do_damage_too`, `test_melee_does_not_hurt_team
 and held scenes, the 6 launch items (fists, crowbar, knife, potted plant, energy drink, hot coffee), the test scene and
 15 GUT tests. Checked with 2 game copies: a client's crowbar hit and energy drink matched on both PCs.
 
-**Foundation / project.godot changes:** ItemData `world_mass` (2). Autoload line `Items` (after Inventory). No new EventBus
+**Foundation / project.godot changes:** ItemData `world_mass` (2), InputActions `EQUIP` (F). Autoload line `Items` (after Inventory). No new EventBus
 signals (emits `item_used` on every PC).
 
 **Other systems touched (this branch):** physics_props (`Props.spawn_item`, `PropSpawner.spawn_item`, item ids in

@@ -135,6 +135,14 @@ func teleport(xform: Transform3D) -> void:
 	if not multiplayer.is_server():
 		push_error("PlayerCharacter.teleport: only the host can teleport players.")
 		return
+	# The host's speed check must expect the jump, or it would put the body straight back.
+	_checked_position = xform.origin
+	_checked_msec = Time.get_ticks_msec()
+	_has_checked = true
+	if not is_local():
+		sync_position = xform.origin
+		global_position = xform.origin
+		reset_physics_interpolation()
 	_teleport_owner.rpc_id(get_multiplayer_authority(), xform)
 
 

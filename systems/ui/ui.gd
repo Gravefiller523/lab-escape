@@ -3,7 +3,7 @@ extends CanvasLayer
 ## Autoload "UI". Shows screens (main menu, pause), toasts, and sends you to the right scene after
 ## hosting, joining or losing the connection. Owns no game rules. Spec: docs/systems/ui.md.
 ##
-## Phase 1a slice: main menu, a small pause menu and toasts. The HUD and other screens come later.
+## Phase 1a slice: main menu, a small pause menu and toasts. NEW 2026-10-19: the HUD and nameplates.
 
 const SCREEN_MAIN_MENU: StringName = &"main_menu"
 const SCREEN_PAUSE: StringName = &"pause"
@@ -18,6 +18,8 @@ var _screens: Dictionary[StringName, PackedScene] = {
 var _open_screen: Control
 var _open_name: StringName = &""
 var _toast_label: Label
+var _hud: Hud
+var _nameplates: Nameplates
 var _toast_queue: Array[String] = []
 var _toast_seconds: Array[float] = []
 var _toast_left: float = 0.0
@@ -33,6 +35,10 @@ func use_flow(flow: GameFlowStub) -> void:
 func _ready() -> void:
 	layer = LAYER
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_hud = Hud.new()
+	add_child(_hud)
+	_nameplates = Nameplates.new()
+	add_child(_nameplates)
 	_toast_label = Label.new()
 	_toast_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_toast_label.position = Vector2(-300, 70)
@@ -54,6 +60,16 @@ func _ready() -> void:
 			close_screen())
 	SteamSession.connection_lost.connect(func() -> void: _back_to_menu("Lost connection to the host."))
 	Net.join_refused.connect(func(reason: String) -> void: _back_to_menu(reason))
+
+
+## NEW 2026-10-19: the HUD (prompt, hold bar, lift panel, spots for health and the inventory bar).
+func get_hud() -> Hud:
+	return _hud
+
+
+## NEW 2026-10-19: the names above other players' heads (with the speaker icon).
+func get_nameplates() -> Nameplates:
+	return _nameplates
 
 
 ## Opens a screen by name (&"main_menu", &"pause"). Player input is off while a screen is open.

@@ -15,7 +15,8 @@ const PLAYER_CHEST: float = 1.0
 static var players_invisible: bool = false
 
 var _enemy: Enemy
-var _visible: Array[PlayerCharacter] = []
+## Plain array: a player in it may have left (been freed) since the last look.
+var _visible: Array = []
 var _check_left: float = 0.0
 
 
@@ -26,9 +27,9 @@ func _ready() -> void:
 
 func get_visible_players() -> Array[PlayerCharacter]:
 	var alive: Array[PlayerCharacter] = []
-	for player: PlayerCharacter in _visible:
-		if is_valid_target(player):
-			alive.append(player)
+	for entry: Variant in _visible:
+		if is_valid_target(entry):
+			alive.append(entry as PlayerCharacter)
 	return alive
 
 
@@ -44,10 +45,13 @@ func get_nearest_visible_player() -> PlayerCharacter:
 	return best
 
 
-## A player worth chasing: still here, alive, and not hidden by the test switch.
-func is_valid_target(player: PlayerCharacter) -> bool:
-	if players_invisible or not is_instance_valid(player) or not player.is_inside_tree() \
-			or player.is_queued_for_deletion():
+## A player worth chasing: still here (not freed: a player who left), alive, and not hidden by the
+## test switch. Takes a Variant so a freed player can be checked safely.
+func is_valid_target(candidate: Variant) -> bool:
+	if players_invisible or not is_instance_valid(candidate):
+		return false
+	var player := candidate as PlayerCharacter
+	if player == null or not player.is_inside_tree() or player.is_queued_for_deletion():
 		return false
 	var health: HealthComponent = HealthComponent.of(player)
 	return health == null or not health.is_dead()

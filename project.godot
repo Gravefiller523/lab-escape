@@ -33,6 +33,7 @@ Interaction="*res://systems/interaction/interaction.gd"
 Props="*res://systems/physics_props/props.gd"
 DebugConsole="*res://systems/debug_console/debug_console.gd"
 Damage="*res://systems/damage/damage.gd"
+Inventory="*res://systems/inventory/inventory.gd"
 Level="*res://systems/level_gen/level.gd"
 GameFlow="*res://systems/game_flow/game_flow.gd"
 

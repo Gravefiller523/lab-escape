@@ -15,6 +15,8 @@ enum Category { WEAPON, TOOL, CONSUMABLE }
 @export var behaviours: Array[ItemBehaviourData] = []
 ## How many times it can be used. -1 = unlimited.
 @export var uses: int = -1
+## NEW 2026-10-19 (inventory): how many fit in one inventory slot. 1 = no stacking (drinks, weapons).
+@export var max_stack: int = 1
 ## Kept simple for a possible crafting system later: crafting would only need
 ## a new RecipeData type that lists item ids, without changing this class.
 

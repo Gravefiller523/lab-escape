@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="StatusEffectData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/items/status_effect_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/damage/visuals/burning.tscn" id="2_visual"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"status_burning"
+display_name = "Burning"
+description = "On fire: 5 fire damage every second for 4 seconds."
+duration = 4.0
+tick_damage = 5.0
+tick_interval = 1.0
+damage_type = &"fire"
+visual_scene = ExtResource("2_visual")
+refresh_on_reapply = true

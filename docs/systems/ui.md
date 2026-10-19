@@ -38,6 +38,7 @@ func use_sources(controller: InteractionController, lift: CargoLift) -> void   #
 class_name Nameplates extends Node3D            # NEW 2026-10-19 (systems/ui/hud/nameplates.gd), child of UI
 func get_plate(player_id: int) -> Node3D        # null for you, or before their body exists
 func is_name_visible(player_id: int) -> bool
+func get_alpha(player_id: int) -> float          # how faded in the name is (0 to 1)
 func is_speaker_visible(player_id: int) -> bool
 func use_net(net: NetService, config: GameConfig) -> void   # tests only
 ```
@@ -57,8 +58,9 @@ NEW 2026-10-19, the HUD (Zachary): a crosshair dot; the interaction prompt ("E: 
 bar that fills while you hold E; a lift panel in the top-right corner ("LIFT PARTS 1/3" and the parts still
 missing, "LIFT FIXED: Everyone in, then press Go.", or "Beat the boss to fix the lift."; hidden while riding and in
 the Break Room). The HUD only shows in game_flow's game world while you have a body (other systems' test scenes
-draw their own prompt). **Nameplates:** every other player's name floats above their head, facing you, and only
-shows when you are within `Config.game.nameplate_range` (5 m); walls hide it. While they talk
+draw their own prompt). **Nameplates:** every other player's name floats above their head, facing you, and fades in
+when you come within `Config.game.nameplate_range` (5 m) and fades out when you move away (over
+`nameplate_fade_seconds`, 0.4 s; the speaker icon fades with it); walls hide it. While they talk
 (`EventBus.player_speaking_changed`) a speaker icon shows next to their name (left side). Your own name never shows.
 Names come from `Net.get_display_name` (Steam name; "Player <id>" when testing locally without names).
 
@@ -126,6 +128,8 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
   GameWorld. Tests (`tests/unit/ui/test_hud.gd`): `test_lift_text_lists_missing_parts`,
   `test_lift_panel_follows_the_lift`, `test_prompt_shows_what_you_look_at`, `test_names_show_only_within_range`,
   `test_speaker_icon_shows_next_to_the_name_while_talking`, `test_plate_goes_when_the_player_leaves`.
+- 2026-10-19 (Zachary): names and the speaker icon fade out past 5 m and back in as you approach. NEW: GameConfig
+  `nameplate_fade_seconds` (0.4), `Nameplates.get_alpha()`. Test: `test_names_fade_out_and_back_in`.
 
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and
@@ -151,7 +155,7 @@ the mouse) still runs first, which is harmless. Steam joining is only tested on 
 - **settings_input:** add a Settings button to the main and pause menus with `UI.register_screen`.
 
 **HUD basics (2026-10-19):** `systems/ui/hud/hud.gd` (`Hud`), `nameplates.gd` (`Nameplates`), `speaker_icon.svg`
-(placeholder art). Both are children of the UI autoload. Foundation changes: GameConfig `nameplate_range` (5).
+(placeholder art). Both are children of the UI autoload. Foundation changes: GameConfig `nameplate_range` (5), `nameplate_fade_seconds` (0.4).
 No project.godot changes, no new EventBus signals. Other system touched: game_flow (GameWorld's prompt/crosshair
 stub removed). For the next systems: **damage** puts its health bar in the HUD's `HealthSlot`, **inventory** its
 bar in `InventorySlot`; **death_respawn** should hide a ghost's nameplate (Nameplates needs a "is this body

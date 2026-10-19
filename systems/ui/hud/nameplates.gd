@@ -1,8 +1,8 @@
 class_name Nameplates
 extends Node3D
 ## Other players' names floating above their heads, with a speaker icon next to the name while they
-## talk. A name only shows when you are within Config.game.nameplate_range metres (5) of them. Walls
-## hide names (they are drawn in the world, not on top of it). Your own name never shows.
+## talk. A name fades in when you come within Config.game.nameplate_range metres (5) of them and fades
+## out when you walk away (over nameplate_fade_seconds). Walls hide names (they are drawn in the world, not on top of it). Your own name never shows.
 ## Local only: it reads Net (names), EventBus.player_speaking_changed (talking) and the player bodies.
 ## Spec: docs/systems/ui.md.
 
@@ -21,6 +21,8 @@ var _config: GameConfig
 ## player_id -> its plate (a Node3D holding the "Name" Label3D and the "Speaker" Sprite3D).
 var _plates: Dictionary[int, Node3D] = {}
 var _speaking: Dictionary[int, bool] = {}
+## player_id -> how faded in its plate is (0 = gone, 1 = fully shown).
+var _alpha: Dictionary[int, float] = {}
 
 
 ## For tests only: use this Net and config instead of the autoloads.
@@ -41,10 +43,15 @@ func get_plate(player_id: int) -> Node3D:
 	return _plates.get(player_id)
 
 
-## True if that player's name is on screen now (close enough).
+## True if that player's name is showing at all (fading in or out counts).
 func is_name_visible(player_id: int) -> bool:
 	var plate: Node3D = get_plate(player_id)
 	return plate != null and plate.visible
+
+
+## How faded in a player's name is: 0 = gone, 1 = fully shown.
+func get_alpha(player_id: int) -> float:
+	return _alpha.get(player_id, 0.0)
 
 
 ## True if the speaker icon next to that player's name is showing.
@@ -53,7 +60,7 @@ func is_speaker_visible(player_id: int) -> bool:
 	return plate != null and plate.visible and (plate.get_node(^"Speaker") as Sprite3D).visible
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	var net: NetService = _net if _net != null else Net
 	var config: GameConfig = _config if _config != null else Config.game
 	var me: int = net.local_player_id()
@@ -68,11 +75,12 @@ func _process(_delta: float) -> void:
 		var plate: Node3D = _plates.get(body.player_id)
 		if plate == null:
 			plate = _make_plate(body.player_id)
-		_update_plate(plate, body, net, viewer, config.nameplate_range)
+		_update_plate(plate, body, net, viewer, config, delta)
 	for player_id: int in _plates.keys():
 		if not seen.has(player_id):
 			_plates[player_id].queue_free()
 			_plates.erase(player_id)
+			_alpha.erase(player_id)
 
 
 ## Where you are looking from: the camera of this viewport, or your body if there is no camera.
@@ -105,11 +113,17 @@ func _make_plate(player_id: int) -> Node3D:
 	return plate
 
 
-func _update_plate(plate: Node3D, body: PlayerCharacter, net: NetService, viewer: Vector3, plate_range: float) -> void:
+func _update_plate(plate: Node3D, body: PlayerCharacter, net: NetService, viewer: Vector3, config: GameConfig,
+		delta: float) -> void:
 	var camera: Camera3D = body.get_camera()
 	var eyes: Vector3 = camera.global_position if camera != null else body.global_position + Vector3.UP * 1.6
 	plate.global_position = eyes + Vector3.UP * HEIGHT_ABOVE_EYES
-	plate.visible = viewer.distance_to(plate.global_position) <= plate_range
+	var wanted: float = 1.0 if viewer.distance_to(plate.global_position) <= config.nameplate_range else 0.0
+	var step: float = delta / config.nameplate_fade_seconds if config.nameplate_fade_seconds > 0.0 else 1.0
+	var current: float = _alpha.get(body.player_id, 0.0)
+	var alpha: float = move_toward(current, wanted, step)
+	_alpha[body.player_id] = alpha
+	plate.visible = alpha > 0.0
 	if not plate.visible:
 		return
 	# Turn the whole plate (name and icon together) to face you.
@@ -120,8 +134,11 @@ func _update_plate(plate: Node3D, body: PlayerCharacter, net: NetService, viewer
 	var label := plate.get_node(^"Name") as Label3D
 	var display_name: String = net.get_display_name(body.player_id)
 	label.text = display_name if not display_name.is_empty() else "Player %d" % body.player_id
+	label.modulate.a = alpha
+	label.outline_modulate.a = alpha
 	var speaker := plate.get_node(^"Speaker") as Sprite3D
 	speaker.visible = _speaking.get(body.player_id, false)
+	speaker.modulate.a = alpha
 	if speaker.visible:
 		var font: Font = label.font if label.font != null else ThemeDB.fallback_font
 		var half_width: float = font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x \

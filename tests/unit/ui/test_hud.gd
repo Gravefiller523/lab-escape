@@ -33,9 +33,10 @@ func _viewer() -> Camera3D:
 	return camera
 
 
-func _nameplates(plate_range: float = 5.0) -> Nameplates:
+func _nameplates(plate_range: float = 5.0, fade_seconds: float = 0.05) -> Nameplates:
 	var config := GameConfig.new()
 	config.nameplate_range = plate_range
+	config.nameplate_fade_seconds = fade_seconds
 	var plates := Nameplates.new()
 	plates.use_net(Net, config)
 	_world.add_child(plates)
@@ -107,7 +108,7 @@ func test_names_show_only_within_range() -> void:
 	assert_null(plates.get_plate(Net.local_player_id()), "your own name never shows")
 	assert_true(plates.is_name_visible(1001), "3 m away: name shows")
 	assert_false(plates.is_name_visible(1002), "12 m away: hidden")
-	far.position = Vector3(0, 0, -4)
+	far.teleport(Transform3D(Basis.IDENTITY, Vector3(0, 0, -4)))
 	await wait_process_frames(3)
 	assert_true(plates.is_name_visible(1002), "walked closer: name shows")
 	var plate: Node3D = plates.get_plate(1001)
@@ -140,3 +141,22 @@ func test_plate_goes_when_the_player_leaves() -> void:
 	other.free()
 	await wait_process_frames(3)
 	assert_null(plates.get_plate(1001))
+
+
+func test_names_fade_out_and_back_in() -> void:
+	var other := _body(1001, Vector3(0, 0, -3))
+	_viewer()
+	var plates := _nameplates(5.0, 0.5)
+	await wait_until(func() -> bool: return is_equal_approx(plates.get_alpha(1001), 1.0), WAIT)
+	assert_almost_eq(plates.get_alpha(1001), 1.0, 0.001, "close: fully shown")
+	other.teleport(Transform3D(Basis.IDENTITY, Vector3(0, 0, -10)))
+	await wait_process_frames(3)
+	assert_between(plates.get_alpha(1001), 0.01, 0.99, "walking away: fading, not gone at once")
+	assert_true(plates.is_name_visible(1001))
+	await wait_until(func() -> bool: return not plates.is_name_visible(1001), WAIT)
+	assert_false(plates.is_name_visible(1001), "faded away")
+	other.teleport(Transform3D(Basis.IDENTITY, Vector3(0, 0, -3)))
+	await wait_process_frames(3)
+	assert_between(plates.get_alpha(1001), 0.01, 0.99, "coming back: fading in")
+	await wait_until(func() -> bool: return is_equal_approx(plates.get_alpha(1001), 1.0), WAIT)
+	assert_almost_eq(plates.get_alpha(1001), 1.0, 0.001, "fully back")

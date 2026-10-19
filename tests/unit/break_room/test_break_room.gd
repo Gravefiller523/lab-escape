@@ -1,6 +1,8 @@
 extends GutTest
 ## Tests for break_room (docs/systems/break_room.md). Each "PC" is a SubViewport with its own
-## multiplayer, physics, Net and Break Room, connected over real ENet.
+## multiplayer, physics and Net, the Break Room, a player spawner (at the room's spawn points) and a
+## prop spawner, connected over real ENet. (CHANGED 2026-10-19: starting a run is the cargo lift's job;
+## those tests are in tests/unit/cargo_lift.)
 
 const PORT: int = 17950
 const WAIT: float = 5.0
@@ -19,22 +21,34 @@ func _make_pc(config: GameConfig) -> Node:
 	net.name = "Net"
 	net.use_config(config)
 	pc.add_child(net)
+	var props := PropSpawner.new()
+	props.name = "Props"
+	props.use_net(net, config)
+	pc.add_child(props)
 	var room := BREAK_ROOM_SCENE.instantiate() as BreakRoom
-	room.use_net(net, config)
+	room.use_net(net, config, props)
 	pc.add_child(room)
+	var players := PlayerSpawner.new()
+	players.name = "PlayerSpawner"
+	players.use_net(net)
+	players.spawn_points = room.get_spawn_points()
+	room.add_child(players)
 	_pcs.append(pc)
 	return pc
 
 
-func _config(max_players: int = 4, afk_seconds: float = 60.0) -> GameConfig:
+func _config(max_players: int = 4) -> GameConfig:
 	var config := GameConfig.new()
 	config.max_players = max_players
-	config.afk_force_start_after = afk_seconds
 	return config
 
 
 func _room(pc: Node) -> BreakRoom:
 	return pc.get_node("BreakRoom") as BreakRoom
+
+
+func _props(pc: Node) -> PropSpawner:
+	return pc.get_node("Props") as PropSpawner
 
 
 func _net(pc: Node) -> NetService:
@@ -59,13 +73,6 @@ func _client(config: GameConfig) -> Node:
 	peer.create_client("127.0.0.1", PORT)
 	pc.multiplayer.multiplayer_peer = peer
 	return pc
-
-
-## Puts a body (controlled by this PC) inside the elevator.
-func _walk_into_elevator(pc: Node, player_id: int) -> void:
-	var body: PlayerCharacter = _body(pc, player_id)
-	var zone: Area3D = _room(pc).get_elevator_zone()
-	body.global_position = Vector3(zone.global_position.x, 0.1, zone.global_position.z)
 
 
 ## Stands a body about a metre in front of something usable (path inside the Break Room), on the room side.
@@ -110,105 +117,22 @@ func test_solo_player_spawns_in_the_room() -> void:
 	assert_not_null(_body(pc, me))
 
 
-func test_start_accepted_when_all_inside() -> void:
+func test_the_lift_bay_fits_the_cargo_lift() -> void:
 	var pc := _make_pc(_config())
-	var me: int = _net(pc).local_player_id()
-	await wait_until(func() -> bool: return _body(pc, me) != null, WAIT)
-	_walk_into_elevator(pc, me)
-	await wait_physics_frames(5)
-	watch_signals(EventBus)
-	_room(pc).request_start()
-	assert_signal_emitted(EventBus, "elevator_start_accepted")
-
-
-func test_start_refused_if_someone_outside() -> void:
-	var host := _host(_config())
-	var client := _client(_config())
-	var host_id: int = _net(host).local_player_id()
-	await wait_until(func() -> bool: return _net(client).local_player_id() != 0 and _body(client, _net(client).local_player_id()) != null, WAIT)
-	var client_id: int = _net(client).local_player_id()
-	await wait_until(func() -> bool: return _body(host, client_id) != null, WAIT)
-	_walk_into_elevator(host, host_id)
-	await wait_physics_frames(5)
-
-	watch_signals(EventBus)
-	_room(host).request_start()
-	assert_signal_not_emitted(EventBus, "elevator_start_accepted", "client is still outside")
-	assert_eq(_room(host).get_elevator_zone().get_missing_players(), [client_id] as Array[int])
-
-	_walk_into_elevator(client, client_id)
-	await wait_until(func() -> bool: return _room(host).get_elevator_zone().contains_all_players(), WAIT)
-	_room(host).request_start()
-	assert_signal_emitted(EventBus, "elevator_start_accepted", "everyone inside now")
-
-
-func test_force_start_only_after_timer_and_only_host() -> void:
-	var host := _host(_config(4, 0.3))
-	var client := _client(_config(4, 0.3))
-	var host_id: int = _net(host).local_player_id()
-	await wait_until(func() -> bool: return _body(client, _net(client).local_player_id()) != null, WAIT)
-	var client_id: int = _net(client).local_player_id()
-	await wait_until(func() -> bool: return _body(host, client_id) != null, WAIT)
-	_walk_into_elevator(host, host_id)
-	await wait_physics_frames(5)
-	assert_false(_room(host).can_force_start(), "not before the timer")
-
-	await wait_seconds(0.5)
-	assert_true(_room(host).can_force_start(), "host may force start after the timer")
-	assert_false(_room(client).can_force_start(), "clients never may")
-
-	watch_signals(EventBus)
-	_room(host).request_force_start()
-	assert_signal_emitted(EventBus, "elevator_start_accepted")
-	await wait_until(func() -> bool: return _room(host).get_elevator_zone().get_players_inside().has(client_id), WAIT)
-	assert_true(_room(host).get_elevator_zone().get_players_inside().has(client_id), "the client was moved into the elevator")
-
-
-func test_start_button_is_inside_the_elevator() -> void:
-	var pc := _make_pc(_config())
-	var me: int = _net(pc).local_player_id()
-	await wait_until(func() -> bool: return _body(pc, me) != null, WAIT)
-	_walk_to(pc, me, "StartButton/UseBody")
-	await wait_physics_frames(5)
-	assert_true(_room(pc).get_elevator_zone().get_players_inside().has(me), "next to the button = inside the elevator")
-	watch_signals(EventBus)
-	assert_true(_use(pc, me, "StartButton/UseBody"), "the start button is an Interactable")
-	await wait_physics_frames(2)
-	assert_signal_emitted(EventBus, "elevator_start_accepted", "using it there starts the elevator")
-
-
-func test_start_anyway_button_is_inside_the_elevator() -> void:
-	var host := _host(_config(4, 0.3))
-	var client := _client(_config(4, 0.3))
-	var host_id: int = _net(host).local_player_id()
-	await wait_until(func() -> bool: return _body(client, _net(client).local_player_id()) != null, WAIT)
-	var force_body := host.get_node("BreakRoom/ForceButton/UseBody") as CollisionObject3D
-	assert_eq(force_body.collision_layer, 0, "hidden Start anyway can't be looked at")
-	_walk_to(host, host_id, "ForceButton/UseBody")
-	await wait_physics_frames(5)
-	assert_true(_room(host).get_elevator_zone().get_players_inside().has(host_id))
-	await wait_seconds(0.5)
-	await wait_process_frames(2)
-	assert_ne(force_body.collision_layer, 0, "it can be used once it shows")
-	watch_signals(EventBus)
-	_use(host, host_id, "ForceButton/UseBody")
-	await wait_physics_frames(2)
-	assert_signal_emitted(EventBus, "elevator_start_accepted", "host used Start anyway from inside")
-
-
-func test_only_the_host_can_use_start_anyway() -> void:
-	var host := _host(_config(4, 0.3))
-	var client := _client(_config(4, 0.3))
-	var host_id: int = _net(host).local_player_id()
-	await wait_until(func() -> bool: return _body(client, _net(client).local_player_id()) != null, WAIT)
-	var client_id: int = _net(client).local_player_id()
-	await wait_until(func() -> bool: return _body(host, client_id) != null, WAIT)
-	_walk_into_elevator(host, host_id)
-	await wait_seconds(0.5)
-	assert_true(_room(host).can_force_start())
-	var force_use := host.get_node("BreakRoom/ForceButton/UseBody/ForceUse") as Interactable
-	assert_false(force_use.allows(client_id), "a client's use is refused by the host")
-	assert_true(force_use.allows(host_id))
+	await wait_physics_frames(3)
+	var spot: Node3D = _room(pc).get_lift_spot()
+	assert_not_null(spot)
+	# The lift's gate is on its -z side: it must face into the room (towards +z).
+	assert_gt((-spot.global_basis.z).z, 0.9, "the lift's doors face the room")
+	var space: PhysicsDirectSpaceState3D = _room(pc).get_world_3d().direct_space_state
+	var middle: Vector3 = spot.global_position + Vector3.UP * 1.5
+	for direction: Vector3 in [Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD]:
+		var query := PhysicsRayQueryParameters3D.create(middle, middle + direction * 10.0,
+			PhysicsLayers.bit(PhysicsLayers.WORLD))
+		var hit: Dictionary = space.intersect_ray(query)
+		assert_false(hit.is_empty(), "the bay has a wall that way")
+		var wall_at: Vector3 = hit["position"]
+		assert_gt(middle.distance_to(wall_at), CargoLift.INSIDE.x / 2.0 + CargoLift.WALL, "room for the lift")
 
 
 func test_closet_note_goes_to_whoever_used_it() -> void:
@@ -216,6 +140,7 @@ func test_closet_note_goes_to_whoever_used_it() -> void:
 	var client := _client(_config())
 	var host_id: int = _net(host).local_player_id()
 	await wait_until(func() -> bool: return _body(client, _net(client).local_player_id()) != null, WAIT)
+	await wait_until(func() -> bool: return _body(host, host_id) != null, WAIT)
 	_walk_to(host, host_id, "ClosetUseBody")
 	await wait_physics_frames(10)
 	_use(host, host_id, "ClosetUseBody")
@@ -228,23 +153,6 @@ func test_closet_note_goes_to_whoever_used_it() -> void:
 
 func test_room_has_props_to_play_with() -> void:
 	var pc := _make_pc(_config())
-	await wait_until(func() -> bool: return _room(pc).get_prop_spawner().get_props().size() > 0, WAIT)
-	assert_eq(_room(pc).get_prop_spawner().get_props().size(), 4, "one prop per FunProps marker")
-	assert_eq(_room(pc).get_prop_spawner().get_props(&"prop_crate_heavy").size(), 1)
-
-
-func test_closed_doors_stop_props() -> void:
-	var pc := _make_pc(_config())
-	var me: int = _net(pc).local_player_id()
-	await wait_until(func() -> bool: return _body(pc, me) != null, WAIT)
-	assert_true(pc.get_node("BreakRoom/LeftDoor") is AnimatableBody3D, "doors are moving physics bodies")
-	_walk_into_elevator(pc, me)
-	await wait_physics_frames(5)
-	_room(pc).request_start()
-	await wait_seconds(1.5)
-	var props: PropSpawner = _room(pc).get_prop_spawner()
-	var crate: NetProp = props.spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 0.4, -7.5)))
-	await wait_physics_frames(2)
-	props.apply_impulse(crate, Vector3(0, 0, -60))
-	await wait_seconds(1.0)
-	assert_gt(crate.global_position.z, -8.9, "the crate hit the closed doors instead of sliding through")
+	await wait_until(func() -> bool: return _props(pc).get_props().size() > 0, WAIT)
+	assert_eq(_props(pc).get_props().size(), 4, "one prop per FunProps marker")
+	assert_eq(_props(pc).get_props(&"prop_crate_heavy").size(), 1)

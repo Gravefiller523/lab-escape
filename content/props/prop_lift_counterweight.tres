@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/props/prop_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/cargo_lift/parts/counterweight.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"prop_lift_counterweight"
+display_name = "Counterweight"
+description = "A steel counterweight. Too heavy for one person: lift it together."
+tags = PackedStringArray("lift_part")
+scene = ExtResource("2_scene")
+mass = 80.0
+is_key_object = true
+lift_slot = &"counterweight"
+cart_allowed = false

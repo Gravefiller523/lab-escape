@@ -1,0 +1,25 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+
+[sub_resource type="SphereShape3D" id="Shape_part"]
+radius = 0.18
+
+[sub_resource type="StandardMaterial3D" id="Mat_part"]
+albedo_color = Color(1.0, 0.9, 0.55, 1)
+metallic = 0.4
+roughness = 0.5
+
+[sub_resource type="SphereMesh" id="Mesh_part"]
+material = SubResource("Mat_part")
+radius = 0.18
+height = 0.36
+
+[node name="LiftPart" type="RigidBody3D"]
+script = ExtResource("1_prop")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_part")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_part")

@@ -8,6 +8,8 @@ const WAIT: float = 5.0
 var _pcs: Array[Node] = []
 ## PC -> the scene paths its GameFlow asked to load.
 var _loaded: Dictionary[Node, PackedStringArray] = {}
+## PC -> the level kinds its GameFlow asked to build.
+var _built: Dictionary[Node, PackedStringArray] = {}
 
 
 static func _department(id: StringName, order_hint: int, floor_count: int = 0) -> DepartmentData:
@@ -32,6 +34,7 @@ func before_all() -> void:
 func _config() -> GameConfig:
 	var config := GameConfig.new()
 	config.elevator_ride_seconds = 0.05
+	config.lift_ride_seconds = 0.05
 	config.run_summary_seconds = 0.05
 	config.floor_load_timeout = 3.0
 	config.floors_per_department = 5
@@ -49,9 +52,11 @@ func _make_pc(config: GameConfig) -> Node:
 	net.use_config(config)
 	pc.add_child(net)
 	_loaded[pc] = PackedStringArray()
+	_built[pc] = PackedStringArray()
 	var flow := GameFlowService.new()
 	flow.name = "GameFlow"
-	flow.use_test_setup(net, config, func(path: String) -> void: _loaded[pc].append(path))
+	flow.use_test_setup(net, config, func(path: String) -> void: _loaded[pc].append(path),
+		func(level: Dictionary) -> void: _built[pc].append(str(level.get("kind", ""))))
 	pc.add_child(flow)
 	_pcs.append(pc)
 	return pc
@@ -102,6 +107,7 @@ func after_each() -> void:
 		get_tree().set_multiplayer(null, paths[index])
 	_pcs.clear()
 	_loaded.clear()
+	_built.clear()
 
 
 func test_state_order_menu_breakroom_run_floor() -> void:
@@ -113,16 +119,17 @@ func test_state_order_menu_breakroom_run_floor() -> void:
 	flow.go_to_break_room()
 	await wait_until(_state_is(pc, GameFlowService.State.BREAK_ROOM), WAIT)
 	assert_eq(flow.get_state(), GameFlowService.State.BREAK_ROOM)
-	assert_eq(_loaded[pc][-1], GameFlowService.BREAK_ROOM_SCENE)
+	assert_eq(_loaded[pc][-1], GameFlowService.WORLD_SCENE, "the game world is loaded")
+	assert_eq(_built[pc][-1], GameFlowService.LEVEL_BREAK_ROOM, "with the Break Room in it")
 
 	watch_signals(EventBus)
 	EventBus.elevator_start_accepted.emit()
-	assert_eq(flow.get_state(), GameFlowService.State.ELEVATOR_RIDE)
+	assert_eq(flow.get_state(), GameFlowService.State.LOADING_FLOOR, "the lift rides while floor 1 loads")
 	assert_true(flow.is_in_run())
 	assert_signal_emitted(EventBus, "run_started")
 	await wait_until(_state_is(pc, GameFlowService.State.ON_FLOOR), WAIT)
 	assert_eq(flow.get_state(), GameFlowService.State.ON_FLOOR)
-	assert_eq(_loaded[pc][-1], GameFlowService.FLOOR_SCENE)
+	assert_eq(_built[pc][-1], GameFlowService.LEVEL_FLOOR, "a floor was built around the lift")
 	assert_signal_emitted(EventBus, "floor_loading")
 	assert_signal_emitted(EventBus, "floor_ready")
 	assert_eq(flow.get_run().floor_number, 1)
@@ -147,10 +154,8 @@ func test_floor_six_is_next_department_after_boss() -> void:
 	assert_eq(flow.get_run().floor_number, 6)
 	assert_true(flow.get_run().is_boss_floor, "floor 6 is the boss floor")
 	assert_signal_emitted_with_parameters(EventBus, "boss_floor_started", [&"boss_test"])
+	# The lift (cargo_lift) only leaves a boss floor once the boss is beaten; then it goes on.
 	EventBus.lift_departed.emit(6)
-	assert_eq(flow.get_state(), GameFlowService.State.BOSS_FIGHT, "no lift out of a boss floor")
-
-	EventBus.boss_defeated.emit(&"boss_test")
 	await wait_until(_state_is(pc, GameFlowService.State.ON_FLOOR), WAIT)
 	assert_eq(flow.get_run().floor_number, 7)
 	assert_eq(flow.get_run().get_department_id(), &"department_test_second", "the next department")
@@ -159,7 +164,7 @@ func test_floor_six_is_next_department_after_boss() -> void:
 	# The second department has 2 floors: floor 9 is its boss, and beating the last boss wins the run.
 	flow.debug_go_to_floor(9)
 	await wait_until(_state_is(pc, GameFlowService.State.BOSS_FIGHT), WAIT)
-	EventBus.boss_defeated.emit(&"boss_test")
+	EventBus.lift_departed.emit(9)
 	assert_signal_emitted_with_parameters(EventBus, "run_ended", [GameFlowService.RESULT_ESCAPED])
 	await wait_until(_state_is(pc, GameFlowService.State.BREAK_ROOM), WAIT)
 	assert_false(flow.is_in_run())
@@ -211,7 +216,8 @@ func test_team_wipe_ends_run_and_returns_to_break_room() -> void:
 	assert_signal_emitted_with_parameters(EventBus, "run_ended", [GameFlowService.RESULT_WIPED])
 	await wait_until(_state_is(pc, GameFlowService.State.BREAK_ROOM), WAIT)
 	assert_false(flow.is_in_run())
-	assert_eq(_loaded[pc][-1], GameFlowService.BREAK_ROOM_SCENE)
+	assert_eq(_loaded[pc][-1], GameFlowService.WORLD_SCENE, "the game world is loaded")
+	assert_eq(_built[pc][-1], GameFlowService.LEVEL_BREAK_ROOM, "with the Break Room in it")
 
 
 func test_client_follows_the_host_through_the_run() -> void:
@@ -227,7 +233,7 @@ func test_client_follows_the_host_through_the_run() -> void:
 	assert_eq(_flow(client).get_state(), GameFlowService.State.ON_FLOOR)
 	assert_eq(_flow(host).get_state(), GameFlowService.State.ON_FLOOR)
 	assert_eq(_flow(client).get_run().run_seed, 5, "the client has the host's run")
-	assert_eq(_loaded[client][-1], GameFlowService.FLOOR_SCENE, "and loaded the floor itself")
+	assert_eq(_built[client][-1], GameFlowService.LEVEL_FLOOR, "and built the floor itself")
 
 
 func test_late_joiner_gets_the_current_floor() -> void:
@@ -242,13 +248,17 @@ func test_late_joiner_gets_the_current_floor() -> void:
 	await wait_until(_state_is(client, GameFlowService.State.ON_FLOOR), WAIT)
 	assert_eq(_flow(client).get_state(), GameFlowService.State.ON_FLOOR, "joined straight onto the floor")
 	assert_eq(_flow(client).get_run().run_seed, 9)
-	assert_eq(_loaded[client][-1], GameFlowService.FLOOR_SCENE)
+	assert_eq(_built[client][-1], GameFlowService.LEVEL_FLOOR)
+	assert_eq(_loaded[client][-1], GameFlowService.WORLD_SCENE, "the joiner loaded the game world")
 	_flow(client).go_to_break_room()
 	assert_eq(_flow(client).get_state(), GameFlowService.State.ON_FLOOR, "a late 'go to the Break Room' from the menu is ignored")
 
 
 func test_two_lift_presses_go_up_one_floor() -> void:
-	var pc := _make_pc(_config())
+	var config := _config()
+	# A ride long enough that the third press lands while everyone is still on the way.
+	config.lift_ride_seconds = 0.5
+	var pc := _make_pc(config)
 	var flow: GameFlowService = _flow(pc)
 	flow.go_to_break_room()
 	await wait_until(_state_is(pc, GameFlowService.State.BREAK_ROOM), WAIT)

@@ -215,3 +215,19 @@ func test_unloaded_level_spawns_nobody() -> void:
 	EventBus.player_joined.emit(_net(pc).local_player_id())
 	assert_eq(players.get_child_count(), 2, "nothing new was spawned (the spawner and the old body only)")
 	players.free()
+
+
+func test_host_teleport_is_not_undone_by_the_speed_check() -> void:
+	var host := _host()
+	var client := _client()
+	await wait_until(_body_count_is(host, 2), WAIT)
+	await wait_until(_body_count_is(client, 2), WAIT)
+	var client_id: int = _net(client).local_player_id()
+	var on_host := host.get_node("Players/%d" % client_id) as PlayerCharacter
+	var on_client := client.get_node("Players/%d" % client_id) as PlayerCharacter
+	await wait_physics_frames(10)
+	var target := Vector3(15.0, 0.1, 0.0)
+	on_host.teleport(Transform3D(Basis.IDENTITY, target))
+	await wait_physics_frames(60)
+	assert_lt(on_client.global_position.distance_to(target), 1.0, "the client is where the host sent it")
+	assert_lt(on_host.global_position.distance_to(target), 1.0, "and the host's copy agrees (no snap back)")

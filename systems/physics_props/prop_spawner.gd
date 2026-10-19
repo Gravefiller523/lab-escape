@@ -346,6 +346,39 @@ func _apply_pending_owners() -> void:
 		hand_to(prop, _pending_owner[net_id])
 
 
+## NEW 2026-10-19: a fragile prop hit something too hard: the host shatters it (for everyone).
+func request_break(prop: NetProp) -> void:
+	if multiplayer.is_server():
+		_break(prop)
+	else:
+		_request_break_rpc.rpc_id(1, prop.net_id)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _request_break_rpc(net_id: int) -> void:
+	if not is_inside_tree() or not multiplayer.is_server():
+		return
+	var prop: NetProp = get_prop(net_id)
+	# Only the PC running it may say it hit something.
+	if prop != null and prop.is_fragile() and multiplayer.get_remote_sender_id() == prop.get_owner_peer():
+		_break(prop)
+
+
+func _break(prop: NetProp) -> void:
+	if prop == null or prop.is_queued_for_deletion():
+		return
+	_shattered_rpc.rpc(prop.data.display_name if prop.data != null else "It")
+	despawn(prop)
+
+
+## Host -> everyone: something fragile shattered.
+@rpc("authority", "call_local", "reliable")
+func _shattered_rpc(display_name: String) -> void:
+	if not is_inside_tree():
+		return
+	EventBus.toast_requested.emit("The %s shattered!" % display_name.to_lower())
+
+
 ## A player's PC: a prop it runs bumped into `prop`; ask to run that one too (knock-on ownership).
 func request_knock_on(prop: NetProp) -> void:
 	_request_knock_on_rpc.rpc_id(1, prop.net_id)

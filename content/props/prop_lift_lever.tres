@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/props/prop_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/cargo_lift/parts/lever.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"prop_lift_lever"
+display_name = "Lever"
+description = "The lift's brake lever. Slots into the LEVER socket."
+tags = PackedStringArray("lift_part")
+scene = ExtResource("2_scene")
+mass = 2.0
+is_key_object = true
+lift_slot = &"lever"
+

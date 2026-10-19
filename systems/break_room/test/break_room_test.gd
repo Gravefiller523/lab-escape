@@ -1,9 +1,11 @@
 extends Node
-## Test scene for break_room (run alone with F6): the real Break Room plus Host/Join buttons,
-## because the main menu (ui) isn't built yet. Run 2 to 4 instances (Debug > Customize Run Instances).
+## Test scene for break_room (run alone with F6): the game world with the Break Room around the cargo
+## lift (as in the game), plus Host/Join buttons. game_flow isn't in charge here, so pressing Go in
+## the lift just rides for a moment and comes back to the Break Room. Run 2 to 4 instances (Debug > Customize Run Instances).
 ## Launch options after "--": "host" or "join" start by themselves, "port=7790" picks another port.
 
 const BREAK_ROOM_SCENE: PackedScene = preload("res://systems/break_room/break_room.tscn")
+const WORLD_SCENE: PackedScene = preload("res://systems/game_flow/game_world.tscn")
 
 var _status: Label
 var _prompt: Label
@@ -13,7 +15,17 @@ var _overview: Camera3D
 
 
 func _ready() -> void:
-	add_child(BREAK_ROOM_SCENE.instantiate())
+	var world := WORLD_SCENE.instantiate() as GameWorld
+	add_child(world)
+	var spawner: PlayerSpawner = world.get_player_spawner()
+	spawner.spawn_points = world.build_break_room(BREAK_ROOM_SCENE)
+	spawner.auto_spawn = true
+	spawner.spawn_all(spawner.spawn_points)
+	world.get_lift().arrive(0, true)
+	# No game_flow here: a ride just comes back after a moment.
+	EventBus.lift_departed.connect(func(_floor_number: int) -> void:
+		get_tree().create_timer(Config.game.lift_ride_seconds).timeout.connect(func() -> void:
+			world.get_lift().arrive(0, true)))
 	# Shown only while this window has no body of its own.
 	_overview = Camera3D.new()
 	_overview.position = Vector3(0, 14, 12)
@@ -21,7 +33,6 @@ func _ready() -> void:
 	add_child(_overview)
 	_build_ui()
 	EventBus.toast_requested.connect(_on_toast)
-	EventBus.elevator_start_accepted.connect(func() -> void: _on_toast("elevator_start_accepted (game_flow would start the run now)"))
 	_run_launch_options.call_deferred()
 
 

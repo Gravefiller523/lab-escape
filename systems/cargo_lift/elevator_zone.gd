@@ -1,8 +1,7 @@
-class_name ElevatorZoneStub
+class_name ElevatorZone
 extends Area3D
-## STUB for cargo_lift's ElevatorZone (docs/systems/cargo_lift.md), which isn't built yet.
-## Same functions (minus props): who is standing inside the elevator? Swap it for the real
-## ElevatorZone when cargo_lift is merged.
+## The inside of a lift: who (and what) is in it. Used by the CargoLift to decide if it may leave,
+## and by game_flow to know which props ride along.
 
 signal occupants_changed()
 
@@ -10,7 +9,7 @@ var _net: NetService
 var _inside: Array[int] = []
 
 
-## For tests only: use a different Net.
+## For tests only: use a different Net. Call before adding the node to the tree.
 func use_net(net: NetService) -> void:
 	_net = net
 
@@ -19,7 +18,8 @@ func _ready() -> void:
 	if _net == null:
 		_net = Net
 	collision_layer = PhysicsLayers.bit(PhysicsLayers.TRIGGERS)
-	collision_mask = PhysicsLayers.bit(PhysicsLayers.PLAYERS)
+	collision_mask = PhysicsLayers.bit(PhysicsLayers.PLAYERS) | PhysicsLayers.bit(PhysicsLayers.PROPS) \
+		| PhysicsLayers.bit(PhysicsLayers.CARTS)
 	monitorable = false
 
 
@@ -50,3 +50,13 @@ func get_missing_players() -> Array[int]:
 
 func contains_all_players() -> bool:
 	return get_missing_players().is_empty()
+
+
+## Props (and carts, with what's in them) inside the lift right now.
+func get_props_inside() -> Array[NetProp]:
+	var props: Array[NetProp] = []
+	for body: Node3D in get_overlapping_bodies():
+		var prop := body as NetProp
+		if prop != null and not prop.is_queued_for_deletion():
+			props.append(prop)
+	return props

@@ -648,3 +648,14 @@ func test_unloaded_level_ignores_roster_changes() -> void:
 	_net(pc).roster_changed.emit()
 	assert_not_null(level.get_node("Props"), "no error, nothing happened")
 	level.free()
+
+
+func test_fragile_props_shatter_when_dropped_hard() -> void:
+	var pc := _make_pc()
+	await wait_physics_frames(2)
+	var high: NetProp = _props(pc).spawn_prop(&"prop_lift_vacuum_tube", Transform3D(Basis.IDENTITY, Vector3(0, 4.0, -3)))
+	var low: NetProp = _props(pc).spawn_prop(&"prop_lift_vacuum_tube", Transform3D(Basis.IDENTITY, Vector3(3, 0.5, -3)))
+	assert_true(high.is_fragile())
+	await wait_seconds(1.5)
+	assert_false(is_instance_valid(high) and high.is_inside_tree(), "a 4 m fall shatters it")
+	assert_true(is_instance_valid(low) and low.is_inside_tree(), "set down gently, it's fine")

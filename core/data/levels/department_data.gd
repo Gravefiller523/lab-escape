@@ -17,10 +17,15 @@ extends ContentData
 @export var stock_id: StringName = &""
 ## Co-op floor tasks that can appear here.
 @export var task_ids: Array[StringName] = []
-## Lift parts needed to leave each regular floor.
+## @deprecated use lift_breaks_min / lift_breaks_max instead (2026-10-19: the lift has a slot per part type).
 @export var lift_parts_per_floor: int = 3
-## The prop players carry back to the lift (a PropData id, e.g. "prop_lift_part_zoology").
+## @deprecated the parts are the lift-part props (PropData.lift_slot); not used since 2026-10-19.
 @export var lift_part_prop_id: StringName = &""
+## How many of the cargo lift's slots break on each regular floor (picked at random with the run's seed).
+@export var lift_breaks_min: int = 1
+@export var lift_breaks_max: int = 3
+## Lift parts (PropData ids) that can break here. Empty = every lift part.
+@export var lift_part_ids: Array[StringName] = []
 ## How many rooms a regular floor has (the generator picks between these).
 @export var rooms_per_floor_min: int = 6
 @export var rooms_per_floor_max: int = 10

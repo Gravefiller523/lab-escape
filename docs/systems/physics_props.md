@@ -26,6 +26,7 @@ func get_holder_ids() -> Array[int]        # 1, or 2 for a shared heavy lift
 func is_attached() -> bool                 # snapped into a cart, vendor or lift
 func attach_to(anchor: Node3D) -> void     # host: freeze and follow anchor (carts, vendor trays)
 func detach() -> void                      # host: physics back on
+func is_fragile() -> bool                  # NEW 2026-10-19: PropData.fragile_break_speed > 0 (shatters on hard hits)
 static func of(node: Node) -> NetProp
 
 # Autoload Props (host-only calls are marked)
@@ -36,6 +37,7 @@ func get_prop(net_id: int) -> NetProp
 func get_props(content_id: StringName = &"") -> Array[NetProp]     # all, or one kind
 func apply_impulse(prop: NetProp, impulse: Vector3) -> void        # host
 func get_loose_count(content_id: StringName) -> int
+func request_break(prop: NetProp) -> void  # NEW 2026-10-19: a fragile prop hit too hard; the host shatters it (toast + despawn)
 
 class_name GrabController extends Node    # child "Grab" of the player
 signal held_changed(prop: NetProp)        # null when let go
@@ -260,6 +262,11 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
 - 2026-10-18 fix (Zachary: error at a floor change): a message can reach a PropSpawner (or another scene node)
   that is already leaving the tree with its scene; every RPC handler on scene nodes now ignores it then
   (PropSpawner, LevelFloor, BreakRoom, PlayerCharacter, InteractionController, test scenes).
+
+- 2026-10-19 (cargo_lift branch): fragile props (`PropData.fragile_break_speed`, for the vacuum tube). The PC running a
+  fragile prop watches its contacts; a hit at that speed or faster calls `request_break` and the host shatters it
+  for everyone ("The vacuum tube shattered!"). NEW: `NetProp.is_fragile()`, `PropSpawner.request_break()`. Test:
+  `test_fragile_props_shatter_when_dropped_hard`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

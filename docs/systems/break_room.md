@@ -89,6 +89,13 @@ GUT tests (`tests/unit/break_room/test_break_room.gd`): `test_enough_spawn_point
   AnimatableBody3Ds (moving physics bodies) moved in physics steps, so they push props. Test: `test_closed_doors_stop_props`.
 - 2026-10-18 (game_flow branch): "Elevator starting!" no longer says game_flow is missing; the doors reopen only
   matter in the room's own test scene (in the game, game_flow takes everyone to the first floor).
+- 2026-10-19 (cargo_lift branch, Zachary's design): the Break Room is "floor 0" around the cargo lift. game_flow
+  loads it into the game world and lines its `%LiftSpot` up with the lift. Its elevator (walls, doors, start and
+  "Start anyway" buttons, who's-missing signs, ElevatorZoneStub, its own PlayerSpawner and PropSpawner) is gone:
+  the lift does that now. The bay is wider (the lift is 5.4 m). REMOVED API: `get_elevator_zone`,
+  `can_force_start`, `request_start`, `request_force_start`, `get_prop_spawner` (no callers left). NEW:
+  `get_lift_spot()`; `use_net` takes the prop spawner for tests. The whiteboard reads
+  `GameFlow.get_last_run_result()`. Tests: `test_the_lift_bay_fits_the_cargo_lift`; the start tests moved to cargo_lift.
 
 ## HANDOFF
 **Done (Phase 1a grey box):** `break_room.tscn`: floor, walls, a table, 8 spawn points (more are

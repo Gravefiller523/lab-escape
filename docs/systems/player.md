@@ -154,6 +154,8 @@ launch options `-- host` / `-- join`.
   Test: `test_a_prop_cannot_push_you_through_a_wall`.
 - 2026-10-18 (game_flow branch): NEW `stop_syncing()`: game_flow calls it on every body before a scene change,
   so no PC gets updates for a body it no longer has (Godot prints errors for those).
+- 2026-10-19 (cargo_lift branch): fix: a host `teleport()` ("Start anyway", bringing everyone into the lift) was
+  undone by the host's speed check. The check now expects the jump. Test: `test_host_teleport_is_not_undone_by_the_speed_check`.
 
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,

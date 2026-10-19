@@ -7,7 +7,7 @@
 script = ExtResource("1_data")
 id = &"room_lift_grey"
 display_name = "Lift room (grey box)"
-description = "The elevator: every floor starts here, and the lift part must be brought back here."
+description = "Where the cargo lift stands: every floor starts here, and the lift part must be brought back to it."
 tags = PackedStringArray("greybox")
 scene = ExtResource("2_scene")
 size_cells = Vector3i(1, 1, 1)

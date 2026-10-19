@@ -116,9 +116,7 @@ func test_markers_sorted_same_order() -> void:
 		orders.append(names)
 	assert_eq(orders[0], orders[1], "the same floor gives the same marker order")
 	assert_gt(orders[0].size(), 0)
-	assert_eq(Level.get_markers(&"player_spawn").size(), 8, "the lift room has 8 player spawns")
-	for marker: RoomMarker in Level.get_markers(&"player_spawn"):
-		assert_eq(Level.get_room_for_position(marker.global_position).room_kind, &"lift", "players start in the elevator")
+	# CHANGED 2026-10-19: players arrive inside the cargo lift (its own spawn spots), not at room markers.
 	assert_gt(Level.get_markers(&"lift_part").size(), 0, "there are places for the lift part")
 	assert_eq(Level.get_markers(&"lift").size(), 1)
 	assert_not_null(Level.get_room_for_position(Level.get_markers(&"lift")[0].global_position))

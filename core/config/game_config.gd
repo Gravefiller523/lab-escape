@@ -24,6 +24,10 @@ extends Resource
 @export var run_summary_seconds: float = 5.0
 ## Seconds the host waits for every PC to finish building a floor before starting it anyway.
 @export var floor_load_timeout: float = 20.0
+## Shortest cargo lift ride between floors (seconds); longer if a PC is still building the next floor.
+@export var lift_ride_seconds: float = 8.0
+## How fast the shaft slides past the lift while it rides (metres per second, looks only).
+@export var lift_ride_speed: float = 4.0
 ## Size of one room grid cell in metres.
 @export var room_cell_size: float = 12.0
 

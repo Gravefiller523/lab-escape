@@ -149,6 +149,16 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
   the old scene (same file) and end up in an empty one; it now waits for the new scene node. Several Depart
   presses at once only move one floor. After 4 s the host gets a toast naming who is still loading.
   Test: `test_two_lift_presses_go_up_one_floor`.
+- 2026-10-19 (cargo_lift branch, Zachary's design): one scene, the game world (`WORLD_SCENE`, `GameWorld`), stays
+  loaded from the Break Room to the end of a run, with the cargo lift in it. Levels (the Break Room, floors) load
+  around the lift while it rides (`_ride_to`: props outside the lift are dropped, every PC builds the level,
+  arrival after `lift_ride_seconds` and when all have built). `lift_departed` drives everything: Break Room →
+  start_run, floor → next floor, boss floor (the lift works once the boss is beaten) → next department or
+  escaped. end_run brings everyone into the lift and rides back to the Break Room. REMOVED: the loading screen,
+  the scene-change transition between floors, `FLOOR_SCENE`/`LOADING_SCENE`; `use_test_setup` now takes a
+  level builder. NEW: `get_last_run_result()`, `WORLD_SCENE`, `LEVEL_BREAK_ROOM`, `LEVEL_FLOOR`. Joiners load
+  the world and the current level in the join handshake. STUBS in GameWorld: crates at prop_spawn markers
+  (physics_props), "Defeat the boss" button (bosses), the HUD prompt.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `GameFlow` (`GameFlowService`, `systems/game_flow/game_flow.gd`),

@@ -1,26 +1,28 @@
 class_name GameFlowService
 extends Node
-## Autoload "GameFlow". The game's big state machine: main menu, Break Room, elevator ride, floors,
-## boss fights and the run summary. It owns the run (seed, floor number, department order) and loads
-## the main scenes on every PC. Spec: docs/systems/game_flow.md.
+## Autoload "GameFlow". The game's big state machine: main menu, Break Room, lift rides, floors,
+## boss fights and the run summary. It owns the run (seed, floor number, department order).
+## Spec: docs/systems/game_flow.md.
 ##
-## The host decides every change and tells the clients (reliable RPCs); each PC then loads the same
-## scene and emits the same EventBus events. GameFlow only takes charge once it has loaded the main
-## menu or the Break Room (or the game started in one); in a system's own test scene it stays out of
-## the way, so test scenes and GUT tests are left alone.
+## CHANGED 2026-10-19: from the Break Room to the end of a run, one scene stays loaded: the game world
+## (game_world.tscn) with the cargo lift in it. The levels (the Break Room, then each floor) are loaded
+## and unloaded around the lift while it rides, so everything inside it rides along. A ride: the lift
+## leaves (cargo_lift emits lift_departed), every PC swaps the level, and once every PC has built it
+## and the ride has lasted lift_ride_seconds, the lift arrives (floor_ready) and opens.
 ##
-## STUBS until other systems exist:
-## - cargo_lift and bosses: level_gen's floor scene has "Depart" and "Defeat the boss" stand-in buttons.
-## - departments: with no department content yet, runs use one placeholder department.
+## The host decides every change and tells the clients (reliable RPCs). GameFlow only takes charge
+## once it has loaded the main menu or the game world (or the game started in one); in a system's own
+## test scene it stays out of the way, so test scenes and GUT tests are left alone.
+##
+## STUB until department content exists: runs use one placeholder department.
 
 enum State { BOOT, MAIN_MENU, BREAK_ROOM, ELEVATOR_RIDE, LOADING_FLOOR, ON_FLOOR, BOSS_FIGHT, RUN_SUMMARY }
 
 const MAIN_MENU_SCENE: String = "res://systems/ui/main_menu_background.tscn"
+## The scene that stays loaded from the Break Room to the end of a run.
+const WORLD_SCENE: String = "res://systems/game_flow/game_world.tscn"
+## The Break Room level, loaded into the game world around the lift.
 const BREAK_ROOM_SCENE: String = "res://systems/break_room/break_room.tscn"
-## Every floor is this scene; level_gen builds the rooms into it.
-const FLOOR_SCENE: String = LevelService.FLOOR_SCENE
-## Where the host waits while the clients change scene.
-const LOADING_SCENE: String = "res://systems/game_flow/loading_screen.tscn"
 ## STUB (department content): used when no DepartmentData is in the run rotation.
 const PLACEHOLDER_DEPARTMENT_ID: StringName = &"department_placeholder"
 ## STUB (department content): the placeholder department's lift part.
@@ -29,9 +31,9 @@ const PLACEHOLDER_LIFT_PART_ID: StringName = &"prop_lift_part_zoology"
 const RESULT_ESCAPED: StringName = &"escaped"
 const RESULT_WIPED: StringName = &"wiped"
 const RESULT_ABANDONED: StringName = &"abandoned"
-## Seconds between "stop sending player updates" and the clients changing scene (see _transition),
-## so updates already on their way arrive while everyone still has the old scene.
-const CLIENT_LOAD_DELAY: float = 0.15
+## Level kinds (the "kind" of a level dictionary).
+const LEVEL_BREAK_ROOM: String = "break_room"
+const LEVEL_FLOOR: String = "floor"
 ## Most frames to wait for a new scene to appear after changing to it.
 const SCENE_WAIT_FRAMES: int = 10
 ## Seconds of waiting for a slow PC before the host is told who it is waiting for.
@@ -45,34 +47,35 @@ var _net: NetService
 var _config: GameConfig
 ## How scenes are changed: func(path: String) -> void. Tests swap in a fake.
 var _load_scene: Callable
-## How a floor is built from its layout: func(layout: FloorLayout) -> void. Tests swap in a fake.
-var _build_floor: Callable
-## The current floor's layout (FloorLayout.to_dict()), sent to players who join.
-var _layout_data: Dictionary = {}
+## How a level is put in the game world: func(level: Dictionary) -> void. Tests swap in a fake.
+var _build_level: Callable
+## The current (or, during a ride, the next) level: {"kind": ..., "layout": ...}. Sent to joiners.
+var _level_data: Dictionary = {}
 var _state: State = State.BOOT
 var _run: RunState
+var _last_result: StringName = &""
 var _placeholder: DepartmentData
-## Host: clients that have loaded the scene of the current transition.
+## Host: clients that have built the level of the current ride.
 var _built_peers: Dictionary[int, bool] = {}
-## Host: the clients a transition is waiting for (players who join during it are already in the new scene).
+## Host: the clients a ride is waiting for (players who join during it build the new level as they join).
 var _transition_peers: PackedInt32Array = []
-## Host: a scene change is under way (the lift or the boss can't start another one).
+## Host: a ride is under way (a second press can't start another one).
 var _moving: bool = false
-var _transition_id: int = 0
+var _ride_id: int = 0
 ## Client: the host has told us where the game is (so a late "go to the Break Room" is ignored).
 var _synced_from_host: bool = false
 var _peer_seen: MultiplayerPeer
 var _was_host: bool = true
 
 
-## For tests only: a different Net and config, a fake scene changer and floor builder. Call before
+## For tests only: a different Net and config, a fake scene changer and level builder. Call before
 ## adding to the tree.
 func use_test_setup(net: NetService, config: GameConfig, scene_loader: Callable,
-		floor_builder: Callable = Callable()) -> void:
+		level_builder: Callable = Callable()) -> void:
 	_net = net
 	_config = config
 	_load_scene = scene_loader
-	_build_floor = floor_builder if floor_builder.is_valid() else func(_layout: FloorLayout) -> void: pass
+	_build_level = level_builder if level_builder.is_valid() else func(_level: Dictionary) -> void: pass
 
 
 func _ready() -> void:
@@ -82,12 +85,11 @@ func _ready() -> void:
 		_config = Config.game
 	if not _load_scene.is_valid():
 		_load_scene = func(path: String) -> void: get_tree().change_scene_to_file(path)
-	if not _build_floor.is_valid():
-		_build_floor = func(layout: FloorLayout) -> void: Level.build(layout)
+	if not _build_level.is_valid():
+		_build_level = _build_level_in_world
 	_peer_seen = multiplayer.multiplayer_peer
-	EventBus.elevator_start_accepted.connect(_on_elevator_start_accepted)
+	EventBus.elevator_start_accepted.connect(_on_lift_departed.bind(0))
 	EventBus.lift_departed.connect(_on_lift_departed)
-	EventBus.boss_defeated.connect(_on_boss_defeated)
 	EventBus.team_wiped.connect(_on_team_wiped)
 	_net.set_join_handlers(_join_info, _prepare_for_join)
 	if _net == Net:
@@ -121,53 +123,61 @@ func is_in_run() -> bool:
 	return _run != null
 
 
-## Host: start a run from the Break Room. 0 = a random seed (or Config.game.debug_run_seed).
+## NEW 2026-10-19: how the last run ended (&"" before the first one). The Break Room's whiteboard shows it.
+func get_last_run_result() -> StringName:
+	return _last_result
+
+
+## Host: start a run from the Break Room (the lift is leaving). 0 = a random seed (or debug_run_seed).
 func start_run(run_seed: int = 0) -> void:
 	if not _net.is_host() or is_in_run():
 		return
-	# A Break Room trip still on its way would end this run when it arrives.
-	_transition_id += 1
 	var run := RunState.new()
 	run.run_seed = run_seed
 	if run.run_seed == 0:
 		run.run_seed = _config.debug_run_seed if _config.debug_run_seed != 0 else randi_range(1, 2147483646)
 	run.department_ids = department_order(run.run_seed)
-	run.floor_number = 1
-	run.department_index = 0
-	run.floor_in_department = 1
-	run.is_boss_floor = floors_in(get_department(run.department_ids[0])) <= 0
+	place_on_floor(run, 1)
 	_run_started_rpc.rpc(run.to_dict())
 	_state_rpc.rpc(State.ELEVATOR_RIDE)
-	get_tree().create_timer(_config.elevator_ride_seconds).timeout.connect(_load_current_floor)
+	_ride_to(_floor_level())
 
 
-## Host: end the run. result: &"escaped", &"wiped" or &"abandoned".
+## Host: end the run. result: &"escaped", &"wiped" or &"abandoned". The lift takes everyone back down
+## to the Break Room (players outside it are brought in first).
 func end_run(result: StringName) -> void:
 	if not _net.is_host() or not is_in_run() or _state == State.RUN_SUMMARY:
 		return
 	_run_ended_rpc.rpc(result)
-	get_tree().create_timer(_config.run_summary_seconds).timeout.connect(go_to_break_room)
+	var lift: CargoLift = CargoLift.current()
+	if lift != null:
+		lift.gather_players()
+	_ride_to({"kind": LEVEL_BREAK_ROOM})
 
 
-## Host: everyone to the Break Room. A client calls it after joining (it loads the Break Room
-## for itself, unless the host already told it to be somewhere else).
+## Host (and solo): go to the game world's Break Room from the menu. A client calls it after joining;
+## it only does something there if the host hasn't already said where the game is.
 func go_to_break_room() -> void:
-	if not _net.is_online() or _net.is_host():
-		_transition(BREAK_ROOM_SCENE, {})
-	elif not _synced_from_host:
-		_enter_break_room()
+	if _net.is_online() and not _net.is_host():
+		if not _synced_from_host:
+			_enter_world({"kind": LEVEL_BREAK_ROOM})
+		return
+	if _state in [State.BOOT, State.MAIN_MENU]:
+		_host_enter_world()
 
 
 ## Local: leave the lobby (or the solo game) and go back to the main menu.
 func return_to_main_menu() -> void:
 	SteamSession.leave_lobby()
 	_drop_run_locally()
+	_level_data = {}
 	_set_state(State.MAIN_MENU)
 	_load_scene.call(MAIN_MENU_SCENE)
 
 
-## Host, cheats only: jump to a floor. Without a department, floor_number counts across the whole
-## run; with one, it is the floor inside that department (floor_count + 1 = its boss floor).
+## Host, cheats only: jump to a floor (everyone is brought into the lift and it rides there). Without
+## a department, floor_number counts across the whole run; with one, it is the floor inside that
+## department (floor_count + 1 = its boss floor).
 func debug_go_to_floor(floor_number: int, department_id: StringName = &"") -> String:
 	if not _net.is_host():
 		return "Only the host can change floors."
@@ -195,7 +205,10 @@ func debug_go_to_floor(floor_number: int, department_id: StringName = &"") -> St
 		_run_started_rpc.rpc(run.to_dict())
 	else:
 		_run = run
-	_load_current_floor()
+	var lift: CargoLift = CargoLift.current()
+	if lift != null:
+		lift.gather_players()
+	_ride_to(_floor_level())
 	return "Going to floor %d (%s, %s)." % [run.floor_number, run.get_department_id(),
 		"boss floor" if run.is_boss_floor else "floor %d" % run.floor_in_department]
 
@@ -267,30 +280,31 @@ func place_on_floor(run: RunState, floor_number: int) -> bool:
 
 # --- Host: moving through the run ---------------------------------------------------------------
 
-## Host: the next floor after a lift ride: the next regular floor, or this department's boss floor.
-func _next_floor() -> void:
-	if _run == null or _run.is_boss_floor:
+## Host: the lift left: start the run (Break Room), the next floor, or, after a boss, the next
+## department (or the run is won).
+func _on_lift_departed(_floor_number: int) -> void:
+	# Ignore a second press while everyone is already on the way (two players pressing at once).
+	if not _net.is_host() or _moving:
 		return
-	place_on_floor(_run, _run.floor_number + 1)
-	_load_current_floor()
+	match _state:
+		State.BREAK_ROOM:
+			start_run()
+		State.ON_FLOOR:
+			if _run != null and not _run.is_boss_floor:
+				place_on_floor(_run, _run.floor_number + 1)
+				_ride_to(_floor_level())
+		State.BOSS_FIGHT:
+			if _run == null:
+				return
+			if _run.department_index + 1 >= _run.department_ids.size():
+				end_run(RESULT_ESCAPED)
+			else:
+				place_on_floor(_run, _run.floor_number + 1)
+				_ride_to(_floor_level())
 
 
-## Host: the boss is down: the next department's first floor, or the run is won.
-func _after_boss() -> void:
-	if _run == null or not _run.is_boss_floor:
-		return
-	if _run.department_index + 1 >= _run.department_ids.size():
-		end_run(RESULT_ESCAPED)
-		return
-	place_on_floor(_run, _run.floor_number + 1)
-	_load_current_floor()
-
-
-## Host: every PC goes to the floor in _run; it starts once they have all built it.
-func _load_current_floor() -> void:
-	if not _net.is_host() or _run == null:
-		return
-	# level_gen makes the layout here, on the host; it travels with the run to every PC.
+## Host: the level for the current floor of the run (level_gen makes its layout here).
+func _floor_level() -> Dictionary:
 	var department: DepartmentData = get_current_department()
 	var layout: FloorLayout
 	if _run.is_boss_floor:
@@ -298,56 +312,74 @@ func _load_current_floor() -> void:
 	else:
 		layout = LevelGenerator.generate(department, _run.floor_in_department, _run.floor_number, _run.run_seed,
 			_net.get_player_count(), _config)
-	var data: Dictionary = _run.to_dict()
-	data["layout"] = layout.to_dict()
-	_transition(FLOOR_SCENE, data)
+	return {"kind": LEVEL_FLOOR, "run": _run.to_dict(), "layout": layout.to_dict()}
 
 
-## Host: move everyone to a scene, in an order that never sends anyone updates for things they
-## don't have (Godot prints errors for those):
-## 1. every PC stops sending player updates, and the host leaves the old scene for a loading screen
-##    (its bodies and props are removed on every PC while they all still have the old scene);
-## 2. a moment later the clients load the new scene and report back;
-## 3. when they all have it (or after floor_load_timeout), the host loads it too, so anything it
-##    spawns there reaches PCs that already have the scene. Floors then start (floor_ready).
-func _transition(path: String, run_data: Dictionary) -> void:
-	_transition_id += 1
-	var id: int = _transition_id
+## Host: the lift rides to a level. Props outside the lift are lost; every PC swaps the level while
+## it rides; it arrives once every PC has built the level and the ride has lasted lift_ride_seconds.
+func _ride_to(level: Dictionary) -> void:
+	_ride_id += 1
+	var id: int = _ride_id
 	_moving = true
+	var lift: CargoLift = CargoLift.current()
+	if lift != null:
+		lift.depart_now()
+	_drop_props_outside_lift()
 	_built_peers.clear()
-	_prepare_rpc.rpc()
-	await get_tree().create_timer(CLIENT_LOAD_DELAY).timeout
-	if id != _transition_id:
-		return
-	_load_scene.call(LOADING_SCENE)
-	await get_tree().create_timer(CLIENT_LOAD_DELAY).timeout
-	if id != _transition_id:
-		return
 	_transition_peers = multiplayer.get_peers()
-	_load_rpc.rpc(path, run_data, id)
-	var waited: float = 0.0
+	_level_rpc.rpc(level, id)
 	var told: bool = false
-	while not _all_built() and waited < _config.floor_load_timeout:
+	# Game time, not the wall clock, so the ride is the same length however fast frames come.
+	var waited: float = 0.0
+	while true:
 		await get_tree().process_frame
-		waited += get_process_delta_time()
-		if id != _transition_id:
+		if id != _ride_id:
 			return
-		if not told and waited > SLOW_LOAD_NOTICE_SECONDS:
+		waited += get_process_delta_time()
+		var ride_done: bool = waited >= _config.lift_ride_seconds
+		if ride_done and (_all_built() or waited >= _config.lift_ride_seconds + _config.floor_load_timeout):
+			break
+		if not told and ride_done and waited > _config.lift_ride_seconds + SLOW_LOAD_NOTICE_SECONDS:
 			told = true
 			EventBus.toast_requested.emit("Waiting for %s to finish loading..." % ", ".join(_still_loading()))
 	if not _all_built():
-		push_warning("GameFlow: not every PC loaded '%s' in time; going on without them." % path.get_file())
-	await _arrive(path, run_data)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if id != _transition_id:
-		return
+		push_warning("GameFlow: not every PC built the next level in time; arriving anyway.")
 	_moving = false
-	if path == FLOOR_SCENE:
-		_floor_ready_rpc.rpc()
+	_host_arrive(level)
 
 
-## Host: names of the players whose PC hasn't loaded the new scene yet.
+## Host: the lift is there. Tell the lift (parts to find, Break Room, boss) and then everyone.
+func _host_arrive(level: Dictionary) -> void:
+	var world: GameWorld = GameWorld.current()
+	var lift: CargoLift = CargoLift.current()
+	var to_break_room: bool = str(level.get("kind", "")) == LEVEL_BREAK_ROOM
+	if lift != null:
+		if to_break_room:
+			lift.arrive(0, true)
+		elif _run != null and _run.is_boss_floor:
+			lift.arrive(0, false, true)
+		else:
+			var department: DepartmentData = get_current_department()
+			lift.arrive(department.lift_parts_per_floor if department != null else 1, false)
+	if world != null:
+		# Players who join from now on (or waited for this floor) appear here.
+		world.get_player_spawner().spawn_points = _spawn_points_for(level, world)
+	_arrived_rpc.rpc(level)
+
+
+## Host: drops props that are not in the lift (they stay behind with the old level).
+func _drop_props_outside_lift() -> void:
+	var lift: CargoLift = CargoLift.current()
+	var world: GameWorld = GameWorld.current()
+	if lift == null or world == null:
+		return
+	var keep: Array[NetProp] = lift.get_zone().get_props_inside()
+	for prop: NetProp in world.get_prop_spawner().get_props():
+		if not keep.has(prop) and not prop.is_held():
+			world.get_prop_spawner().despawn(prop)
+
+
+## Host: names of the players whose PC hasn't built the new level yet.
 func _still_loading() -> PackedStringArray:
 	var names: PackedStringArray = []
 	var connected: PackedInt32Array = multiplayer.get_peers()
@@ -357,7 +389,7 @@ func _still_loading() -> PackedStringArray:
 	return names
 
 
-## Host: true when every client has loaded the scene of the current transition.
+## Host: true when every client has built the level of the current ride.
 func _all_built() -> bool:
 	var connected: PackedInt32Array = multiplayer.get_peers()
 	for peer_id: int in _transition_peers:
@@ -366,58 +398,87 @@ func _all_built() -> bool:
 	return true
 
 
-## Every PC, about to change scene: stop sending player updates (see _transition).
-@rpc("authority", "call_local", "reliable")
-func _prepare_rpc() -> void:
-	for node: Node in get_tree().get_nodes_in_group(PlayerCharacter.GROUP):
-		var body := node as PlayerCharacter
-		if body != null:
-			body.stop_syncing()
+## Host: go from the menu into the game world and its Break Room. Players usually join once it is
+## there (the join handshake loads it for them); anyone already connected is brought along first,
+## and players only appear once every PC has the world.
+func _host_enter_world() -> void:
+	var level: Dictionary = {"kind": LEVEL_BREAK_ROOM}
+	_ride_id += 1
+	var id: int = _ride_id
+	await _enter_world(level)
+	_built_peers.clear()
+	_transition_peers = multiplayer.get_peers()
+	if not _transition_peers.is_empty():
+		_world_rpc.rpc(level, id)
+		var started_msec: int = Time.get_ticks_msec()
+		while not _all_built() and Time.get_ticks_msec() - started_msec < int(_config.floor_load_timeout * 1000.0):
+			await get_tree().process_frame
+		if id != _ride_id:
+			return
+	var world: GameWorld = GameWorld.current()
+	if world != null:
+		var spawner: PlayerSpawner = world.get_player_spawner()
+		spawner.spawn_points = _spawn_points_for(level, world)
+		spawner.spawn_all(spawner.spawn_points)
+		spawner.auto_spawn = true
+	var lift: CargoLift = CargoLift.current()
+	if lift != null:
+		lift.arrive(0, true)
 
 
-## Host -> clients: load this scene, then say so.
-@rpc("authority", "call_remote", "reliable")
-func _load_rpc(path: String, run_data: Dictionary, id: int) -> void:
-	_synced_from_host = true
-	await _arrive(path, run_data)
-	# Let the new scene finish its _ready (its spawners must exist before the host spawns things).
-	await get_tree().process_frame
-	await get_tree().process_frame
-	_built_rpc.rpc_id(1, id)
+## Where players appear in a level: the Break Room's spawn points, or inside the lift on floors.
+func _spawn_points_for(level: Dictionary, world: GameWorld) -> Array[Node3D]:
+	if str(level.get("kind", "")) == LEVEL_BREAK_ROOM:
+		var room: BreakRoom = _break_room_in(world)
+		if room != null:
+			return room.get_spawn_points()
+	return world.get_lift().get_spawn_points()
 
 
-@rpc("any_peer", "call_remote", "reliable")
-func _built_rpc(id: int) -> void:
-	if _net.is_host() and id == _transition_id:
-		_built_peers[multiplayer.get_remote_sender_id()] = true
+static func _break_room_in(world: GameWorld) -> BreakRoom:
+	for child: Node in world.get_node("LevelRoot").get_children():
+		if child is BreakRoom:
+			return child as BreakRoom
+	return null
 
 
-## This PC goes to a scene: the Break Room, or a floor (with the run it belongs to).
-func _arrive(path: String, run_data: Dictionary) -> void:
-	if path == BREAK_ROOM_SCENE:
-		_enter_break_room()
+# --- Every PC: the world and its levels ------------------------------------------------------------
+
+## Loads the game world (if it isn't loaded) and puts a level in it.
+func _enter_world(level: Dictionary) -> void:
+	var current: Node = get_tree().current_scene
+	if current == null or current.scene_file_path != WORLD_SCENE:
+		var old_scene: Node = current
+		_load_scene.call(WORLD_SCENE)
+		# The scene change happens over the next frame or two (tests use a fake changer: give up waiting).
+		for frame: int in SCENE_WAIT_FRAMES:
+			await get_tree().process_frame
+			var now: Node = get_tree().current_scene
+			if now != null and now != old_scene and now.scene_file_path == WORLD_SCENE:
+				break
+	_show_level(level)
+	if str(level.get("kind", "")) == LEVEL_BREAK_ROOM:
+		_run = null
+		_set_state(State.BREAK_ROOM)
+
+
+## Builds a level here and remembers it (for joiners).
+func _show_level(level: Dictionary) -> void:
+	_level_data = level
+	_build_level.call(level)
+
+
+## The real level builder: the Break Room scene, or a floor from its layout, in the game world.
+func _build_level_in_world(level: Dictionary) -> void:
+	var world: GameWorld = GameWorld.current()
+	if world == null:
 		return
-	_run = RunState.from_dict(run_data)
-	_set_state(State.LOADING_FLOOR)
-	EventBus.floor_loading.emit(_run.floor_number, _run.get_department_id())
-	var layout_data: Dictionary = run_data.get("layout", {})
-	await _load_floor(layout_data)
+	if str(level.get("kind", "")) == LEVEL_BREAK_ROOM:
+		world.build_break_room(load(BREAK_ROOM_SCENE) as PackedScene)
+	else:
+		var layout_data: Dictionary = level.get("layout", {})
+		world.build_floor(FloorLayout.from_dict(layout_data))
 
-
-## Loads the floor scene and builds the floor in it (level_gen).
-func _load_floor(layout_data: Dictionary) -> void:
-	_layout_data = layout_data
-	var old_scene: Node = get_tree().current_scene
-	_load_scene.call(FLOOR_SCENE)
-	# The scene change happens over the next frame or two: wait until the NEW floor scene is there.
-	# (Going floor to floor, the old scene has the same file, so check it's a different node. Tests use
-	# a fake scene changer, so give up waiting after a few frames.)
-	for frame: int in SCENE_WAIT_FRAMES:
-		await get_tree().process_frame
-		var current: Node = get_tree().current_scene
-		if current != null and current != old_scene and current.scene_file_path == FLOOR_SCENE:
-			break
-	_build_floor.call(FloorLayout.from_dict(_layout_data))
 
 # --- RPCs (host -> everyone) --------------------------------------------------------------------
 
@@ -433,8 +494,47 @@ func _state_rpc(new_state: int) -> void:
 	_set_state(new_state as State)
 
 
+## Host -> everyone, while the lift rides: swap to this level, then (clients) say it's built.
 @rpc("authority", "call_local", "reliable")
-func _floor_ready_rpc() -> void:
+func _level_rpc(level: Dictionary, id: int) -> void:
+	_synced_from_host = true
+	if str(level.get("kind", "")) == LEVEL_FLOOR:
+		var run_data: Dictionary = level.get("run", {})
+		_run = RunState.from_dict(run_data)
+		_set_state(State.LOADING_FLOOR)
+		EventBus.floor_loading.emit(_run.floor_number, _run.get_department_id())
+	_show_level(level)
+	if multiplayer.is_server():
+		return
+	# Let the new level finish its _ready, then tell the host.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_built_rpc.rpc_id(1, id)
+
+
+## Host -> clients already connected: come into the game world too (see _host_enter_world).
+@rpc("authority", "call_remote", "reliable")
+func _world_rpc(level: Dictionary, id: int) -> void:
+	_synced_from_host = true
+	await _enter_world(level)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_built_rpc.rpc_id(1, id)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _built_rpc(id: int) -> void:
+	if _net.is_host() and id == _ride_id:
+		_built_peers[multiplayer.get_remote_sender_id()] = true
+
+
+## Host -> everyone: the lift has arrived at the level (it opens its own doors).
+@rpc("authority", "call_local", "reliable")
+func _arrived_rpc(level: Dictionary) -> void:
+	if str(level.get("kind", "")) == LEVEL_BREAK_ROOM:
+		_run = null
+		_set_state(State.BREAK_ROOM)
+		return
 	if _run == null:
 		return
 	_set_state(State.BOSS_FIGHT if _run.is_boss_floor else State.ON_FLOOR)
@@ -446,6 +546,7 @@ func _floor_ready_rpc() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _run_ended_rpc(result: StringName) -> void:
+	_last_result = result
 	_set_state(State.RUN_SUMMARY)
 	EventBus.run_ended.emit(result)
 
@@ -454,44 +555,30 @@ func _run_ended_rpc(result: StringName) -> void:
 
 ## Host: what a joining PC needs before Godot sends it anything (Net.set_join_handlers).
 func _join_info() -> Dictionary:
-	if _state in [State.BOOT, State.MAIN_MENU]:
+	if _state in [State.BOOT, State.MAIN_MENU] or _level_data.is_empty():
 		return {}
-	return {"state": int(_state), "run": _run.to_dict() if _run != null else {}, "layout": _layout_data}
+	return {"state": int(_state), "run": _run.to_dict() if _run != null else {}, "level": _level_data}
 
 
-## Joining PC, before the connection opens: go to the host's scene (on a floor, you spectate
-## until the next one). Net waits for this, so the host's players and props arrive into that scene.
+## Joining PC, before the connection opens: load the game world and the host's level (on a floor, you
+## spectate until the next one). Net waits for this, so the host's players and props arrive into it.
 func _prepare_for_join(info: Dictionary) -> void:
 	if info.is_empty():
 		return
 	_synced_from_host = true
 	var state: int = info.get("state", State.BREAK_ROOM)
 	var run_data: Dictionary = info.get("run", {})
-	if run_data.is_empty():
-		_enter_break_room()
-	else:
-		var layout_data: Dictionary = info.get("layout", {})
-		await _join_run(state, run_data, layout_data)
+	var level: Dictionary = info.get("level", {"kind": LEVEL_BREAK_ROOM})
+	if not run_data.is_empty():
+		_run = RunState.from_dict(run_data)
+		EventBus.run_started.emit(_run.run_seed)
+	await _enter_world(level)
+	if not run_data.is_empty():
+		_set_state(state as State)
+		if state == State.ON_FLOOR or state == State.BOSS_FIGHT:
+			EventBus.floor_ready.emit(_run.floor_number, _run.get_department_id())
 	await get_tree().process_frame
 	await get_tree().process_frame
-
-
-func _join_run(state: int, run_data: Dictionary, layout_data: Dictionary) -> void:
-	_run = RunState.from_dict(run_data)
-	EventBus.run_started.emit(_run.run_seed)
-	match state as State:
-		State.LOADING_FLOOR, State.ON_FLOOR, State.BOSS_FIGHT:
-			_set_state(state as State)
-			await _load_floor(layout_data)
-			if state != State.LOADING_FLOOR:
-				EventBus.floor_ready.emit(_run.floor_number, _run.get_department_id())
-		State.RUN_SUMMARY:
-			_set_state(State.RUN_SUMMARY)
-			await _load_floor(layout_data)
-		_:
-			# The elevator ride: the host is still in the Break Room.
-			_load_scene.call(BREAK_ROOM_SCENE)
-			_set_state(state as State)
 
 
 # --- Local helpers ------------------------------------------------------------------------------
@@ -504,28 +591,18 @@ func _set_state(new_state: State) -> void:
 	EventBus.game_state_changed.emit(old, new_state)
 
 
-func _enter_break_room() -> void:
-	_run = null
-	_set_state(State.BREAK_ROOM)
-	var current: Node = get_tree().current_scene
-	if current == null or current.scene_file_path != BREAK_ROOM_SCENE:
-		_load_scene.call(BREAK_ROOM_SCENE)
-
-
 func _drop_run_locally() -> void:
 	if _run != null:
 		_run = null
 		EventBus.run_ended.emit(RESULT_ABANDONED)
 
 
-## The game started in the main menu or the Break Room (not a test scene): GameFlow is in charge.
+## The game started in the main menu (not a test scene): GameFlow is in charge.
 func _take_charge_of_start_scene() -> void:
 	var current: Node = get_tree().current_scene
 	var path: String = current.scene_file_path if current != null else ""
 	if path == MAIN_MENU_SCENE:
 		_set_state(State.MAIN_MENU)
-	elif path == BREAK_ROOM_SCENE:
-		_set_state(State.BREAK_ROOM)
 
 
 func _placeholder_department() -> DepartmentData:
@@ -570,26 +647,9 @@ func _process(_delta: float) -> void:
 
 # --- EventBus -----------------------------------------------------------------------------------
 
-func _on_elevator_start_accepted() -> void:
-	if _net.is_host() and _state == State.BREAK_ROOM:
-		start_run()
-
-
-func _on_lift_departed(_floor_number: int) -> void:
-	# Ignore a second press while everyone is already on the way (two players pressing at once).
-	if _net.is_host() and _state == State.ON_FLOOR and not _moving:
-		_next_floor()
-
-
-func _on_boss_defeated(_boss_id: StringName) -> void:
-	if _net.is_host() and _state == State.BOSS_FIGHT and not _moving:
-		_after_boss()
-
-
 func _on_team_wiped() -> void:
 	if _net.is_host() and _state in [State.ON_FLOOR, State.BOSS_FIGHT, State.LOADING_FLOOR]:
 		end_run(RESULT_WIPED)
-
 
 
 # --- Console ------------------------------------------------------------------------------------

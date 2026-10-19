@@ -1,56 +1,37 @@
 class_name BreakRoom
 extends Node3D
-## The Break Room: the lobby room where players arrive, walk around and step into the elevator to
-## start a run (systems/break_room/break_room.tscn). Phase 1a grey box.
+## The Break Room: the lobby where players arrive, walk around and get into the cargo lift to start a
+## run (systems/break_room/break_room.tscn). Phase 1a grey box.
 ##
-## The start button, the "Start anyway" button, the jacket closet and the mirror are Interactables
-## (interaction system): look at one and press E. Their `used` signal fires on the host.
+## CHANGED 2026-10-19: the Break Room is "floor 0" around the cargo lift. game_flow loads it into the
+## game world and lines its LiftSpot up with the lift, which does the starting (Go, "Start anyway",
+## who's missing). The room keeps the spawn points, the jacket closet, the mirror, the whiteboard
+## and a few props to play with.
 ##
-## STUBS until other systems exist:
-## - cargo_lift: the elevator's "who's inside" check is ElevatorZoneStub.
-## - game_flow (when it isn't running the game, e.g. this room's test scene): after an accepted start
-##   the doors reopen after a few seconds.
-## - cosmetics / voice: the closet and mirror only show a message.
+## The jacket closet and the mirror are Interactables: look at one and press E (their `used` fires on
+## the host). STUBS until other systems exist: cosmetics / voice: they only show a message.
 
 const SPAWN_RING_RADIUS: float = 3.0
-## Seconds before the doors reopen after a start when no run starts (test scenes).
-const STUB_REOPEN_SECONDS: float = 4.0
-const DOOR_SPEED: float = 2.0
-## How far from the middle each door panel sits when closed (metres).
-const DOOR_CLOSED_X: float = 1.0
 
 var _net: NetService
 var _config: GameConfig
-## Host: when someone first stood in the elevator (msec), or -1 if it's empty.
-var _occupied_since_msec: int = -1
-var _doors_closed: bool = false
-var _starting: bool = false
-## Door x positions, read from the scene: open is where they start, closed is DOOR_CLOSED_X.
-var _left_open_x: float = 0.0
-var _right_open_x: float = 0.0
+var _props: PropSpawner
 
 @onready var _spawns: Node3D = %Spawns
-@onready var _spawner: PlayerSpawner = %PlayerSpawner
-@onready var _zone: ElevatorZoneStub = %ElevatorZone
-@onready var _left_door: Node3D = %LeftDoor
-@onready var _right_door: Node3D = %RightDoor
-@onready var _missing_sign: Label3D = %MissingSign
-@onready var _missing_sign_inside: Label3D = %MissingSignInside
-@onready var _force_button: Node3D = %ForceButton
+@onready var _lift_spot: Node3D = %LiftSpot
 @onready var _whiteboard: Label3D = %WhiteboardText
 @onready var _message: Label3D = %MessageSign
-@onready var _start_use: Interactable = %StartUse
-@onready var _force_use: Interactable = %ForceUse
 @onready var _closet_use: Interactable = %ClosetUse
 @onready var _mirror_use: Interactable = %MirrorUse
 @onready var _fun_props: Node3D = %FunProps
-var _props: PropSpawner
 
 
-## For tests only: use a different Net and config. Call before adding the node to the tree.
-func use_net(net: NetService, config: GameConfig) -> void:
+## For tests only: a different Net and config, and the prop spawner the fun props go into (default:
+## the game world's, through the Props autoload). Call before adding the node to the tree.
+func use_net(net: NetService, config: GameConfig, prop_spawner: PropSpawner = null) -> void:
 	_net = net
 	_config = config
+	_props = prop_spawner
 
 
 func _ready() -> void:
@@ -58,35 +39,18 @@ func _ready() -> void:
 		_net = Net
 	if _config == null:
 		_config = Config.game
-	_spawner.use_net(_net)
-	_zone.use_net(_net)
-	_spawner.spawn_points = get_spawn_points()
-	# The room's props (physics_props). Made here so tests can give it their own Net.
-	_props = PropSpawner.new()
-	_props.name = "Props"
-	_props.use_net(_net, _config)
-	add_child(_props)
-	if multiplayer.is_server():
-		_spawn_fun_props.call_deferred()
-	_left_open_x = _left_door.position.x
-	_right_open_x = _right_door.position.x
-	for use: Interactable in [_start_use, _force_use, _closet_use, _mirror_use]:
+	for use: Interactable in [_closet_use, _mirror_use]:
 		var body := use.get_anchor() as CollisionObject3D
 		body.collision_layer = PhysicsLayers.bit(PhysicsLayers.INTERACTABLES)
 		body.collision_mask = 0
-	# "Start anyway" starts hidden (see _process).
-	(_force_use.get_anchor() as CollisionObject3D).collision_layer = 0
-	_start_use.used.connect(_on_start_used)
-	# Only the host's own player may press "Start anyway", and only once the timer has passed.
-	_force_use.use_condition = func(player_id: int) -> bool:
-		return player_id == _net.local_player_id() and can_force_start()
-	_force_use.used.connect(func(_player_id: int) -> void: request_force_start())
 	_closet_use.used.connect(_show_note_to.bind("Jacket closet: coming with the cosmetics system."))
 	_mirror_use.used.connect(_show_note_to.bind("Mirror voice test: coming with the voice system."))
-	_zone.occupants_changed.connect(_on_occupants_changed)
 	EventBus.run_ended.connect(_on_run_ended)
-	_whiteboard.text = "Last run:\n(no runs yet)"
+	var last: StringName = GameFlow.get_last_run_result()
+	_whiteboard.text = "Last run:\n%s" % (String(last).capitalize() if last != &"" else "(no runs yet)")
 	_message.text = ""
+	if multiplayer.is_server():
+		_spawn_fun_props.call_deferred()
 
 
 ## Spawn points for everyone: the ones in the scene, plus extra ones in a ring if max_players is larger.
@@ -107,131 +71,9 @@ func get_spawn_points() -> Array[Node3D]:
 	return points
 
 
-## STUB until cargo_lift exists: returns the stand-in zone.
-func get_elevator_zone() -> ElevatorZoneStub:
-	return _zone
-
-
-## Host: the "Start anyway" button is allowed (someone has waited in the elevator long enough).
-func can_force_start() -> bool:
-	if not _net.is_host() or _config.afk_force_start_after <= 0.0 or _occupied_since_msec < 0:
-		return false
-	return Time.get_ticks_msec() - _occupied_since_msec >= int(_config.afk_force_start_after * 1000.0)
-
-
-## Local: the elevator button calls this. The host checks everyone is inside.
-func request_start() -> void:
-	_request_start_rpc.rpc_id(1)
-
-
-## Host only: start even though some players are outside; they are moved into the elevator.
-func request_force_start() -> void:
-	if not can_force_start() or _starting:
-		return
-	var zone_spot: Vector3 = _zone.global_position
-	var index: int = 0
-	for player_id: int in _zone.get_missing_players():
-		var body: PlayerCharacter = _spawner.get_body(player_id)
-		if body != null:
-			var offset := Vector3(float(index % 3) - 1.0, 0.1 - _zone.position.y, floorf(float(index) / 3.0) - 0.5)
-			body.teleport(Transform3D(Basis.IDENTITY, zone_spot + offset * 0.8))
-			index += 1
-	_accept_start()
-
-
-@rpc("any_peer", "call_local", "reliable")
-func _request_start_rpc() -> void:
-	if not is_inside_tree():
-		return
-	if not _net.is_host() or _starting:
-		return
-	if _net.sender_player_id() == 0:
-		return
-	_try_start(multiplayer.get_remote_sender_id())
-
-
-## Host: someone pressed the start button (looked at it and pressed E).
-func _on_start_used(player_id: int) -> void:
-	if _starting:
-		return
-	_try_start(_net.get_peer_id(player_id))
-
-
-## Host: start if everyone is inside, otherwise tell the presser (peer) who is missing.
-func _try_start(peer_id: int) -> void:
-	if _zone.contains_all_players():
-		_accept_start()
-	elif peer_id != 0:
-		_start_refused.rpc_id(peer_id, _missing_names())
-
-
-func _accept_start() -> void:
-	_starting = true
-	_start_accepted.rpc()
-
-
-## Host -> everyone: the elevator start was accepted.
-@rpc("authority", "call_local", "reliable")
-func _start_accepted() -> void:
-	if not is_inside_tree():
-		return
-	_starting = true
-	_doors_closed = true
-	_message.text = "Elevator starting!"
-	EventBus.elevator_start_accepted.emit()
-	# game_flow takes everyone down to the first floor. When it isn't running the game (this room's
-	# own test scene), nothing happens, so the doors reopen and testing can carry on.
-	get_tree().create_timer(STUB_REOPEN_SECONDS).timeout.connect(_reopen_after_stub)
-
-
-@rpc("authority", "call_local", "reliable")
-func _start_refused(missing_names: String) -> void:
-	if not is_inside_tree():
-		return
-	_message.text = "Can't start yet. Waiting for:\n" + missing_names
-	EventBus.toast_requested.emit("Waiting for: " + missing_names)
-
-
-func _reopen_after_stub() -> void:
-	_starting = false
-	_doors_closed = false
-	_message.text = ""
-
-
-## The doors are AnimatableBody3Ds moved in physics steps, so they push props and players out of the
-## way instead of sliding through them.
-func _physics_process(delta: float) -> void:
-	_left_door.position.x = move_toward(_left_door.position.x,
-		-DOOR_CLOSED_X if _doors_closed else _left_open_x, DOOR_SPEED * delta)
-	_right_door.position.x = move_toward(_right_door.position.x,
-		DOOR_CLOSED_X if _doors_closed else _right_open_x, DOOR_SPEED * delta)
-
-
-func _process(_delta: float) -> void:
-	var missing: String = _missing_names()
-	_missing_sign.text = "Everyone's in! Press E at the green button." if missing.is_empty() \
-		else "Not in the elevator:\n" + missing
-	_missing_sign_inside.text = _missing_sign.text
-	var can_force: bool = can_force_start()
-	if _force_button.visible != can_force:
-		_force_button.visible = can_force
-		# Hidden: nobody can look at it or press it.
-		(_force_use.get_anchor() as CollisionObject3D).collision_layer = \
-			PhysicsLayers.bit(PhysicsLayers.INTERACTABLES) if can_force else 0
-
-
-func _missing_names() -> String:
-	var names: PackedStringArray = []
-	for player_id: int in _zone.get_missing_players():
-		names.append(_net.get_display_name(player_id))
-	return ", ".join(names)
-
-
-func _on_occupants_changed() -> void:
-	if _zone.get_players_inside().is_empty():
-		_occupied_since_msec = -1
-	elif _occupied_since_msec < 0:
-		_occupied_since_msec = Time.get_ticks_msec()
+## NEW 2026-10-19: where the cargo lift stands (game_flow lines this up with the lift; it faces the room).
+func get_lift_spot() -> Node3D:
+	return _lift_spot
 
 
 func _on_run_ended(result: StringName) -> void:
@@ -256,14 +98,12 @@ func _show_note(text: String) -> void:
 ## Host: a few props to play with. Each Marker3D under FunProps has a "prop_id" (scene data, not code).
 func _spawn_fun_props() -> void:
 	# Checked again here: in tests a PC can become a client between _ready and this call.
-	if not multiplayer.is_server():
+	if not is_inside_tree() or not multiplayer.is_server():
+		return
+	var spawner: PropSpawner = _props if _props != null else Props.get_spawner()
+	if spawner == null:
 		return
 	for marker: Node in _fun_props.get_children():
 		var spot := marker as Node3D
 		if spot != null and spot.has_meta(&"prop_id"):
-			_props.spawn_prop(StringName(str(spot.get_meta(&"prop_id"))), spot.global_transform)
-
-
-## The room's PropSpawner (the debug console's `spawn prop_...` uses it through Props).
-func get_prop_spawner() -> PropSpawner:
-	return _props
+			spawner.spawn_prop(StringName(str(spot.get_meta(&"prop_id"))), spot.global_transform)

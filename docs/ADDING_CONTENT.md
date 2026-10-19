@@ -109,8 +109,8 @@ the boss scene's attack nodes, `minion_enemy_ids`, `minions_per_wave`, `minion_w
 `lift_part`, `keycard`, `locked_door`, `task`, `boss_spawn`, `minion_spawn`).
 **Cart rules (checked by a test):** doorways at least cart width + 0.4 m (1.6 m by default); ramps,
 never stairs, between doorways; room for a cart to turn. The lift room must fit a cart plus every player.
-**Fill in:** `scene`, `size_cells`, `room_kind` (`normal`, `lift` (every floor starts in it: give it 8
-`player_spawn` markers and a `lift` marker), `start` (old name, not used), `corridor`, `hr`, `armory`,
+**Fill in:** `scene`, `size_cells`, `room_kind` (`normal`, `lift` (every floor starts in it: give it a `lift`
+marker where the cargo lift stands, facing out of its doorway; CHANGED 2026-10-19: no player spawns, players arrive inside the lift), `start` (old name, not used), `corridor`, `hr`, `armory`,
 `cafeteria`, `supply`, `boss_arena`), `department_ids`, `weight`, `min_floor`, `max_per_floor`.
 Add its id to the department's `room_ids` (or leave `department_ids` empty to share it).
 **Test:** level_gen's viewer scene, then `floor 1` in the console.
@@ -124,7 +124,7 @@ with the enemies system.
 ## Department
 A department is a bundle. Make its rooms, enemies, boss, loot tables and stock first, then one
 `DepartmentData`: `floor_count`, `room_ids`, `enemy_spawns`, `boss_id`, `loot_id`, `stock_id`,
-`task_ids`, `lift_parts_per_floor`, NEW 2026-10-18 `lift_part_prop_id` (the prop carried back to the lift), `rooms_per_floor_min/max`, `required_room_kinds`,
+`task_ids`, `lift_parts_per_floor`, NEW 2026-10-18 `lift_part_prop_id` (the prop carried back to the lift; CHANGED 2026-10-19: give that PropData the tag `lift_part` so the lift socket takes it), `rooms_per_floor_min/max`, `required_room_kinds`,
 `optional_room_chances` (e.g. `{"supply": 0.6}`), `tile_library`, `music`, colours, `order_hint`,
 `in_run_rotation`. Put its art in `assets/<kind>/<department>/`. **Test:** `floor 1 department_<name>`.
 

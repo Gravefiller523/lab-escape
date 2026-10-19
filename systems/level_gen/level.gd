@@ -2,13 +2,12 @@ class_name LevelService
 extends Node
 ## Autoload "Level". Builds the floor in a FloorLayout on this PC (every PC builds the same one from
 ## the layout the host sends), fills unused doorways with wall plugs, and finds the rooms' markers.
-## game_flow calls build() after loading FLOOR_SCENE. Spec: docs/systems/level_gen.md.
+## game_flow calls build() into the game world (and lines the lift room up with the cargo lift).
+## Spec: docs/systems/level_gen.md.
 
 ## Every PC has finished building the floor in build().
 signal floor_built()
 
-## The scene game_flow loads for every floor; build() puts the rooms into it.
-const FLOOR_SCENE: String = "res://systems/level_gen/level_floor.tscn"
 const ROOMS_NODE: String = "Rooms"
 const PLUG_THICKNESS: float = 0.35
 const PLUG_COLOR: Color = Color(0.5, 0.5, 0.53)
@@ -91,7 +90,11 @@ func get_room_for_position(point: Vector3) -> RoomData:
 	if _layout == null:
 		return null
 	var cell_size: float = _config.room_cell_size
-	var cell := Vector2i(floori(point.x / cell_size), floori(point.z / cell_size))
+	# The floor may be moved and turned (game_flow lines its lift room up with the cargo lift).
+	var local: Vector3 = point
+	if _rooms_root != null and is_instance_valid(_rooms_root) and _rooms_root.is_inside_tree():
+		local = _rooms_root.global_transform.affine_inverse() * point
+	var cell := Vector2i(floori(local.x / cell_size), floori(local.z / cell_size))
 	for placement: RoomPlacement in _layout.placements:
 		var room := ContentRegistry.get_content(placement.room_id) as RoomData
 		if room == null:

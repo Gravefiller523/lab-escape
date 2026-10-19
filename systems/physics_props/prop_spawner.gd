@@ -26,6 +26,8 @@ var _config: GameConfig
 var _spawner: MultiplayerSpawner
 var _props: Dictionary[int, NetProp] = {}
 var _next_net_id: int = 1
+## NEW 2026-10-19: item id -> the PropData made for its pickup.
+var _item_props: Dictionary[StringName, PropData] = {}
 var _near_timer: float = 0.0
 var _far_timer: float = 0.0
 var _peer_seen: MultiplayerPeer
@@ -74,13 +76,44 @@ func spawn_prop(prop_id: StringName, xform: Transform3D, extra: Dictionary = {})
 	if not multiplayer.is_server():
 		push_error("PropSpawner.spawn_prop: only the host spawns props.")
 		return null
-	var prop_data := ContentRegistry.get_content(prop_id) as PropData
+	var prop_data: PropData = _prop_data_for(prop_id)  # CHANGED 2026-10-19: item ids work too (pickups)
 	if prop_data == null or prop_data.scene == null:
 		push_error("PropSpawner.spawn_prop: no prop called '%s' (or it has no scene)." % prop_id)
 		return null
 	var net_id: int = _next_net_id
 	_next_net_id += 1
 	return _spawner.spawn({"content_id": prop_id, "net_id": net_id, "xform": xform, "extra": extra}) as NetProp
+
+
+## NEW 2026-10-19 (items branch), host: spawns an item pickup (ItemData.world_scene, a NetProp) for everyone.
+## It is a prop like any other; its extra holds "uses_left".
+func spawn_item(item_id: StringName, xform: Transform3D, uses_left: int = -1) -> NetProp:
+	if not multiplayer.is_server():
+		push_error("PropSpawner.spawn_item: only the host spawns items.")
+		return null
+	if not ContentRegistry.get_content(item_id) is ItemData:
+		push_error("PropSpawner.spawn_item: no item called '%s'." % item_id)
+		return null
+	return spawn_prop(item_id, xform, {"uses_left": uses_left})
+
+
+## The PropData for a prop or an item pickup (items get one made from their ItemData, cached).
+func _prop_data_for(content_id: StringName) -> PropData:
+	var content: ContentData = ContentRegistry.get_content(content_id)
+	var prop_data := content as PropData
+	if prop_data != null:
+		return prop_data
+	var item := content as ItemData
+	if item == null:
+		return null
+	if not _item_props.has(content_id):
+		var made := PropData.new()
+		made.id = item.id
+		made.display_name = item.display_name
+		made.scene = item.world_scene
+		made.mass = item.world_mass
+		_item_props[content_id] = made
+	return _item_props[content_id]
 
 
 ## Host: removes a prop for everyone.
@@ -485,7 +518,7 @@ func _run_owned_props(delta: float) -> void:
 func _make_prop(spawn_data: Variant) -> Node:
 	var info: Dictionary = spawn_data
 	var prop_id := StringName(str(info["content_id"]))
-	var prop_data := ContentRegistry.get_content(prop_id) as PropData
+	var prop_data: PropData = _prop_data_for(prop_id)
 	var prop := prop_data.scene.instantiate() as NetProp
 	prop.net_id = info["net_id"]
 	prop.name = "Prop%d" % prop.net_id

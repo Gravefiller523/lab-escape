@@ -42,10 +42,13 @@ func spawn_prop(prop_id: StringName, xform: Transform3D, extra: Dictionary = {})
 	return spawner.spawn_prop(prop_id, xform, extra)
 
 
-## Host: item pickups. STUB until the items system exists (it will provide ItemData.world_scene).
-func spawn_item(item_id: StringName, _xform: Transform3D, _uses_left: int = -1) -> NetProp:
-	push_warning("Props.spawn_item: item pickups come with the items system (asked for %s)." % item_id)
-	return null
+## Host: item pickups (CHANGED 2026-10-19, items branch: real now; uses ItemData.world_scene).
+func spawn_item(item_id: StringName, xform: Transform3D, uses_left: int = -1) -> NetProp:
+	var spawner: PropSpawner = get_spawner()
+	if spawner == null:
+		push_error("Props.spawn_item: no PropSpawner in this scene.")
+		return null
+	return spawner.spawn_item(item_id, xform, uses_left)
 
 
 ## Host: removes a prop for everyone.

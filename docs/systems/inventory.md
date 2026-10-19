@@ -37,6 +37,7 @@ func add_item(item_id: StringName, uses_left: int = -1) -> bool   # false if ful
 func pick_up(item_id: StringName, uses_left: int = -1) -> bool    # NEW 2026-10-19: add, or swap with the selected item when full
 func remove_item(index: int) -> InventorySlot
 func spend_use(index: int) -> void                 # removes the item at 0 uses
+func take_one(index: int) -> InventorySlot         # NEW 2026-10-19 (items branch): one item off a slot (throwing)
 func set_bonus_slots(source_id: StringName, count: int) -> void   # upgrades' SlotEffectData
 func clear_bonus_slots(source_id: StringName) -> void
 func take_all() -> Array[InventorySlot]            # empties every slot (death_respawn spawns pickups)

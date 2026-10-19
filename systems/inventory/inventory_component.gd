@@ -206,6 +206,19 @@ func remove_item(index: int) -> InventorySlot:
 	return slot
 
 
+## NEW 2026-10-19 (items branch), host: take one item off a slot (throwing). Returns it, or null if empty.
+func take_one(index: int) -> InventorySlot:
+	var slot: InventorySlot = get_slot(index)
+	if not _is_host() or slot == null:
+		return null
+	var one := InventorySlot.make(slot.item_id, slot.uses_left)
+	slot.count -= 1
+	if slot.count <= 0:
+		_slots[index] = null
+	_send_state()
+	return one
+
+
 ## Host: one use of the item in a slot. At 0 uses one is used up (the slot empties when the last goes).
 func spend_use(index: int) -> void:
 	var slot: InventorySlot = get_slot(index)

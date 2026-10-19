@@ -71,7 +71,7 @@ pick from all cybernetics automatically. **Test:** `spawn cybernetic_<name>` spa
 **Copy:** `item_crowbar.tres`. **Fill in:** `category` (weapon, tool, consumable), `world_scene` (the
 pickup lying on the floor: copy an existing pickup scene; its root uses `NetProp` and it has an
 `ItemPickup` child), `held_scene` (first-person model), `uses` (-1 = unlimited), NEW 2026-10-19 `max_stack` (how many fit in one
-inventory slot; 1 = no stacking, like drinks and weapons), and `behaviours`:
+inventory slot; 1 = no stacking, like drinks and weapons), `world_mass` (kg of the pickup lying in the world), and `behaviours`:
 - `MeleeBehaviourData`: damage, damage_type (`blunt`, `sharp`, `fire`...), reach, knockback, status_id.
 - `ThrowBehaviourData`: throw_force, damage, damage_type, status_id, breaks_on_impact.
 - `ConsumeBehaviourData`: heal_amount, status_id.

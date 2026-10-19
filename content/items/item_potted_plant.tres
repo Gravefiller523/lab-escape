@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://core/data/items/item_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/items/behaviours/item_behaviour_data.gd" id="9_base"]
+[ext_resource type="PackedScene" path="res://systems/items/world/potted_plant.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://systems/items/held/potted_plant.tscn" id="3_held"]
+[ext_resource type="Script" path="res://core/data/items/behaviours/throw_behaviour_data.gd" id="4_throw"]
+
+[sub_resource type="Resource" id="Throw_1"]
+script = ExtResource("4_throw")
+trigger = 0
+cooldown = 0.5
+throw_force = 10.0
+damage = 15.0
+damage_type = &"blunt"
+breaks_on_impact = false
+
+[resource]
+script = ExtResource("1_data")
+id = &"item_potted_plant"
+display_name = "Potted plant"
+description = "Throw it at something (blunt 15). Pick it up again after."
+category = 1
+world_scene = ExtResource("2_world")
+held_scene = ExtResource("3_held")
+behaviours = Array[ExtResource("9_base")]([SubResource("Throw_1")])
+world_mass = 3.0

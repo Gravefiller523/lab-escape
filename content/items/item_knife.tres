@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://core/data/items/item_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/items/behaviours/item_behaviour_data.gd" id="9_base"]
+[ext_resource type="PackedScene" path="res://systems/items/world/knife.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://systems/items/held/knife.tscn" id="3_held"]
+[ext_resource type="Script" path="res://core/data/items/behaviours/melee_behaviour_data.gd" id="4_melee"]
+
+[sub_resource type="Resource" id="Melee_1"]
+script = ExtResource("4_melee")
+trigger = 0
+cooldown = 0.35
+damage = 10.0
+damage_type = &"sharp"
+reach = 1.8
+knockback = 1.0
+
+[resource]
+script = ExtResource("1_data")
+id = &"item_knife"
+display_name = "Knife"
+description = "Quick stabs (sharp 10)."
+category = 0
+world_scene = ExtResource("2_world")
+held_scene = ExtResource("3_held")
+behaviours = Array[ExtResource("9_base")]([SubResource("Melee_1")])
+world_mass = 0.4

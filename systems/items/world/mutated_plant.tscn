@@ -1,0 +1,45 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/items/world/mutated_plant.gd" id="1_plant"]
+[ext_resource type="Script" path="res://systems/items/use_target.gd" id="2_target"]
+
+[sub_resource type="CylinderShape3D" id="Shape_pot"]
+radius = 0.35
+height = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Mat_pot"]
+albedo_color = Color(0.55, 0.32, 0.18, 1)
+
+[sub_resource type="CylinderMesh" id="Mesh_pot"]
+material = SubResource("Mat_pot")
+top_radius = 0.35
+bottom_radius = 0.28
+height = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Mat_bud"]
+albedo_color = Color(0.45, 0.85, 0.2, 1)
+
+[sub_resource type="SphereMesh" id="Mesh_bud"]
+material = SubResource("Mat_bud")
+radius = 0.22
+height = 0.44
+
+[node name="MutatedPlant" type="StaticBody3D"]
+collision_layer = 129
+script = ExtResource("1_plant")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+shape = SubResource("Shape_pot")
+
+[node name="Pot" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+mesh = SubResource("Mesh_pot")
+
+[node name="Bud" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+mesh = SubResource("Mesh_bud")
+
+[node name="UseTarget" type="Node" parent="."]
+script = ExtResource("2_target")
+accepted_tags = PackedStringArray("water")

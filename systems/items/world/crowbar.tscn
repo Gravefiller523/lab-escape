@@ -1,0 +1,26 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+[ext_resource type="Script" path="res://systems/items/item_pickup.gd" id="2_pickup"]
+
+[sub_resource type="BoxShape3D" id="Shape_1"]
+size = Vector3(0.06, 0.06, 0.75)
+
+[sub_resource type="StandardMaterial3D" id="Mat_1"]
+albedo_color = Color(0.6, 0.12, 0.1, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_1"]
+material = SubResource("Mat_1")
+size = Vector3(0.06, 0.06, 0.75)
+
+[node name="Crowbar" type="RigidBody3D"]
+script = ExtResource("1_prop")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_1")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_1")
+
+[node name="ItemPickup" type="Node" parent="."]
+script = ExtResource("2_pickup")

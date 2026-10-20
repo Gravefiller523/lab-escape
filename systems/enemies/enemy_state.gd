@@ -22,9 +22,9 @@ func physics_update(_enemy: Enemy, _delta: float) -> StringName:
 	return &""
 
 
-## Shared rule for every state: low on health and the enemy has a flee state -> flee.
+## Shared rule for every state: low on health and the enemy has a flee state -> flee (only once).
 static func should_flee(enemy: Enemy) -> bool:
-	if not enemy.has_state(&"flee") or enemy.data == null or enemy.data.flee_health_fraction <= 0.0:
+	if enemy.has_fled or not enemy.has_state(&"flee") or enemy.data == null or enemy.data.flee_health_fraction <= 0.0:
 		return false
 	var health: HealthComponent = enemy.get_health()
 	return health != null and health.get_fraction() <= enemy.data.flee_health_fraction

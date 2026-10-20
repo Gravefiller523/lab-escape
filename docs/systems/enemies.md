@@ -134,6 +134,8 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
 - 2026-10-07: spec created.
 - 2026-10-19: built (Phase 1b). Changes marked above (runtime navigation, RPC syncing, the NEW functions). Content:
   `enemy_rat`, `enemy_kangaroo`, `enemy_bat`, `enemy_fly`.
+- 2026-10-20 (Zachary: the bat flew away after one hit and never came back): enemies flee only once (NEW
+  `Enemy.has_fled`), for 2.5 s (was 4), then go straight back after the player they ran from.
 
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and

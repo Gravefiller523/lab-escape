@@ -117,6 +117,11 @@ func test_flee_at_low_health() -> void:
 	bat.get_health().apply_damage(DamageInfo.make(16.0, &"blunt"))
 	await wait_until(func() -> bool: return bat.get_state() == &"flee", WAIT)
 	assert_eq(bat.get_state(), &"flee", "at 20% health the bat flees")
+	await wait_until(func() -> bool: return bat.get_state() in [&"chase", &"attack_melee"], WAIT)
+	assert_true(bat.get_state() in [&"chase", &"attack_melee"], "then it comes back for you")
+	bat.get_health().apply_damage(DamageInfo.make(1.0, &"blunt"))
+	await wait_seconds(0.5)
+	assert_ne(bat.get_state(), &"flee", "it only runs away once")
 
 
 func test_flying_enemies_hover() -> void:

@@ -39,6 +39,8 @@ var home: Vector3 = Vector3.ZERO
 ## Flying: when >= 0, fly at this height above the ground instead of hover_height (a bat's dive).
 var altitude_override: float = -1.0
 var last_known_position: Vector3 = Vector3.ZERO
+## NEW 2026-10-20: it already ran away once (enemies flee only once, then fight to the end).
+var has_fled: bool = false
 ## Host: this enemy's own random numbers (wandering, swarm angles). Seeded per run and enemy (SeededRng).
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 

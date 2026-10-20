@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/enemies/scenes/bat.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"enemy_bat"
+display_name = "Bat"
+description = "Flies high, then swoops down to bite. Flees when hurt."
+tags = PackedStringArray("zoology")
+scene = ExtResource("2_scene")
+max_health = 20.0
+move_speed = 5.0
+attack_damage = 6.0
+attack_damage_type = &"sharp"
+attack_range = 1.4
+attack_cooldown = 1.2
+sight_range = 18.0
+flee_health_fraction = 0.25
+spawn_cost = 2
+min_floor = 1

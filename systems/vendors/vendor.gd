@@ -166,8 +166,6 @@ func _on_slot_body_entered(body: Node3D) -> void:
 	var prop := body as NetProp
 	if prop == null or prop.data == null or prop.data.gem_value <= 0 or prop.is_held() or prop.is_queued_for_deletion():
 		return
-	if prop.data.tags.has(LootService.GLOWING_GEM_TAG):
-		return
 	var value: int = prop.data.gem_value
 	var player_id: int = prop.last_holder_id
 	Props.despawn(prop)

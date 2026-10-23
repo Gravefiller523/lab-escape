@@ -1,16 +1,13 @@
 class_name LootService
 extends Node
-## Autoload "Loot". Decides and spawns what drops when monsters die: gems (money), glowing gems (hold a
-## mutation), meat (for reprints), robot parts (hold a cybernetic) and items. Host only; the floor's seed
-## makes every roll. Spec: docs/systems/loot.md.
-## - Glow: a dropped plain gem may glow instead (Config.game.gem_glow_chance). Pity rule: every gem that
-##   doesn't glow adds gem_glow_pity_step, up to gem_glow_chance_max; it resets when one glows (and each run).
+## Autoload "Loot". Decides and spawns what drops when monsters die: gems (money), meat (for reprints) and
+## items. Host only; the floor's seed makes every roll. Spec: docs/systems/loot.md.
+## CHANGED 2026-10-23 (Zachary): no glowing gems or robot parts any more: mutations and cybernetics come
+## from DNA vials and data drives (upgrades system). pick_upgrade() still says which upgrade one holds.
 ## - Merging: past max_loose_gems_per_floor loose plain gems, nearby resting ones merge into bigger gems
 ##   (the same total value).
 ## Console: `gems <amount>`, `loot <loot_id>`.
 
-const GLOWING_GEM_TAG: String = "glowing_gem"
-const ROBOT_PART_TAG: String = "robot_part"
 ## Drops pop out around the spot within this radius (metres), a little above it.
 const DROP_SPREAD: float = 0.6
 const DROP_HEIGHT: float = 0.6
@@ -21,7 +18,6 @@ const MERGE_RADIUS: float = 1.5
 
 var _run_seed: int = 0
 var _drop_counter: int = 0
-var _misses: int = 0
 var _merge_left: float = MERGE_CHECK_SECONDS
 ## For tests: a fixed department (null = the current one).
 var _department_override: DepartmentData
@@ -30,16 +26,13 @@ var _use_department_override: bool = false
 
 func _ready() -> void:
 	EventBus.enemy_killed.connect(_on_enemy_killed)
-	EventBus.run_started.connect(func(run_seed: int) -> void:
-		_run_seed = run_seed
-		reset_pity())
+	EventBus.run_started.connect(func(run_seed: int) -> void: _run_seed = run_seed)
 	EventBus.floor_ready.connect(func(_floor_number: int, _department_id: StringName) -> void: _drop_counter = 0)
 	DebugConsole.register_command(&"gems", _cmd_gems, "gems <amount>: drop that much gem value in front of you")
 	DebugConsole.register_command(&"loot", _cmd_loot, "loot <loot_id>: roll a loot table in front of you")
 
 
-## Pure: what a table gives with this rng (no spawning; tests use it). Glow and upgrade picks use the
-## pity counter, so call it on the host only.
+## Pure: what a table gives with this rng (no spawning; tests use it).
 func roll(loot_id: StringName, rng: RandomNumberGenerator) -> Array[LootDrop]:
 	var drops: Array[LootDrop] = []
 	var table := ContentRegistry.get_content(loot_id) as LootTableData
@@ -57,11 +50,8 @@ func roll(loot_id: StringName, rng: RandomNumberGenerator) -> Array[LootDrop]:
 		if entry.prop_id == &"":
 			drops.append(LootDrop.make(&"", entry.item_id, count))
 			continue
-		drops.append_array(_prop_drops(entry.prop_id, count, rng))
-	if _off_department_robot_part(rng):
-		var part_id: StringName = _first_with_tag(ROBOT_PART_TAG)
-		if part_id != &"":
-			drops.append(LootDrop.make(part_id, &"", 1, pick_upgrade(&"cybernetic", rng)))
+		if ContentRegistry.get_content(entry.prop_id) is PropData:
+			drops.append(LootDrop.make(entry.prop_id, &"", count))
 	return drops
 
 
@@ -95,24 +85,7 @@ func roll_and_spawn(loot_id: StringName, at: Vector3, source_id: StringName) -> 
 	return spawned
 
 
-## Uses and updates the pity counter: true if this gem glows.
-func roll_glow(rng: RandomNumberGenerator) -> bool:
-	var glows: bool = rng.randf() < get_glow_chance()
-	_misses = 0 if glows else _misses + 1
-	return glows
-
-
-## The chance the next gem glows (base + pity, never above the max).
-func get_glow_chance() -> float:
-	var game: GameConfig = Config.game
-	return minf(game.gem_glow_chance + game.gem_glow_pity_step * float(_misses), game.gem_glow_chance_max)
-
-
-func reset_pity() -> void:
-	_misses = 0
-
-
-## Which mutation (&"mutation") or cybernetic (&"cybernetic") a drop holds: weighted by drop_weight, only
+## Which mutation (&"mutation") or cybernetic (&"cybernetic") a DNA vial or data drive holds: weighted by drop_weight, only
 ## ones allowed in the current department. &"" if there are none.
 func pick_upgrade(type_key: StringName, rng: RandomNumberGenerator) -> StringName:
 	var department: DepartmentData = _department()
@@ -178,12 +151,12 @@ func merge_gems(max_loose: int = -1) -> int:
 	return removed
 
 
-## The gem props that add up to a value, biggest first (plain gems: props with gem_value > 0, not glowing).
+## The gem props that add up to a value, biggest first (props with gem_value > 0).
 static func gems_for_value(value: int) -> Array[StringName]:
 	var kinds: Array[PropData] = []
 	for content: ContentData in ContentRegistry.get_all(&"prop"):
 		var prop := content as PropData
-		if prop != null and prop.gem_value > 0 and not prop.tags.has(GLOWING_GEM_TAG):
+		if prop != null and prop.gem_value > 0:
 			kinds.append(prop)
 	kinds.sort_custom(func(a: PropData, b: PropData) -> bool: return a.gem_value > b.gem_value)
 	var result: Array[StringName] = []
@@ -204,47 +177,10 @@ func _physics_process(delta: float) -> void:
 		merge_gems()
 
 
-## A plain gem may glow: then it's a glowing gem holding a mutation (if there is one to hold).
-func _prop_drops(prop_id: StringName, count: int, rng: RandomNumberGenerator) -> Array[LootDrop]:
-	var drops: Array[LootDrop] = []
-	var data := ContentRegistry.get_content(prop_id) as PropData
-	if data == null:
-		return drops
-	if data.tags.has(ROBOT_PART_TAG):
-		for index: int in count:
-			drops.append(LootDrop.make(prop_id, &"", 1, pick_upgrade(&"cybernetic", rng)))
-		return drops
-	var plain: int = count
-	if data.gem_value > 0:
-		var glowing_id: StringName = _first_with_tag(GLOWING_GEM_TAG)
-		for index: int in count:
-			if glowing_id != &"" and roll_glow(rng):
-				var mutation: StringName = pick_upgrade(&"mutation", rng)
-				if mutation != &"":
-					drops.append(LootDrop.make(glowing_id, &"", 1, mutation))
-					plain -= 1
-	if plain > 0:
-		drops.append(LootDrop.make(prop_id, &"", plain))
-	return drops
-
-
-func _off_department_robot_part(rng: RandomNumberGenerator) -> bool:
-	var chance: float = Config.game.off_department_robot_part_chance
-	return chance > 0.0 and rng.randf() < chance
-
-
-## The first prop (by id) with a tag, e.g. the glowing gem. &"" if none.
-static func _first_with_tag(tag: String) -> StringName:
-	for content: ContentData in ContentRegistry.get_all(&"prop"):
-		if content.tags.has(tag):
-			return content.id
-	return &""
-
-
 func _loose_plain_gems() -> Array[NetProp]:
 	var gems: Array[NetProp] = []
 	for prop: NetProp in Props.get_props():
-		if prop.data == null or prop.data.gem_value <= 0 or prop.data.tags.has(GLOWING_GEM_TAG):
+		if prop.data == null or prop.data.gem_value <= 0:
 			continue
 		if prop.is_held() or prop.is_attached() or prop.is_queued_for_deletion() or not prop.sleeping:
 			continue

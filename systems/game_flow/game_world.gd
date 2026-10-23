@@ -7,12 +7,11 @@ extends Node3D
 ##
 ## STUBS until other systems exist:
 ## - physics_props: a crate (or the marker's "prop_id") at each prop_spawn marker on floor_ready (host);
-## - bosses: a "Defeat the boss" button at each boss_spawn marker (emits boss_defeated on every PC);
+## (CHANGED 2026-10-23: the "Defeat the boss" button stub is gone: the bosses system spawns the real boss.)
 ## (CHANGED 2026-10-19: the "E: ..." prompt and crosshair stub is gone: the ui HUD shows them.)
 
 const LIFT_SCENE: PackedScene = preload("res://systems/cargo_lift/cargo_lift.tscn")
 const DEFAULT_PROP_ID: StringName = &"prop_crate"
-const STUB_BUTTON_HEIGHT: float = 1.2
 
 var _level_root: Node3D
 var _lift: CargoLift
@@ -102,9 +101,6 @@ func build_floor(layout: FloorLayout) -> void:
 	var spots: Array[RoomMarker] = Level.get_markers(&"lift")
 	if not spots.is_empty():
 		_line_up(spots[0])
-	for index: int in Level.get_markers(&"boss_spawn").size():
-		_stub_button("BossStub%d" % index, Level.get_markers(&"boss_spawn")[index], "Defeat the boss (stub)",
-			Color(0.85, 0.2, 0.2), _on_boss_used)
 
 
 ## Moves LevelRoot so that spot (inside it) ends up exactly where the lift is.
@@ -123,53 +119,3 @@ func _on_floor_ready(_floor_number: int, _department_id: StringName) -> void:
 		var prop_id := StringName(str(marker.params.get("prop_id", DEFAULT_PROP_ID)))
 		_props.spawn_prop(prop_id, marker.global_transform)
 
-
-func _on_boss_used(_player_id: int) -> void:
-	_boss_defeated_rpc.rpc()
-
-
-## Host -> everyone: what bosses will announce for real.
-@rpc("authority", "call_local", "reliable")
-func _boss_defeated_rpc() -> void:
-	if not is_inside_tree():
-		return
-	var department: DepartmentData = GameFlow.get_current_department()
-	EventBus.boss_defeated.emit(department.boss_id if department != null else &"")
-	for child: Node in _level_root.get_children():
-		if child.name.begins_with("BossStub"):
-			child.queue_free()
-
-
-func _stub_button(node_name: String, marker: RoomMarker, prompt: String, color: Color, on_used: Callable) -> void:
-	var body := StaticBody3D.new()
-	body.name = node_name
-	body.collision_layer = PhysicsLayers.bit(PhysicsLayers.INTERACTABLES)
-	body.collision_mask = 0
-	var shape := CollisionShape3D.new()
-	var box := BoxShape3D.new()
-	box.size = Vector3(0.8, 0.8, 0.8)
-	shape.shape = box
-	body.add_child(shape)
-	var mesh := MeshInstance3D.new()
-	var box_mesh := BoxMesh.new()
-	box_mesh.size = Vector3(0.6, 0.6, 0.6)
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.emission_enabled = true
-	material.emission = color * 0.5
-	box_mesh.material = material
-	mesh.mesh = box_mesh
-	body.add_child(mesh)
-	var label := Label3D.new()
-	label.text = prompt
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.position = Vector3.UP * 0.8
-	label.pixel_size = 0.004
-	body.add_child(label)
-	var use := Interactable.new()
-	use.name = "Use"
-	use.prompt_text = prompt
-	use.used.connect(on_used)
-	body.add_child(use)
-	_level_root.add_child(body)
-	body.global_position = marker.global_position + Vector3.UP * STUB_BUTTON_HEIGHT

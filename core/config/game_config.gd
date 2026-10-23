@@ -170,6 +170,8 @@ extends Resource
 @export var enemy_health_per_extra_player: float = 0.2
 ## Extra boss health per player beyond the first.
 @export var boss_health_per_extra_player: float = 0.5
+## NEW 2026-10-23 (bosses): extra boss minions per wave for each player beyond the first (x minions_per_wave).
+@export var boss_minions_per_extra_player: float = 0.5
 ## Extra enemy budget per floor reached in the run.
 @export var enemy_budget_per_floor: float = 0.1
 ## Base enemy spawn budget on the first floor.

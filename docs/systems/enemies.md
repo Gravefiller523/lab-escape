@@ -134,6 +134,9 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
 - 2026-10-07: spec created.
 - 2026-10-19: built (Phase 1b). Changes marked above (runtime navigation, RPC syncing, the NEW functions). Content:
   `enemy_rat`, `enemy_kangaroo`, `enemy_bat`, `enemy_fly`.
+- 2026-10-23 (bosses branch): NEW `Enemy.died(info)` signal (every PC) and `Enemy.setup_from(content, ...)` (a Boss builds
+  its numbers from BossData); `EnemySpawner.spawn` takes BossData ids too, and when the connection changes (you start
+  hosting or join after playing alone) the host re-spawns its enemies for everyone and a client drops its own copies.
 - 2026-10-20 (Zachary: the bat flew away after one hit and never came back): enemies flee only once (NEW
   `Enemy.has_fled`), for 2.5 s (was 4), then go straight back after the player they ran from.
 

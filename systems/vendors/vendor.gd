@@ -14,7 +14,7 @@ signal offers_changed()
 
 const GROUP: StringName = &"vendors"
 const BODY_SIZE: Vector3 = Vector3(1.2, 2.0, 0.8)
-const SLOT_SIZE: Vector3 = Vector3(0.5, 0.3, 0.4)
+const SLOT_SIZE: Vector3 = Vector3(0.22, 0.2, 0.3)
 const TRAY_OFFSET: Vector3 = Vector3(0.0, 0.5, 0.75)
 const BUTTON_SIZE: Vector3 = Vector3(0.18, 0.18, 0.08)
 const REFUND_HOLD_SECONDS: float = 1.0
@@ -247,17 +247,16 @@ func _build() -> void:
 	var slot_box := BoxShape3D.new()
 	slot_box.size = SLOT_SIZE + Vector3(0.1, 0.3, 0.1)
 	slot_shape.shape = slot_box
-	slot_shape.position = Vector3(0.3, 1.45, BODY_SIZE.z / 2.0 + 0.15)
+	slot_shape.position = Vector3(0.42, 1.15, BODY_SIZE.z / 2.0 + 0.12)
 	_slot.add_child(slot_shape)
 	_slot.add_child(_box_mesh(SLOT_SIZE, slot_shape.position, Color(0.85, 0.75, 0.2)))
 	_slot.body_entered.connect(_on_slot_body_entered)
 	add_child(_slot)
-	_add_label("SlotLabel", "GEMS IN", Vector3(0.3, 1.75, BODY_SIZE.z / 2.0 + 0.16), 28)
-	_screen = _add_label("Screen", "", Vector3(-0.15, 1.75, BODY_SIZE.z / 2.0 + 0.01), 26)
-	_screen.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_add_label("SlotLabel", "GEMS IN", Vector3(0.42, 1.36, BODY_SIZE.z / 2.0 + 0.01), 20)
+	_screen = _add_label("Screen", "", Vector3(0.0, 1.8, BODY_SIZE.z / 2.0 + 0.01), 26)
 	# Tray marker (where items and change come out).
 	add_child(_box_mesh(Vector3(0.6, 0.05, 0.3), TRAY_OFFSET - Vector3(0, 0.12, 0.1), Color(0.15, 0.15, 0.15)))
-	var refund := _add_usable("Refund", Vector3(0.45, 0.9, BODY_SIZE.z / 2.0 + 0.04), Color(0.8, 0.2, 0.2), "Refund (hold)")
+	var refund := _add_usable("Refund", Vector3(0.42, 0.75, BODY_SIZE.z / 2.0 + 0.04), Color(0.8, 0.2, 0.2), "Refund (hold)")
 	refund.hold_seconds = REFUND_HOLD_SECONDS
 	refund.used.connect(func(_player_id: int) -> void: refund_all())
 
@@ -266,12 +265,11 @@ func _build() -> void:
 func _rebuild_buttons() -> void:
 	for index: int in _offers.size():
 		if index >= _buttons.size():
-			var usable := _add_usable("Buy%d" % index, Vector3(-0.35, 1.3 - 0.25 * float(index), BODY_SIZE.z / 2.0 + 0.04),
+			var usable := _add_usable("Buy%d" % index, Vector3(-0.47, 1.45 - 0.25 * float(index), BODY_SIZE.z / 2.0 + 0.04),
 				Color(0.3, 0.85, 0.4), "")
 			usable.used.connect(func(player_id: int) -> void: buy(player_id, index))
 			_buttons.append(usable)
-			_button_labels.append(_add_label("BuyLabel%d" % index, "", Vector3(-0.1, 1.3 - 0.25 * float(index), BODY_SIZE.z / 2.0 + 0.01), 22))
-			_button_labels[index].horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			_button_labels.append(_add_label("BuyLabel%d" % index, "", Vector3(-0.05, 1.45 - 0.25 * float(index), BODY_SIZE.z / 2.0 + 0.01), 22))
 		var offer: VendorOffer = _offers[index]
 		var item := ContentRegistry.get_content(offer.item_id) as ItemData
 		var title: String = item.display_name if item != null else String(offer.item_id)

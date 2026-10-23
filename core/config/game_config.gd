@@ -62,6 +62,8 @@ extends Resource
 @export_range(0.0, 1.0) var off_department_robot_part_chance: float = 0.0
 ## Loose gems allowed on one floor before nearby plain gems merge into bigger ones.
 @export var max_loose_gems_per_floor: int = 150
+## NEW 2026-10-23 (vendors): at most this many vending machines on one floor (picked from the vendor markers).
+@export var vendors_per_floor: int = 2
 
 @export_group("Death and reprinting")
 ## Meat needed in the 3D printer to reprint one player.

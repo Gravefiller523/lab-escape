@@ -1,0 +1,60 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+[ext_resource type="Script" path="res://systems/loot/glow_tint.gd" id="2_tint"]
+[ext_resource type="Script" path="res://systems/upgrades/upgrade_carrier.gd" id="3_carrier"]
+
+[sub_resource type="CylinderShape3D" id="Shape_1"]
+radius = 0.05
+height = 0.24
+
+[sub_resource type="StandardMaterial3D" id="Glass"]
+transparency = 1
+albedo_color = Color(0.85, 0.95, 1, 0.35)
+
+[sub_resource type="CylinderMesh" id="Tube"]
+material = SubResource("Glass")
+top_radius = 0.05
+bottom_radius = 0.05
+height = 0.24
+
+[sub_resource type="StandardMaterial3D" id="Liquid"]
+albedo_color = Color(0.4, 1, 0.6, 1)
+emission_enabled = true
+emission = Color(0.4, 1, 0.6, 1)
+
+[sub_resource type="CylinderMesh" id="Fill"]
+material = SubResource("Liquid")
+top_radius = 0.04
+bottom_radius = 0.04
+height = 0.16
+
+[sub_resource type="StandardMaterial3D" id="Cap"]
+albedo_color = Color(0.2, 0.2, 0.22, 1)
+
+[sub_resource type="CylinderMesh" id="CapMesh"]
+material = SubResource("Cap")
+top_radius = 0.055
+bottom_radius = 0.055
+height = 0.04
+
+[node name="DnaVial" type="RigidBody3D"]
+script = ExtResource("1_prop")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_1")
+
+[node name="Glass" type="MeshInstance3D" parent="."]
+mesh = SubResource("Tube")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.03, 0)
+mesh = SubResource("Fill")
+script = ExtResource("2_tint")
+
+[node name="Cap" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.13, 0)
+mesh = SubResource("CapMesh")
+
+[node name="UpgradeCarrier" type="Node" parent="."]
+script = ExtResource("3_carrier")

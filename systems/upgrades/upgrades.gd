@@ -1,21 +1,29 @@
 class_name UpgradesService
 extends Node
-## Autoload "Upgrades": mutations (glowing gems) and cybernetics (robot parts), one shared system.
-## Spec: docs/systems/upgrades.md.
-## - Hold a glowing gem or robot part and press E: you eat / install it (the host checks you hold it).
+## Autoload "Upgrades": mutations and cybernetics, one shared system. Spec: docs/systems/upgrades.md.
+## CHANGED 2026-10-23 (Zachary): upgrades are applied by the mutation machine (UpgradeMachine), one per floor
+## at a seeded spot. Load it with a DNA vial (a mutation) or a data drive (a cybernetic): drop it in the
+## hopper or press E at the machine while holding it. Then step into the booth. Vials spawn with a low
+## chance on Zoology and Botany floors (that department's mutations), drives on Robotics floors.
 ## - An upgrade is a list of effect pieces (UpgradeEffect runtime blocks, found by file name).
-## - UNIQUE upgrades do nothing the second time (the gem is still eaten); STACKS add again up to max_stacks.
-## - Sharing a clash tag with one you have replaces the old one ("Eat glowing gem: Frog (replaces Octo)").
+## - UNIQUE upgrades can't be had twice (the machine keeps it loaded for someone else); STACKS add again up
+##   to max_stacks.
+## - Sharing a clash tag with one you have replaces the old one.
 ## - The host keeps your upgrades in your PlayerRecord (upgrade_ids), so they survive death and reconnects;
 ##   every PC applies the effects (the owner needs movement; everyone needs looks and voice).
-## - A glowing gem's prompt says what's inside only once someone has eaten that mutation this run ("???").
-## Console: `upgrade <id>`, `unupgrade <id>`, spawners `spawn mutation_<name>` / `spawn cybernetic_<name>`.
+## - A vial says what's inside only once someone has had that mutation this run ("???").
+## Console: `upgrade <id>`, `unupgrade <id>`, `spawn mutation_<name>` (a DNA vial), `spawn cybernetic_<name>`
+## (a data drive), `machine` (a mutation machine in front of you).
 
-## Above physics_props' grab (50): E while holding a carrier eats it instead of dropping it.
+## Above physics_props' grab (50): E at the machine while holding a vial puts it in instead of dropping it.
 const USE_PRIORITY: int = 70
 const UNKNOWN_NAME: String = "???"
-const GLOWING_GEM_TAG: String = "glowing_gem"
-const ROBOT_PART_TAG: String = "robot_part"
+const DNA_VIAL_TAG: String = "dna_vial"
+const DATA_DRIVE_TAG: String = "data_drive"
+const MACHINE_SCENE: PackedScene = preload("res://systems/upgrades/upgrade_machine.tscn")
+const MACHINE_MARKER: StringName = &"upgrade_machine"
+## Room kind where floors start: no vials there.
+const START_ROOM_KIND: StringName = &"lift"
 
 ## player_id -> the source ids applied on this PC (in order), so they can be removed.
 var _applied: Dictionary[int, Array] = {}
@@ -31,6 +39,8 @@ func _ready() -> void:
 	DebugConsole.register_command(&"unupgrade", _cmd_unupgrade, "unupgrade <id>: lose a mutation or cybernetic")
 	DebugConsole.register_spawner(&"mutation", _console_spawn)
 	DebugConsole.register_spawner(&"cybernetic", _console_spawn)
+	DebugConsole.register_command(&"machine", _cmd_machine, "machine: a mutation machine in front of you")
+	EventBus.floor_ready.connect(_on_floor_ready)
 
 
 # --- Reading -----------------------------------------------------------------------------------------
@@ -127,27 +137,70 @@ func remove(player_id: int, upgrade_id: StringName) -> void:
 	_lost_rpc.rpc(player_id, upgrade_id, stack)
 
 
-## Local: eat / install the carrier prop you're holding (the host checks it).
-func request_consume(prop: NetProp) -> void:
-	if prop == null:
-		return
-	if multiplayer.is_server():
-		_consume(Net.local_player_id(), prop.net_id)
-	else:
-		_consume_rpc.rpc_id(1, prop.net_id)
+## The carrier prop for a kind of upgrade: a DNA vial (mutations) or a data drive (cybernetics). &"" if none.
+static func carrier_prop_for(upgrade_id: StringName) -> StringName:
+	var tag: String = DATA_DRIVE_TAG if ContentRegistry.get_content(upgrade_id) is CyberneticData else DNA_VIAL_TAG
+	return _first_with_tag(tag)
 
 
-func _consume(player_id: int, net_id: int) -> bool:
-	var prop: NetProp = Props.get_prop(net_id)
-	var carrier: UpgradeCarrier = UpgradeCarrier.of(prop)
-	if carrier == null or not prop.get_holder_ids().has(player_id) or carrier.get_upgrade() == null:
-		return false
-	var upgrade_id: StringName = carrier.upgrade_id
-	if prop.get_spawner() != null:
-		prop.get_spawner().release_all(prop)
-	Props.despawn(prop)
-	grant(player_id, upgrade_id)
-	return true
+## Every PC: the floor's mutation machine, at one of the `upgrade_machine` markers picked with the run's
+## seed (so every PC picks the same one), as child "UpgradeMachine" of the marker. Null if there are none.
+func place_machine(floor_number: int) -> UpgradeMachine:
+	var spots: Array[RoomMarker] = Level.get_markers(MACHINE_MARKER)
+	if spots.is_empty():
+		return null
+	var run: RunState = GameFlow.get_run()
+	var rng: RandomNumberGenerator = SeededRng.make(run.run_seed if run != null else 0, &"upgrade_machine_spot", floor_number)
+	var marker: RoomMarker = spots[rng.randi_range(0, spots.size() - 1)]
+	var machine := marker.get_node_or_null(^"UpgradeMachine") as UpgradeMachine
+	if machine == null:
+		machine = MACHINE_SCENE.instantiate() as UpgradeMachine
+		machine.name = "UpgradeMachine"
+		marker.add_child(machine)
+	return machine
+
+
+## Host: DNA vials (or, on Robotics floors, data drives) at random prop spots: Config.game.upgrade_carrier_tries
+## tries, each with the department's chance (or upgrade_carrier_chance). Not in the lift room.
+func spawn_floor_carriers(floor_number: int, department: DepartmentData) -> Array[NetProp]:
+	var spawned: Array[NetProp] = []
+	if not multiplayer.is_server() or Props.get_spawner() == null:
+		return spawned
+	var spots: Array[RoomMarker] = []
+	for marker: RoomMarker in Level.get_markers(&"prop_spawn"):
+		var room: RoomData = Level.get_room_for_position(marker.global_position)
+		if room == null or room.room_kind != START_ROOM_KIND:
+			spots.append(marker)
+	if spots.is_empty():
+		return spawned
+	var type_key: StringName = &"mutation"
+	var chance: float = Config.game.upgrade_carrier_chance
+	if department != null:
+		if department.upgrade_type != &"":
+			type_key = department.upgrade_type
+		if department.upgrade_carrier_chance >= 0.0:
+			chance = department.upgrade_carrier_chance
+	var run: RunState = GameFlow.get_run()
+	var rng: RandomNumberGenerator = SeededRng.make(run.run_seed if run != null else 0, &"upgrade_carriers", floor_number)
+	for attempt: int in Config.game.upgrade_carrier_tries:
+		if rng.randf() >= chance:
+			continue
+		var upgrade_id: StringName = Loot.pick_upgrade(type_key, rng)
+		var prop_id: StringName = carrier_prop_for(upgrade_id) if upgrade_id != &"" else &""
+		if prop_id == &"":
+			continue
+		var marker: RoomMarker = spots[rng.randi_range(0, spots.size() - 1)]
+		var prop: NetProp = Props.spawn_prop(prop_id, marker.global_transform.translated(Vector3.UP * 0.4), {"upgrade_id": String(upgrade_id)})
+		if prop != null:
+			spawned.append(prop)
+	return spawned
+
+
+func _on_floor_ready(floor_number: int, _department_id: StringName) -> void:
+	place_machine(floor_number)
+	var run: RunState = GameFlow.get_run()
+	if run != null and not run.is_boss_floor:
+		spawn_floor_carriers(floor_number, GameFlow.get_current_department())
 
 
 # --- Applying (every PC) ---------------------------------------------------------------------------
@@ -217,7 +270,7 @@ func _clear_all() -> void:
 	_known.clear()
 
 
-# --- Eating (the use key) ----------------------------------------------------------------------------
+# --- Loading the machine (the use key) ----------------------------------------------------------------------------
 
 func _hook_into_interaction(candidate: Variant) -> void:
 	# Called deferred: the body may be gone by then (a Variant, so a freed one is safe to check).
@@ -229,8 +282,8 @@ func _hook_into_interaction(candidate: Variant) -> void:
 	var interaction: InteractionController = InteractionService.controller_of(body)
 	if interaction == null:
 		return
-	interaction.register_use_handler(USE_PRIORITY, func(_target: Node3D) -> bool: return _on_use(body))
-	interaction.register_prompt_provider(USE_PRIORITY, func(_target: Node3D) -> String: return _prompt(body))
+	interaction.register_use_handler(USE_PRIORITY, func(target: Node3D) -> bool: return _on_use(body, target))
+	interaction.register_prompt_provider(USE_PRIORITY, func(target: Node3D) -> String: return _prompt(body, target))
 
 
 func _held_carrier(body: PlayerCharacter) -> NetProp:
@@ -239,25 +292,37 @@ func _held_carrier(body: PlayerCharacter) -> NetProp:
 	return held if UpgradeCarrier.of(held) != null else null
 
 
-func _on_use(body: PlayerCharacter) -> bool:
+func _on_use(body: PlayerCharacter, target: Node3D) -> bool:
 	var prop: NetProp = _held_carrier(body)
-	if prop == null:
+	var machine: UpgradeMachine = UpgradeMachine.of(target) if target != null else null
+	if prop == null or machine == null:
 		return false
-	request_consume(prop)
+	machine.request_insert(prop)
 	return true
 
 
-func _prompt(body: PlayerCharacter) -> String:
-	var prop: NetProp = _held_carrier(body)
-	if prop == null:
+## Holding a vial at the machine: "Put DNA vial: Frog (replaces Octo) in the machine". Looking at a vial on the
+## floor: "Pick up DNA vial: Frog" (??? until someone has had it this run).
+func _prompt(body: PlayerCharacter, target: Node3D) -> String:
+	var held: NetProp = _held_carrier(body)
+	var machine: UpgradeMachine = UpgradeMachine.of(target) if target != null else null
+	var prop: NetProp = held
+	if held == null:
+		var grab: GrabController = PropsService.grab_of(body)
+		if grab != null and grab.get_held() != null:
+			return ""
+		prop = NetProp.of(target) if target != null else null
+		if UpgradeCarrier.of(prop) == null:
+			return ""
+	elif machine == null:
 		return ""
 	var carrier: UpgradeCarrier = UpgradeCarrier.of(prop)
 	var upgrade: UpgradeData = carrier.get_upgrade()
 	var title: String = UNKNOWN_NAME
 	if upgrade != null and is_known(upgrade.id):
 		title = upgrade.display_name
-	var verb: String = "Install robot part" if prop.data != null and prop.data.tags.has(ROBOT_PART_TAG) else "Eat glowing gem"
-	var text: String = "%s: %s" % [verb, title]
+	var kind: String = "data drive" if prop.data != null and prop.data.tags.has(DATA_DRIVE_TAG) else "DNA vial"
+	var text: String = "%s %s: %s" % ["Put" if held != null else "Pick up", kind, title]
 	if upgrade != null:
 		var replaced: PackedStringArray = []
 		for old_id: StringName in preview_clash(body.player_id, upgrade.id):
@@ -265,6 +330,8 @@ func _prompt(body: PlayerCharacter) -> String:
 			replaced.append(old.display_name if old != null else String(old_id))
 		if not replaced.is_empty():
 			text += " (replaces %s)" % ", ".join(replaced)
+	if held != null:
+		text += " in the machine"
 	return text
 
 
@@ -281,12 +348,6 @@ func _gained_rpc(player_id: int, upgrade_id: StringName, stack: int) -> void:
 func _lost_rpc(player_id: int, upgrade_id: StringName, stack: int) -> void:
 	_unapply(player_id, upgrade_id, stack)
 	EventBus.upgrade_lost.emit(player_id, upgrade_id)
-
-
-@rpc("any_peer", "call_remote", "reliable")
-func _consume_rpc(net_id: int) -> void:
-	if multiplayer.is_server():
-		_consume(Net.get_player_id_for_peer(multiplayer.get_remote_sender_id()), net_id)
 
 
 # --- Console -----------------------------------------------------------------------------------------
@@ -307,12 +368,11 @@ func _cmd_unupgrade(args: PackedStringArray, player_id: int) -> String:
 	return "Removed %s." % args[0]
 
 
-## `spawn mutation_fly`: a glowing gem holding it (cybernetics: a robot part).
+## `spawn mutation_fly`: a DNA vial holding it (cybernetics: a data drive).
 func _console_spawn(id: StringName, at: Transform3D, count: int, _player_id: int) -> String:
-	var tag: String = ROBOT_PART_TAG if ContentRegistry.get_content(id) is CyberneticData else GLOWING_GEM_TAG
-	var prop_id: StringName = _first_with_tag(tag)
+	var prop_id: StringName = carrier_prop_for(id)
 	if prop_id == &"":
-		return "No prop tagged '%s' to put it in." % tag
+		return "No DNA vial or data drive prop to put it in."
 	for index: int in count:
 		Props.spawn_prop(prop_id, at.translated(Vector3(0.0, 0.3 * float(index), 0.0)), {"upgrade_id": String(id)})
 	return "Spawned %d x %s in a %s." % [count, id, prop_id]
@@ -323,3 +383,27 @@ static func _first_with_tag(tag: String) -> StringName:
 		if content.tags.has(tag):
 			return content.id
 	return &""
+
+
+## `machine`: a mutation machine in front of you (cheats; for testing where no marker is).
+func _cmd_machine(_args: PackedStringArray, player_id: int) -> String:
+	var body: PlayerCharacter = PlayerCharacter.find(player_id)
+	if body == null:
+		return "You have no body right now."
+	var forward: Vector3 = body.get_aim_direction()
+	forward.y = 0.0
+	_machine_rpc.rpc(body.global_position + forward.normalized() * 3.0, atan2(forward.x, forward.z) + PI)
+	return "A mutation machine appeared."
+
+
+## Host -> everyone: the console's machine (the same node name everywhere, under this autoload).
+@rpc("authority", "call_local", "reliable")
+func _machine_rpc(where: Vector3, yaw: float) -> void:
+	var old := get_node_or_null(^"ConsoleMachine")
+	if old != null:
+		old.free()
+	var machine := MACHINE_SCENE.instantiate() as UpgradeMachine
+	machine.name = "ConsoleMachine"
+	add_child(machine)
+	machine.global_position = where
+	machine.rotation.y = yaw

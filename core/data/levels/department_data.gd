@@ -26,6 +26,13 @@ extends ContentData
 @export var lift_breaks_max: int = 3
 ## Lift parts (PropData ids) that can break here. Empty = every lift part.
 @export var lift_part_ids: Array[StringName] = []
+## NEW 2026-10-23 (upgrades, Zachary): what this department's floors hide: &"mutation" (DNA vials: Zoology,
+## Botany) or &"cybernetic" (data drives: Robotics). Mutations and cybernetics with department_ids only drop
+## in those departments.
+@export var upgrade_type: StringName = &"mutation"
+## Chance of each try to spawn a vial or drive on a floor (Config.game.upgrade_carrier_tries tries). -1 =
+## Config.game.upgrade_carrier_chance.
+@export var upgrade_carrier_chance: float = -1.0
 ## How many rooms a regular floor has (the generator picks between these).
 @export var rooms_per_floor_min: int = 6
 @export var rooms_per_floor_max: int = 10

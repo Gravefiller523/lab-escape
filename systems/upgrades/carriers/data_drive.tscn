@@ -1,0 +1,41 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+[ext_resource type="Script" path="res://systems/loot/glow_tint.gd" id="2_tint"]
+[ext_resource type="Script" path="res://systems/upgrades/upgrade_carrier.gd" id="3_carrier"]
+
+[sub_resource type="BoxShape3D" id="Shape_1"]
+size = Vector3(0.2, 0.04, 0.12)
+
+[sub_resource type="StandardMaterial3D" id="Case"]
+albedo_color = Color(0.15, 0.17, 0.2, 1)
+metallic = 0.6
+
+[sub_resource type="BoxMesh" id="CaseMesh"]
+material = SubResource("Case")
+size = Vector3(0.2, 0.04, 0.12)
+
+[sub_resource type="StandardMaterial3D" id="Strip"]
+albedo_color = Color(0.4, 0.75, 1, 1)
+emission_enabled = true
+emission = Color(0.4, 0.75, 1, 1)
+
+[sub_resource type="BoxMesh" id="StripMesh"]
+material = SubResource("Strip")
+size = Vector3(0.16, 0.045, 0.02)
+
+[node name="DataDrive" type="RigidBody3D"]
+script = ExtResource("1_prop")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_1")
+
+[node name="Case" type="MeshInstance3D" parent="."]
+mesh = SubResource("CaseMesh")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("StripMesh")
+script = ExtResource("2_tint")
+
+[node name="UpgradeCarrier" type="Node" parent="."]
+script = ExtResource("3_carrier")

@@ -1,0 +1,78 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/bosses/boss.gd" id="1_boss"]
+[ext_resource type="Script" path="res://systems/bosses/states/boss_fight_state.gd" id="2_fight"]
+[ext_resource type="Script" path="res://systems/bosses/attacks/charge_attack.gd" id="3_charge"]
+[ext_resource type="Script" path="res://systems/bosses/attacks/slam_attack.gd" id="4_slam"]
+
+[sub_resource type="BoxShape3D" id="Shape_1"]
+size = Vector3(1.4, 1.3, 2.6)
+
+[sub_resource type="StandardMaterial3D" id="Mat_1"]
+albedo_color = Color(0.4, 0.34, 0.32, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_1"]
+material = SubResource("Mat_1")
+size = Vector3(1.4, 1.3, 2.6)
+
+[sub_resource type="StandardMaterial3D" id="Mat_eyes"]
+albedo_color = Color(0.9, 0.1, 0.1, 1)
+emission_enabled = true
+emission = Color(0.9, 0.1, 0.1, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_eyes"]
+material = SubResource("Mat_eyes")
+size = Vector3(0.9, 0.15, 0.1)
+
+[node name="GiantRat" type="CharacterBody3D"]
+script = ExtResource("1_boss")
+attack_knockback = 6.0
+hurtbox_radius = 1.0
+hurtbox_height = 1.6
+start_state = &"boss_fight"
+boss_move_speed = 3.5
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+shape = SubResource("Shape_1")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+mesh = SubResource("Mesh_1")
+
+[node name="Eyes" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -1.31)
+mesh = SubResource("Mesh_eyes")
+
+[node name="HealthLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.3, 0)
+billboard = 1
+font_size = 72
+outline_size = 16
+text = "GIANT RAT"
+
+[node name="States" type="Node" parent="."]
+
+[node name="boss_fight" type="Node" parent="States"]
+script = ExtResource("2_fight")
+
+[node name="Attacks" type="Node" parent="."]
+
+[node name="Charge" type="Node" parent="Attacks"]
+script = ExtResource("3_charge")
+attack_name = &"charge"
+min_range = 4.0
+max_range = 25.0
+
+[node name="ChargeFast" type="Node" parent="Attacks"]
+script = ExtResource("3_charge")
+attack_name = &"charge_fast"
+min_range = 3.0
+max_range = 25.0
+windup = 0.45
+speed = 14.0
+
+[node name="Slam" type="Node" parent="Attacks"]
+script = ExtResource("4_slam")
+attack_name = &"slam"
+max_range = 4.0

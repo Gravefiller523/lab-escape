@@ -16,12 +16,12 @@ func _ready() -> void:
 
 
 ## Host: spawn an enemy for everyone. Its health is max_health x health_multiplier. Null if unknown.
+## CHANGED 2026-10-23 (bosses branch): also takes BossData ids (a Boss is an Enemy; see Enemy.setup_from).
 func spawn(enemy_id: StringName, xform: Transform3D, health_multiplier: float = 1.0, rng_seed: int = 0) -> Enemy:
 	if not multiplayer.is_server():
 		push_error("EnemySpawner.spawn: only the host spawns enemies.")
 		return null
-	var data := ContentRegistry.get_content(enemy_id) as EnemyData
-	if data == null or data.scene == null:
+	if _scene_of(ContentRegistry.get_content(enemy_id)) == null:
 		push_error("EnemySpawner.spawn: no enemy called '%s' (or it has no scene)." % enemy_id)
 		return null
 	var net_id: int = _next_id
@@ -52,13 +52,22 @@ func despawn_all() -> void:
 func _make_enemy(spawn_data: Variant) -> Node:
 	var info: Dictionary = spawn_data
 	var enemy_id := StringName(str(info["enemy_id"]))
-	var data := ContentRegistry.get_content(enemy_id) as EnemyData
-	var enemy := data.scene.instantiate() as Enemy
+	var content: ContentData = ContentRegistry.get_content(enemy_id)
+	var enemy := _scene_of(content).instantiate() as Enemy
 	var net_id: int = info["net_id"]
 	var health_multiplier: float = info["health"]
 	var rng_seed: int = info["seed"]
 	enemy.name = "Enemy%d" % net_id
 	enemy.transform = info["xform"]
-	enemy.setup(data, health_multiplier, rng_seed, net_id)
+	enemy.setup_from(content, health_multiplier, rng_seed, net_id)
 	_next_id = maxi(_next_id, net_id + 1)
 	return enemy
+
+
+## The scene of an EnemyData or BossData, or null.
+static func _scene_of(content: ContentData) -> PackedScene:
+	var enemy_data := content as EnemyData
+	if enemy_data != null:
+		return enemy_data.scene
+	var boss_data := content as BossData
+	return boss_data.scene if boss_data != null else null

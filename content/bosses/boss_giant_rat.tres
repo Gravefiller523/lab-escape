@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="BossData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://core/data/enemies/boss_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/enemies/boss_phase_data.gd" id="2_phase"]
+[ext_resource type="PackedScene" path="res://systems/bosses/scenes/giant_rat.tscn" id="3_scene"]
+
+[sub_resource type="Resource" id="Phase_1"]
+script = ExtResource("2_phase")
+starts_at_health_fraction = 1.0
+attack_names = PackedStringArray("charge", "slam")
+
+[sub_resource type="Resource" id="Phase_2"]
+script = ExtResource("2_phase")
+starts_at_health_fraction = 0.5
+attack_names = PackedStringArray("charge_fast", "slam")
+minion_enemy_ids = Array[StringName]([&"enemy_rat"])
+minions_per_wave = 3
+minion_wave_interval = 12.0
+
+[resource]
+script = ExtResource("1_data")
+id = &"boss_giant_rat"
+display_name = "Giant Rat"
+description = "Zoology's boss. Charges and slams; at half health it calls in rats and charges faster."
+tags = PackedStringArray("zoology")
+scene = ExtResource("3_scene")
+max_health = 600.0
+phases = Array[ExtResource("2_phase")]([SubResource("Phase_1"), SubResource("Phase_2")])
+arena_room_id = &"room_arena_grey"

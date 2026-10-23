@@ -9,6 +9,8 @@ extends CharacterBody3D
 ## PCs slide their copy there. Health, statuses and the hurtbox come from damage (give_components).
 
 signal state_changed(state: StringName)
+## NEW 2026-10-23 (bosses branch): it died (every PC, once), after it fell over.
+signal died(info: DamageInfo)
 
 const GROUP: StringName = &"enemies"
 const SYNC_INTERVAL: float = 0.05
@@ -107,6 +109,12 @@ func _ready() -> void:
 		_change_state(first)
 	elif multiplayer.has_multiplayer_peer():
 		_request_state_rpc.rpc_id(1)
+
+
+## NEW 2026-10-23 (bosses branch): EnemySpawner calls this with the content it spawns. Enemies use their
+## EnemyData; a Boss overrides it to build its numbers from BossData.
+func setup_from(content: ContentData, health_multiplier: float, rng_seed: int, rng_index: int) -> void:
+	setup(content as EnemyData, health_multiplier, rng_seed, rng_index)
 
 
 ## Host (EnemySpawner): the numbers and the damage components. Called before it enters the tree.
@@ -307,6 +315,7 @@ func _on_died(info: DamageInfo) -> void:
 	create_tween().tween_property(self, "rotation:z", deg_to_rad(90.0), 0.4)
 	if flying:
 		flying = false
+	died.emit(info)
 	if multiplayer.is_server():
 		_state_name = &"dead"
 		EventBus.enemy_killed.emit(data.id if data != null else &"", global_position, info.source_player_id)

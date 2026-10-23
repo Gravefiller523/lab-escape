@@ -129,7 +129,7 @@ A department is a bundle. Make its rooms, enemies, boss, loot tables and stock f
 `DepartmentData`: `floor_count`, `room_ids`, `enemy_spawns`, `boss_id`, `loot_id`, `stock_id`,
 `task_ids`, `lift_parts_per_floor`, NEW 2026-10-19 `lift_breaks_min`/`lift_breaks_max` (how many lift slots break per floor, 1 to 3) and `lift_part_ids` (which lift parts can break here; empty = all; `lift_parts_per_floor` and `lift_part_prop_id` are deprecated), NEW 2026-10-18 `lift_part_prop_id` (the prop carried back to the lift; CHANGED 2026-10-19: give that PropData the tag `lift_part` so the lift socket takes it), `rooms_per_floor_min/max`, `required_room_kinds`,
 `optional_room_chances` (e.g. `{"supply": 0.6}`), `tile_library`, `music`, colours, `order_hint`,
-`in_run_rotation`. Put its art in `assets/<kind>/<department>/`. **Test:** `floor 1 department_<name>`.
+NEW 2026-10-23: `upgrade_type` (`mutation` for DNA vials, `cybernetic` for data drives) and `upgrade_carrier_chance` (-1 = the GameConfig number). `in_run_rotation`. Put its art in `assets/<kind>/<department>/`. **Test:** `floor 1 department_<name>`.
 
 ## Floor task
 **Fill in:** `scene` (built from `FloorTask` and `TaskStation` pieces), `min_players`,

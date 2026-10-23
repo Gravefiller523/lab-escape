@@ -143,6 +143,7 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   game world, moved and turned so the lift room lines up with the cargo lift). `get_room_for_position` works on a
   moved floor. `room_lift_grey` just holds the lift (its `lift` marker; players arrive inside the lift).
 - 2026-10-23 (death_respawn branch): `printer` markers in `room_lift_grey` and `room_arena_grey`.
+- 2026-10-23 (upgrade_machine branch): `upgrade_machine` markers in `room_hall_grey` and `room_corridor_grey`.
 - 2026-10-23 (vendors branch): `room_hall_grey` got a `vendor` marker (Vendors picks up to vendors_per_floor of them).
 - 2026-10-19 (cargo_lift slots): NEW marker kind `charger` (where the lift's battery charger may go), one in
   `room_hall_grey` and one in `room_corridor_grey`.

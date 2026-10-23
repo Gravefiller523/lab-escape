@@ -130,3 +130,22 @@ an UpgradeCarrier), tests/unit/loot (its test cybernetic got its own id).
 **STUBS / not yet:** the movement modes `hover`, `hop`, `wall_climb`, `slide` don't exist in the player system yet (bodies
 walk; the speed, jump, gravity, height and can_jump numbers do work); Fly's "attracted to trash" behaviour and flies being
 drawn to Fly players aren't made; no eating sound (audio); grey-box body models.
+- 2026-10-23 (Zachary, branch system/upgrade_machine): CHANGED how upgrades are gained. No more eating glowing gems or
+  installing robot parts: a **mutation machine** (`UpgradeMachine`, `upgrade_machine.tscn`, a booth made in code) spawns
+  at one `upgrade_machine` marker per floor (picked with `SeededRng(run_seed, &"upgrade_machine_spot", floor)`, every PC
+  places it, child "UpgradeMachine" of the marker). Load it with a **DNA vial** (`prop_dna_vial`, tag `dna_vial`, holds a
+  mutation) or a **data drive** (`prop_data_drive`, tag `data_drive`, holds a cybernetic): drop it into the yellow hopper
+  or press E at the machine while holding it (use priority 70). Several wait in line. Stand in the booth for
+  `upgrade_machine_seconds` (1.5) and the first in line is granted to you; if you already have a UNIQUE one it stays
+  loaded ("You already have X"). Vials / drives spawn on floor_ready (host, not boss floors, not in the lift room):
+  `upgrade_carrier_tries` (3) tries at `prop_spawn` markers, each with `DepartmentData.upgrade_carrier_chance` (or
+  GameConfig `upgrade_carrier_chance`, 0.2); `DepartmentData.upgrade_type` says mutation (Zoology, Botany) or cybernetic
+  (Robotics); the upgrade is `Loot.pick_upgrade` (department filter, drop_weight). REMOVED (never merged):
+  `request_consume`, eating, `prop_gem_glowing`, `prop_robot_part`. NEW: `carrier_prop_for()`, `place_machine()`,
+  `spawn_floor_carriers()`, console `machine`; `spawn mutation_<name>` now makes a DNA vial, `spawn cybernetic_<name>` a
+  data drive. Tests: `test_machine_applies_the_loaded_mutation_when_you_step_in`,
+  `test_vial_dropped_in_the_hopper_loads_the_machine`, `test_e_at_the_machine_while_holding_a_vial_puts_it_in`,
+  `test_machine_keeps_a_unique_mutation_you_already_have`, `test_data_drive_gives_a_cybernetic_the_same_way`,
+  `test_carrier_prop_matches_the_kind_of_upgrade` (the two eating tests are gone). Foundation: GameConfig
+  `upgrade_machine_seconds`, `upgrade_carrier_tries`, `upgrade_carrier_chance`; DepartmentData `upgrade_type`,
+  `upgrade_carrier_chance`. level_gen: `upgrade_machine` markers in `room_hall_grey` and `room_corridor_grey`.

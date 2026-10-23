@@ -1,8 +1,9 @@
 extends Node3D
-## Test scene for upgrades (run alone with F6): a glowing gem for each mutation and a robot part (the
-## test arm), lined up in front of you. Pick one up (E) and press E again while holding it to eat /
-## install it. The prompt names the mutation only once someone has eaten it this run ("???" before).
-## Keys: F1 lay out the gems again, F2 lose all your upgrades. Console: upgrade <id>, unupgrade <id>.
+## Test scene for upgrades (run alone with F6): a mutation machine, a DNA vial for each mutation and a data
+## drive (the test arm). Pick one up (E), then drop it into the machine's yellow hopper or press E at the
+## machine while holding it. Step into the booth and stand still: you get it. Names show as "???" until
+## someone has had that mutation this run.
+## Keys: F1 lay out the vials again, F2 lose all your upgrades. Console: upgrade <id>, unupgrade <id>.
 ## Use 2 windows (Esc > Host local / Join local) to check everyone sees the wings, tentacles and necks.
 
 var _overview: Camera3D
@@ -38,6 +39,10 @@ func _ready() -> void:
 	var props := PropSpawner.new()
 	props.name = "Props"
 	add_child(props)
+	var machine := (load("res://systems/upgrades/upgrade_machine.tscn") as PackedScene).instantiate() as UpgradeMachine
+	machine.name = "UpgradeMachine"
+	machine.position = Vector3(3, 0, -5)
+	add_child(machine)
 	var spawner := PlayerSpawner.new()
 	spawner.name = "PlayerSpawner"
 	add_child(spawner)
@@ -51,7 +56,7 @@ func _ready() -> void:
 	column.position = Vector2(12, 12)
 	layer.add_child(column)
 	var help := Label.new()
-	help.text = "Pick a gem up (E), then press E again while holding it to eat it.   F1 lay the gems out again   F2 lose all upgrades"
+	help.text = "Pick a vial up (E), put it in the machine (hopper, or E at the machine), then step in.   F1 more vials   F2 lose all upgrades"
 	column.add_child(help)
 	_info = Label.new()
 	column.add_child(_info)
@@ -72,16 +77,16 @@ func _ready() -> void:
 	_lay_out.call_deferred()
 
 
-## Host: one glowing gem per mutation, plus the robot part.
+## Host: one DNA vial per mutation, plus a data drive.
 func _lay_out() -> void:
 	if not multiplayer.is_server():
 		return
 	var ids: Array[StringName] = ContentRegistry.get_all_ids(&"mutation")
 	for index: int in ids.size():
-		Props.spawn_prop(&"prop_gem_glowing", Transform3D(Basis.IDENTITY, Vector3(-3.0 + 1.2 * float(index), 0.3, -2.5)),
+		Props.spawn_prop(&"prop_dna_vial", Transform3D(Basis.IDENTITY, Vector3(-3.0 + 1.2 * float(index), 0.3, -2.5)),
 			{"upgrade_id": String(ids[index])})
 	for id: StringName in ContentRegistry.get_all_ids(&"cybernetic"):
-		Props.spawn_prop(&"prop_robot_part", Transform3D(Basis.IDENTITY, Vector3(3.5, 0.3, -1.5)), {"upgrade_id": String(id)})
+		Props.spawn_prop(&"prop_data_drive", Transform3D(Basis.IDENTITY, Vector3(3.5, 0.3, -1.5)), {"upgrade_id": String(id)})
 
 
 func _add_wall(center: Vector3, size: Vector3) -> void:

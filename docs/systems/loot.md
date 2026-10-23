@@ -97,3 +97,8 @@ both PCs.
 
 **For the next systems:** vendors take gems (`gem_value`) and give change with `gems_for_value`; death_respawn uses
 `prop_meat` (tag `meat`); upgrades reads `extra.upgrade_id` on glowing gems.
+- 2026-10-23 (Zachary, branch system/upgrade_machine): REMOVED glowing gems, the glow pity rule and robot-part drops (mutations
+  come from DNA vials and the mutation machine, see upgrades). Gems are money only. `roll_glow`, `get_glow_chance`,
+  `reset_pity` and `prop_gem_glowing` are gone (never merged); GameConfig `gem_glow_chance`, `gem_glow_pity_step`,
+  `gem_glow_chance_max`, `off_department_robot_part_chance` are kept but `@deprecated` (not used). `pick_upgrade` stays:
+  upgrades uses it to fill vials and drives. Tests for glow, pity and robot parts are gone.

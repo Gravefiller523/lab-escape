@@ -59,3 +59,8 @@ kind = &"lift_part"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 6)
 script = ExtResource("3_marker")
 kind = &"charger"
+
+[node name="Vendor" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 0.9)
+script = ExtResource("3_marker")
+kind = &"vendor"

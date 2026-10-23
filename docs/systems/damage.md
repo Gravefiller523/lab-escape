@@ -132,6 +132,8 @@ burn it, revive it, hurt / burn / speed-boost / heal yourself; your health top-l
   autoload, `revived`, `get_fraction`, `scaled`, `get_base`, `has_modifiers`, `get_time_left`, `get_health`, fixed
   node names. New GameConfig `player_max_health` (100). Content: `status_burning`, `status_speed_boost`.
 
+- 2026-10-23 (death_respawn branch): the "revive after 3 s" player stub is gone (death_respawn handles dying).
+
 ## HANDOFF
 **Built (2026-10-19):** `DamageInfo`, `HealthComponent`, `StatsComponent`, `StatusEffectComponent`, `Hurtbox`, the
 `Damage` autoload (`DamageService`: player components, `hit()`, console commands), a burning particle visual, two

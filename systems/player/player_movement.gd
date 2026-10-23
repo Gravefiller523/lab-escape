@@ -31,10 +31,15 @@ func remove_modifier(source_id: StringName) -> void:
 	_update_mode()
 
 
+## CHANGED 2026-10-23 (upgrades branch): also x the body's "move_speed" stat (damage's StatsComponent; the
+## energy drink's speed boost and upgrades change it). No StatsComponent = 1.
 func get_speed_multiplier() -> float:
 	var total: float = 1.0
 	for effect: MovementEffectData in _modifiers.values():
 		total *= effect.speed_multiplier
+	var stats: StatsComponent = StatsComponent.of(get_parent()) if get_parent() != null else null
+	if stats != null:
+		total *= stats.get_value(&"move_speed", 1.0)
 	return total
 
 

@@ -167,7 +167,7 @@ func test_robot_part_always_has_cybernetic() -> void:
 	if not ContentRegistry.has_content(part.id):
 		ContentRegistry.register_content(part)
 	var cyber := CyberneticData.new()
-	cyber.id = &"cybernetic_test_arm"
+	cyber.id = &"cybernetic_test_loot_arm"
 	if not ContentRegistry.has_content(cyber.id):
 		ContentRegistry.register_content(cyber)
 	var table := LootTableData.new()

@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="MutationData" format=3]
+
+[ext_resource type="Script" path="res://core/data/upgrades/mutation_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/upgrade_effect_data.gd" id="2_base"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/movement_effect_data.gd" id="3_move"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/voice_effect_data.gd" id="4_voice"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/visual_attachment_effect_data.gd" id="5_visual"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/slot_effect_data.gd" id="6_slot"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/stat_effect_data.gd" id="7_stat"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/visuals/wings.tscn" id="9_wings"]
+
+[sub_resource type="Resource" id="Move"]
+script = ExtResource("3_move")
+jump_multiplier = 1.3
+gravity_multiplier = 0.55
+movement_mode = &"hover"
+mode_priority = 1
+
+[sub_resource type="Resource" id="Voice"]
+script = ExtResource("4_voice")
+pitch_scale = 1.5
+effect_preset = &"buzz"
+effect_strength = 0.6
+
+[sub_resource type="Resource" id="Wings"]
+script = ExtResource("5_visual")
+scene = ExtResource("9_wings")
+attach_point = &"back"
+
+[resource]
+script = ExtResource("1_data")
+id = &"mutation_fly"
+display_name = "Fly"
+description = "Light as a fly: floaty jumps, a buzzing high voice, and wings."
+tags = PackedStringArray("zoology")
+effects = Array[ExtResource("2_base")]([SubResource("Move"), SubResource("Voice"), SubResource("Wings")])
+clash_tags = PackedStringArray()
+glow_color = Color(0.55, 0.9, 1, 1)

@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
 [ext_resource type="Script" path="res://systems/loot/glow_tint.gd" id="2_tint"]
+[ext_resource type="Script" path="res://systems/upgrades/upgrade_carrier.gd" id="3_carrier"]
 
 [sub_resource type="BoxShape3D" id="Shape_1"]
 size = Vector3(0.2, 0.2, 0.2)
@@ -26,3 +27,6 @@ shape = SubResource("Shape_1")
 transform = Transform3D(0.707, 0.5, -0.5, 0, 0.707, 0.707, 0.707, -0.5, 0.5, 0, 0, 0)
 mesh = SubResource("Mesh_1")
 script = ExtResource("2_tint")
+
+[node name="UpgradeCarrier" type="Node" parent="."]
+script = ExtResource("3_carrier")

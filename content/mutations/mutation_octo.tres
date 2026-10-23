@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="MutationData" format=3]
+
+[ext_resource type="Script" path="res://core/data/upgrades/mutation_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/upgrade_effect_data.gd" id="2_base"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/movement_effect_data.gd" id="3_move"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/voice_effect_data.gd" id="4_voice"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/visual_attachment_effect_data.gd" id="5_visual"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/slot_effect_data.gd" id="6_slot"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/stat_effect_data.gd" id="7_stat"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/visuals/tentacles.tscn" id="9_tentacles"]
+
+[sub_resource type="Resource" id="Move"]
+script = ExtResource("3_move")
+can_jump = false
+movement_mode = &"wall_climb"
+mode_priority = 2
+
+[sub_resource type="Resource" id="Slot"]
+script = ExtResource("6_slot")
+extra_slots = 1
+
+[sub_resource type="Resource" id="Tentacles"]
+script = ExtResource("5_visual")
+scene = ExtResource("9_tentacles")
+attach_point = &"legs"
+
+[resource]
+script = ExtResource("1_data")
+id = &"mutation_octo"
+display_name = "Octo"
+description = "Tentacles: climb walls and carry an extra item, but no jumping."
+tags = PackedStringArray("zoology")
+effects = Array[ExtResource("2_base")]([SubResource("Move"), SubResource("Slot"), SubResource("Tentacles")])
+clash_tags = PackedStringArray("legs")
+glow_color = Color(0.85, 0.4, 0.75, 1)

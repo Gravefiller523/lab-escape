@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="MutationData" format=3]
+
+[ext_resource type="Script" path="res://core/data/upgrades/mutation_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/upgrade_effect_data.gd" id="2_base"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/movement_effect_data.gd" id="3_move"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/voice_effect_data.gd" id="4_voice"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/visual_attachment_effect_data.gd" id="5_visual"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/slot_effect_data.gd" id="6_slot"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/stat_effect_data.gd" id="7_stat"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/visuals/slug_trail.tscn" id="9_foot"]
+
+[sub_resource type="Resource" id="Move"]
+script = ExtResource("3_move")
+speed_multiplier = 0.75
+movement_mode = &"slide"
+mode_priority = 2
+
+[sub_resource type="Resource" id="Tough"]
+script = ExtResource("7_stat")
+stat = &"max_health"
+add = 40.0
+
+[sub_resource type="Resource" id="Foot"]
+script = ExtResource("5_visual")
+scene = ExtResource("9_foot")
+attach_point = &"feet"
+hides_cosmetic_slots = PackedStringArray("shoes")
+
+[resource]
+script = ExtResource("1_data")
+id = &"mutation_slug"
+display_name = "Slug"
+description = "Slow and slimy, but tough. Slides on one big foot."
+tags = PackedStringArray("zoology")
+effects = Array[ExtResource("2_base")]([SubResource("Move"), SubResource("Tough"), SubResource("Foot")])
+clash_tags = PackedStringArray("legs")
+glow_color = Color(0.6, 0.8, 0.35, 1)

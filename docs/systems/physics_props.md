@@ -272,6 +272,9 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
   ItemPickup child) spawn like props (`PropSpawner.spawn_item`; `spawn_prop` also accepts item ids and makes a PropData
   from the ItemData, mass = `world_mass`).
 
+- 2026-10-23 (carts branch): NEW `NetProp.keep_on_host` (bool): the host always runs its physics; `PropSpawner.hand_to`
+  won't hand it to a client. Carts use it.
+
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,
 net ids, near/far snapshot batches of moving props only, host spring holding, grab rules, throw,

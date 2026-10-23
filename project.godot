@@ -37,6 +37,7 @@ Inventory="*res://systems/inventory/inventory.gd"
 Items="*res://systems/items/items.gd"
 Enemies="*res://systems/enemies/enemies.gd"
 Bosses="*res://systems/bosses/bosses.gd"
+Loot="*res://systems/loot/loot.gd"
 Level="*res://systems/level_gen/level.gd"
 GameFlow="*res://systems/game_flow/game_flow.gd"
 

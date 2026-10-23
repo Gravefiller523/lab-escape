@@ -27,3 +27,4 @@ scene = ExtResource("3_scene")
 max_health = 600.0
 phases = Array[ExtResource("2_phase")]([SubResource("Phase_1"), SubResource("Phase_2")])
 arena_room_id = &"room_arena_grey"
+loot_id = &"loot_boss_giant_rat"

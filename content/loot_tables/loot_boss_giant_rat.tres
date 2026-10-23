@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="LootTableData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/loot/loot_table_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/loot/loot_entry_data.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="E1"]
+script = ExtResource("2_entry")
+prop_id = &"prop_gem_large"
+weight = 2.0
+min_count = 1
+max_count = 2
+
+[sub_resource type="Resource" id="E2"]
+script = ExtResource("2_entry")
+prop_id = &"prop_gem"
+weight = 2.0
+min_count = 2
+max_count = 4
+
+[sub_resource type="Resource" id="E3"]
+script = ExtResource("2_entry")
+prop_id = &"prop_meat"
+weight = 1.0
+min_count = 1
+max_count = 2
+
+[resource]
+script = ExtResource("1_data")
+id = &"loot_boss_giant_rat"
+display_name = "loot_boss_giant_rat"
+rolls = 6
+nothing_weight = 0.0
+entries = Array[ExtResource("2_entry")]([SubResource("E1"), SubResource("E2"), SubResource("E3")])

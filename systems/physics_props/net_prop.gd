@@ -59,6 +59,9 @@ var data: PropData
 var last_holder_id: int = 0
 ## Spawn data (e.g. {"upgrade_id": &"mutation_fly"}).
 var extra: Dictionary = {}
+## NEW 2026-10-23 (carts branch): the host always runs this prop's physics (never handed to a client). Carts
+## use it so the props riding in them follow one copy of the cart.
+var keep_on_host: bool = false
 
 var _holders: Array[int] = []
 var _spawner: PropSpawner

@@ -356,6 +356,8 @@ func peer_of_player(player_id: int) -> int:
 func hand_to(prop: NetProp, peer_id: int) -> void:
 	if not multiplayer.is_server() or peer_id <= 0:
 		return
+	if prop.keep_on_host and peer_id != 1:
+		return
 	if prop.get_owner_peer() == peer_id:
 		_pending_owner.erase(prop.net_id)
 		return

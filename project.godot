@@ -41,6 +41,7 @@ Loot="*res://systems/loot/loot.gd"
 Vendors="*res://systems/vendors/vendors.gd"
 Death="*res://systems/death_respawn/death.gd"
 Upgrades="*res://systems/upgrades/upgrades.gd"
+Carts="*res://systems/carts/carts.gd"
 Level="*res://systems/level_gen/level.gd"
 GameFlow="*res://systems/game_flow/game_flow.gd"
 

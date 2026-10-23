@@ -11,7 +11,8 @@ func physics_update(enemy: Enemy, delta: float) -> StringName:
 	var target: PlayerCharacter = boss.update_target()
 	if not boss.is_fighting():
 		boss.stop()
-		if target != null:
+		# In an arena the arena starts the fight (when a player walks in); elsewhere seeing a player does.
+		if target != null and BossArena.current() == null:
 			boss.start_fight()
 		return &""
 	boss.update_waves(delta)

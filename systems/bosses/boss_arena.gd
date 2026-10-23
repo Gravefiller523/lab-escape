@@ -92,6 +92,16 @@ func get_minion_spawn_points() -> Array[Node3D]:
 	return points
 
 
+## NEW: a point moved inside the arena's floor (at least `margin` from the walls), in world space.
+func clamp_inside(point: Vector3, margin: float) -> Vector3:
+	if _room == null:
+		return point
+	var local: Vector3 = _room.global_transform.affine_inverse() * point
+	local.x = clampf(local.x, margin, _size.x - margin)
+	local.z = clampf(local.z, margin, _size.y - margin)
+	return _room.global_transform * local
+
+
 ## Living players inside the arena now.
 func get_players_inside() -> Array[PlayerCharacter]:
 	var inside: Array[PlayerCharacter] = []

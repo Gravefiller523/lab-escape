@@ -10,6 +10,8 @@ signal phase_changed(phase_index: int)
 const GROUP_BOSSES: StringName = &"bosses"
 ## Minions appear this far from the boss when the arena has no minion_spawn markers.
 const MINION_RING: float = 4.0
+## How close to the arena walls the boss can get (metres).
+const ARENA_MARGIN: float = 1.5
 
 ## Walking speed between attacks (metres per second).
 @export var boss_move_speed: float = 3.5
@@ -111,6 +113,16 @@ func choose_attack() -> BossAttack:
 	if ready_attacks.is_empty():
 		return null
 	return ready_attacks[rng.randi_range(0, ready_attacks.size() - 1)]
+
+
+## Host: the boss never leaves its arena (it would charge out of the open doorway otherwise).
+func _physics_process(delta: float) -> void:
+	super._physics_process(delta)
+	var arena: BossArena = BossArena.current()
+	if arena != null and multiplayer.is_server() and not is_dead():
+		var inside: Vector3 = arena.clamp_inside(global_position, ARENA_MARGIN)
+		if not inside.is_equal_approx(global_position):
+			global_position = Vector3(inside.x, global_position.y, inside.z)
 
 
 ## Host: begin an attack; every PC sees its wind-up.

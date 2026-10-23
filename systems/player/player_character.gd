@@ -31,6 +31,8 @@ var _input_override: PlayerInputState
 var _checked_position: Vector3 = Vector3.ZERO
 var _checked_msec: int = 0
 var _has_checked: bool = false
+## NEW 2026-10-23 (death_respawn branch): dead: hidden, no collision, no movement.
+var _ghost: bool = false
 
 @onready var _collision: CollisionShape3D = %Collision
 @onready var _body_mesh: MeshInstance3D = %BodyMesh
@@ -167,6 +169,19 @@ func set_body_visible(body_visible: bool) -> void:
 	_body_mesh.visible = body_visible and not is_local()
 
 
+## NEW 2026-10-23 (death_respawn branch), every PC: a dead player's body becomes a ghost (hidden, nothing
+## bumps into it, it stays where it died) or comes back. death_respawn calls it; its camera is theirs.
+func set_ghost(ghost: bool) -> void:
+	_ghost = ghost
+	_collision.set_deferred(&"disabled", ghost)
+	_body_mesh.visible = not ghost and not is_local()
+	velocity = Vector3.ZERO
+
+
+func is_ghost() -> bool:
+	return _ghost
+
+
 ## For tests only: use this input instead of the keyboard. Null goes back to the keyboard.
 func set_input_override(input: PlayerInputState) -> void:
 	_input_override = input
@@ -241,6 +256,9 @@ func _update_camera() -> void:
 
 func _physics_process(delta: float) -> void:
 	if is_local():
+		if _ghost:
+			# A ghost doesn't move (no gravity either: its collision is off). Its camera is death_respawn's.
+			return
 		var before: Vector3 = global_position
 		_movement.physics_update(_gather_input(), delta)
 		_stay_out_of_walls(before)

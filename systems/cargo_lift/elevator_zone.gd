@@ -43,7 +43,10 @@ func get_players_inside() -> Array[int]:
 func get_missing_players() -> Array[int]:
 	var missing: Array[int] = []
 	for player_id: int in _net.get_player_ids():
-		if not _inside.has(player_id) and not _net.is_waiting_for_next_floor(player_id):
+		var record: PlayerRecord = _net.get_record(player_id)
+		# CHANGED 2026-10-23 (death_respawn branch): dead players (ghosts) aren't waited for; they come along.
+		var dead: bool = record != null and not record.is_alive
+		if not _inside.has(player_id) and not _net.is_waiting_for_next_floor(player_id) and not dead:
 			missing.append(player_id)
 	return missing
 

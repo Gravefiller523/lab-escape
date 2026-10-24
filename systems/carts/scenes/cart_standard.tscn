@@ -1,0 +1,123 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/carts/cart.gd" id="1_cart"]
+
+[sub_resource type="PhysicsMaterial" id="Slide"]
+friction = 0.25
+
+[sub_resource type="BoxShape3D" id="Base"]
+size = Vector3(1.1, 0.4, 1.5)
+
+[sub_resource type="BoxShape3D" id="SideWall"]
+size = Vector3(0.06, 0.5, 1.5)
+
+[sub_resource type="BoxShape3D" id="EndWall"]
+size = Vector3(1.1, 0.5, 0.06)
+
+[sub_resource type="BoxShape3D" id="Inside"]
+size = Vector3(1.0, 0.6, 1.4)
+
+[sub_resource type="StandardMaterial3D" id="Metal"]
+albedo_color = Color(0.55, 0.58, 0.62, 1)
+metallic = 0.6
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="Dark"]
+albedo_color = Color(0.12, 0.12, 0.12, 1)
+
+[sub_resource type="StandardMaterial3D" id="Handle"]
+albedo_color = Color(0.9, 0.55, 0.1, 1)
+
+[sub_resource type="BoxMesh" id="BaseMesh"]
+material = SubResource("Metal")
+size = Vector3(1.1, 0.06, 1.5)
+
+[sub_resource type="BoxMesh" id="SideMesh"]
+material = SubResource("Metal")
+size = Vector3(0.04, 0.5, 1.5)
+
+[sub_resource type="BoxMesh" id="EndMesh"]
+material = SubResource("Metal")
+size = Vector3(1.1, 0.5, 0.04)
+
+[sub_resource type="CylinderMesh" id="Wheel"]
+material = SubResource("Dark")
+top_radius = 0.12
+bottom_radius = 0.12
+height = 0.08
+
+[sub_resource type="BoxMesh" id="HandleMesh"]
+material = SubResource("Handle")
+size = Vector3(0.9, 0.05, 0.05)
+
+[node name="CartStandard" type="RigidBody3D"]
+physics_material_override = SubResource("Slide")
+script = ExtResource("1_cart")
+
+[node name="BaseShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+shape = SubResource("Base")
+
+[node name="LeftShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.52, 0.7, 0)
+shape = SubResource("SideWall")
+
+[node name="RightShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.52, 0.7, 0)
+shape = SubResource("SideWall")
+
+[node name="FrontShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, -0.72)
+shape = SubResource("EndWall")
+
+[node name="BackShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0.72)
+shape = SubResource("EndWall")
+
+[node name="Mesh" type="Node3D" parent="."]
+
+[node name="Floor" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("BaseMesh")
+
+[node name="Left" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.53, 0.7, 0)
+mesh = SubResource("SideMesh")
+
+[node name="Right" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.53, 0.7, 0)
+mesh = SubResource("SideMesh")
+
+[node name="Front" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, -0.73)
+mesh = SubResource("EndMesh")
+
+[node name="Back" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0.73)
+mesh = SubResource("EndMesh")
+
+[node name="Handle" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0.95)
+mesh = SubResource("HandleMesh")
+
+[node name="WheelFL" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.45, 0.12, -0.6)
+mesh = SubResource("Wheel")
+
+[node name="WheelFR" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.45, 0.12, -0.6)
+mesh = SubResource("Wheel")
+
+[node name="WheelBL" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.45, 0.12, 0.6)
+mesh = SubResource("Wheel")
+
+[node name="WheelBR" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.45, 0.12, 0.6)
+mesh = SubResource("Wheel")
+
+[node name="Basket" type="Area3D" parent="."]
+
+[node name="Shape" type="CollisionShape3D" parent="Basket"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("Inside")

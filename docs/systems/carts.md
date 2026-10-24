@@ -23,6 +23,14 @@ func request_push(start: bool) -> void      # local player starts/stops pushing
 func add_prop(prop: NetProp) -> bool        # snaps into the next free slot anchor
 func remove_prop(prop: NetProp) -> void
 func spill_all(impulse: float = 2.0) -> void  # e.g. if it tips over or is hit hard (option)
+func request_take_out(prop: NetProp) -> void  # NEW 2026-10-23, local
+func has_prop(prop: NetProp) -> bool        # NEW
+static func cart_of(prop: NetProp) -> Cart   # NEW: the cart a prop rides in
+@export var capacity_override: int          # NEW: 0 = Config.game.cart_capacity
+
+# NEW 2026-10-23: autoload Carts (systems/carts/carts.gd, CartsService)
+func pushed_by(player_id: int) -> Cart
+func spawn_floor_carts() -> Array[NetProp]  # host, on floor_ready
 ```
 Cart types are props: `content/props/prop_cart_*.tres` with a scene whose root is `Cart`. The scene
 has a `Basket` Area3D and a grid of `Slot` Marker3Ds (anchors).
@@ -62,3 +70,27 @@ GUT tests: `test_prop_snaps_in_and_freezes`, `test_grab_out_detaches`, `test_cap
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-23: built (Phase 1b). Changes marked above. CHANGED from the spec: the host always runs a cart's physics
+  (NEW physics_props flag `NetProp.keep_on_host`: never handed to a client), and pushing isn't predicted on the pusher's
+  PC: the host pulls the cart towards a spot 1.3 m in front of the pusher (from its copy of the pusher's body) and turns
+  its handle to face them, so a client's push lags by their ping. The basket's 24 slots (3 x 4 x 2) are made in code;
+  capacity = `cart_capacity` (12) unless `capacity_override`. Props in a cart are attached (frozen, no collision with
+  the cart) and follow it; other PCs see them through the normal prop snapshots. E keys (Carts autoload, priority 55):
+  E on a cart = push / let go, E on a prop in a cart = take it out into your hands. The pusher lets go if the cart gets
+  stuck more than 3.5 m away, or dies. Content: `prop_cart_standard` (30 kg, tag `cart`; scene
+  `systems/carts/scenes/cart_standard.tscn`); one spawns at each `cart` marker (the lift room has one).
+
+## HANDOFF
+**Built (2026-10-23):** `Cart` (extends NetProp), the `Carts` autoload, the standard cart, the test scene
+(`systems/carts/test/cart_test.tscn`) and 10 GUT tests (`tests/unit/carts/test_carts.gd`: the spec's list plus
+`test_cart_spawns_as_a_cart`, `test_e_on_a_prop_in_the_cart_takes_it_out_into_your_hands`, `test_pushing_moves_the_cart`,
+`test_contents_follow_into_the_lift_zone`). Checked with 2 game copies on a generated floor: the host dropped 4 gems in,
+the client pushed the cart 2 m, and both PCs had it in the same place with the 4 gems inside.
+
+**Foundation / project.godot changes:** autoload line `Carts` (after Upgrades). No new EventBus signals (emits
+`cart_contents_changed`).
+
+**Other systems touched (this branch):** physics_props (NEW `NetProp.keep_on_host`; `PropSpawner.hand_to` refuses it).
+
+**Not yet:** vendors don't credit gems pushed in by a cart (gems in a cart are attached, so they don't fall into the coin
+slot; take them out first); no tipping or spilling on hard hits; no wheel sounds (audio).

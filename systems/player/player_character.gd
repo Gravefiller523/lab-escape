@@ -117,6 +117,16 @@ func get_aim_direction() -> Vector3:
 	return -_camera.global_transform.basis.z
 
 
+## How far the head looks up (positive) or down (negative), in radians. Ladders use it.
+func get_look_pitch() -> float:
+	return _head.rotation.x
+
+
+## Sets the head's up/down look (tests; the mouse sets it in play).
+func set_look_pitch(radians: float) -> void:
+	_head.rotation.x = clampf(radians, deg_to_rad(-tuning.max_pitch), deg_to_rad(tuning.max_pitch))
+
+
 ## Where held props float (used by physics_props).
 func get_hold_point() -> Node3D:
 	return _hold_point
@@ -282,12 +292,14 @@ func _gather_input() -> PlayerInputState:
 			_input_override.move = forced.move
 			_input_override.sprint = forced.sprint
 			_input_override.crouch = forced.crouch
+			_input_override.jump_held = forced.jump_held
 		return forced
 	var input := PlayerInputState.new()
 	if _input_enabled:
 		input.move = Input.get_vector(InputActions.MOVE_LEFT, InputActions.MOVE_RIGHT,
 			InputActions.MOVE_BACK, InputActions.MOVE_FORWARD)
 		input.jump_pressed = _jump_queued
+		input.jump_held = Input.is_action_pressed(InputActions.JUMP)
 		input.sprint = Settings.is_action_on(InputActions.SPRINT)
 		input.crouch = Settings.is_action_on(InputActions.CROUCH)
 	_jump_queued = false

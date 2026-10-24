@@ -156,7 +156,7 @@ func test_water_grows_plant_ladder() -> void:
 	assert_true(plant.is_grown(), "the vine grew")
 	assert_eq(_inventory().find_item(&"item_energy_drink"), -1, "pouring used the drink")
 	await wait_seconds(1.3)
-	assert_not_null(plant.get_node_or_null("Vine/Step9"), "steps all the way up")
+	assert_not_null(plant.get_node_or_null("Vine/Ladder") as Ladder, "a ladder all the way up")
 
 
 func test_crowbar_pries_but_stays() -> void:

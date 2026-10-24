@@ -113,6 +113,7 @@ GUT tests: `test_grant_applies_every_effect_piece`, `test_unique_does_not_stack`
   player: `PlayerMovement.get_speed_multiplier()` also multiplies the `move_speed` stat (so the energy drink's speed
   boost works).
 - 2026-10-24: playtest fix: the machine hopper also checks what is already in it every physics tick, so a vial carried into it and let go there goes in.
+- 2026-10-24 (player): the movement modes `hover`, `hop`, `wall_climb` and `slide` now exist, so Fly, Frog, Octo and Slug move differently (no content changes needed).
 
 ## HANDOFF
 **Built (2026-10-23):** the `Upgrades` autoload (`UpgradesService`), `UpgradeCarrier`, `UpgradeEffect` + six runtime pieces

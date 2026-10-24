@@ -45,6 +45,12 @@ func get_height() -> float
 func is_crouching() -> bool
 func is_grounded() -> bool
 func apply_knockback(impulse: Vector3) -> void      # host calls; forwarded to owner
+const LADDER_MODE: StringName = &"ladder"          # NEW 2026-10-24
+func get_mode_object() -> MovementMode              # NEW 2026-10-24: the mode running now (tests)
+func add_ladder(ladder: Ladder) -> void / remove_ladder(ladder: Ladder) -> void   # NEW 2026-10-24: Ladder calls these
+func get_ladder() -> Ladder                         # NEW 2026-10-24: the ladder you can climb now, or null
+func is_on_ladder() -> bool                         # NEW 2026-10-24
+func let_go_of_ladder() -> void                     # NEW 2026-10-24: jump off (no regrab for ladder_regrab_seconds)
 
 class_name MovementMode extends RefCounted          # base for building blocks
 func enter(body: PlayerCharacter) -> void
@@ -52,6 +58,21 @@ func exit(body: PlayerCharacter) -> void
 func physics_update(body: PlayerCharacter, input: PlayerInputState, delta: float) -> void
 # CHANGED 2026-10-17: takes a PlayerInputState (move, jump_pressed, sprint, crouch) instead of
 # input_dir, because modes need jump/crouch/sprint too and tests can fill one in by hand.
+# NEW 2026-10-24: PlayerInputState.jump_held (true while jump is held; Fly glides with it).
+
+class_name WalkMovementMode extends MovementMode     # NEW 2026-10-24: walk; hover, hop, slide and wall_climb extend it
+static func wish_direction(body, input) -> Vector3   # the keys as a flat world direction
+static func jump_speed(body) -> float / gravity_of(body) -> float
+# steps a mode can change: _grip, _jump_speed, _jump, _fall, _after_move
+
+class_name Ladder extends Area3D                     # NEW 2026-10-24: systems/player/ladder.tscn, a climbable ladder
+@export var height: float = 3.0 / width: float = 0.7 / color: Color   # origin = bottom middle, faces +Z
+func get_top_y() -> float / get_facing() -> Vector3 / get_across() -> Vector3
+static func of(node: Node) -> Ladder
+
+# PlayerCharacter, NEW 2026-10-24:
+func get_look_pitch() -> float                      # radians, + up / - down (ladders use it)
+func set_look_pitch(radians: float) -> void         # tests
 
 class_name PlayerSpawner extends Node               # put one in every playable scene
 @export var spawn_points: Array[Node3D]             # NEW 2026-10-17
@@ -71,8 +92,14 @@ waiting players appear. When a player leaves, their body is removed. When the co
 Movement modifiers combine: multipliers multiply, `can_jump` is false if any modifier says false,
 the mode with the highest `mode_priority` wins. Mode name `wall_climb` loads
 `systems/player/movement_modes/wall_climb_mode.gd` (file name = mode name + `_mode.gd`), so a new
-mode is one new file and no list to edit. Launch modes: `walk` (default), `wall_climb` (Octo),
-`slide` (Slug), `hop` (Frog), `hover` (Fly, short glides).
+mode is one new file and no list to edit. Launch modes (all built 2026-10-24): `walk` (default),
+`wall_climb` (Octo: walk into a wall to climb; forward up, crouch down, S lets go, a push over the top),
+`slide` (Slug: low grip, keeps sliding, slopes pull downhill, capped under the host speed check),
+`hop` (Frog: jumps throw you forward, walking is small automatic hops), `hover` (Fly: hold jump while
+falling to glide slowly for up to hover_seconds; landing refills). All their numbers are in `player_tuning.tres`.
+**Ladders** (NEW 2026-10-24) beat any mode: inside a Ladder's climb area, in the air or moving forward
+(not looking down), you climb (`ladder` mode): forward up (down when looking down past
+`ladder_look_down_degrees`), crouch down, left/right along it, jump pushes off, forward at the top steps off.
 
 Height: Giraffe's `height_multiplier` makes the body taller; door frames block standing, so the player must crouch (crouch height also scales).
 
@@ -124,7 +151,7 @@ launch options `-- host` / `-- join`.
 ## Acceptance criteria
 - [x] Walk, sprint, jump, crouch feel responsive; 2+ local players see each other move smoothly.
   *(Built and tested in code; 3 local instances spawned and saw each other. "Feel" and "smooth" need Zachary's eyes.)*
-- [ ] A MovementEffectData with `wall_climb` lets you climb the test wall, with no code change. *Phase 1b: no wall_climb mode yet.*
+- [x] A MovementEffectData with `wall_climb` lets you climb the test wall, with no code change. *(2026-10-24: key 6 in the test scene; GUT test_wall_climb_goes_up_and_over_a_wall; 2 local instances saw a client climb a 5 m wall.)*
 - [x] Giraffe height test: can't walk through a low door standing, can while crouched. *(Height and crouch scaling built and unit-tested; door check by eye with key 3.)*
 - [x] Nothing assumes 4 players; 8 local bodies can spawn. *(test_eight_bodies_can_spawn)*
 
@@ -161,6 +188,7 @@ launch options `-- host` / `-- join`.
 - 2026-10-23 (death_respawn branch): NEW `set_ghost(ghost: bool)` and `is_ghost()`: a dead player's body is hidden, its
   collision is off and it doesn't move (death_respawn calls it on every PC; its camera is death_respawn's).
 - 2026-10-24 (settings_input): mouse sensitivity, invert Y, FOV (also live, on `settings_changed`) and the sprint/crouch toggles come from `Settings` (`get_mouse_sensitivity`, `is_invert_y`, `get_fov`, `is_action_on`). `PlayerTuning.mouse_sensitivity` and `fov` are `@deprecated` (kept, not used).
+- 2026-10-24: movement modes built: `hover` (Fly), `hop` (Frog), `wall_climb` (Octo), `slide` (Slug), and ladders (`Ladder`, `ladder` mode). Walk became `WalkMovementMode` with overridable steps. NEW: `PlayerInputState.jump_held`, `PlayerCharacter.get_look_pitch` / `set_look_pitch`, the ladder functions on PlayerMovement, tuning groups Ladders, Hover, Hop, Wall climb, Slide. items' mutated plant now grows a real Ladder. Test scene keys 4 to 7 and a ladder platform.
 
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,
@@ -189,3 +217,19 @@ Checked on real Steam between two PCs (2026-10-18). Players do collide with each
 - **ui / debug_console:** call `set_input_enabled(false)` on the local body while a menu is open.
 - **upgrades:** call `get_movement().set_modifier(upgrade_id, effect)` on every PC.
 - **game_flow:** emit `floor_ready` after the floor is built; the spawner spawns everyone then.
+
+**Movement modes (2026-10-24):** `hover`, `hop`, `wall_climb`, `slide` and ladders are built (see "Public API").
+The mutation files already named these modes, so Fly, Frog, Octo and Slug move differently with no content
+changes. 13 new GUT tests in `tests/unit/player/test_movement_modes.gd` (every mutation's mode has a file, glide
+speed and glide time, hop forward throw and small hops, Octo up and over a wall / hang / let go / plain walkers
+can't climb, slug keeps sliding and slides downhill under the speed cap, ladder up and off the top, look down to
+climb down, jump off, ladder beats a mutation mode). 2 local instances: a client hopping as Frog and climbing a
+5 m wall as Octo was seen in the same place on the host, and the host's speed check never pulled it back.
+Test scene: keys 4 Fly, 5 Frog, 6 Octo, 7 Slug (the real mutation numbers), a 3 m platform with a ladder.
+**Other systems touched:** items' `mutated_plant.gd` grows a real `Ladder` (after its grow animation) instead
+of steps; its test `test_water_grows_plant_ladder` now checks for `Vine/Ladder`.
+**For level_gen / room makers:** drop `systems/player/ladder.tscn` into a room, set `height`, put its back
+against a wall or ledge (it faces +Z). Nothing networked: every PC has the same ladder.
+**OPEN / tune in playtests:** how strong the glide, hops, climb speed and slide grip feel (all in
+`player_tuning.tres`); Octo climbs anything solid, including crates and other players; no climbing animations
+or sounds yet; the slug leaves no slime trail.

@@ -7,5 +7,7 @@ extends RefCounted
 var move: Vector2 = Vector2.ZERO
 ## True only on the frame the jump key went down.
 var jump_pressed: bool = false
+## True while the jump key is held down (Fly glides while it is).
+var jump_held: bool = false
 var sprint: bool = false
 var crouch: bool = false

@@ -130,6 +130,7 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
   `test_speaker_icon_shows_next_to_the_name_while_talking`, `test_plate_goes_when_the_player_leaves`.
 - 2026-10-19 (Zachary): names and the speaker icon fade out past 5 m and back in as you approach. NEW: GameConfig
   `nameplate_fade_seconds` (0.4), `Nameplates.get_alpha()`. Test: `test_names_fade_out_and_back_in`.
+- 2026-10-24 (settings_input): Settings buttons in the main and pause menus (`Settings.open(...)`, screen `&"settings"`); the mic sensitivity panel moved from the pause menu to Settings > Audio; `caption()` only shows with Settings > Accessibility > Subtitles on (still as a toast); the main menu's `host`/`join` launch options run once per game start (`static var _launch_options_used`), not every time the menu is rebuilt. Text scale is done by settings_input (the window's content_scale_factor).
 
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and

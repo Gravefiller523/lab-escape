@@ -1,6 +1,5 @@
 extends Control
-## The small Esc menu: mic sensitivity, Resume, Leave game, Quit. The game keeps running for
-## everyone else. Settings come later with settings_input.
+## The small Esc menu: Resume, Settings, Leave game, Quit. The game keeps running for everyone else.
 ## When you play solo (not connected) it also shows "Testing on one PC": Host local and Join local, so
 ## a test scene opened with F6 can become a 2-window test without the main menu.
 
@@ -28,11 +27,11 @@ func _ready() -> void:
 	title.text = "Paused (the game keeps going for others)"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
-	# Voice's mic sensitivity slider and level bar (moves to Settings when settings_input exists).
-	column.add_child(MicSensitivityPanel.new())
+	# The mic sensitivity slider moved to Settings > Audio (settings_input, 2026-10-24).
 	if not Net.is_online():
 		_add_local_testing(column)
 	_add_button(column, "Resume", UI.close_screen)
+	_add_button(column, "Settings", func() -> void: Settings.open(UI.SCREEN_PAUSE))
 	_add_button(column, "Leave game", UI.leave_game)
 	_add_button(column, "Quit", func() -> void: get_tree().quit())
 

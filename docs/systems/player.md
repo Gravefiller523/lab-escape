@@ -160,6 +160,7 @@ launch options `-- host` / `-- join`.
 - 2026-10-23 (upgrades branch): `PlayerMovement.get_speed_multiplier()` also multiplies damage's `move_speed` stat.
 - 2026-10-23 (death_respawn branch): NEW `set_ghost(ghost: bool)` and `is_ghost()`: a dead player's body is hidden, its
   collision is off and it doesn't move (death_respawn calls it on every PC; its camera is death_respawn's).
+- 2026-10-24 (settings_input): mouse sensitivity, invert Y, FOV (also live, on `settings_changed`) and the sprint/crouch toggles come from `Settings` (`get_mouse_sensitivity`, `is_invert_y`, `get_fov`, `is_action_on`). `PlayerTuning.mouse_sensitivity` and `fov` are `@deprecated` (kept, not used).
 
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,

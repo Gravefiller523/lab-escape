@@ -9,6 +9,10 @@ extends Control
 const DEFAULT_PORT: int = 7777
 const DEFAULT_ADDRESS: String = "127.0.0.1"
 
+## The "host" / "join" launch options run once per game start, not every time the menu is rebuilt
+## (coming Back from Settings, or after leaving a game).
+static var _launch_options_used: bool = false
+
 var _status: Label
 var _lobby_id_edit: LineEdit
 var _address_edit: LineEdit
@@ -86,6 +90,7 @@ func _build() -> void:
 	join_local.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	column.add_child(HSeparator.new())
+	_add_button(column, "Settings", func() -> void: Settings.open(UI.SCREEN_MAIN_MENU))
 	_add_button(column, "Quit", func() -> void: get_tree().quit())
 	_status = Label.new()
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -142,6 +147,9 @@ func _run_launch_options() -> void:
 	for arg: String in args:
 		if arg.begins_with("port=") and arg.trim_prefix("port=").is_valid_int():
 			_port_edit.text = arg.trim_prefix("port=")
+	if _launch_options_used:
+		return
+	_launch_options_used = true
 	if args.has("host_steam"):
 		_on_host_steam()
 	elif args.has("host"):

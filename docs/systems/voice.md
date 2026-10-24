@@ -188,6 +188,7 @@ label yet (delay is judged by ear on 2 PCs).
 - 2026-10-18 fix (Zachary: the game froze at the elevator / floor 3): a voice speaker sits on its player's body,
   so it is freed at every scene change, and casting the freed node was a script error (which pauses the game
   in the editor). Freed speakers are now skipped. Test: `test_speaker_freed_with_its_body_is_no_error`.
+- 2026-10-24 (settings_input): push-to-talk, mic sensitivity and the mic device are now saved by settings_input and set through `set_push_to_talk` / `set_mic_sensitivity` at startup and on change (no voice code changed). The MicSensitivityPanel lives in Settings > Audio. OPEN: `audio/reduce_voice_effects` is saved but voice does not read it yet.
 
 ## HANDOFF
 **Done (Phase 1a proof):** the `Voice` autoload: one bus per player (`Voice_<slot>`) with pitch,

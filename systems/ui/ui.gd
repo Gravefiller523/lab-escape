@@ -111,9 +111,10 @@ func toast(text: String, seconds: float = 3.0) -> void:
 		_next_toast()
 
 
-## Subtitle for an important sound. STUB until settings_input: shown as a toast.
+## Subtitle for an important sound: shown (as a toast for now) only if Settings > Accessibility > Subtitles is on.
 func caption(text: String) -> void:
-	toast(text)
+	if Settings.is_subtitles_on():
+		toast(text)
 
 
 ## Other systems can add screens.

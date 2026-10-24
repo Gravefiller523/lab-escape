@@ -78,7 +78,7 @@ func _ready() -> void:
 	_body_mesh.mesh = _body_mesh.mesh.duplicate()
 	sync_position = global_position
 	sync_yaw = rotation.y
-	_camera.fov = tuning.fov
+	_camera.fov = Settings.get_fov()
 	apply_height()
 
 	var local: bool = is_local()
@@ -235,8 +235,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var motion := event as InputEventMouseMotion
 	if motion != null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(deg_to_rad(-motion.relative.x * tuning.mouse_sensitivity))
-		_head.rotation.x = clampf(_head.rotation.x - deg_to_rad(motion.relative.y * tuning.mouse_sensitivity),
+		var sensitivity: float = Settings.get_mouse_sensitivity()
+		var pitch_sign: float = -1.0 if Settings.is_invert_y() else 1.0
+		rotate_y(deg_to_rad(-motion.relative.x * sensitivity))
+		_head.rotation.x = clampf(_head.rotation.x - deg_to_rad(motion.relative.y * sensitivity * pitch_sign),
 			deg_to_rad(-tuning.max_pitch), deg_to_rad(tuning.max_pitch))
 	if event.is_action_pressed(InputActions.JUMP):
 		_jump_queued = true
@@ -286,8 +288,8 @@ func _gather_input() -> PlayerInputState:
 		input.move = Input.get_vector(InputActions.MOVE_LEFT, InputActions.MOVE_RIGHT,
 			InputActions.MOVE_BACK, InputActions.MOVE_FORWARD)
 		input.jump_pressed = _jump_queued
-		input.sprint = Input.is_action_pressed(InputActions.SPRINT)
-		input.crouch = Input.is_action_pressed(InputActions.CROUCH)
+		input.sprint = Settings.is_action_on(InputActions.SPRINT)
+		input.crouch = Settings.is_action_on(InputActions.CROUCH)
 	_jump_queued = false
 	return input
 
@@ -354,9 +356,10 @@ func _knockback_owner(impulse: Vector3) -> void:
 	velocity += impulse
 
 
-## STUB until settings_input exists: nothing to read yet; tuning defaults are used.
-func _on_settings_changed(_section: StringName) -> void:
-	pass
+## Settings changed (FOV applies at once; sensitivity, invert and toggles are read as they are used).
+func _on_settings_changed(section: StringName) -> void:
+	if section == SettingsService.VIDEO:
+		_camera.fov = Settings.get_fov()
 
 
 ## Props don't collide with players (so players can't shove them through walls), but a prop moving into

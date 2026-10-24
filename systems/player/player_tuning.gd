@@ -36,9 +36,9 @@ extends Resource
 @export var crouch_transition_speed: float = 10.0
 
 @export_group("Camera")
-## Degrees turned per pixel of mouse movement. STUB: settings_input will provide this later.
+## @deprecated 2026-10-24: use Settings.get_mouse_sensitivity() (the player's own setting).
 @export var mouse_sensitivity: float = 0.25
-## Field of view in degrees. STUB: settings_input will provide this later.
+## @deprecated 2026-10-24: use Settings.get_fov() (the player's own setting).
 @export var fov: float = 85.0
 ## How far up and down you can look, in degrees.
 @export var max_pitch: float = 89.0

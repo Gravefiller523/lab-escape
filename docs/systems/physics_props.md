@@ -296,3 +296,5 @@ pulled by a spring, so very fast turning makes it lag slightly behind your hands
 (host only); vendors read `last_holder_id`; carts call `attach_to`/`detach`; upgrades can register a
 higher-priority use handler on the InteractionController ("Eat glowing gem") that checks
 `PropsService.grab_of(body).get_held()`.
+- 2026-10-24 (fix, found by Zachary): `GrabController.get_held()` returns null once the held prop has been freed (a vial
+  put into the mutation machine), instead of the freed object, so prompts and E don't error that frame.

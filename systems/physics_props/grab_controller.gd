@@ -58,8 +58,10 @@ func _hook_into_interaction() -> void:
 	interaction.register_prompt_provider(USE_PRIORITY, _prompt_for)
 
 
+## CHANGED 2026-10-24: null once the held prop is gone (despawned this frame: put in a machine, a cart, a vendor),
+## not a freed object.
 func get_held() -> NetProp:
-	return _held
+	return _held if is_instance_valid(_held) else null
 
 
 ## Local: grab a prop (it moves to your hands now; the host confirms or refuses).

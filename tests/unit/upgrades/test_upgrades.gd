@@ -175,6 +175,10 @@ func test_e_at_the_machine_while_holding_a_vial_puts_it_in() -> void:
 	await wait_until(func() -> bool: return vial.is_held(), WAIT)
 	var controller: InteractionController = InteractionService.controller_of(_body)
 	assert_true(controller.press_use(machine.get_node("Back")), "E on the machine")
+	# Zachary's bug (2026-10-24): right after it goes in, the prompt and E must not touch the freed vial.
+	await wait_process_frames(1)
+	controller.get_prompt()
+	controller.press_use(machine.get_node("Back"))
 	await wait_physics_frames(2)
 	assert_eq(machine.get_loaded(), [&"mutation_giraffe"] as Array[StringName])
 	assert_false(Upgrades.has_upgrade(_me, &"mutation_giraffe"), "loading isn't getting it: you step in for that")
@@ -233,3 +237,22 @@ func test_new_mutation_file_needs_no_code() -> void:
 func test_energy_drink_speed_boost_makes_you_faster() -> void:
 	StatusEffectComponent.of(_body).apply(&"status_speed_boost")
 	assert_almost_eq(_body.get_movement().get_speed_multiplier(), 1.5, 0.001, "movement reads the move_speed stat")
+
+
+func test_prompt_and_e_survive_a_held_vial_vanishing() -> void:
+	# Zachary's bug (2026-10-24): the vial you hold disappears (put in the machine) and the prompt / E
+	# looked at the freed vial before the grab noticed.
+	var vial: NetProp = Props.spawn_prop(&"prop_dna_vial", Transform3D(Basis.IDENTITY, Vector3(0.8, 0.3, 0)),
+		{"upgrade_id": "mutation_frog"})
+	await wait_physics_frames(2)
+	PropsService.grab_of(_body).try_grab(vial)
+	await wait_until(func() -> bool: return vial.is_held(), WAIT)
+	vial.free()
+	var controller: InteractionController = InteractionService.controller_of(_body)
+	assert_eq(_held_prompt(controller), "", "no prompt, no error")
+	controller.press_use(null)
+	assert_null(PropsService.grab_of(_body).get_held())
+
+
+func _held_prompt(controller: InteractionController) -> String:
+	return controller.get_prompt()

@@ -78,8 +78,26 @@ func test_weights_respected_over_many_rolls() -> void:
 				gems += 1
 			elif drop.prop_id == &"prop_meat":
 				meat += 1
-	# Small table: nothing 1, gem 3, meat 1 -> gem drops ~3x as often as meat.
-	assert_between(float(gems) / float(meat), 2.5, 3.5, "gems ~3x meat")
+	# Small table: nothing 1, gem 3, meat 2 -> gem drops ~1.5x as often as meat.
+	assert_between(float(gems) / float(meat), 1.2, 1.8, "gems ~1.5x meat")
+
+
+## Playtest 2026-10-24: "only the rat was dropping meat". Every enemy's table should drop meat often.
+func test_every_enemy_drops_meat_often() -> void:
+	for content: ContentData in ContentRegistry.get_all(&"enemy"):
+		var enemy := content as EnemyData
+		# Only real enemy files (other tests register made-up enemies in code).
+		if not enemy.resource_path.begins_with("res://content/"):
+			continue
+		var kills_with_meat: int = 0
+		var rng := SeededRng.make(9, &"loot", 0)
+		for index: int in 400:
+			for drop: LootDrop in Loot.roll(enemy.loot_id, rng):
+				if drop.prop_id == &"prop_meat":
+					kills_with_meat += 1
+					break
+		gut.p("%s (%s): meat on %d of 400 kills" % [enemy.id, enemy.loot_id, kills_with_meat])
+		assert_gt(kills_with_meat, 400 / 5, "%s drops meat on over 1 in 5 kills" % enemy.id)
 
 
 func test_upgrade_pick_respects_department_filter() -> void:

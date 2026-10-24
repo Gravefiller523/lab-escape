@@ -20,7 +20,7 @@ max_count = 1
 [sub_resource type="Resource" id="E3"]
 script = ExtResource("2_entry")
 prop_id = &"prop_meat"
-weight = 1.5
+weight = 2.5
 min_count = 1
 max_count = 1
 

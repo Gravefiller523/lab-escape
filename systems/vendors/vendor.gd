@@ -159,13 +159,24 @@ func refund_all() -> void:
 	_send_state()
 
 
+## Host: also check what is already in the slot. A gem carried into it and then let go never "enters" again.
+func _physics_process(_delta: float) -> void:
+	if _slot == null or not multiplayer.is_server():
+		return
+	for body: Node3D in _slot.get_overlapping_bodies():
+		_on_slot_body_entered(body)
+
+
 ## Host: a gem in the coin slot.
 func _on_slot_body_entered(body: Node3D) -> void:
 	if not multiplayer.is_server():
 		return
 	var prop := body as NetProp
-	if prop == null or prop.data == null or prop.data.gem_value <= 0 or prop.is_held() or prop.is_queued_for_deletion():
+	if prop == null or prop.data == null or prop.data.gem_value <= 0 or prop.is_queued_for_deletion():
 		return
+	# Held ones too: touching the slot is enough (playtest 2026-10-24).
+	if prop.get_spawner() != null:
+		prop.get_spawner().release_all(prop)
 	var value: int = prop.data.gem_value
 	var player_id: int = prop.last_holder_id
 	Props.despawn(prop)

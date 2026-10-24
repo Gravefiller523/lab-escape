@@ -117,6 +117,9 @@ func get_launch_command_line() -> String:
 ## A network connection for the lobby owner. Returns null if it could not be made.
 func make_host_peer(lobby_id: int) -> MultiplayerPeer:
 	var peer := SteamMultiplayerPeer.new()
+	# Clients only connect to the host. Relay lets the host pass on what one client sends to another
+	# (player movement, voice). It is off by default, and then clients never saw each other move.
+	peer.server_relay = true
 	var error: int = peer.host_with_lobby(lobby_id)
 	if error != OK:
 		push_warning("SteamSession: host_with_lobby failed (%s)." % error_string(error))
@@ -127,6 +130,7 @@ func make_host_peer(lobby_id: int) -> MultiplayerPeer:
 ## A network connection to the lobby owner. Returns null if it could not be made.
 func make_client_peer(lobby_id: int) -> MultiplayerPeer:
 	var peer := SteamMultiplayerPeer.new()
+	peer.server_relay = true
 	var error: int = peer.connect_to_lobby(lobby_id)
 	if error != OK:
 		push_warning("SteamSession: connect_to_lobby failed (%s)." % error_string(error))

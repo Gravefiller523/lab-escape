@@ -92,9 +92,11 @@ func apply_damage(info: DamageInfo) -> void:
 	if _current <= 0.0:
 		_dead = true
 		_state_rpc.rpc(_current, _maximum)
+		# Tell the other PCs first: whatever listens to "died" here may revive it at once (a team wipe ends
+		# the run and revives everyone), and that revive must reach them after the death, not before.
+		_died_rpc.rpc(info.amount, info.damage_type, info.source_player_id, info.hit_position)
 		# The host keeps the full info (with the source node); other PCs get a copy without it.
 		died.emit(info)
-		_died_rpc.rpc(info.amount, info.damage_type, info.source_player_id, info.hit_position)
 	else:
 		_state_rpc.rpc(_current, _maximum)
 
@@ -177,6 +179,9 @@ func _state_rpc(current: float, maximum: float) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _died_rpc(amount: float, damage_type: StringName, source_player_id: int, hit_position: Vector3) -> void:
 	if not is_inside_tree():
+		return
+	# Already alive again (a late message): ignore it.
+	if _current > 0.0 and not _dead:
 		return
 	_dead = true
 	var info := DamageInfo.make(amount, damage_type)

@@ -205,6 +205,10 @@ func _set_pusher(player_id: int, start: bool) -> void:
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
+	# A prop carried into the basket and then let go never "enters" again, so check what is already in it.
+	if _basket != null and multiplayer.is_server():
+		for body: Node3D in _basket.get_overlapping_bodies():
+			_on_basket_body_entered(body)
 	if _pusher_id == 0 or not multiplayer.is_server():
 		return
 	var pusher: PlayerCharacter = PlayerCharacter.find(_pusher_id)

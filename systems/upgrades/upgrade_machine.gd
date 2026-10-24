@@ -141,6 +141,10 @@ func _on_hopper_body_entered(body: Node3D) -> void:
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server() or _booth == null:
 		return
+	# A vial carried into the hopper and then let go never "enters" again, so check what is already in it.
+	if _hopper != null:
+		for body: Node3D in _hopper.get_overlapping_bodies():
+			_on_hopper_body_entered(body)
 	var inside: Dictionary[int, bool] = {}
 	for body: Node3D in _booth.get_overlapping_bodies():
 		var player := body as PlayerCharacter

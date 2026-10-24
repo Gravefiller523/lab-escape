@@ -123,6 +123,19 @@ func test_meat_in_the_hopper_counts() -> void:
 	assert_eq(Props.get_props(&"prop_meat").size(), 0)
 
 
+## Playtest 2026-10-24: touching the hopper with meat in your hands is enough (no need to throw it in).
+func test_held_meat_touching_the_hopper_counts() -> void:
+	var printer := _printer()
+	await wait_physics_frames(2)
+	var hopper_shape := printer.get_node("Hopper").get_child(0) as CollisionShape3D
+	var meat: NetProp = Props.spawn_prop(&"prop_meat", Transform3D(Basis.IDENTITY, hopper_shape.global_position))
+	meat.freeze = true
+	meat.apply_holders([7], 7)
+	await wait_until(func() -> bool: return printer.get_meat_inserted() == 1, WAIT)
+	assert_eq(printer.get_meat_inserted(), 1, "held against the hopper: it goes in")
+	assert_eq(Props.get_props(&"prop_meat").size(), 0)
+
+
 func test_reprint_keeps_upgrades_not_items() -> void:
 	_no_free_reprints()
 	var printer := _printer()

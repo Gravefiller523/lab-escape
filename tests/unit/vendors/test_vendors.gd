@@ -101,6 +101,19 @@ func test_gem_credits_last_holder() -> void:
 	assert_eq(Props.get_props(&"prop_gem").size(), 0, "the gem is inside now")
 
 
+## Playtest 2026-10-24: touching the slot with a gem in your hands is enough (no need to throw it in).
+func test_held_gem_touching_the_slot_goes_in() -> void:
+	var vendor := _vendor()
+	await wait_physics_frames(2)
+	var slot_shape := vendor.get_node("CoinSlot").get_child(0) as CollisionShape3D
+	var gem: NetProp = Props.spawn_prop(&"prop_gem", Transform3D(Basis.IDENTITY, slot_shape.global_position))
+	gem.freeze = true
+	gem.apply_holders([7], 7)
+	await wait_until(func() -> bool: return vendor.get_credit(7) == 1, WAIT)
+	assert_eq(vendor.get_credit(7), 1, "held against the slot: it goes in, credited to the holder")
+	assert_eq(Props.get_props(&"prop_gem").size(), 0, "the gem is inside now")
+
+
 func test_buy_with_exact_credit() -> void:
 	var vendor := _vendor()
 	vendor.add_credit(7, 3)

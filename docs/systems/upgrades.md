@@ -112,6 +112,7 @@ GUT tests: `test_grant_applies_every_effect_piece`, `test_unique_does_not_stack`
   `systems/upgrades/carriers/`); body models in `systems/upgrades/visuals/`. loot's glowing gem got an UpgradeCarrier.
   player: `PlayerMovement.get_speed_multiplier()` also multiplies the `move_speed` stat (so the energy drink's speed
   boost works).
+- 2026-10-24: playtest fix: the machine hopper also checks what is already in it every physics tick, so a vial carried into it and let go there goes in.
 
 ## HANDOFF
 **Built (2026-10-23):** the `Upgrades` autoload (`UpgradesService`), `UpgradeCarrier`, `UpgradeEffect` + six runtime pieces

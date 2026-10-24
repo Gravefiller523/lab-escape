@@ -118,6 +118,9 @@ func _ready() -> void:
 		mass = data.mass
 	_true_mass = mass
 	_safe_position = global_position
+	# Light props fly very fast when thrown (a gem ~57 m/s, about 1 m per physics tick) and skipped
+	# straight through thin walls. Continuous collision detection checks the whole path each tick.
+	continuous_cd = true
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	freeze = not is_simulated_here()
 	sleeping_state_changed.connect(_on_sleeping_state_changed)

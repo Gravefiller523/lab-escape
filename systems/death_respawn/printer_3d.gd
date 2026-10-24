@@ -78,12 +78,23 @@ func print_now(asked_by: int) -> bool:
 	return true
 
 
+## Host: also check what is already in the hopper. Meat carried into it and then let go never "enters" again.
+func _physics_process(_delta: float) -> void:
+	if _hopper == null or not multiplayer.is_server():
+		return
+	for body: Node3D in _hopper.get_overlapping_bodies():
+		_on_hopper_body_entered(body)
+
+
 func _on_hopper_body_entered(body: Node3D) -> void:
 	if not multiplayer.is_server():
 		return
 	var prop := body as NetProp
-	if prop == null or prop.data == null or not prop.data.tags.has(MEAT_TAG) or prop.is_held() or prop.is_queued_for_deletion():
+	if prop == null or prop.data == null or not prop.data.tags.has(MEAT_TAG) or prop.is_queued_for_deletion():
 		return
+	# Held ones too: touching the hopper is enough (playtest 2026-10-24).
+	if prop.get_spawner() != null:
+		prop.get_spawner().release_all(prop)
 	Props.despawn(prop)
 	add_meat(1)
 

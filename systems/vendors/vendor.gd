@@ -159,6 +159,14 @@ func refund_all() -> void:
 	_send_state()
 
 
+## Host: also check what is already in the slot. A gem carried into it and then let go never "enters" again.
+func _physics_process(_delta: float) -> void:
+	if _slot == null or not multiplayer.is_server():
+		return
+	for body: Node3D in _slot.get_overlapping_bodies():
+		_on_slot_body_entered(body)
+
+
 ## Host: a gem in the coin slot.
 func _on_slot_body_entered(body: Node3D) -> void:
 	if not multiplayer.is_server():

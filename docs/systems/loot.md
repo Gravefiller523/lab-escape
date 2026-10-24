@@ -80,6 +80,7 @@ GUT tests: `test_same_seed_same_drops`, `test_weights_respected_over_many_rolls`
   (tag `glowing_gem`, tinted with its mutation's `glow_color`), `prop_meat` (tag `meat`), scenes in `systems/loot/scenes/`;
   loot tables `loot_zoology_small` (rats, flies), `loot_zoology_medium` (bats, kangaroos), `loot_boss_giant_rat`; the
   four enemies and the Giant Rat point at them (`loot_id`). Nothing drops where there is no PropSpawner.
+- 2026-10-24: playtest "only the rat dropped meat": the rolls were working, meat was just rare (rats and flies 1 kill in 6). Meat weight raised: `loot_zoology_small` 1 -> 2 (about 1 kill in 3), `loot_zoology_medium` 1.5 -> 2.5 (over half of kills). Test `test_every_enemy_drops_meat_often`.
 
 ## HANDOFF
 **Built (2026-10-23):** `LootDrop`, the `Loot` autoload (rolls with `SeededRng(run_seed, &"loot", drop counter)`, glow

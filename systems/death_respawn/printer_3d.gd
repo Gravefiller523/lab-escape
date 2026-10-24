@@ -78,6 +78,14 @@ func print_now(asked_by: int) -> bool:
 	return true
 
 
+## Host: also check what is already in the hopper. Meat carried into it and then let go never "enters" again.
+func _physics_process(_delta: float) -> void:
+	if _hopper == null or not multiplayer.is_server():
+		return
+	for body: Node3D in _hopper.get_overlapping_bodies():
+		_on_hopper_body_entered(body)
+
+
 func _on_hopper_body_entered(body: Node3D) -> void:
 	if not multiplayer.is_server():
 		return

@@ -79,6 +79,7 @@ GUT tests: `test_prop_snaps_in_and_freezes`, `test_grab_out_detaches`, `test_cap
   E on a cart = push / let go, E on a prop in a cart = take it out into your hands. The pusher lets go if the cart gets
   stuck more than 3.5 m away, or dies. Content: `prop_cart_standard` (30 kg, tag `cart`; scene
   `systems/carts/scenes/cart_standard.tscn`); one spawns at each `cart` marker (the lift room has one).
+- 2026-10-24: playtest fix: the basket also checks what is already in it every physics tick, so a prop carried into it and let go there is taken.
 
 ## HANDOFF
 **Built (2026-10-23):** `Cart` (extends NetProp), the `Carts` autoload, the standard cart, the test scene

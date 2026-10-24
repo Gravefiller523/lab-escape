@@ -91,6 +91,7 @@ GUT tests: `test_death_drops_all_items`, `test_death_releases_held_prop`, `test_
   through a MultiplayerSpawner: every PC puts one at each `printer` marker on `floor_ready` (child "Printer"). The run
   ending revives everyone (nobody is a ghost in the Break Room). Console: `kill`, `meat <count>`. damage's "revive
   after 3 s" stub is gone; the cargo lift doesn't wait for ghosts (ElevatorZone skips dead records).
+- 2026-10-24: playtest fixes: the printer hopper also checks what is already in it every physics tick (meat let go inside it now goes in). After a team wipe a client could stay dead and invisible in the Break Room: fixed in damage (see damage.md).
 
 ## HANDOFF
 **Built (2026-10-23):** the `Death` autoload (`DeathService`), `Printer3D` (`printer_3d.tscn`: a hopper for meat, a print

@@ -89,6 +89,7 @@ GUT tests: `test_gem_credits_last_holder`, `test_buy_with_exact_credit`, `test_c
   (department content): a department without `stock_id` uses the first stock. Content: `stock_zoology_vending`
   (crowbar 3, energy drink 2, knife 4, potted plant 1, hot coffee 3; shows 3). level_gen: `room_hall_grey` got a
   `vendor` marker.
+- 2026-10-24: playtest fix: a gem carried into the coin slot and let go there never went in (the slot only noticed gems as they entered, and a held one is refused). The host now also checks what is already in the slot every physics tick. Test `test_gem_let_go_inside_the_slot_goes_in`.
 
 ## HANDOFF
 **Built (2026-10-23):** `VendorOffer`, `Vendor` (coin slot credit to the last holder, buying, change as gems via

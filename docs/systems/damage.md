@@ -133,6 +133,7 @@ burn it, revive it, hurt / burn / speed-boost / heal yourself; your health top-l
   node names. New GameConfig `player_max_health` (100). Content: `status_burning`, `status_speed_boost`.
 
 - 2026-10-23 (death_respawn branch): the "revive after 3 s" player stub is gone (death_respawn handles dying).
+- 2026-10-24: playtest fix: the host now sends "died" to the other PCs before running its own died listeners. A team wipe revives everyone straight from those listeners, so clients used to get the revive before the death and stayed dead. Late "died" messages for a living player are ignored.
 
 ## HANDOFF
 **Built (2026-10-19):** `DamageInfo`, `HealthComponent`, `StatsComponent`, `StatusEffectComponent`, `Hurtbox`, the

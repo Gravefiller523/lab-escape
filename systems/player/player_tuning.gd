@@ -78,13 +78,13 @@ extends Resource
 @export var slide_grip: float = 0.2
 ## How strongly slopes pull you downhill (1 = like a ball rolling).
 @export var slide_slope_pull: float = 0.6
-## Top speed once fully built up, as a multiple of the normal sprint speed (1.75 = three quarters faster than
+## Top speed once fully built up, as a multiple of the normal sprint speed (2 = twice as fast as
 ## sprinting). The host's speed check knows about it, so it never pulls a slug back.
-@export var slide_max_speed: float = 1.75
+@export var slide_max_speed: float = 2.0
 ## Seconds of moving to build up from the slug's starting speed to top speed.
-@export var slide_build_up_seconds: float = 5.0
+@export var slide_build_up_seconds: float = 8.0
 ## Seconds to lose all of it after you stop moving.
-@export var slide_lose_seconds: float = 1.0
+@export var slide_lose_seconds: float = 3.0
 
 @export_group("Camera")
 ## @deprecated 2026-10-24: use Settings.get_mouse_sensitivity() (the player's own setting).

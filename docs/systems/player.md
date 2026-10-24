@@ -98,7 +98,7 @@ mode is one new file and no list to edit. Launch modes (all built 2026-10-24): `
 `wall_climb` (Octo: walk into a wall to climb; W up, S down, no keys hangs on, Ctrl lets go, a push over the top),
 `slide` (Slug: builds up speed the longer it moves, from its slow start to 1.25 x sprint speed over
 `slide_build_up_seconds`; stopping or hitting something loses it; low grip, slopes pull downhill; top speed
-`slide_max_speed` x sprint, 1.75 since the later 2026-10-24 change),
+`slide_max_speed` x sprint: 2.0, building up over 8 s and lost over 3 s, Zachary's tuning 2026-10-24),
 `hop` (Frog: jumps throw you forward, walking is small automatic hops), `hover` (Fly: hold jump while
 falling to glide slowly for up to hover_seconds; landing refills). All their numbers are in `player_tuning.tres`.
 **Ladders** (NEW 2026-10-24) beat any mode: inside a Ladder's climb area, in the air or moving forward
@@ -195,6 +195,7 @@ launch options `-- host` / `-- join`.
 - 2026-10-24: movement modes built: `hover` (Fly), `hop` (Frog), `wall_climb` (Octo), `slide` (Slug), and ladders (`Ladder`, `ladder` mode). Walk became `WalkMovementMode` with overridable steps. NEW: `PlayerInputState.jump_held`, `PlayerCharacter.get_look_pitch` / `set_look_pitch`, the ladder functions on PlayerMovement, tuning groups Ladders, Hover, Hop, Wall climb, Slide. items' mutated plant now grows a real Ladder. Test scene keys 4 to 7 and a ladder platform.
 - 2026-10-24 (Zachary): Slug builds up speed while it keeps moving, up to 1.25 x the normal sprint speed (`slide_max_speed` 1.25, NEW `slide_build_up_seconds` 5, `slide_lose_seconds` 1); stopping or getting blocked loses it. Octo: S climbs down and Ctrl lets go (was the other way round). NEW `MovementMode.top_speed()` and `PlayerMovement.get_top_speed()`: the host speed check now allows each mode's own top speed (slug 8.75 m/s, frog `hop_max_speed`). Checked with 2 local instances: a client slug at full speed is never pulled back.
 - 2026-10-24 (Zachary, later): Slug top speed raised to 1.75 x the normal sprint speed (`slide_max_speed` 1.75, 12.25 m/s). The host speed check follows it through `top_speed()`.
+- 2026-10-24 (Zachary's tuning): `slide_max_speed` 2.0 (14 m/s), `slide_build_up_seconds` 8, `slide_lose_seconds` 3. The slug tests now read these numbers instead of assuming them.
 
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,

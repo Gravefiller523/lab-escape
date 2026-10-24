@@ -280,7 +280,7 @@ func test_slide_builds_up_speed_past_sprint() -> void:
 	body.set_input_override(_keys(1.0))
 	await wait_seconds(1.5)
 	var early: float = _flat_speed(body)
-	await wait_seconds(8.0)
+	await wait_seconds(body.tuning.slide_build_up_seconds + 4.0)
 	var late: float = _flat_speed(body)
 	var top: float = body.tuning.sprint_speed * body.tuning.slide_max_speed
 	assert_gt(late, early + 2.0, "keeps getting faster")
@@ -288,7 +288,7 @@ func test_slide_builds_up_speed_past_sprint() -> void:
 	assert_almost_eq(late, top, 0.3, "tops out at slide_max_speed x sprint speed")
 	assert_almost_eq(body.get_movement().get_top_speed(), top, 0.01, "the host's speed check knows that top speed")
 	body.set_input_override(_keys())
-	await wait_seconds(2.0)
+	await wait_seconds(body.tuning.slide_lose_seconds + 1.0)
 	assert_eq(body.get_movement().get_mode_object().call(&"get_momentum"), 0.0, "stopping loses the built-up speed")
 
 
@@ -297,7 +297,7 @@ func test_slide_blocked_by_a_wall_loses_its_speed() -> void:
 	var body := _spawn(&"slide", 1.0, 1.0, 0.75)
 	await _settle(body)
 	body.set_input_override(_keys(1.0))
-	await wait_seconds(5.0)
+	await wait_seconds(body.tuning.slide_build_up_seconds * 0.8)
 	assert_gt(body.get_movement().get_mode_object().call(&"get_momentum"), 0.5, "built up")
 	_box(Vector3(10, 4, 1), body.global_position + Vector3(0, 2, -1.2))
 	await wait_seconds(1.0)

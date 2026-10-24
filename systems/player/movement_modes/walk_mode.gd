@@ -2,7 +2,7 @@ class_name WalkMovementMode
 extends MovementMode
 ## The default movement mode: walk, sprint, jump, crouch, fall.
 ## Loaded by name ("walk") from PlayerMovement.load_mode(). The other modes (hover, hop, slide, wall_climb)
-## extend this one and change only the steps they need: _grip, _jump_speed, _jump, _fall, _after_move.
+## extend this one and change only the steps they need: _speed, _grip, _jump_speed, _jump, _fall, _after_move.
 
 
 func physics_update(body: PlayerCharacter, input: PlayerInputState, delta: float) -> void:
@@ -16,7 +16,7 @@ func physics_update(body: PlayerCharacter, input: PlayerInputState, delta: float
 		speed = tuning.crouch_speed
 	elif input.sprint and input.move.y > 0.0:
 		speed = tuning.sprint_speed
-	speed *= movement.get_speed_multiplier()
+	speed = _speed(body, input, speed * movement.get_speed_multiplier(), delta)
 
 	var target: Vector3 = wish_direction(body, input) * speed
 
@@ -55,6 +55,11 @@ static func jump_speed(body: PlayerCharacter) -> float:
 
 static func gravity_of(body: PlayerCharacter) -> float:
 	return body.tuning.gravity * body.get_movement().get_gravity_multiplier()
+
+
+## The speed to aim for this frame (slide builds up speed the longer you move).
+func _speed(_body: PlayerCharacter, _input: PlayerInputState, speed: float, _delta: float) -> float:
+	return speed
 
 
 ## How much of the normal acceleration applies (1 = normal; lower = slippery).

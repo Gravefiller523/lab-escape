@@ -101,6 +101,16 @@ func get_active_mode() -> StringName:
 	return _mode_name
 
 
+## Fastest the body can move sideways now (the host's speed check). Ladders are slower than any mode.
+func get_top_speed() -> float:
+	var body := get_parent() as PlayerCharacter
+	if body == null:
+		return 0.0
+	if _mode == null:
+		_update_mode()
+	return _mode.top_speed(body) if _mode != null else body.tuning.sprint_speed * get_speed_multiplier()
+
+
 ## The movement mode object running now (tests look at a mode's state, e.g. hover's gliding).
 func get_mode_object() -> MovementMode:
 	return _ladder_mode if _on_ladder else _mode

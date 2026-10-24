@@ -1,7 +1,8 @@
 extends WalkMovementMode
 ## Octo: walk into a wall (or anything solid you can't walk through: crates, machines) and you climb it.
-## Forward climbs up, crouch climbs down, left/right moves along the wall, and with no keys you hang on.
-## Pull back (S) to let go. Reaching the top gives a small push up so you get over the edge.
+## Forward (W) climbs up, back (S) climbs down, left/right moves along the wall, and with no keys you hang on.
+## Crouch (Ctrl) lets go. Reaching the top gives a small push up so you get over the edge. Back at the
+## bottom, S walks you away from the wall.
 ## Jumping is off for Octo (the mutation's can_jump), so the only way up is climbing.
 
 ## Pushing into the wall at least this much (dot product, 0 to 1) counts as "climb".
@@ -27,8 +28,9 @@ func physics_update(body: PlayerCharacter, input: PlayerInputState, delta: float
 		_wall_normal = body.get_wall_normal()
 	var wish: Vector3 = wish_direction(body, input)
 	var pushing: bool = touching and wish.dot(-_wall_normal) > INTO_WALL
-	var hanging: bool = _climbing and touching and input.move.y >= 0.0
-	if pushing or hanging:
+	# Hang on (and climb with W/S) until crouch lets go, or S at the bottom walks away.
+	var hanging: bool = _climbing and touching and not (body.is_on_floor() and input.move.y < 0.0)
+	if not input.crouch and (pushing or hanging):
 		_climb(body, input, wish)
 		return
 	_climbing = false
@@ -40,9 +42,7 @@ func _climb(body: PlayerCharacter, input: PlayerInputState, wish: Vector3) -> vo
 	var movement: PlayerMovement = body.get_movement()
 	_climbing = true
 	var up: float = 0.0
-	if input.crouch:
-		up = -tuning.wall_climb_speed
-	elif input.move.y > 0.0:
+	if input.move.y != 0.0:
 		up = tuning.wall_climb_speed * input.move.y * movement.get_speed_multiplier()
 	var along: Vector3 = _wall_normal.cross(Vector3.UP).normalized()
 	var strafe: Vector3 = along * wish.dot(along) * tuning.wall_climb_strafe_speed

@@ -23,6 +23,10 @@ func physics_update(body: PlayerCharacter, input: PlayerInputState, delta: float
 	super.physics_update(body, input, delta)
 
 
+func top_speed(body: PlayerCharacter) -> float:
+	return maxf(super.top_speed(body), body.tuning.hop_max_speed)
+
+
 func _jump_speed(body: PlayerCharacter) -> float:
 	if _small_hop:
 		return sqrt(2.0 * gravity_of(body) * body.tuning.hop_small_height)

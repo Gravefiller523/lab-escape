@@ -180,8 +180,14 @@ func test_wall_climb_hangs_on_and_lets_go() -> void:
 	await wait_physics_frames(30)
 	assert_almost_eq(body.global_position.y, hanging_at, 0.15, "no keys: hangs on")
 	body.set_input_override(_keys(-1.0))
-	await wait_physics_frames(40)
-	assert_lt(body.global_position.y, hanging_at - 0.5, "pulling back lets go")
+	await wait_physics_frames(20)
+	assert_lt(body.global_position.y, hanging_at - 0.3, "S climbs down")
+	assert_true(body.get_movement().get_mode_object().call(&"is_climbing"), "still on the wall")
+	var climbing_down_at: float = body.global_position.y
+	body.set_input_override(_keys(0.0, false, false, true))
+	await wait_physics_frames(30)
+	assert_false(body.get_movement().get_mode_object().call(&"is_climbing"), "Ctrl lets go")
+	assert_lt(body.global_position.y, climbing_down_at - 0.5, "and falls")
 
 
 # --- Slide (Slug) ---------------------------------------------------------------------------------
@@ -214,8 +220,7 @@ func test_slide_goes_downhill_on_a_slope() -> void:
 	var start_z: float = body.global_position.z
 	await wait_physics_frames(60)
 	assert_ne(body.global_position.z, start_z, "moved without any keys")
-	assert_lte(_flat_speed(body), body.tuning.sprint_speed * 0.75 * body.tuning.slide_max_speed + 0.01,
-		"never faster than the host's speed check allows")
+	assert_lte(_flat_speed(body), body.get_movement().get_top_speed() + 0.01, "never faster than its top speed")
 
 
 # --- Ladders ---------------------------------------------------------------------------------------
@@ -266,3 +271,34 @@ func test_ladder_beats_the_mutation_mode() -> void:
 	body.set_input_override(_keys(1.0))
 	await wait_until(func() -> bool: return body.get_movement().is_on_ladder(), 3.0)
 	assert_eq(body.get_movement().get_active_mode(), PlayerMovement.LADDER_MODE, "an Octo on a ladder climbs the ladder")
+
+
+func test_slide_builds_up_speed_to_a_quarter_over_sprint() -> void:
+	_box(Vector3(400, 1, 400), Vector3(0, -0.5, 0))
+	var body := _spawn(&"slide", 1.0, 1.0, 0.75)
+	await _settle(body)
+	body.set_input_override(_keys(1.0))
+	await wait_seconds(1.5)
+	var early: float = _flat_speed(body)
+	await wait_seconds(8.0)
+	var late: float = _flat_speed(body)
+	var top: float = body.tuning.sprint_speed * 1.25
+	assert_gt(late, early + 2.0, "keeps getting faster")
+	assert_gt(late, body.tuning.sprint_speed, "ends up faster than a normal sprint")
+	assert_almost_eq(late, top, 0.3, "tops out at 1.25 x sprint speed")
+	assert_almost_eq(body.get_movement().get_top_speed(), top, 0.01, "the host's speed check knows that top speed")
+	body.set_input_override(_keys())
+	await wait_seconds(2.0)
+	assert_eq(body.get_movement().get_mode_object().call(&"get_momentum"), 0.0, "stopping loses the built-up speed")
+
+
+func test_slide_blocked_by_a_wall_loses_its_speed() -> void:
+	_box(Vector3(400, 1, 400), Vector3(0, -0.5, 0))
+	var body := _spawn(&"slide", 1.0, 1.0, 0.75)
+	await _settle(body)
+	body.set_input_override(_keys(1.0))
+	await wait_seconds(5.0)
+	assert_gt(body.get_movement().get_mode_object().call(&"get_momentum"), 0.5, "built up")
+	_box(Vector3(10, 4, 1), body.global_position + Vector3(0, 2, -1.2))
+	await wait_seconds(1.0)
+	assert_lt(body.get_movement().get_mode_object().call(&"get_momentum"), 0.2, "hitting a wall lost it")

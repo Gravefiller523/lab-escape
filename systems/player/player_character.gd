@@ -333,7 +333,7 @@ func _check_speed() -> void:
 		_checked_msec = now
 		return
 	var seconds: float = maxf(float(now - _checked_msec) / 1000.0, 1.0 / 30.0)
-	var top_speed: float = tuning.sprint_speed * _movement.get_speed_multiplier()
+	var top_speed: float = _movement.get_top_speed()
 	var allowed: float = top_speed * tuning.speed_check_tolerance * seconds + tuning.speed_check_slack
 	var moved := Vector2(sync_position.x - _checked_position.x, sync_position.z - _checked_position.z)
 	if moved.length() > allowed:

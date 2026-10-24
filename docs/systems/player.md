@@ -51,8 +51,10 @@ func add_ladder(ladder: Ladder) -> void / remove_ladder(ladder: Ladder) -> void 
 func get_ladder() -> Ladder                         # NEW 2026-10-24: the ladder you can climb now, or null
 func is_on_ladder() -> bool                         # NEW 2026-10-24
 func let_go_of_ladder() -> void                     # NEW 2026-10-24: jump off (no regrab for ladder_regrab_seconds)
+func get_top_speed() -> float                       # NEW 2026-10-24: fastest the active mode goes sideways (the host speed check uses it)
 
 class_name MovementMode extends RefCounted          # base for building blocks
+func top_speed(body: PlayerCharacter) -> float     # NEW 2026-10-24: default sprint x speed multiplier; slide and hop go faster
 func enter(body: PlayerCharacter) -> void
 func exit(body: PlayerCharacter) -> void
 func physics_update(body: PlayerCharacter, input: PlayerInputState, delta: float) -> void
@@ -63,7 +65,7 @@ func physics_update(body: PlayerCharacter, input: PlayerInputState, delta: float
 class_name WalkMovementMode extends MovementMode     # NEW 2026-10-24: walk; hover, hop, slide and wall_climb extend it
 static func wish_direction(body, input) -> Vector3   # the keys as a flat world direction
 static func jump_speed(body) -> float / gravity_of(body) -> float
-# steps a mode can change: _grip, _jump_speed, _jump, _fall, _after_move
+# steps a mode can change: _speed, _grip, _jump_speed, _jump, _fall, _after_move
 
 class_name Ladder extends Area3D                     # NEW 2026-10-24: systems/player/ladder.tscn, a climbable ladder
 @export var height: float = 3.0 / width: float = 0.7 / color: Color   # origin = bottom middle, faces +Z
@@ -93,8 +95,9 @@ Movement modifiers combine: multipliers multiply, `can_jump` is false if any mod
 the mode with the highest `mode_priority` wins. Mode name `wall_climb` loads
 `systems/player/movement_modes/wall_climb_mode.gd` (file name = mode name + `_mode.gd`), so a new
 mode is one new file and no list to edit. Launch modes (all built 2026-10-24): `walk` (default),
-`wall_climb` (Octo: walk into a wall to climb; forward up, crouch down, S lets go, a push over the top),
-`slide` (Slug: low grip, keeps sliding, slopes pull downhill, capped under the host speed check),
+`wall_climb` (Octo: walk into a wall to climb; W up, S down, no keys hangs on, Ctrl lets go, a push over the top),
+`slide` (Slug: builds up speed the longer it moves, from its slow start to 1.25 x sprint speed over
+`slide_build_up_seconds`; stopping or hitting something loses it; low grip, slopes pull downhill),
 `hop` (Frog: jumps throw you forward, walking is small automatic hops), `hover` (Fly: hold jump while
 falling to glide slowly for up to hover_seconds; landing refills). All their numbers are in `player_tuning.tres`.
 **Ladders** (NEW 2026-10-24) beat any mode: inside a Ladder's climb area, in the air or moving forward
@@ -189,6 +192,7 @@ launch options `-- host` / `-- join`.
   collision is off and it doesn't move (death_respawn calls it on every PC; its camera is death_respawn's).
 - 2026-10-24 (settings_input): mouse sensitivity, invert Y, FOV (also live, on `settings_changed`) and the sprint/crouch toggles come from `Settings` (`get_mouse_sensitivity`, `is_invert_y`, `get_fov`, `is_action_on`). `PlayerTuning.mouse_sensitivity` and `fov` are `@deprecated` (kept, not used).
 - 2026-10-24: movement modes built: `hover` (Fly), `hop` (Frog), `wall_climb` (Octo), `slide` (Slug), and ladders (`Ladder`, `ladder` mode). Walk became `WalkMovementMode` with overridable steps. NEW: `PlayerInputState.jump_held`, `PlayerCharacter.get_look_pitch` / `set_look_pitch`, the ladder functions on PlayerMovement, tuning groups Ladders, Hover, Hop, Wall climb, Slide. items' mutated plant now grows a real Ladder. Test scene keys 4 to 7 and a ladder platform.
+- 2026-10-24 (Zachary): Slug builds up speed while it keeps moving, up to 1.25 x the normal sprint speed (`slide_max_speed` 1.25, NEW `slide_build_up_seconds` 5, `slide_lose_seconds` 1); stopping or getting blocked loses it. Octo: S climbs down and Ctrl lets go (was the other way round). NEW `MovementMode.top_speed()` and `PlayerMovement.get_top_speed()`: the host speed check now allows each mode's own top speed (slug 8.75 m/s, frog `hop_max_speed`). Checked with 2 local instances: a client slug at full speed is never pulled back.
 
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,
@@ -218,7 +222,7 @@ Checked on real Steam between two PCs (2026-10-18). Players do collide with each
 - **upgrades:** call `get_movement().set_modifier(upgrade_id, effect)` on every PC.
 - **game_flow:** emit `floor_ready` after the floor is built; the spawner spawns everyone then.
 
-**Movement modes (2026-10-24):** `hover`, `hop`, `wall_climb`, `slide` and ladders are built (see "Public API").
+**Movement modes (2026-10-24):** `hover`, `hop`, `wall_climb`, `slide` and ladders are built (see "Public API"; controls as of the later 2026-10-24 changelog line).
 The mutation files already named these modes, so Fly, Frog, Octo and Slug move differently with no content
 changes. 13 new GUT tests in `tests/unit/player/test_movement_modes.gd` (every mutation's mode has a file, glide
 speed and glide time, hop forward throw and small hops, Octo up and over a wall / hang / let go / plain walkers

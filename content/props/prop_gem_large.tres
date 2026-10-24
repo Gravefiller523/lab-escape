@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/props/prop_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/loot/scenes/gem_large.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"prop_gem_large"
+display_name = "Large gem"
+description = "Worth 5 gems."
+scene = ExtResource("2_scene")
+mass = 0.8
+gem_value = 5
+tags = PackedStringArray("gem")

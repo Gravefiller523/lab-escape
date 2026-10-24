@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="LootTableData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/loot/loot_table_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/loot/loot_entry_data.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="E1"]
+script = ExtResource("2_entry")
+prop_id = &"prop_gem"
+weight = 3.0
+min_count = 1
+max_count = 2
+
+[sub_resource type="Resource" id="E2"]
+script = ExtResource("2_entry")
+prop_id = &"prop_meat"
+weight = 1.0
+min_count = 1
+max_count = 1
+
+[resource]
+script = ExtResource("1_data")
+id = &"loot_zoology_small"
+display_name = "loot_zoology_small"
+rolls = 1
+nothing_weight = 1.0
+entries = Array[ExtResource("2_entry")]([SubResource("E1"), SubResource("E2")])

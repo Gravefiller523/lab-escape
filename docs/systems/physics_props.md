@@ -274,6 +274,7 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
 
 - 2026-10-23 (carts branch): NEW `NetProp.keep_on_host` (bool): the host always runs its physics; `PropSpawner.hand_to`
   won't hand it to a client. Carts use it.
+- 2026-10-24: playtest fix: light props thrown hard (a gem flies ~57 m/s) went through thin walls. Every NetProp now uses continuous collision detection (`continuous_cd = true`). Tests in `tests/unit/physics_props/test_fast_props.gd`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

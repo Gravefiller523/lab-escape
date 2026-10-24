@@ -172,8 +172,11 @@ func _on_slot_body_entered(body: Node3D) -> void:
 	if not multiplayer.is_server():
 		return
 	var prop := body as NetProp
-	if prop == null or prop.data == null or prop.data.gem_value <= 0 or prop.is_held() or prop.is_queued_for_deletion():
+	if prop == null or prop.data == null or prop.data.gem_value <= 0 or prop.is_queued_for_deletion():
 		return
+	# Held ones too: touching the slot is enough (playtest 2026-10-24).
+	if prop.get_spawner() != null:
+		prop.get_spawner().release_all(prop)
 	var value: int = prop.data.gem_value
 	var player_id: int = prop.last_holder_id
 	Props.despawn(prop)

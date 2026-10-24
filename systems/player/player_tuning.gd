@@ -78,9 +78,9 @@ extends Resource
 @export var slide_grip: float = 0.2
 ## How strongly slopes pull you downhill (1 = like a ball rolling).
 @export var slide_slope_pull: float = 0.6
-## Top speed once fully built up, as a multiple of the normal sprint speed (1.25 = a quarter faster than
+## Top speed once fully built up, as a multiple of the normal sprint speed (1.75 = three quarters faster than
 ## sprinting). The host's speed check knows about it, so it never pulls a slug back.
-@export var slide_max_speed: float = 1.25
+@export var slide_max_speed: float = 1.75
 ## Seconds of moving to build up from the slug's starting speed to top speed.
 @export var slide_build_up_seconds: float = 5.0
 ## Seconds to lose all of it after you stop moving.

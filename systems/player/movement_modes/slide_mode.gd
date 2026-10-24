@@ -1,6 +1,6 @@
 extends WalkMovementMode
 ## Slug: starts slow (the mutation's speed multiplier) but builds up speed the longer it keeps moving, up to
-## slide_max_speed x sprint speed (1.25: faster than a normal sprint). Stopping, or getting blocked, loses
+## slide_max_speed x sprint speed (1.75: much faster than a normal sprint). Stopping, or getting blocked, loses
 ## the built-up speed. Slippery too: low grip on the ground, so you keep sliding after letting go and take
 ## a while to turn, and slopes pull you downhill.
 

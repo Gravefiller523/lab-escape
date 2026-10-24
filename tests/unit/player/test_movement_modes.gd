@@ -273,7 +273,7 @@ func test_ladder_beats_the_mutation_mode() -> void:
 	assert_eq(body.get_movement().get_active_mode(), PlayerMovement.LADDER_MODE, "an Octo on a ladder climbs the ladder")
 
 
-func test_slide_builds_up_speed_to_a_quarter_over_sprint() -> void:
+func test_slide_builds_up_speed_past_sprint() -> void:
 	_box(Vector3(400, 1, 400), Vector3(0, -0.5, 0))
 	var body := _spawn(&"slide", 1.0, 1.0, 0.75)
 	await _settle(body)
@@ -282,10 +282,10 @@ func test_slide_builds_up_speed_to_a_quarter_over_sprint() -> void:
 	var early: float = _flat_speed(body)
 	await wait_seconds(8.0)
 	var late: float = _flat_speed(body)
-	var top: float = body.tuning.sprint_speed * 1.25
+	var top: float = body.tuning.sprint_speed * body.tuning.slide_max_speed
 	assert_gt(late, early + 2.0, "keeps getting faster")
 	assert_gt(late, body.tuning.sprint_speed, "ends up faster than a normal sprint")
-	assert_almost_eq(late, top, 0.3, "tops out at 1.25 x sprint speed")
+	assert_almost_eq(late, top, 0.3, "tops out at slide_max_speed x sprint speed")
 	assert_almost_eq(body.get_movement().get_top_speed(), top, 0.01, "the host's speed check knows that top speed")
 	body.set_input_override(_keys())
 	await wait_seconds(2.0)

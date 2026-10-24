@@ -15,3 +15,9 @@ func exit(_body: PlayerCharacter) -> void:
 
 func physics_update(_body: PlayerCharacter, _input: PlayerInputState, _delta: float) -> void:
 	pass
+
+
+## Fastest this mode can move sideways (m/s). The host's speed check uses it, so a mode that goes faster than
+## sprinting (slug slides, frog hops) isn't pulled back. Runs on every PC (no physics_update needed).
+func top_speed(body: PlayerCharacter) -> float:
+	return body.tuning.sprint_speed * body.get_movement().get_speed_multiplier()

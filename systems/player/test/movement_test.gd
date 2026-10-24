@@ -5,10 +5,13 @@ extends Node3D
 ##
 ## Keys: WASD move, Shift sprint, Space jump, Ctrl crouch, Esc frees the mouse (click to look again).
 ## Test modifiers on your own body: 1 = double speed, 2 = no jumping, 3 = Giraffe height (x1.4).
+## Mutation movement (the real numbers from content/mutations/): 4 = Fly (hold jump to glide), 5 = Frog (hops),
+## 6 = Octo (walk into a wall to climb: W up, S down, Ctrl lets go), 7 = Slug (builds up speed). The platform has a ladder.
 ## STUB buttons stand in for game_flow: "Start run" and "Next floor" (press them in the host window).
 
 const FLOOR_SIZE: float = 40.0
-const TEST_MODIFIERS: Dictionary[Key, StringName] = {KEY_1: &"test_fast", KEY_2: &"test_no_jump", KEY_3: &"test_giraffe"}
+const TEST_MODIFIERS: Dictionary[Key, StringName] = {KEY_1: &"test_fast", KEY_2: &"test_no_jump", KEY_3: &"test_giraffe",
+	KEY_4: &"mutation_fly", KEY_5: &"mutation_frog", KEY_6: &"mutation_octo", KEY_7: &"mutation_slug"}
 
 var _spawner: PlayerSpawner
 var _overview: Camera3D
@@ -68,6 +71,7 @@ func _process(_delta: float) -> void:
 		lines.append("speed x%.1f | can jump: %s | height %.2f m | crouching: %s | grounded: %s" % [
 			movement.get_speed_multiplier(), movement.can_jump(), movement.get_height(),
 			movement.is_crouching(), movement.is_grounded()])
+		lines.append("mode: %s" % movement.get_active_mode())
 	elif Net.is_waiting_for_next_floor(Net.local_player_id()):
 		lines.append("Joined mid-run: you'll spawn on the next floor.")
 	_status.text = "\n".join(lines)
@@ -96,6 +100,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _make_test_effect(source: StringName) -> MovementEffectData:
+	# A mutation: use its own movement piece, so the test feels like the real thing.
+	var upgrade := ContentRegistry.get_content(source) as UpgradeData
+	if upgrade != null:
+		for piece: UpgradeEffectData in upgrade.effects:
+			if piece is MovementEffectData:
+				return piece as MovementEffectData
 	var effect := MovementEffectData.new()
 	match source:
 		&"test_fast":
@@ -132,8 +142,14 @@ func _build_world() -> void:
 	_add_box(Vector3(0, 0.75, -10), Vector3(0.4, 1.5, 0.4), Color(0.4, 0.4, 0.5))
 	_add_box(Vector3(1.6, 0.75, -10), Vector3(0.4, 1.5, 0.4), Color(0.4, 0.4, 0.5))
 	_add_box(Vector3(0.8, 1.7, -10), Vector3(2.0, 0.4, 0.4), Color(0.4, 0.4, 0.5))
-	# A tall wall (for wall climbing later).
+	# A tall wall to climb as Octo (key 6).
 	_add_box(Vector3(12, 2.5, -4), Vector3(0.5, 5, 6), Color(0.45, 0.45, 0.5))
+	# A 3 m platform with a ladder on its front (anyone can climb it).
+	_add_box(Vector3(-12, 1.5, -4), Vector3(4, 3, 4), Color(0.45, 0.45, 0.5))
+	var ladder := (load("res://systems/player/ladder.tscn") as PackedScene).instantiate() as Ladder
+	ladder.height = 3.0
+	ladder.position = Vector3(-12, 0, -1.95)
+	add_child(ladder)
 
 
 func _add_box(center: Vector3, size: Vector3, color: Color) -> StaticBody3D:

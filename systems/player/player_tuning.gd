@@ -35,6 +35,57 @@ extends Resource
 ## How fast crouching and standing up happen (1 / seconds).
 @export var crouch_transition_speed: float = 10.0
 
+@export_group("Ladders")
+## Metres per second up or down a ladder.
+@export var ladder_climb_speed: float = 3.0
+## Metres per second sideways on a ladder.
+@export var ladder_strafe_speed: float = 1.5
+## Look further down than this (degrees) and "forward" climbs down instead of up.
+@export var ladder_look_down_degrees: float = 35.0
+## Jumping off a ladder pushes you this fast away from it (metres per second).
+@export var ladder_jump_off_speed: float = 4.0
+## After jumping off, ladders can't grab you for this long (seconds).
+@export var ladder_regrab_seconds: float = 0.4
+
+@export_group("Hover (Fly)")
+## Hold jump in the air to glide: you fall no faster than this (metres per second).
+@export var hover_fall_speed: float = 1.2
+## Seconds of gliding before you need to land again.
+@export var hover_seconds: float = 2.5
+## Steering in the air while gliding, as a multiple of normal air control.
+@export var hover_air_control: float = 2.5
+
+@export_group("Hop (Frog)")
+## A jump also throws you forward this fast (metres per second) in the direction you move.
+@export var hop_forward_speed: float = 5.0
+## Moving on the ground makes small automatic hops.
+@export var hop_auto_hops: bool = true
+## How high the small automatic hops go (metres).
+@export var hop_small_height: float = 0.3
+## Fastest you can go sideways while hopping (keep under sprint speed x the host's speed_check_tolerance).
+@export var hop_max_speed: float = 9.0
+
+@export_group("Wall climb (Octo)")
+## Metres per second up a wall.
+@export var wall_climb_speed: float = 2.5
+## Metres per second sideways along a wall.
+@export var wall_climb_strafe_speed: float = 1.5
+## Upward push when you reach the top of a wall, so you get over the edge (metres per second).
+@export var wall_climb_ledge_boost: float = 4.0
+
+@export_group("Slide (Slug)")
+## Grip on the ground (1 = normal, lower = slippery: you keep sliding after letting go).
+@export var slide_grip: float = 0.2
+## How strongly slopes pull you downhill (1 = like a ball rolling).
+@export var slide_slope_pull: float = 0.6
+## Top speed once fully built up, as a multiple of the normal sprint speed (2 = twice as fast as
+## sprinting). The host's speed check knows about it, so it never pulls a slug back.
+@export var slide_max_speed: float = 2.0
+## Seconds of moving to build up from the slug's starting speed to top speed.
+@export var slide_build_up_seconds: float = 8.0
+## Seconds to lose all of it after you stop moving.
+@export var slide_lose_seconds: float = 3.0
+
 @export_group("Camera")
 ## @deprecated 2026-10-24: use Settings.get_mouse_sensitivity() (the player's own setting).
 @export var mouse_sensitivity: float = 0.25

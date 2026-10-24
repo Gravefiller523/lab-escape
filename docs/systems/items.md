@@ -117,6 +117,7 @@ all of the above plus `test_fists_do_damage_too`, `test_melee_does_not_hurt_team
   is real now (`PropSpawner.spawn_item`; `spawn_prop` also takes item ids, a PropData is made from the ItemData).
   inventory: NEW `take_one(index)` (throwing). Content: the 6 launch items in `content/items/`.
 - 2026-10-19 (Zachary): F equips an item pickup (new InputActions `EQUIP`, F); E picks it up like a prop.
+- 2026-10-24 (player): the mutated plant grows a real, climbable `Ladder` (player's `systems/player/ladder.gd`), added once its grow animation ends, instead of a spiral of steps. `test_water_grows_plant_ladder` checks `Vine/Ladder`.
 
 ## HANDOFF
 **Built (2026-10-19):** `HeldItemController`, `ItemBehaviour` + the melee, throw, consume and use-on-object runtime pieces,

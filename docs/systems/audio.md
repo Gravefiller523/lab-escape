@@ -18,6 +18,12 @@ func play_ui(stream: AudioStream) -> void
 func play_2d(stream: AudioStream, volume_db: float = 0.0, bus: StringName = &"SFX") -> void
 func play_3d(stream: AudioStream, position: Vector3, volume_db: float = 0.0, pitch_variation: float = 0.05) -> void
 func play_3d_attached(stream: AudioStream, parent: Node3D, volume_db: float = 0.0) -> AudioStreamPlayer3D
+func set_volume(bus: StringName, linear: float) -> void   # NEW 2026-10-23 (settings_input will call it)
+func get_volume(bus: StringName) -> float
+func event_sound(field: StringName) -> AudioStream       # NEW: the sound for a game event (event_sounds.tres or a placeholder)
+func get_music() -> AudioStream                          # NEW
+func stop_effects() -> void                              # NEW
+static func ensure_buses() -> void                       # NEW: Music, SFX, Voice, UI -> Master
 ```
 Uses a pool of players (e.g. 32 3D players) so 100 gems landing at once doesn't create 100 nodes.
 
@@ -52,3 +58,26 @@ GUT tests: `test_buses_exist`, `test_music_switches_on_floor_ready`, `test_pool_
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-23: built (Phase 1b). Changes marked above. CHANGED: the buses are made at startup by `Sound.ensure_buses()`
+  (no `default_bus_layout.tres` yet; voice chat's buses already send to `Voice`). NEW `EventSounds`
+  (`systems/audio/event_sounds.tres`): one AudioStream field per game event (hit, enemy_death, player_death, item_use,
+  reprint, upgrade, purchase, lift_ride, lift_arrive, lift_part, boss_phase, boss_defeated) and fallback music (menu,
+  floor, boss); an empty field uses a generated placeholder (`PlaceholderSounds`: beeps, thumps, a drone; made in code,
+  not AI, so nothing for the AI log). Drop a real file onto a field in the Inspector to replace it. Sounds play on every
+  PC locally from what that PC sees: any HealthComponent getting hurt or dying (found with SceneTree.node_added),
+  `item_used`, `player_reprinted`, `upgrade_gained`, `vendor_purchase`, `lift_departed` (a hum while riding),
+  `floor_ready` (arrival), `lift_part_delivered`, `boss_phase_changed`, `boss_defeated`. Music: menu / Break Room,
+  department (`DepartmentData.music`), boss (`BossData.music`), crossfaded. Pitch variety uses its own non-seeded
+  RandomNumberGenerator (looks and sounds only, never gameplay). The autoload is `Sound` (before Voice).
+
+## HANDOFF
+**Built (2026-10-23):** the `Sound` autoload (`SoundService`), `EventSounds` + `event_sounds.tres`, `PlaceholderSounds`, the
+test scene (`systems/audio/test/audio_test.tscn`) and 8 GUT tests (`tests/unit/audio/test_audio.gd`: the spec's list plus
+`test_placeholders_fill_empty_event_sounds`, `test_a_real_sound_replaces_the_placeholder`, `test_department_music_from_data`,
+`test_hits_make_a_sound_at_the_target`).
+
+**Foundation / project.godot changes:** autoload line `Sound` (after Net, before Voice). No new EventBus signals.
+
+**For the next steps:** real sounds and music (ElevenLabs or packs): check the licence, log each AI file in
+`docs/AI_CONTENT_LOG.md`, then drop it onto `event_sounds.tres` (or a department's / boss's `music`). settings_input should
+call `Sound.set_volume(bus, 0..1)`.

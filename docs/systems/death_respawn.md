@@ -19,12 +19,19 @@ func get_reprint_cost() -> int                  # meat needed for the next repri
 func get_free_reprints_left() -> int            # solo only
 func kill(player_id: int, info: DamageInfo = null) -> void    # host (cheats, kill zones)
 func reprint(player_id: int, xform: Transform3D) -> void      # host
+func next_to_reprint() -> int                   # NEW 2026-10-23, host: dead longest and waited reprint_min_wait (0 = nobody)
+func longest_dead() -> int                      # NEW
+func place_printers() -> Array[Printer3D]       # NEW, every PC on floor_ready: one per `printer` marker
+func tell(player_id: int, text: String) -> void # NEW, host: a toast for one player
 
 class_name Printer3D extends Node3D             # scene: systems/death_respawn/printer_3d.tscn
 signal meat_changed(inserted: int, needed: int)
 func get_meat_inserted() -> int
 func can_print() -> bool
 func request_print() -> void                    # local; the print button's Interactable calls it
+func print_now(asked_by: int) -> bool            # NEW 2026-10-23, host
+func add_meat(count: int) -> void               # NEW, host
+func get_output_transform() -> Transform3D      # NEW
 ```
 Meat is a prop (`prop_meat`), identified by the `meat` tag on its PropData. Dropping meat into the
 printer's hopper (an Area3D) inserts it; extra meat stays inserted for the next reprint.
@@ -76,3 +83,28 @@ GUT tests: `test_death_drops_all_items`, `test_death_releases_held_prop`, `test_
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-23: built (Phase 1b). Changes marked above. How it works: HealthComponent.died (every PC) -> the body becomes a
+  ghost (NEW `PlayerCharacter.set_ghost`: hidden, no collision, doesn't move) and the owner's camera follows a living
+  teammate (left / right click switch); the host drops the inventory as pickups in a ring, lets go of held props, marks
+  the record dead, and checks for a solo free reprint (`reprint_min_wait` later, at the nearest printer) or a team wipe
+  (once per run). HealthComponent.revived (every PC) -> back from ghost, `player_reprinted`. Printers aren't spawned
+  through a MultiplayerSpawner: every PC puts one at each `printer` marker on `floor_ready` (child "Printer"). The run
+  ending revives everyone (nobody is a ghost in the Break Room). Console: `kill`, `meat <count>`. damage's "revive
+  after 3 s" stub is gone; the cargo lift doesn't wait for ghosts (ElevatorZone skips dead records).
+
+## HANDOFF
+**Built (2026-10-23):** the `Death` autoload (`DeathService`), `Printer3D` (`printer_3d.tscn`: a hopper for meat, a print
+button, a screen with the meat count and who's next, an output pad), the test scene
+(`systems/death_respawn/test/death_test.tscn`) and 10 GUT tests (`tests/unit/death_respawn/test_death.gd`: the spec's list
+except the disconnect one, plus `test_death_emits_player_died`, `test_meat_in_the_hopper_counts`,
+`test_ghosts_are_not_waited_for_by_the_lift`). Checked with 2 game copies: the host killed the client (its crowbar
+dropped, a ghost on both PCs), then meat + print brought it back on both PCs with full health at the printer.
+
+**Foundation / project.godot changes:** autoload line `Death` (after Vendors). No new EventBus signals (emits
+`player_died`, `player_reprinted`, `team_wiped`).
+
+**Other systems touched (this branch):** player (NEW `set_ghost`, `is_ghost`), damage (stub removed), cargo_lift
+(ElevatorZone ignores dead players), level_gen (`printer` markers in `room_lift_grey` and `room_arena_grey`).
+
+**Not yet:** a player who disconnects only drops their items if their body is still there when `player_left` arrives
+(not tested); ghosts left outside the lift ride along invisibly where they died; no death sounds (audio).

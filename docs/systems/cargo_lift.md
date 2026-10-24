@@ -137,6 +137,8 @@ Not yet: dead players (needs death_respawn), carts (needs carts).
   `needs_charge_seconds`. DepartmentData: NEW `lift_breaks_min`, `lift_breaks_max`, `lift_part_ids`; deprecated
   `lift_parts_per_floor`, `lift_part_prop_id`. `prop_lift_part_zoology` lost the `lift_part` tag (it has no slot).
 
+- 2026-10-23 (death_respawn branch): `ElevatorZone.get_missing_players` skips dead players (ghosts): Go doesn't wait for them.
+
 ## HANDOFF
 **Built (2026-10-19):** `CargoLift` (`cargo_lift.gd`, scene `cargo_lift.tscn`, geometry made in code with fixed
 node names), `ElevatorZone`, the test scene and 7 GUT tests. game_flow's game world holds the one lift for the whole

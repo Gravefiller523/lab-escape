@@ -4,13 +4,10 @@ extends Node
 ## scene doesn't need editing): "Stats" (StatsComponent), "Health" (HealthComponent, Config.game.
 ## player_max_health), "Statuses" (StatusEffectComponent) and a "Hurtbox" capsule. Also: hit() for
 ## attacks, and the console commands hurt, heal, god, status and revive. Spec: docs/systems/damage.md.
-##
-## STUB (death_respawn): a player whose health reaches 0 is revived by the host after
-## STUB_REVIVE_SECONDS with a toast, until death_respawn handles dying and reprinting.
+## (CHANGED 2026-10-23: the "revive after 3 s" stub is gone: death_respawn handles dying.)
 
 const HURTBOX_RADIUS: float = 0.4
 const HURTBOX_HEIGHT: float = 1.8
-const STUB_REVIVE_SECONDS: float = 3.0
 
 
 func _ready() -> void:
@@ -68,22 +65,6 @@ func _on_player_spawned(_player_id: int, player_node: Node3D) -> void:
 	if body == null or body.is_queued_for_deletion():
 		return
 	give_components(body, Config.game.player_max_health)
-	var health: HealthComponent = HealthComponent.of(body)
-	if not health.died.is_connected(_on_player_died):
-		health.died.connect(_on_player_died.bind(body))
-
-
-## STUB (death_respawn): come back after a few seconds.
-func _on_player_died(_info: DamageInfo, body: PlayerCharacter) -> void:
-	if body.is_local():
-		EventBus.toast_requested.emit("You died! (death_respawn isn't built yet: back in %d s)" % int(STUB_REVIVE_SECONDS))
-	if not multiplayer.is_server():
-		return
-	get_tree().create_timer(STUB_REVIVE_SECONDS).timeout.connect(func() -> void:
-		if is_instance_valid(body) and body.is_inside_tree():
-			var health: HealthComponent = HealthComponent.of(body)
-			if health != null and health.is_dead():
-				health.revive(1.0))
 
 
 func _player_health(player_id: int) -> HealthComponent:

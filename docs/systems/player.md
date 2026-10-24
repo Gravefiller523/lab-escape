@@ -99,7 +99,8 @@ mode is one new file and no list to edit. Launch modes (all built 2026-10-24): `
 `slide` (Slug: builds up speed the longer it moves, from its slow start to 1.25 x sprint speed over
 `slide_build_up_seconds`; stopping or hitting something loses it; low grip, slopes pull downhill; top speed
 `slide_max_speed` x sprint: 2.0, building up over 8 s and lost over 3 s, Zachary's tuning 2026-10-24),
-`hop` (Frog: jumps throw you forward, walking is small automatic hops), `hover` (Fly: hold jump while
+`hop` (Frog: walks slowly; hold jump to charge, let go to leap: a fuller charge leaps higher, further and faster;
+little air steering so the leap carries you), `hover` (Fly: hold jump while
 falling to glide slowly for up to hover_seconds; landing refills). All their numbers are in `player_tuning.tres`.
 **Ladders** (NEW 2026-10-24) beat any mode: inside a Ladder's climb area, in the air or moving forward
 (not looking down), you climb (`ladder` mode): forward up (down when looking down past
@@ -196,6 +197,7 @@ launch options `-- host` / `-- join`.
 - 2026-10-24 (Zachary): Slug builds up speed while it keeps moving, up to 1.25 x the normal sprint speed (`slide_max_speed` 1.25, NEW `slide_build_up_seconds` 5, `slide_lose_seconds` 1); stopping or getting blocked loses it. Octo: S climbs down and Ctrl lets go (was the other way round). NEW `MovementMode.top_speed()` and `PlayerMovement.get_top_speed()`: the host speed check now allows each mode's own top speed (slug 8.75 m/s, frog `hop_max_speed`). Checked with 2 local instances: a client slug at full speed is never pulled back.
 - 2026-10-24 (Zachary, later): Slug top speed raised to 1.75 x the normal sprint speed (`slide_max_speed` 1.75, 12.25 m/s). The host speed check follows it through `top_speed()`.
 - 2026-10-24 (Zachary's tuning): `slide_max_speed` 2.0 (14 m/s), `slide_build_up_seconds` 8, `slide_lose_seconds` 3. The slug tests now read these numbers instead of assuming them.
+- 2026-10-24 (Zachary): Frog reworked: no automatic hops, walks at `hop_walk_speed_multiplier` (0.5); jumping happens on release: hold jump to charge (`hop_charge_seconds` 1), a full charge leaps `hop_charge_height_multiplier` (1.6) x higher and `hop_charge_forward_multiplier` (2) x faster forward; `hop_forward_speed` 7, `hop_air_control` 0.1 (the leap isn't braked mid-air), `hop_max_speed` 15 (the host speed check allows it). Removed the unused `hop_auto_hops` and `hop_small_height`. The hop mode has `is_charging()` and `get_charge()` (for a HUD bar later). A full-charge leap goes about 12 m; 2 local instances saw it land in the same place.
 
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,

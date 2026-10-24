@@ -5,7 +5,7 @@ extends Node3D
 ##
 ## Keys: WASD move, Shift sprint, Space jump, Ctrl crouch, Esc frees the mouse (click to look again).
 ## Test modifiers on your own body: 1 = double speed, 2 = no jumping, 3 = Giraffe height (x1.4).
-## Mutation movement (the real numbers from content/mutations/): 4 = Fly (hold jump to glide), 5 = Frog (hops),
+## Mutation movement (the real numbers from content/mutations/): 4 = Fly (hold jump to glide), 5 = Frog (hold jump to charge a leap),
 ## 6 = Octo (walk into a wall to climb: W up, S down, Ctrl lets go), 7 = Slug (builds up speed). The platform has a ladder.
 ## STUB buttons stand in for game_flow: "Start run" and "Next floor" (press them in the host window).
 

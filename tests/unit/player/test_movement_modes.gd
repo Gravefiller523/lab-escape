@@ -121,21 +121,7 @@ func test_hover_glide_runs_out_and_refills_on_landing() -> void:
 
 # --- Hop (Frog) ----------------------------------------------------------------------------------
 
-func test_hop_jump_throws_you_forward() -> void:
-	var body := _spawn(&"hop", 1.8)
-	body.tuning = body.tuning.duplicate() as PlayerTuning
-	body.tuning.hop_auto_hops = false
-	await _settle(body)
-	body.set_input_override(_keys(1.0))
-	await wait_physics_frames(30)
-	var walking: float = _flat_speed(body)
-	body.set_input_override(_keys(1.0, true))
-	await wait_physics_frames(2)
-	assert_gt(_flat_speed(body), walking + 2.0, "the jump adds forward speed")
-	assert_lte(_flat_speed(body), body.tuning.hop_max_speed + 0.01, "but no faster than hop_max_speed")
-
-
-func test_hop_moves_in_small_hops() -> void:
+func test_frog_walks_slowly_without_hopping() -> void:
 	var body := _spawn(&"hop", 1.8)
 	await _settle(body)
 	body.set_input_override(_keys(1.0))
@@ -143,9 +129,53 @@ func test_hop_moves_in_small_hops() -> void:
 	for frame: int in 60:
 		await wait_physics_frames(1)
 		highest = maxf(highest, body.global_position.y)
-	assert_gt(highest, 0.1, "walking hops off the ground")
-	assert_lt(highest, 0.6, "small hops, not full jumps")
-	assert_lt(body.global_position.z, -1.0, "and moves forward")
+	assert_lt(highest, 0.05, "walking stays on the ground (no hops)")
+	assert_almost_eq(_flat_speed(body), body.tuning.walk_speed * body.tuning.hop_walk_speed_multiplier, 0.2,
+		"at hop_walk_speed_multiplier x walking speed")
+
+
+func test_frog_jumps_when_you_let_go_not_when_you_press() -> void:
+	var body := _spawn(&"hop", 1.8)
+	await _settle(body)
+	body.set_input_override(_keys(0.0, true, true))
+	await wait_physics_frames(20)
+	var mode := body.get_movement().get_mode_object()
+	assert_true(mode.call(&"is_charging"), "holding jump charges")
+	assert_lt(body.global_position.y, 0.05, "still on the ground while charging")
+	assert_gt(mode.call(&"get_charge"), 0.2, "the charge grows")
+	body.set_input_override(_keys())
+	await wait_physics_frames(8)
+	assert_gt(body.global_position.y, 0.3, "letting go leaps")
+
+
+## Leaps from standing still (facing -Z) after holding jump for `hold_frames`; returns [highest, distance].
+func _leap(hold_frames: int) -> Array[float]:
+	var body := _spawn(&"hop", 1.8)
+	await _settle(body)
+	body.set_input_override(_keys(0.0, true, true))
+	await wait_physics_frames(hold_frames)
+	body.set_input_override(_keys())
+	var highest: float = 0.0
+	await wait_physics_frames(3)
+	while not body.is_on_floor():
+		await wait_physics_frames(1)
+		highest = maxf(highest, body.global_position.y)
+	var distance: float = -body.global_position.z
+	body.queue_free()
+	await wait_physics_frames(2)
+	return [highest, distance]
+
+
+func test_frog_tap_jump_goes_forward() -> void:
+	var tap: Array[float] = await _leap(1)
+	assert_gt(tap[1], 1.5, "even a tap from standing throws the frog forward")
+
+
+func test_frog_charged_leap_goes_further_and_higher() -> void:
+	var tap: Array[float] = await _leap(1)
+	var charged: Array[float] = await _leap(70)
+	assert_gt(charged[0], tap[0] * 1.4, "a full charge leaps higher")
+	assert_gt(charged[1], tap[1] * 1.8, "and much further")
 
 
 # --- Wall climb (Octo) ---------------------------------------------------------------------------

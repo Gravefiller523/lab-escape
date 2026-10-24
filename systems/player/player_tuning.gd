@@ -56,14 +56,23 @@ extends Resource
 @export var hover_air_control: float = 2.5
 
 @export_group("Hop (Frog)")
-## A jump also throws you forward this fast (metres per second) in the direction you move.
-@export var hop_forward_speed: float = 5.0
-## Moving on the ground makes small automatic hops.
-@export var hop_auto_hops: bool = true
-## How high the small automatic hops go (metres).
-@export var hop_small_height: float = 0.3
-## Fastest you can go sideways while hopping (keep under sprint speed x the host's speed_check_tolerance).
-@export var hop_max_speed: float = 9.0
+## On the ground the frog walks slowly: walking and sprinting speed x this.
+@export var hop_walk_speed_multiplier: float = 0.5
+## A jump throws you forward this fast (metres per second) in the direction you move (or face, when standing).
+@export var hop_forward_speed: float = 7.0
+## Hold jump to charge (release to leap). Seconds to reach a full charge.
+@export var hop_charge_seconds: float = 1.0
+## A full charge jumps this many times higher than a tap.
+@export var hop_charge_height_multiplier: float = 1.6
+## A full charge throws you forward this many times faster than a tap.
+@export var hop_charge_forward_multiplier: float = 2.0
+## Moving while charging: walking speed x this (the frog squats).
+@export var hop_charge_move_multiplier: float = 0.3
+## Steering in the air during a leap, as a multiple of normal air control (low = the leap carries you, like a
+## real frog; 1 = normal, which brakes the leap if you let go of the keys).
+@export var hop_air_control: float = 0.1
+## Fastest you can go sideways after a leap (the host's speed check allows this for frogs).
+@export var hop_max_speed: float = 15.0
 
 @export_group("Wall climb (Octo)")
 ## Metres per second up a wall.

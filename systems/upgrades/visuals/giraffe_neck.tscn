@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[sub_resource type="StandardMaterial3D" id="Mat_1"]
+albedo_color = Color(0.9, 0.75, 0.35, 1)
+
+[sub_resource type="CylinderMesh" id="Mesh_1"]
+material = SubResource("Mat_1")
+top_radius = 0.12
+bottom_radius = 0.16
+height = 0.8
+
+[node name="GiraffeNeck" type="Node3D"]
+
+[node name="Neck" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("Mesh_1")

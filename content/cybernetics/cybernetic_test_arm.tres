@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="CyberneticData" format=3]
+
+[ext_resource type="Script" path="res://core/data/upgrades/cybernetic_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/upgrade_effect_data.gd" id="2_base"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/stat_effect_data.gd" id="3_stat"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/visual_attachment_effect_data.gd" id="4_visual"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/visuals/robot_arm.tscn" id="5_arm"]
+
+[sub_resource type="Resource" id="Strong"]
+script = ExtResource("3_stat")
+stat = &"melee_damage"
+multiply = 1.5
+
+[sub_resource type="Resource" id="Carry"]
+script = ExtResource("3_stat")
+stat = &"carry_strength"
+add = 30.0
+
+[sub_resource type="Resource" id="Arm"]
+script = ExtResource("4_visual")
+scene = ExtResource("5_arm")
+attach_point = &"right_arm"
+
+[resource]
+script = ExtResource("1_data")
+id = &"cybernetic_test_arm"
+display_name = "Test robot arm"
+description = "Phase 1 debug part: a stronger arm (carry 30 kg more)."
+effects = Array[ExtResource("2_base")]([SubResource("Strong"), SubResource("Carry"), SubResource("Arm")])
+glow_color = Color(0.4, 0.75, 1, 1)
+body_part = &"arm"
+drop_weight = 0.0

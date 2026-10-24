@@ -157,6 +157,7 @@ launch options `-- host` / `-- join`.
 - 2026-10-19 (cargo_lift branch): fix: a host `teleport()` ("Start anyway", bringing everyone into the lift) was
   undone by the host's speed check. The check now expects the jump. Test: `test_host_teleport_is_not_undone_by_the_speed_check`.
 
+- 2026-10-23 (upgrades branch): `PlayerMovement.get_speed_multiplier()` also multiplies damage's `move_speed` stat.
 - 2026-10-23 (death_respawn branch): NEW `set_ghost(ghost: bool)` and `is_ghost()`: a dead player's body is hidden, its
   collision is off and it doesn't move (death_respawn calls it on every PC; its camera is death_respawn's).
 

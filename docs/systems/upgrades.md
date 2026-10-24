@@ -23,9 +23,11 @@ func get_stack_count(player_id: int, upgrade_id: StringName) -> int
 func get_hidden_cosmetic_slots(player_id: int) -> PackedStringArray   # cosmetics asks this
 func request_consume(prop: NetProp) -> void                   # local; the use handler calls this
 func preview_clash(player_id: int, upgrade_id: StringName) -> Array[StringName]   # upgrades it would replace (for the prompt)
+func is_known(upgrade_id: StringName) -> bool    # NEW 2026-10-23: someone gained it this run (gems show its name)
 
 class_name UpgradeCarrier extends Node     # child of glowing-gem and robot-part prop scenes
 var upgrade_id: StringName                 # from NetProp.extra["upgrade_id"]
+# NEW 2026-10-23: static func for_data(data: UpgradeEffectData) -> UpgradeEffect (UpgradeEffect, found by file name)
 func get_upgrade() -> UpgradeData
 static func of(node: Node) -> UpgradeCarrier
 
@@ -98,3 +100,33 @@ GUT tests: `test_grant_applies_every_effect_piece`, `test_unique_does_not_stack`
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-23: built (Phase 1b). Changes marked above. How it works: E while holding a prop with an `UpgradeCarrier`
+  (use handler priority 70, above grabbing) -> `request_consume` -> the host checks you hold it, lets go, despawns it
+  and `grant`s: the record's `upgrade_ids` is updated and every PC applies the effect pieces (`_gained_rpc`); slot
+  pieces act on the host only. A new body (reconnect) gets everything from the record on `player_spawned`; a reprint
+  keeps the same body so nothing is re-applied. `run_ended` removes everyone's upgrades. The prompt says "Eat glowing
+  gem: ???" until someone has gained that mutation this run, then its name, plus "(replaces X)" for clashes; robot
+  parts say "Install robot part". Console: `upgrade <id>`, `unupgrade <id>`, `spawn mutation_<name>` (a glowing gem
+  holding it) / `spawn cybernetic_<name>` (a robot part). Content: `mutation_fly`, `mutation_frog`, `mutation_octo`,
+  `mutation_giraffe`, `mutation_slug`, `cybernetic_test_arm` (drop_weight 0: debug only), `prop_robot_part` (scene in
+  `systems/upgrades/carriers/`); body models in `systems/upgrades/visuals/`. loot's glowing gem got an UpgradeCarrier.
+  player: `PlayerMovement.get_speed_multiplier()` also multiplies the `move_speed` stat (so the energy drink's speed
+  boost works).
+
+## HANDOFF
+**Built (2026-10-23):** the `Upgrades` autoload (`UpgradesService`), `UpgradeCarrier`, `UpgradeEffect` + six runtime pieces
+(movement, voice, slot, stat, visual attachment, behaviour), the five launch mutations and the test arm, the test scene
+(`systems/upgrades/test/upgrades_test.tscn`) and 15 GUT tests (`tests/unit/upgrades/test_upgrades.gd`: the spec's list plus
+`test_fly_changes_voice_and_looks`, `test_stat_piece`, `test_new_body_gets_upgrades_from_the_record`,
+`test_gem_name_unknown_until_eaten`, `test_run_end_clears_upgrades`, `test_energy_drink_speed_boost_makes_you_faster`).
+Checked with 2 game copies: a client ate a Fly gem; both PCs showed it in the record, its floaty gravity and its wings.
+
+**Foundation / project.godot changes:** autoload line `Upgrades` (after Death). No new EventBus signals (emits
+`upgrade_gained`, `upgrade_lost`).
+
+**Other systems touched (this branch):** player (`get_speed_multiplier` reads `move_speed`), loot (glowing gem scene has
+an UpgradeCarrier), tests/unit/loot (its test cybernetic got its own id).
+
+**STUBS / not yet:** the movement modes `hover`, `hop`, `wall_climb`, `slide` don't exist in the player system yet (bodies
+walk; the speed, jump, gravity, height and can_jump numbers do work); Fly's "attracted to trash" behaviour and flies being
+drawn to Fly players aren't made; no eating sound (audio); grey-box body models.

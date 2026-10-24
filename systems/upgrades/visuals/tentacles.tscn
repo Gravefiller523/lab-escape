@@ -1,0 +1,28 @@
+[gd_scene format=3]
+
+[sub_resource type="StandardMaterial3D" id="Mat_1"]
+albedo_color = Color(0.75, 0.35, 0.6, 1)
+
+[sub_resource type="CylinderMesh" id="Mesh_1"]
+material = SubResource("Mat_1")
+top_radius = 0.06
+bottom_radius = 0.02
+height = 0.7
+
+[node name="OctoTentacles" type="Node3D"]
+
+[node name="A" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, -0.2, 0.1)
+mesh = SubResource("Mesh_1")
+
+[node name="B" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, -0.2, 0.1)
+mesh = SubResource("Mesh_1")
+
+[node name="C" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, -0.2, -0.15)
+mesh = SubResource("Mesh_1")
+
+[node name="D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, -0.2, -0.15)
+mesh = SubResource("Mesh_1")

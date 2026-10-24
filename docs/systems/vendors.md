@@ -25,6 +25,18 @@ func get_offers() -> Array[VendorOffer]
 func get_credit(player_id: int) -> int
 func request_buy(offer_index: int) -> void   # local; the button Interactable calls it
 func request_refund() -> void                # local; the lever (hold 1 s)
+# NEW 2026-10-23, host:
+func roll_offers() -> void
+func add_credit(player_id: int, value: int) -> void   # 0 = nobody
+func buy(player_id: int, offer_index: int) -> bool
+func refund_all() -> void
+func get_stock() -> VendorStockData
+func use_seed(run_seed: int) -> void        # tests only
+@export var vendor_index: int, screen_title: String   # NEW
+const NOBODY: int = 0
+
+# NEW 2026-10-23: autoload Vendors (systems/vendors/vendors.gd, VendorsService)
+func place_vendors(floor_number: int = 0, limit: int = -1) -> Array[Vendor]   # every PC, on floor_ready
 ```
 Buying: host checks the buyer's credit ≥ price and stock left → spawns the item pickup
 (`Props.spawn_item`) in the tray → takes the price from that player's credit → ejects that player's
@@ -68,3 +80,24 @@ GUT tests: `test_gem_credits_last_holder`, `test_buy_with_exact_credit`, `test_c
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-23: built (Phase 1b). Changes marked above. The machine is made in code (`vending_machine.tscn` is just the
+  root): a coin slot (yellow; an Area3D the host watches), one green buy button per offer, a red refund lever (hold E),
+  a screen showing your credit, and a tray. Glowing gems aren't money (they don't go in). Vendors aren't spawned
+  through a MultiplayerSpawner: every PC puts one at the same markers on `floor_ready`, child "Vendor" of the marker.
+  NEW GameConfig `vendors_per_floor` (2): at most that many machines per floor, picked from the `vendor` markers with
+  `SeededRng(run_seed, &"vendor_spots", floor)` (same on every PC); `supply_counter` markers always get one. STUB
+  (department content): a department without `stock_id` uses the first stock. Content: `stock_zoology_vending`
+  (crowbar 3, energy drink 2, knife 4, potted plant 1, hot coffee 3; shows 3). level_gen: `room_hall_grey` got a
+  `vendor` marker.
+
+## HANDOFF
+**Built (2026-10-23):** `VendorOffer`, `Vendor` (coin slot credit to the last holder, buying, change as gems via
+`LootService.gems_for_value`, refunds, synced offers and credits, toasts for "not enough gems"), the `Vendors` autoload,
+the stock above, the test scene (`systems/vendors/test/vendor_test.tscn`) and 10 GUT tests
+(`tests/unit/vendors/test_vendors.gd`: the spec's list plus `test_credit_and_offers_reach_the_client`). Checked with 2
+game copies on a generated floor: both PCs had the same 2 machines and offers, and a purchase for the client matched.
+
+**Foundation / project.godot changes:** GameConfig `vendors_per_floor`. Autoload line `Vendors` (after Loot). No new
+EventBus signals (emits `vendor_purchase` on every PC). level_gen's `room_hall_grey` has a `vendor` marker.
+
+**Not yet:** carts pushing gems in (carts: credit the pusher), sounds (audio), a nicer machine model.

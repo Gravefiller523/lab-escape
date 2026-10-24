@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="VendorStockData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/loot/vendor_stock_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/loot/vendor_entry_data.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="E1"]
+script = ExtResource("2_entry")
+item_id = &"item_crowbar"
+price = 3
+weight = 2.0
+stock_count = 1
+
+[sub_resource type="Resource" id="E2"]
+script = ExtResource("2_entry")
+item_id = &"item_energy_drink"
+price = 2
+weight = 2.0
+stock_count = 2
+
+[sub_resource type="Resource" id="E3"]
+script = ExtResource("2_entry")
+item_id = &"item_knife"
+price = 4
+weight = 1.0
+stock_count = 1
+
+[sub_resource type="Resource" id="E4"]
+script = ExtResource("2_entry")
+item_id = &"item_potted_plant"
+price = 1
+weight = 1.0
+stock_count = 2
+
+[sub_resource type="Resource" id="E5"]
+script = ExtResource("2_entry")
+item_id = &"item_hot_coffee"
+price = 3
+weight = 1.0
+stock_count = 1
+
+[resource]
+script = ExtResource("1_data")
+id = &"stock_zoology_vending"
+display_name = "Zoology vending machine"
+tags = PackedStringArray("zoology")
+slots_shown = 3
+entries = Array[ExtResource("2_entry")]([SubResource("E1"), SubResource("E2"), SubResource("E3"), SubResource("E4"), SubResource("E5")])

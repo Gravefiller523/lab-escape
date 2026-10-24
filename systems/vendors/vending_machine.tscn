@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/vendors/vendor.gd" id="1_vendor"]
+
+[node name="VendingMachine" type="Node3D"]
+script = ExtResource("1_vendor")

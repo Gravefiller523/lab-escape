@@ -64,3 +64,8 @@ kind = &"charger"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 0.9)
 script = ExtResource("3_marker")
 kind = &"vendor"
+
+[node name="UpgradeMachine" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.3, 0, 1.4)
+script = ExtResource("3_marker")
+kind = &"upgrade_machine"

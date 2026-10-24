@@ -1,9 +1,8 @@
 extends Node3D
 ## Test scene for loot (run alone with F6). Keys:
-##   F1 "kill" a rat 100 times (rolls its table 100 times, shows the counts and the glow rate; spawns nothing)
+##   F1 "kill" a rat 100 times (rolls its table 100 times and shows the counts; spawns nothing)
 ##   F2 kill one rat in front of you for real (its drops pop out)   F3 the same for the Giant Rat
 ##   F4 drop 23 gem value   F8 merge loose gems now (normally only past max_loose_gems_per_floor)
-## Glowing gems only appear once there are mutations (the upgrades system adds them).
 
 var _overview: Camera3D
 var _info: Label
@@ -68,14 +67,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	match key.keycode:
 		KEY_F1:
 			var counts: Dictionary[StringName, int] = {}
-			var glowing: int = 0
 			for index: int in 100:
 				_counter += 1
 				for drop: LootDrop in Loot.roll(&"loot_zoology_small", SeededRng.make(1, &"loot_test", _counter)):
 					counts[drop.prop_id] = counts.get(drop.prop_id, 0) + drop.count
-					if drop.upgrade_id != &"":
-						glowing += 1
-			_info.text = "100 rats: %s   glowing: %d   glow chance now %.0f%%" % [str(counts), glowing, Loot.get_glow_chance() * 100.0]
+			_info.text = "100 rats: %s" % str(counts)
 		KEY_F2:
 			EventBus.enemy_killed.emit(&"enemy_rat", spot, Net.local_player_id())
 		KEY_F3:

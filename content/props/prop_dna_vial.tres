@@ -1,14 +1,14 @@
 [gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://core/data/props/prop_data.gd" id="1_data"]
-[ext_resource type="PackedScene" path="res://systems/loot/scenes/gem_glowing.tscn" id="2_scene"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/carriers/dna_vial.tscn" id="2_scene"]
 
 [resource]
 script = ExtResource("1_data")
-id = &"prop_gem_glowing"
-display_name = "Glowing gem"
-description = "Holds a mutation. Hold it and press E to eat it."
+id = &"prop_dna_vial"
+display_name = "DNA vial"
+description = "Holds a mutation. Put it in the mutation machine, then step in."
 scene = ExtResource("2_scene")
 mass = 0.3
 grants_upgrade = true
-tags = PackedStringArray("glowing_gem")
+tags = PackedStringArray("dna_vial")

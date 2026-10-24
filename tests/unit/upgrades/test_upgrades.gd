@@ -1,6 +1,7 @@
 extends GutTest
 ## Tests for upgrades (docs/systems/upgrades.md). Solo: this PC is the host and the player (the record is
-## the local player's). A PropSpawner is in the test world for gems and robot parts.
+## the local player's). A PropSpawner is in the test world for DNA vials and data drives; upgrades are applied
+## by the mutation machine (Zachary, 2026-10-23).
 
 const PLAYER_SCENE: PackedScene = preload("res://systems/player/player.tscn")
 const WAIT: float = 5.0
@@ -139,33 +140,76 @@ func test_new_body_gets_upgrades_from_the_record() -> void:
 	_body = again
 
 
-func test_consume_requires_holding() -> void:
-	var gem: NetProp = Props.spawn_prop(&"prop_gem_glowing", Transform3D(Basis.IDENTITY, Vector3(0, 0.3, -1.2)),
-		{"upgrade_id": "mutation_frog"})
+func _machine(at: Vector3 = Vector3(0, 0, -4)) -> UpgradeMachine:
+	var machine := (load("res://systems/upgrades/upgrade_machine.tscn") as PackedScene).instantiate() as UpgradeMachine
+	machine.position = at
+	_world.add_child(machine)
+	return machine
+
+
+func test_machine_applies_the_loaded_mutation_when_you_step_in() -> void:
+	var machine := _machine()
+	machine.load_upgrade(&"mutation_frog")
+	assert_eq(machine.get_loaded(), [&"mutation_frog"] as Array[StringName])
+	_body.teleport(Transform3D(Basis.IDENTITY, machine.global_position + Vector3.UP * 0.1))
+	await wait_until(func() -> bool: return Upgrades.has_upgrade(_me, &"mutation_frog"), WAIT)
+	assert_true(Upgrades.has_upgrade(_me, &"mutation_frog"), "stood in the booth: Frog")
+	assert_true(machine.get_loaded().is_empty(), "the vial is used up")
+
+
+func test_vial_dropped_in_the_hopper_loads_the_machine() -> void:
+	var machine := _machine()
+	Props.spawn_prop(&"prop_dna_vial", Transform3D(Basis.IDENTITY, machine.global_transform * UpgradeMachine.HOPPER_OFFSET + Vector3.UP * 0.6),
+		{"upgrade_id": "mutation_octo"})
+	await wait_until(func() -> bool: return not machine.get_loaded().is_empty(), WAIT)
+	assert_eq(machine.get_loaded(), [&"mutation_octo"] as Array[StringName])
+	assert_eq(Props.get_props(&"prop_dna_vial").size(), 0, "the vial went in")
+
+
+func test_e_at_the_machine_while_holding_a_vial_puts_it_in() -> void:
+	var machine := _machine(Vector3(0, 0, -2.5))
+	var vial: NetProp = Props.spawn_prop(&"prop_dna_vial", Transform3D(Basis.IDENTITY, Vector3(0.8, 0.3, 0)),
+		{"upgrade_id": "mutation_giraffe"})
 	await wait_physics_frames(2)
-	Upgrades.request_consume(gem)
-	assert_false(Upgrades.has_upgrade(_me, &"mutation_frog"), "not holding it: nothing")
-	PropsService.grab_of(_body).try_grab(gem)
-	await wait_until(func() -> bool: return gem.is_held(), WAIT)
+	PropsService.grab_of(_body).try_grab(vial)
+	await wait_until(func() -> bool: return vial.is_held(), WAIT)
 	var controller: InteractionController = InteractionService.controller_of(_body)
-	assert_true(controller.press_use(null), "E while holding it eats it")
+	assert_true(controller.press_use(machine.get_node("Back")), "E on the machine")
+	# Zachary's bug (2026-10-24): right after it goes in, the prompt and E must not touch the freed vial.
+	await wait_process_frames(1)
+	controller.get_prompt()
+	controller.press_use(machine.get_node("Back"))
 	await wait_physics_frames(2)
-	assert_true(Upgrades.has_upgrade(_me, &"mutation_frog"))
-	assert_eq(Props.get_props(&"prop_gem_glowing").size(), 0, "the gem is gone")
+	assert_eq(machine.get_loaded(), [&"mutation_giraffe"] as Array[StringName])
+	assert_false(Upgrades.has_upgrade(_me, &"mutation_giraffe"), "loading isn't getting it: you step in for that")
 
 
-func test_robot_part_and_gem_use_same_path() -> void:
-	var part: NetProp = Props.spawn_prop(&"prop_robot_part", Transform3D(Basis.IDENTITY, Vector3(0, 0.3, -1.2)),
+func test_machine_keeps_a_unique_mutation_you_already_have() -> void:
+	var machine := _machine()
+	Upgrades.grant(_me, &"mutation_giraffe")
+	machine.load_upgrade(&"mutation_giraffe")
+	assert_false(machine.apply_to(_me), "you have it already")
+	assert_eq(machine.get_loaded().size(), 1, "it stays loaded for someone else")
+
+
+func test_data_drive_gives_a_cybernetic_the_same_way() -> void:
+	var machine := _machine()
+	var drive: NetProp = Props.spawn_prop(&"prop_data_drive", Transform3D(Basis.IDENTITY, Vector3(5, 0.3, 5)),
 		{"upgrade_id": "cybernetic_test_arm"})
 	await wait_physics_frames(2)
-	PropsService.grab_of(_body).try_grab(part)
-	await wait_until(func() -> bool: return part.is_held(), WAIT)
-	Upgrades.request_consume(part)
-	assert_true(Upgrades.has_upgrade(_me, &"cybernetic_test_arm"), "installed the same way")
+	assert_true(machine.insert_prop(drive))
+	assert_true(machine.apply_to(_me))
+	assert_true(Upgrades.has_upgrade(_me, &"cybernetic_test_arm"))
 	assert_eq(StatsComponent.of(_body).get_value(&"carry_strength"), 30.0)
 
 
-func test_gem_name_unknown_until_eaten() -> void:
+func test_carrier_prop_matches_the_kind_of_upgrade() -> void:
+	assert_eq(UpgradesService.carrier_prop_for(&"mutation_fly"), &"prop_dna_vial")
+	assert_eq(UpgradesService.carrier_prop_for(&"cybernetic_test_arm"), &"prop_data_drive")
+
+
+
+func test_vial_name_unknown_until_someone_has_it() -> void:
 	assert_false(Upgrades.is_known(&"mutation_fly"), "a new run: nobody has eaten one")
 	Upgrades.grant(_me, &"mutation_fly")
 	assert_true(Upgrades.is_known(&"mutation_fly"))
@@ -193,3 +237,22 @@ func test_new_mutation_file_needs_no_code() -> void:
 func test_energy_drink_speed_boost_makes_you_faster() -> void:
 	StatusEffectComponent.of(_body).apply(&"status_speed_boost")
 	assert_almost_eq(_body.get_movement().get_speed_multiplier(), 1.5, 0.001, "movement reads the move_speed stat")
+
+
+func test_prompt_and_e_survive_a_held_vial_vanishing() -> void:
+	# Zachary's bug (2026-10-24): the vial you hold disappears (put in the machine) and the prompt / E
+	# looked at the freed vial before the grab noticed.
+	var vial: NetProp = Props.spawn_prop(&"prop_dna_vial", Transform3D(Basis.IDENTITY, Vector3(0.8, 0.3, 0)),
+		{"upgrade_id": "mutation_frog"})
+	await wait_physics_frames(2)
+	PropsService.grab_of(_body).try_grab(vial)
+	await wait_until(func() -> bool: return vial.is_held(), WAIT)
+	vial.free()
+	var controller: InteractionController = InteractionService.controller_of(_body)
+	assert_eq(_held_prompt(controller), "", "no prompt, no error")
+	controller.press_use(null)
+	assert_null(PropsService.grab_of(_body).get_held())
+
+
+func _held_prompt(controller: InteractionController) -> String:
+	return controller.get_prompt()

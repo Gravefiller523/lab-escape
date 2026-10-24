@@ -51,19 +51,23 @@ extends Resource
 @export var extra_floor_task_every_players: int = 3
 
 @export_group("Gems and loot")
-## Chance (0 to 1) that a dropped gem glows and holds a mutation.
+## @deprecated 2026-10-23 (Zachary): no glowing gems; mutations come from DNA vials. Not used.
 @export_range(0.0, 1.0) var gem_glow_chance: float = 0.15
-## Pity rule: each gem that doesn't glow adds this much to the chance,
-## until one glows. 0 turns the pity rule off.
+## @deprecated 2026-10-23: not used (no glowing gems).
 @export_range(0.0, 1.0) var gem_glow_pity_step: float = 0.03
-## The glow chance never goes above this, even with pity.
+## @deprecated 2026-10-23: not used (no glowing gems).
 @export_range(0.0, 1.0) var gem_glow_chance_max: float = 0.6
-## Chance (0 to 1) that a regular enemy outside Robotics drops a robot part.
+## @deprecated 2026-10-23: not used (cybernetics come from data drives on Robotics floors).
 @export_range(0.0, 1.0) var off_department_robot_part_chance: float = 0.0
 ## Loose gems allowed on one floor before nearby plain gems merge into bigger ones.
 @export var max_loose_gems_per_floor: int = 150
 ## NEW 2026-10-23 (vendors): at most this many vending machines on one floor (picked from the vendor markers).
 @export var vendors_per_floor: int = 2
+## NEW 2026-10-23 (upgrades, Zachary): seconds you stand in the mutation machine before it applies its upgrade.
+@export var upgrade_machine_seconds: float = 1.5
+## NEW: tries per floor to spawn a DNA vial (or data drive), and the chance of each try (low).
+@export var upgrade_carrier_tries: int = 3
+@export_range(0.0, 1.0) var upgrade_carrier_chance: float = 0.2
 
 @export_group("Death and reprinting")
 ## Meat needed in the 3D printer to reprint one player.

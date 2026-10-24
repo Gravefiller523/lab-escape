@@ -34,7 +34,6 @@ func _mutation(id: StringName, weight: float, departments: Array[StringName]) ->
 
 
 func before_each() -> void:
-	Loot.reset_pity()
 	Loot.use_department(null)
 	_world = Node3D.new()
 	add_child_autofree(_world)
@@ -54,11 +53,6 @@ func before_each() -> void:
 
 func after_each() -> void:
 	Loot.clear_department_override()
-	Loot.reset_pity()
-	var game: GameConfig = Config.game
-	game.gem_glow_chance = 0.15
-	game.gem_glow_pity_step = 0.03
-	game.gem_glow_chance_max = 0.6
 
 
 func _describe(drops: Array[LootDrop]) -> String:
@@ -69,16 +63,12 @@ func _describe(drops: Array[LootDrop]) -> String:
 
 
 func test_same_seed_same_drops() -> void:
-	Loot.reset_pity()
 	var first: String = _describe(Loot.roll(&"loot_zoology_medium", SeededRng.make(11, &"loot", 3)))
-	Loot.reset_pity()
 	var second: String = _describe(Loot.roll(&"loot_zoology_medium", SeededRng.make(11, &"loot", 3)))
 	assert_eq(first, second)
 
 
 func test_weights_respected_over_many_rolls() -> void:
-	Config.game.gem_glow_chance = 0.0
-	Config.game.gem_glow_pity_step = 0.0
 	var gems: int = 0
 	var meat: int = 0
 	var rng := SeededRng.make(5, &"loot", 0)
@@ -90,49 +80,6 @@ func test_weights_respected_over_many_rolls() -> void:
 				meat += 1
 	# Small table: nothing 1, gem 3, meat 1 -> gem drops ~3x as often as meat.
 	assert_between(float(gems) / float(meat), 2.5, 3.5, "gems ~3x meat")
-
-
-func test_pity_raises_chance_until_glow() -> void:
-	Config.game.gem_glow_chance = 0.0
-	Config.game.gem_glow_pity_step = 0.25
-	Config.game.gem_glow_chance_max = 1.0
-	var rng := SeededRng.make(1, &"loot", 0)
-	assert_eq(Loot.get_glow_chance(), 0.0)
-	var glowed_after: int = -1
-	for index: int in 10:
-		if Loot.roll_glow(rng):
-			glowed_after = index
-			break
-	assert_between(glowed_after, 1, 4, "the chance climbs (0, 25%, 50%...) until one glows")
-	assert_eq(Loot.get_glow_chance(), 0.0, "and resets after it glows")
-
-
-func test_pity_can_be_turned_off() -> void:
-	Config.game.gem_glow_chance = 0.0
-	Config.game.gem_glow_pity_step = 0.0
-	var rng := SeededRng.make(1, &"loot", 0)
-	for index: int in 50:
-		assert_false(Loot.roll_glow(rng))
-	assert_eq(Loot.get_glow_chance(), 0.0, "pity off: never glows at 0%")
-
-
-func test_chance_never_above_max() -> void:
-	Config.game.gem_glow_chance = 0.1
-	Config.game.gem_glow_pity_step = 0.5
-	Config.game.gem_glow_chance_max = 0.3
-	var rng := SeededRng.make(2, &"loot", 0)
-	for index: int in 30:
-		Loot.roll_glow(rng)
-		assert_lte(Loot.get_glow_chance(), 0.3)
-
-
-func test_glowing_gem_holds_a_mutation() -> void:
-	Config.game.gem_glow_chance = 1.0
-	Config.game.gem_glow_chance_max = 1.0
-	var drops: Array[LootDrop] = Loot.roll(&"loot_test_gems", SeededRng.make(3, &"loot", 0))
-	assert_eq(drops.size(), 1)
-	assert_eq(drops[0].prop_id, &"prop_gem_glowing")
-	assert_true(ContentRegistry.get_content(drops[0].upgrade_id) is MutationData, "it holds a mutation")
 
 
 func test_upgrade_pick_respects_department_filter() -> void:
@@ -160,34 +107,7 @@ func test_new_mutation_joins_pool() -> void:
 	assert_true(seen, "a new mutation file drops with no code changes")
 
 
-func test_robot_part_always_has_cybernetic() -> void:
-	var part := PropData.new()
-	part.id = &"prop_test_robot_part"
-	part.tags = PackedStringArray(["robot_part"])
-	if not ContentRegistry.has_content(part.id):
-		ContentRegistry.register_content(part)
-	var cyber := CyberneticData.new()
-	cyber.id = &"cybernetic_test_loot_arm"
-	if not ContentRegistry.has_content(cyber.id):
-		ContentRegistry.register_content(cyber)
-	var table := LootTableData.new()
-	table.id = &"loot_test_parts"
-	var entry := LootEntryData.new()
-	entry.prop_id = part.id
-	entry.min_count = 3
-	entry.max_count = 3
-	table.entries = [entry]
-	if not ContentRegistry.has_content(table.id):
-		ContentRegistry.register_content(table)
-	var drops: Array[LootDrop] = Loot.roll(&"loot_test_parts", SeededRng.make(7, &"loot", 0))
-	assert_eq(drops.size(), 3)
-	for drop: LootDrop in drops:
-		assert_true(ContentRegistry.get_content(drop.upgrade_id) is CyberneticData)
-
-
 func test_killing_a_rat_spawns_its_drops() -> void:
-	Config.game.gem_glow_chance = 0.0
-	Config.game.gem_glow_pity_step = 0.0
 	var before: int = Props.get_props().size()
 	var spawned: int = 0
 	for index: int in 10:

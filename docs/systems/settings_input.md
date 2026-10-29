@@ -87,6 +87,7 @@ GUT tests: `test_defaults_when_no_file`, `test_set_value_saves_and_reloads`, `te
   the editor, so 2-window tests stay windowed. The screen has tabs Audio, Video, Controls (with rebinding: click,
   press a key or mouse button, Esc cancels) and Accessibility, and a Reset button per tab and for keys. Voice's
   MicSensitivityPanel moved from the pause menu to Settings > Audio; Back saves its value.
+- 2026-10-29 (HL2 feel step 1.3): defaults closer to HL2: FOV 74 (vertical; about 106 degrees wide on 16:9, like HL2's 90 on 4:3), mouse sensitivity 0.066 degrees per pixel (Source sensitivity 3). Players who changed these keep their own values.
 
 ## HANDOFF
 

@@ -4,7 +4,8 @@ extends EnemyBehaviour
 
 ## Speed of the leap forward and up (metres per second).
 @export var leap_forward: float = 7.0
-@export var leap_up: float = 4.5
+## 5.6 at gravity 15.24 reaches the same height (about 1 m) as 4.5 did at 9.8 (CHANGED 2026-10-29).
+@export var leap_up: float = 5.6
 ## Knockback of its hit (replaces the enemy's attack_knockback).
 @export var kick_knockback: float = 9.0
 

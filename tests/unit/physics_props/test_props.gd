@@ -617,7 +617,8 @@ func test_late_joiner_sees_props_where_they_are_now() -> void:
 	await wait_physics_frames(5)
 	# Handed around a few times and knocked across the floor before anyone else joins.
 	crate.apply_owner(1, 3, crate.global_transform, Vector3.ZERO, Vector3.ZERO)
-	_props(host).apply_impulse(crate, Vector3(60, 0, -40))
+	# Stronger since gravity went up to 15.24 (2026-10-29): more weight, more floor friction.
+	_props(host).apply_impulse(crate, Vector3(90, 0, -60))
 	await wait_physics_frames(3)
 	await wait_until(func() -> bool: return crate.sleeping, WAIT)
 	var moved_to: Transform3D = crate.global_transform
@@ -634,7 +635,7 @@ func test_late_joiner_sees_props_where_they_are_now() -> void:
 	assert_eq(copy.get_owner_sequence(), 3, "the joiner takes on the current owner number")
 	assert_lt(copy.global_position.distance_to(crate.global_position), 0.1, "it is where the host has it, not where it spawned")
 
-	_props(host).apply_impulse(crate, Vector3(0, 0, 40))
+	_props(host).apply_impulse(crate, Vector3(0, 0, 60))
 	await wait_until(func() -> bool: return copy.global_position.distance_to(moved_to.origin) > 0.5, WAIT)
 	assert_gt(copy.global_position.distance_to(moved_to.origin), 0.5, "and it follows the host's updates after that")
 

@@ -19,6 +19,11 @@ func _grip(body: PlayerCharacter, grounded: bool) -> float:
 	return body.tuning.hover_air_control if _gliding and not grounded else 1.0
 
 
+## Gliding steers almost like walking (no cap on how hard a key pushes in the air).
+func _air_wish_cap(body: PlayerCharacter) -> float:
+	return INF if _gliding else super._air_wish_cap(body)
+
+
 func _fall(body: PlayerCharacter, input: PlayerInputState, vertical: float, delta: float) -> float:
 	var falling: float = super._fall(body, input, vertical, delta)
 	_gliding = input.jump_held and _glide_left > 0.0 and falling < 0.0

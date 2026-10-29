@@ -141,18 +141,42 @@ func play_2d(stream: AudioStream, volume_db: float = 0.0, bus: StringName = &"SF
 	player.play()
 
 
-## A sound at a spot in the world (the oldest pooled player is reused when all are busy).
+## A sound at a spot in the world. When all pooled players are busy, the quietest one is cut off, or the new
+## sound is skipped if it is quieter still (CHANGED 2026-10-29: was the oldest, so footsteps could cut off
+## a boss roar).
 func play_3d(stream: AudioStream, at: Vector3, volume_db: float = 0.0, pitch_variation: float = 0.05) -> void:
 	if stream == null or not is_inside_tree():
 		return
-	var player: AudioStreamPlayer3D = _pool_3d[_next_3d]
-	_next_3d = (_next_3d + 1) % _pool_3d.size()
+	var player: AudioStreamPlayer3D = _pick_3d(volume_db)
+	if player == null:
+		return
 	player.stream = stream
 	player.volume_db = volume_db
 	# Not gameplay: a little pitch variety so repeated sounds don't sound copied.
 	player.pitch_scale = 1.0 + _rng.randf_range(-pitch_variation, pitch_variation)
 	player.global_position = at
 	player.play()
+
+
+## A free pooled player (looking from where the last one was taken), else the quietest busy one (the oldest
+## of equals) if it is no louder than `volume_db`, else null.
+func _pick_3d(volume_db: float) -> AudioStreamPlayer3D:
+	var quietest: int = -1
+	for offset: int in _pool_3d.size():
+		var index: int = (_next_3d + offset) % _pool_3d.size()
+		var candidate: AudioStreamPlayer3D = _pool_3d[index]
+		if not candidate.playing:
+			quietest = index
+			break
+		if quietest < 0 or candidate.volume_db < _pool_3d[quietest].volume_db:
+			quietest = index
+	if quietest < 0:
+		return null
+	var picked: AudioStreamPlayer3D = _pool_3d[quietest]
+	if picked.playing and picked.volume_db > volume_db:
+		return null
+	_next_3d = (quietest + 1) % _pool_3d.size()
+	return picked
 
 
 ## A sound that moves with something (removed when it finishes).

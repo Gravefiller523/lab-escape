@@ -46,10 +46,16 @@ func physics_update(body: PlayerCharacter, input: PlayerInputState, _delta: floa
 	if body.global_position.y >= ladder.get_top_y() - 0.1 and input.move.y > 0.0:
 		# At the top: step forward off the ladder onto whatever it leans on.
 		horizontal = -normal * tuning.walk_speed
-		climb = maxf(climb, 1.0)
+		# Just enough lift to get the feet over the edge (CHANGED 2026-10-29: was at least the climb speed,
+		# which threw you far over the top now that the air no longer slows you down).
+		climb = 1.0
 	body.velocity = Vector3(horizontal.x, climb, horizontal.z)
 	body.move_and_slide()
 	movement.set_grounded(body.is_on_floor())
+	# Landed on top: you've stepped off (NEW 2026-10-29: the flat-bottomed body lands on the top while still
+	# in the ladder's climb area).
+	if body.is_on_floor() and body.global_position.y >= ladder.get_top_y() - 0.1:
+		movement.let_go_of_ladder()
 
 
 ## The ladder's face on the side the body is on (points from the ladder towards the body).

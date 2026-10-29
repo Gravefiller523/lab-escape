@@ -1,0 +1,14 @@
+HL2 FEEL, STEP 1: moving like Half-Life 2
+
+1. Run with WASD and let go. Full speed almost at once, crisp stop, no drifting. Sprint (Shift) stops a little later.
+2. Jump (Space) while running. You keep your speed in the air and can steer a little, but pressing backwards barely slows you.
+3. Bunny hop: hold a side key and turn the mouse the same way while hopping. You should slowly get faster.
+4. Press Space just before landing: it still jumps. Press it just after running off a ledge: it still jumps.
+5. Walk up both staircases without jumping. The 0.5 m block needs a jump.
+6. 1.4 m ledge: jump, then hold Ctrl at the top of the jump (crouch-jump) to get on.
+7. Jump off the 3 m drop: the view dips and jolts a little on landing. Small hops only dip.
+8. Footsteps: walk, sprint, crouch (much quieter). The metal floor sounds different. Landing makes a thud.
+9. Settings: field of view 74 and the new mouse speed feel right? (Change them in Settings if not.)
+10. Press 7 (Slug), 5 (Frog), 4 (Fly) and 6 (Octo) and check they still feel right.
+
+Sounds are placeholders for now.

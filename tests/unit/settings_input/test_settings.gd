@@ -41,8 +41,8 @@ func test_defaults_when_no_file() -> void:
 	for section: StringName in defaults:
 		for key: StringName in defaults[section]:
 			assert_eq(settings.get_value(section, key), defaults[section][key], "%s/%s is its default" % [section, key])
-	assert_eq(settings.get_mouse_sensitivity(), 0.25)
-	assert_eq(settings.get_fov(), 85.0)
+	assert_eq(settings.get_mouse_sensitivity(), 0.066, "HL2-like default (2026-10-29)")
+	assert_eq(settings.get_fov(), 74.0, "HL2-like default (2026-10-29)")
 	assert_false(FileAccess.file_exists(TEST_PATH), "reading doesn't make a file")
 
 

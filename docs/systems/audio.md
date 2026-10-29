@@ -69,6 +69,7 @@ GUT tests: `test_buses_exist`, `test_music_switches_on_floor_ready`, `test_pool_
   `floor_ready` (arrival), `lift_part_delivered`, `boss_phase_changed`, `boss_defeated`. Music: menu / Break Room,
   department (`DepartmentData.music`), boss (`BossData.music`), crossfaded. Pitch variety uses its own non-seeded
   RandomNumberGenerator (looks and sounds only, never gameplay). The autoload is `Sound` (before Voice).
+- 2026-10-29 (HL2 feel step 1.7): NEW `SurfaceType` resource (`systems/audio/surface_type.gd`, files in `systems/audio/surfaces/`: `concrete.tres`, `metal.tres`): what a floor is made of, with `step` and `land` sounds (empty = placeholder) and `volume_db`. Mark a collision body (or a node above it) with metadata `surface` = the file name, e.g. "metal"; unmarked is concrete. `SurfaceType.find(id)`, `SurfaceType.of(node)`. NEW placeholder kinds `step_concrete`, `land_concrete`, `step_metal`, `land_metal`. CHANGED `Sound.play_3d`: uses a free pooled player first; when all are busy it cuts off the quietest one, or skips the new sound if that is quieter still (was: always the oldest, so footsteps could cut off a roar). The player's footsteps use these.
 
 ## HANDOFF
 **Built (2026-10-23):** the `Sound` autoload (`SoundService`), `EventSounds` + `event_sounds.tres`, `PlaceholderSounds`, the

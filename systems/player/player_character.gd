@@ -31,8 +31,16 @@ var _input_override: PlayerInputState
 var _checked_position: Vector3 = Vector3.ZERO
 var _checked_msec: int = 0
 var _has_checked: bool = false
+## Host: the speed (m/s) this body really moved at over the last speed-check window.
+var _trusted_speed: float = 0.0
 ## NEW 2026-10-23 (death_respawn branch): dead: hidden, no collision, no movement.
 var _ghost: bool = false
+## Local camera: landing dip and punch, bob and roll (NEW 2026-10-29).
+var _camera_feel := CameraFeel.new()
+## Local camera: how far it is below (negative) or above where it should be after a stair step. Shrinks to 0.
+var _camera_step: float = 0.0
+## Footstep, jump and landing sounds (NEW 2026-10-29), for every body, local or not.
+var _footsteps := Footsteps.new()
 
 @onready var _collision: CollisionShape3D = %Collision
 @onready var _body_mesh: MeshInstance3D = %BodyMesh
@@ -74,12 +82,15 @@ func _ready() -> void:
 		| PhysicsLayers.bit(PhysicsLayers.CARTS) | PhysicsLayers.bit(PhysicsLayers.ENEMIES) \
 		| PhysicsLayers.bit(PhysicsLayers.PROPS)
 	# Each body needs its own shape and mesh so crouching one doesn't shrink everyone.
-	_collision.shape = _collision.shape.duplicate()
+	# The collision shape is a cylinder (CHANGED 2026-10-29, was the scene's capsule): its flat bottom stands
+	# on stair edges and ledges the way HL2's box does, instead of rolling off them.
+	_collision.shape = CylinderShape3D.new()
 	_body_mesh.mesh = _body_mesh.mesh.duplicate()
 	sync_position = global_position
 	sync_yaw = rotation.y
 	_camera.fov = Settings.get_fov()
 	apply_height()
+	apply_floor_settings()
 
 	var local: bool = is_local()
 	_camera.current = local
@@ -151,6 +162,7 @@ func teleport(xform: Transform3D) -> void:
 	_checked_position = xform.origin
 	_checked_msec = Time.get_ticks_msec()
 	_has_checked = true
+	_trusted_speed = 0.0
 	if not is_local():
 		sync_position = xform.origin
 		global_position = xform.origin
@@ -201,6 +213,8 @@ func set_input_override(input: PlayerInputState) -> void:
 func request_knockback(impulse: Vector3) -> void:
 	if not multiplayer.is_server():
 		return
+	# Being thrown about is allowed by the speed check.
+	_trusted_speed += Vector2(impulse.x, impulse.z).length()
 	_knockback_owner.rpc_id(get_multiplayer_authority(), impulse)
 
 
@@ -213,10 +227,50 @@ func has_headroom_to_stand() -> bool:
 	return not test_move(global_transform, Vector3.UP * missing)
 
 
+## Floors and stairs (NEW 2026-10-29): snap down steps, slide along walls, walkable slopes from tuning. Props
+## (loose or held) never count as a moving platform, so a crate someone pushes or carries can't launch you.
+func apply_floor_settings() -> void:
+	floor_snap_length = tuning.floor_snap_length
+	floor_max_angle = deg_to_rad(tuning.floor_max_angle_degrees)
+	wall_min_slide_angle = deg_to_rad(tuning.wall_min_slide_angle_degrees)
+	platform_floor_layers = 0xFFFFFFFF & ~(PhysicsLayers.bit(PhysicsLayers.PROPS) | PhysicsLayers.bit(PhysicsLayers.HELD_PROPS))
+
+
+## Local. The body just stepped up (positive metres) or down a stair: the camera starts where it was and
+## catches up over camera_step_smooth_seconds instead of popping (NEW 2026-10-29).
+func add_camera_step(height: float) -> void:
+	_camera_step = clampf(_camera_step - height, -1.0, 1.0)
+
+
+## Used by the walk mode's crouch-jump: in mid-air, is there room below the feet to stand back up?
+## This body's footstep sounds (NEW 2026-10-29). Mostly for tests: listen to its `stepped` signal.
+func get_footsteps() -> Footsteps:
+	return _footsteps
+
+
+func has_legroom_to_stand() -> bool:
+	var standing: float = tuning.stand_height * _movement.get_height_multiplier()
+	var missing: float = standing - _movement.get_height()
+	if missing <= 0.01:
+		return true
+	return not test_move(global_transform, Vector3.DOWN * missing)
+
+
+## The body just landed, falling at `fall_speed` m/s: the local camera dips, and jolts on a hard landing
+## (NEW 2026-10-29). Movement modes call it.
+func notify_landed(fall_speed: float) -> void:
+	if is_local():
+		_camera_feel.landed(tuning, fall_speed, Settings.get_camera_shake_scale())
+
+
 ## Resizes the collision capsule, body and camera to the current height (crouch, Giraffe).
 func apply_height() -> void:
 	var height: float = _movement.get_height()
 	var radius: float = tuning.radius
+	var cylinder := _collision.shape as CylinderShape3D
+	if cylinder != null:
+		cylinder.radius = radius
+		cylinder.height = height
 	var capsule := _collision.shape as CapsuleShape3D
 	if capsule != null:
 		capsule.radius = radius
@@ -247,23 +301,29 @@ func _unhandled_input(event: InputEvent) -> void:
 	if motion != null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var sensitivity: float = Settings.get_mouse_sensitivity()
 		var pitch_sign: float = -1.0 if Settings.is_invert_y() else 1.0
-		rotate_y(deg_to_rad(-motion.relative.x * sensitivity))
-		_head.rotation.x = clampf(_head.rotation.x - deg_to_rad(motion.relative.y * sensitivity * pitch_sign),
+		# screen_relative: raw mouse movement, not scaled by the window's stretch (CHANGED 2026-10-29).
+		rotate_y(deg_to_rad(-motion.screen_relative.x * sensitivity))
+		_head.rotation.x = clampf(_head.rotation.x - deg_to_rad(motion.screen_relative.y * sensitivity * pitch_sign),
 			deg_to_rad(-tuning.max_pitch), deg_to_rad(tuning.max_pitch))
 	if event.is_action_pressed(InputActions.JUMP):
 		_jump_queued = true
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if is_local():
+		_camera_step *= exp(-delta / maxf(tuning.camera_step_smooth_seconds, 0.001))
+		_camera_feel.update(tuning, delta, is_on_floor(), Vector3(velocity.x, 0.0, velocity.z), global_basis.x,
+			Settings.get_camera_shake_scale())
 		_update_camera()
 
 
 ## Local camera: at the smoothed (interpolated) head position, turned by the latest mouse look.
 func _update_camera() -> void:
 	var smoothed: Transform3D = get_global_transform_interpolated() if is_inside_tree() else global_transform
-	var eye: Vector3 = smoothed.origin + Vector3(0.0, _head.position.y, 0.0)
-	_camera.global_transform = Transform3D(Basis.from_euler(Vector3(_head.rotation.x, rotation.y, 0.0)), eye)
+	var feel_height: float = _camera_feel.get_height_offset(tuning, Settings.get_camera_shake_scale())
+	var eye: Vector3 = smoothed.origin + Vector3(0.0, _head.position.y + _camera_step + feel_height, 0.0)
+	var angles := Vector3(_head.rotation.x + _camera_feel.punch, rotation.y, _camera_feel.get_roll())
+	_camera.global_transform = Transform3D(Basis.from_euler(angles), eye)
 
 
 func _physics_process(delta: float) -> void:
@@ -282,6 +342,8 @@ func _physics_process(delta: float) -> void:
 		_follow_synced(delta)
 		if multiplayer.is_server():
 			_check_speed()
+	if not _ghost:
+		_footsteps.update(self, delta)
 
 
 func _gather_input() -> PlayerInputState:
@@ -321,27 +383,37 @@ func _follow_synced(delta: float) -> void:
 		apply_height()
 
 
-## Host only: if a body moved further than its top speed allows, put it back.
+## Host only: if a body moved further than it could have, put it back (CHANGED 2026-10-29, HL2 feel step 1.8).
+## Judged over windows of speed_check_window seconds. Bunny hopping and air strafing make you faster than
+## your top speed, so the allowed speed may grow from what the body really did in the last window by
+## speed_check_growth m/s every second, up to speed_check_max_speed. A body that teleports or suddenly goes
+## much faster is put back where the window started.
 func _check_speed() -> void:
 	var now: int = Time.get_ticks_msec()
 	if not _has_checked:
 		_has_checked = true
 		_checked_position = sync_position
 		_checked_msec = now
-		return
-	if sync_position.is_equal_approx(_checked_position):
-		_checked_msec = now
+		_trusted_speed = 0.0
 		return
 	var seconds: float = maxf(float(now - _checked_msec) / 1000.0, 1.0 / 30.0)
-	var top_speed: float = _movement.get_top_speed()
-	var allowed: float = top_speed * tuning.speed_check_tolerance * seconds + tuning.speed_check_slack
-	var moved := Vector2(sync_position.x - _checked_position.x, sync_position.z - _checked_position.z)
-	if moved.length() > allowed:
+	var moved: float = Vector2(sync_position.x - _checked_position.x, sync_position.z - _checked_position.z).length()
+	var allowed_speed: float = get_allowed_speed(seconds)
+	if moved > allowed_speed * seconds + tuning.speed_check_slack:
 		teleport(Transform3D(Basis(Vector3.UP, sync_yaw), _checked_position))
 		sync_position = _checked_position
-	else:
+		return
+	if seconds >= tuning.speed_check_window:
+		_trusted_speed = moved / seconds
 		_checked_position = sync_position
-	_checked_msec = now
+		_checked_msec = now
+
+
+## Host: the fastest this body may be going, `seconds` into a speed-check window (NEW 2026-10-29).
+func get_allowed_speed(seconds: float) -> float:
+	var normal: float = _movement.get_top_speed() * tuning.speed_check_tolerance
+	var grown: float = _trusted_speed + tuning.speed_check_growth * seconds
+	return clampf(grown, normal, maxf(normal, tuning.speed_check_max_speed))
 
 
 ## Host -> owner: move there (spawn points, lift, anti-cheat).

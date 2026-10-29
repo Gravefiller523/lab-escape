@@ -64,8 +64,8 @@ static func defaults() -> Dictionary[StringName, Dictionary]:
 			&"mic_device": "Default", &"mic_sensitivity": Config.game.voice_mic_sensitivity,
 			&"push_to_talk": Config.game.voice_push_to_talk_default, &"reduce_voice_effects": false,
 		},
-		VIDEO: {&"fullscreen": true, &"vsync": true, &"fov": 85.0, &"max_fps": 0, &"resolution_scale": 1.0},
-		CONTROLS: {&"mouse_sensitivity": 0.25, &"invert_y": false, &"toggle_crouch": false, &"toggle_sprint": false},
+		VIDEO: {&"fullscreen": true, &"vsync": true, &"fov": 74.0, &"max_fps": 0, &"resolution_scale": 1.0},
+		CONTROLS: {&"mouse_sensitivity": 0.066, &"invert_y": false, &"toggle_crouch": false, &"toggle_sprint": false},
 		ACCESSIBILITY: {
 			&"subtitles": true, &"reduce_motion": false, &"camera_shake": 1.0, &"text_scale": 1.0,
 			&"high_contrast_glow": false,

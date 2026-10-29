@@ -5,11 +5,7 @@ extends Node
 ## times a second, not every frame. Spec: docs/systems/enemies.md.
 
 const NODE_NAME: String = "Perception"
-const CHECK_SECONDS: float = 0.2
-## Eyes this high above the enemy's origin (flying enemies look from their body).
-const EYE_HEIGHT: float = 0.4
-## Aim at the player's chest.
-const PLAYER_CHEST: float = 1.0
+## CHANGED 2026-10-29: how often it looks, eye height and where it aims on a player moved to Config.feel.ai.
 
 ## Test scenes: enemies ignore every player while true.
 static var players_invisible: bool = false
@@ -57,19 +53,19 @@ func is_valid_target(candidate: Variant) -> bool:
 	return health == null or not health.is_dead()
 
 
-## Looks again now (tests; normally every CHECK_SECONDS).
+## Looks again now (tests; normally every Config.feel.ai.sight_check_seconds).
 func refresh() -> void:
 	_visible.clear()
 	if _enemy == null or not _enemy.is_inside_tree() or players_invisible:
 		return
 	var sight: float = _enemy.data.sight_range if _enemy.data != null else 15.0
-	var eyes: Vector3 = _enemy.global_position + Vector3.UP * EYE_HEIGHT
+	var eyes: Vector3 = _enemy.global_position + Vector3.UP * Config.feel.ai.eye_height
 	var space: PhysicsDirectSpaceState3D = _enemy.get_world_3d().direct_space_state
 	for node: Node in _enemy.get_tree().get_nodes_in_group(PlayerCharacter.GROUP):
 		var player := node as PlayerCharacter
 		if player == null or not is_valid_target(player) or player.get_world_3d() != _enemy.get_world_3d():
 			continue
-		var chest: Vector3 = player.global_position + Vector3.UP * PLAYER_CHEST
+		var chest: Vector3 = player.global_position + Vector3.UP * Config.feel.ai.player_chest_height
 		if eyes.distance_to(chest) > sight:
 			continue
 		var query := PhysicsRayQueryParameters3D.create(eyes, chest, PhysicsLayers.bit(PhysicsLayers.WORLD))
@@ -82,5 +78,5 @@ func _physics_process(delta: float) -> void:
 		return
 	_check_left -= delta
 	if _check_left <= 0.0:
-		_check_left = CHECK_SECONDS
+		_check_left = Config.feel.ai.sight_check_seconds
 		refresh()

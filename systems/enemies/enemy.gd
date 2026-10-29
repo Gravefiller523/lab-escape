@@ -14,14 +14,8 @@ signal died(info: DamageInfo)
 
 const GROUP: StringName = &"enemies"
 const SYNC_INTERVAL: float = 0.05
-const CLIENT_SMOOTHING: float = 15.0
-const TURN_SPEED: float = 8.0
-## Seconds it remembers a player it can no longer see (it goes to where they were last).
-const TARGET_MEMORY: float = 3.0
-## Seconds a dead enemy lies there before it's removed.
-const CORPSE_SECONDS: float = 2.0
-## How often the path is worked out again (seconds).
-const REPATH_SECONDS: float = 0.25
+## CHANGED 2026-10-29: turn speed, target memory, repath time, client smoothing and corpse time moved to
+## Config.feel.ai (AiTuning, res://config/feel_tuning.tres).
 
 ## Flies instead of walking (bats, flies): no gravity, steers straight through the air.
 @export var flying: bool = false
@@ -168,7 +162,7 @@ func update_target() -> PlayerCharacter:
 	elif get_target() != null:
 		if _target_lost_at < 0.0:
 			_target_lost_at = _now()
-		elif _now() - _target_lost_at > TARGET_MEMORY or not _perception.is_valid_target(_target):
+		elif _now() - _target_lost_at > Config.feel.ai.target_memory_seconds or not _perception.is_valid_target(_target):
 			_target = null
 	return get_target()
 
@@ -201,7 +195,7 @@ func move_towards(point: Vector3, speed_scale: float, delta: float) -> void:
 	if not flying and _nav_ready():
 		_repath_left -= delta
 		if _repath_left <= 0.0 or _agent.target_position.distance_to(point) > 1.0:
-			_repath_left = REPATH_SECONDS
+			_repath_left = Config.feel.ai.repath_seconds
 			_agent.target_position = point
 		if not _agent.is_navigation_finished():
 			next_point = _agent.get_next_path_position()
@@ -237,7 +231,7 @@ func face(point: Vector3, delta: float) -> void:
 	if offset.length() < 0.05:
 		return
 	var wanted: float = atan2(-offset.x, -offset.z)
-	rotation.y = lerp_angle(rotation.y, wanted, clampf(TURN_SPEED * delta, 0.0, 1.0))
+	rotation.y = lerp_angle(rotation.y, wanted, clampf(Config.feel.ai.turn_speed * delta, 0.0, 1.0))
 
 
 func attack_ready() -> bool:
@@ -319,13 +313,13 @@ func _on_died(info: DamageInfo) -> void:
 	if multiplayer.is_server():
 		_state_name = &"dead"
 		EventBus.enemy_killed.emit(data.id if data != null else &"", global_position, info.source_player_id)
-		get_tree().create_timer(CORPSE_SECONDS).timeout.connect(queue_free)
+		get_tree().create_timer(Config.feel.ai.corpse_seconds).timeout.connect(queue_free)
 
 
 func _follow_sync(delta: float) -> void:
 	if not _has_sync:
 		return
-	var blend: float = 1.0 - exp(-CLIENT_SMOOTHING * delta)
+	var blend: float = 1.0 - exp(-Config.feel.ai.client_smoothing * delta)
 	global_position = global_position.lerp(_synced_position, blend)
 	rotation.y = lerp_angle(rotation.y, _synced_yaw, blend)
 

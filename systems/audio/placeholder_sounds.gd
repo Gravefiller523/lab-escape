@@ -10,7 +10,8 @@ static var _made: Dictionary[StringName, AudioStreamWAV] = {}
 
 
 ## A placeholder for a kind of sound: &"blip", &"thunk", &"whoosh", &"chime", &"squeak", &"low", &"rise",
-## &"hum", &"roar", &"sparkle", &"clunk", &"fanfare", &"music_calm", &"music_floor", &"music_boss".
+## &"hum", &"roar", &"sparkle", &"clunk", &"fanfare", &"music_calm", &"music_floor", &"music_boss",
+## and for surfaces (NEW 2026-10-29): &"step_concrete", &"land_concrete", &"step_metal", &"land_metal".
 static func get_sound(kind: StringName) -> AudioStreamWAV:
 	if not _made.has(kind):
 		_made[kind] = _make(kind)
@@ -41,6 +42,14 @@ static func _make(kind: StringName) -> AudioStreamWAV:
 			return _render(0.25, func(t: float) -> float: return (sin(TAU * 140.0 * t) + _noise(t) * 0.3) * 0.5 * exp(-t * 18.0))
 		&"fanfare":
 			return _render(1.2, func(t: float) -> float: return _chord(t, [523.0, 659.0, 784.0]) * 0.25 * exp(-t * 1.5))
+		&"step_concrete":
+			return _render(0.09, func(t: float) -> float: return _noise(t) * 0.5 * exp(-t * 60.0) + sin(TAU * 120.0 * t) * 0.3 * exp(-t * 50.0))
+		&"land_concrete":
+			return _render(0.2, func(t: float) -> float: return _noise(t) * 0.6 * exp(-t * 30.0) + sin(TAU * 80.0 * t) * 0.6 * exp(-t * 25.0))
+		&"step_metal":
+			return _render(0.18, func(t: float) -> float: return (sin(TAU * 520.0 * t) + sin(TAU * 1310.0 * t) * 0.6) * 0.3 * exp(-t * 25.0) + _noise(t) * 0.3 * exp(-t * 80.0))
+		&"land_metal":
+			return _render(0.35, func(t: float) -> float: return (sin(TAU * 310.0 * t) + sin(TAU * 870.0 * t) * 0.7) * 0.4 * exp(-t * 12.0) + _noise(t) * 0.4 * exp(-t * 40.0))
 		&"music_calm":
 			return _render(8.0, func(t: float) -> float: return _chord(t, [130.8, 196.0, 261.6]) * 0.12 * (0.7 + 0.3 * sin(TAU * t / 8.0)), true)
 		&"music_floor":

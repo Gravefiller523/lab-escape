@@ -139,6 +139,8 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
   hosting or join after playing alone) the host re-spawns its enemies for everyone and a client drops its own copies.
 - 2026-10-20 (Zachary: the bat flew away after one hit and never came back): enemies flee only once (NEW
   `Enemy.has_fled`), for 2.5 s (was 4), then go straight back after the player they ran from.
+- 2026-10-29 (feel step 0): REMOVED constants `Enemy.CLIENT_SMOOTHING`, `TURN_SPEED`, `TARGET_MEMORY`, `CORPSE_SECONDS`, `REPATH_SECONDS` and `Perception.CHECK_SECONDS`, `EYE_HEIGHT`, `PLAYER_CHEST`; the same numbers now live in `Config.feel.ai` (`AiTuning`, in `config/feel_tuning.tres`). No values changed.
+- 2026-10-29 (HL2 feel step 1.3): world gravity is 15.24 (was 9.8), so enemies fall faster. `JumpAttackBehaviour.leap_up` 4.5 -> 5.6 keeps the kangaroo's leap about 1 m high.
 
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and

@@ -172,6 +172,11 @@ func _register_built_ins() -> void:
 	register_command(&"net", _cmd_net, "net: who is connected, slots and ping", false)
 	register_command(&"fps", _cmd_fps, "fps: show or hide the frame rate", false)
 	register_command(&"clear", _cmd_clear, "clear: empty the console", false)
+	# NEW 2026-10-29: feel tuning. Runs on this PC only (not sent to the host), but still a cheat.
+	register_command(&"tune", _cmd_tune,
+		"tune [section.name] [value]: show or change a feel number live, e.g. tune props.throw_force 25 (this PC only)", false)
+	register_command(&"tune_save", _cmd_tune_save, "tune_save: keep tuned numbers (writes config/feel_tuning.tres, editor only)", false)
+	register_command(&"tune_reset", _cmd_tune_reset, "tune_reset: undo unsaved tuning (reloads the files)", false)
 
 
 func _cmd_help(_args: PackedStringArray, _player_id: int) -> String:
@@ -235,6 +240,24 @@ func _cmd_fps(_args: PackedStringArray, _player_id: int) -> String:
 	_fps_on = not _fps_on
 	_fps_label.visible = _fps_on
 	return "FPS display %s." % ("on" if _fps_on else "off")
+
+
+func _cmd_tune(args: PackedStringArray, _player_id: int) -> String:
+	if not cheats_allowed():
+		return MSG_NO_CHEATS
+	return TuneCommands.tune(args, Config.feel)
+
+
+func _cmd_tune_save(_args: PackedStringArray, _player_id: int) -> String:
+	if not cheats_allowed():
+		return MSG_NO_CHEATS
+	return TuneCommands.save(Config.feel, OS.has_feature("editor"))
+
+
+func _cmd_tune_reset(_args: PackedStringArray, _player_id: int) -> String:
+	if not cheats_allowed():
+		return MSG_NO_CHEATS
+	return TuneCommands.reset(Config.feel)
 
 
 func _cmd_clear(_args: PackedStringArray, _player_id: int) -> String:

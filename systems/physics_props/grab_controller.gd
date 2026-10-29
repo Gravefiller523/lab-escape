@@ -18,10 +18,6 @@ const PUSH_SEND_RATE: float = 20.0
 const MIN_PUSH_SPEED: float = 0.05
 ## A contact counts as "the side of a prop" when its normal points this little up or down.
 const SIDE_CONTACT_MAX_Y: float = 0.5
-## Half-Life 2 holds props at most 75 degrees up or down.
-const MAX_HOLD_PITCH: float = 1.309
-## A held prop is always at least this far (metres) beyond its own size from your eyes.
-const MIN_HOLD_GAP: float = 0.2
 ## "Standing on it": a ray from just above our feet going this far down (metres).
 const FEET_RAY_START: float = 0.1
 const FEET_RAY_LENGTH: float = 0.3
@@ -219,23 +215,25 @@ func _standing_on(prop: NetProp) -> bool:
 	return not hit.is_empty() and hit.get("collider") == prop
 
 
-## Where held props float: hold_distance (config) in front of the eyes.
+## Where held props float: hold_distance (Config.feel.props) in front of the eyes.
 func _hold_point() -> Vector3:
 	var origin: Vector3 = _body.get_aim_origin()
 	var direction: Vector3 = _body.get_aim_direction()
+	var tuning: PropTuning = Config.feel.props
 	# Half-Life 2: don't hold it straight up or down past 75 degrees.
 	var flat := Vector3(direction.x, 0.0, direction.z).normalized()
-	var pitch: float = clampf(asin(clampf(direction.y, -1.0, 1.0)), -MAX_HOLD_PITCH, MAX_HOLD_PITCH)
+	var max_pitch: float = deg_to_rad(tuning.max_hold_pitch_degrees)
+	var pitch: float = clampf(asin(clampf(direction.y, -1.0, 1.0)), -max_pitch, max_pitch)
 	direction = (flat * cos(pitch) + Vector3.UP * sin(pitch)).normalized()
 	# Further away for bigger props, so they never press into you.
 	var radius: float = _held.get_radius()
-	var distance: float = _held.get_spawner().get_config().hold_distance + radius
+	var distance: float = tuning.hold_distance + radius
 	# A wall in front: bring it in closer instead of pushing it into the wall.
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * distance,
 		PhysicsLayers.bit(PhysicsLayers.WORLD))
 	var hit: Dictionary = _body.get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
-		distance = maxf(origin.distance_to(hit["position"] as Vector3) - radius, radius + MIN_HOLD_GAP)
+		distance = maxf(origin.distance_to(hit["position"] as Vector3) - radius, radius + tuning.min_hold_gap)
 	return origin + direction * distance
 
 

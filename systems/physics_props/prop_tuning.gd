@@ -13,16 +13,27 @@ extends Resource
 @export var heavy_lift_per_holder: float = 30.0
 ## How far away (m) a player can grab something.
 @export var grab_reach: float = 2.5
+## NEW 2026-10-29: if the look ray misses, a prop this close to the middle of the view still counts
+## (1 = dead centre only; 0.8 = within about 37 degrees). Only when nothing else is aimed at.
+@export_range(0.0, 1.0, 0.01) var grab_cone_dot: float = 0.8
+## NEW 2026-10-29: nobody can pick up a prop that any player is standing on (Zachary's rule, so nobody
+## can launch a teammate by grabbing the crate under them). Also drops a held prop someone steps onto.
+@export var no_grab_while_stood_on: bool = true
 
 @export_group("Holding")
-## How far in front of the camera (m) a held object floats (plus the object's own size).
+## @deprecated 2026-10-29: use hold_base_gap (held props now float closer, by their size along your view).
 @export var hold_distance: float = 1.6
+## NEW 2026-10-29: gap (m) between your body and a held object's near side. The object's centre floats
+## hold_base_gap + your body's radius + its own depth along your view in front of the eyes, so big and
+## small things both sit just in front of you (Half-Life 2: about 1.2 m plus the object's size).
+@export var hold_base_gap: float = 0.6
 ## A held object never comes closer to a wall in front of you than this (m).
 @export var min_hold_gap: float = 0.2
 ## Furthest up or down (degrees) a held object follows your look (Half-Life 2: 75).
 @export_range(0.0, 90.0) var max_hold_pitch_degrees: float = 75.0
 ## How fast (m/s) a fully lifted prop may move to keep up with your hands (Half-Life 2: about 25).
-@export var held_prop_track_speed: float = 20.0
+## CHANGED 2026-10-29: 25 (was 20), as Half-Life 2.
+@export var held_prop_track_speed: float = 25.0
 ## Fastest (m/s) a heavy prop can be dragged; it goes slower with fewer helpers.
 @export var held_prop_max_speed: float = 8.0
 ## Fastest a held prop turns to keep its angle (radians a second; Half-Life 2: 62.8 = 3600 degrees).
@@ -36,24 +47,102 @@ extends Resource
 ## (per metre, per kg) and how much it damps wobbling.
 @export var hold_stiffness: float = 150.0
 @export var hold_damping: float = 22.0
+## NEW 2026-10-29: while a held object touches something, its turning slows down to this share of normal
+## (so it doesn't jitter against walls)...
+@export_range(0.0, 1.0, 0.01) var hold_contact_spin_min: float = 0.1
+## ...changing by this much a second (it speeds up again the same way once free).
+@export var hold_contact_spin_rate: float = 2.0
+## NEW 2026-10-29: picking something up that is within this many degrees of a tidy angle (square to the
+## world) straightens it. 0 = off.
+@export_range(0.0, 45.0) var carry_snap_angle_degrees: float = 30.0
 
 @export_group("Dropping")
-## If a held object is stuck this far (m) from where it should be...
+## @deprecated 2026-10-29: use hold_error_drop.
 @export var hold_break_distance: float = 1.5
-## ...for this long (seconds), it is dropped.
+## @deprecated 2026-10-29: use hold_error_smoothing and hold_error_grace.
 @export var hold_break_seconds: float = 0.4
+## NEW 2026-10-29: a fully lifted object is dropped when it is, on average, this far (m) from where it
+## should be (stuck behind something). Half-Life 2 uses 0.3; ours allows for network delay.
+@export var hold_error_drop: float = 0.45
+## How quickly that average follows the real distance (seconds; higher = slower to drop).
+@export var hold_error_smoothing: float = 0.15
+## No dropping for this long (seconds) after picking something up, while it flies to your hands.
+@export var hold_error_grace: float = 1.0
 ## A dropped prop moves at most this fast (m/s), so you can't fling things by spinning around.
-@export var held_prop_release_max_speed: float = 10.5
+## CHANGED 2026-10-29: 7.2 (was 10.5), Half-Life 2's 1.5 x walking speed.
+@export var held_prop_release_max_speed: float = 7.2
 ## A dropped prop spins at most this fast (radians a second; Half-Life 2: 12.6 = 720 degrees).
 @export var release_max_spin: float = 12.6
+## NEW 2026-10-29: a plain drop (not a throw) while the prop touches something stops it dead, so you
+## can't fling things by dropping them against a wall (Half-Life 2 does this).
+@export var drop_clears_velocity_on_contact: bool = true
 
 @export_group("Throwing")
 ## Throw strength, Half-Life 2 style: the push is throw_force x a weight factor (0.5 at 0.5 kg up to 4
 ## at 15 kg and above), so a 10 kg crate flies about 10 m/s and heavier things go less far.
-## Half-Life 2 uses 25.4.
-@export var throw_force: float = 34.0
+## CHANGED 2026-10-29: 25.4 (was 34), Half-Life 2's number (Zachary's choice).
+@export var throw_force: float = 25.4
 ## A thrown prop gets up to this much random spin (radians a second on each axis).
 @export var throw_spin: float = 3.0
+
+## NEW 2026-10-29: no prop goes faster than this (m/s; Half-Life 2 caps about 51).
+@export var prop_max_speed: float = 50.0
+## NEW 2026-10-29: no sprinting while carrying something (Half-Life 2; Zachary's choice).
+@export var disable_sprint_while_holding: bool = true
+
+@export_group("Sounds")
+## NEW 2026-10-29 (Half-Life 2 numbers): a prop that loses less speed than this in a hit (m/s) is silent...
+@export var impact_sound_min_speed: float = 1.8
+## ...and one that loses this much or more is at full volume.
+@export var impact_sound_full_speed: float = 8.0
+## Loudness (dB) of the softest knock (at impact_sound_min_speed).
+@export var impact_sound_quietest_db: float = -24.0
+## At most one knock per prop this often (seconds).
+@export var impact_sound_debounce: float = 0.05
+## Loudness (dB) of the soft knock when a prop is picked up.
+@export var pickup_sound_db: float = -18.0
+## A prop sliding along something faster than this (m/s) scrapes...
+@export var scrape_min_speed: float = 0.5
+## ...louder up to this speed...
+@export var scrape_full_speed: float = 4.0
+## ...where it is this loud (dB).
+@export var scrape_volume_db: float = -6.0
+
+@export_group("Impact damage")
+## NEW 2026-10-29: props lighter than this (kg) never hurt anything (gems, vials).
+@export var impact_min_mass: float = 2.0
+## A hit only counts if the prop loses at least this much speed (m/s).
+@export var impact_damage_min_speed: float = 2.0
+## Damage = impact_damage_scale x the prop's movement energy (half its mass x speed lost squared) / the
+## victim's impact mass. A 10 kg crate losing 6 m/s: 36 to a rat (5 kg), 3.6 to a kangaroo (50 kg).
+@export var impact_damage_scale: float = 1.0
+## Props up to this mass (kg)...
+@export var impact_small_mass: float = 5.0
+## ...do at most this much damage per hit.
+@export var impact_small_cap: float = 5.0
+## Less damage than this is ignored (a gentle bump).
+@export var impact_min_damage: float = 2.0
+## Players count as this heavy (kg)...
+@export var player_impact_mass: float = 85.0
+## ...and take this share of the damage (teammates throwing things at each other).
+@export_range(0.0, 1.0) var friendly_physics_damage_scale: float = 0.25
+## Anything else that can be hurt (no enemy data) counts as this heavy (kg).
+@export var default_impact_mass: float = 50.0
+## The player who threw or dropped a prop gets the credit for hits within this many seconds.
+@export var physics_attacker_window: float = 2.0
+## The same prop can hurt the same victim at most once this often (seconds).
+@export var impact_report_cooldown: float = 0.25
+
+@export_group("Breaking")
+## NEW 2026-10-29: hard hits wear down breakable props (PropData.health): wear = this x half the speed lost
+## squared. A crate thrown into a wall (about 7 m/s) loses about 25 of its 60.
+@export var prop_self_damage_scale: float = 1.0
+## Most broken pieces lying around at once (the oldest go first).
+@export var max_gibs: int = 64
+## Seconds broken pieces stay before they shrink away...
+@export var gib_lifetime: float = 6.0
+## ...over this many seconds.
+@export var gib_fade_seconds: float = 1.0
 
 @export_group("Pushing")
 ## Props you walk into move this fraction of your speed, so you stay pressed against them.

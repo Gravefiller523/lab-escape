@@ -25,7 +25,7 @@ func physics_update(body: PlayerCharacter, input: PlayerInputState, delta: float
 	var speed: float = tuning.walk_speed
 	if movement.is_crouching():
 		speed = tuning.crouch_speed
-	elif input.sprint and input.move.y > 0.0:
+	elif input.sprint and input.move.y > 0.0 and movement.can_sprint():
 		speed = tuning.sprint_speed
 	speed = _speed(body, input, speed * movement.get_speed_multiplier(), delta)
 

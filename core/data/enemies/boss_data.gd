@@ -11,6 +11,8 @@ extends ContentData
 ## Loot table rolled when the boss dies.
 @export var loot_id: StringName = &""
 @export var music: AudioStream
+## NEW 2026-10-29: how heavy it counts as when a thrown prop hits it (kg; see EnemyData.impact_mass).
+@export var impact_mass: float = 300.0
 
 
 func get_type_key() -> StringName:

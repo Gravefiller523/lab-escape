@@ -8,6 +8,8 @@ extends UpgradeEffectData
 ## Body height. Giraffe uses more than 1 and must crouch through doors.
 @export var height_multiplier: float = 1.0
 @export var can_jump: bool = true
+## NEW 2026-10-29: false stops sprinting (carrying a prop does this, as in Half-Life 2).
+@export var can_sprint: bool = true
 ## Name of a movement mode from the player system's mode library,
 ## e.g. "wall_climb", "slide", "hop". Empty = normal walking.
 @export var movement_mode: StringName = &""

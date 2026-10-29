@@ -27,6 +27,16 @@ extends ContentData
 @export var fragile_break_speed: float = 0.0
 ## Seconds it must sit on a charger before a lift slot accepts it (a battery). 0 = no charging.
 @export var needs_charge_seconds: float = 0.0
+## NEW 2026-10-29: what it is made of, for its knock and scrape sounds: a file name in
+## res://systems/audio/surfaces/ (wood, metal, glass, flesh, concrete).
+@export var surface: StringName = &"wood"
+## NEW 2026-10-29: breakable props: how much knocking about it takes before it breaks (hard hits wear it
+## down, see PropTuning.prop_self_damage_scale). 0 = never breaks this way.
+@export var health: float = 0.0
+## NEW 2026-10-29: how many pieces it breaks into (plain boxes in its colour), unless break_scene is set.
+@export var break_pieces: int = 6
+## NEW 2026-10-29: optional scene of pieces (RigidBody3D children) to show when it breaks.
+@export var break_scene: PackedScene
 
 
 func get_type_key() -> StringName:

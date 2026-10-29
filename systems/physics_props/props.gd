@@ -24,6 +24,16 @@ func get_spawner() -> PropSpawner:
 	return null
 
 
+## NEW 2026-10-29: the spawner in the same game as `node` (same multiplayer; tests run several games at
+## once), or null.
+func spawner_for(node: Node) -> PropSpawner:
+	for index: int in range(_spawners.size() - 1, -1, -1):
+		var spawner: PropSpawner = _spawners[index]
+		if is_instance_valid(spawner) and spawner.is_inside_tree() and spawner.multiplayer == node.multiplayer:
+			return spawner
+	return null
+
+
 func register_spawner(spawner: PropSpawner) -> void:
 	if not _spawners.has(spawner):
 		_spawners.append(spawner)

@@ -1,6 +1,7 @@
 class_name SurfaceType
 extends Resource
-## What a floor or object is made of, for footstep and landing sounds (NEW 2026-10-29, HL2 feel step 1.7).
+## What a floor or object is made of, for footstep and landing sounds (NEW 2026-10-29, HL2 feel step 1.7)
+## and the knocks and scrapes of props made of it (NEW 2026-10-29, step 2.4; PropData.surface).
 ## One file per material in systems/audio/surfaces/ (concrete.tres, metal.tres). Adding a material is adding a
 ## file. To say what something is made of, give its collision body (or any node above it) the metadata
 ## "surface" set to the file's name, e.g. "metal". Anything unmarked is concrete.
@@ -14,11 +15,17 @@ const META_KEY: StringName = &"surface"
 @export var step: AudioStream
 ## Landing on it from a fall.
 @export var land: AudioStream
+## A prop made of it hitting something (also played softly when picked up).
+@export var impact: AudioStream
+## A prop made of it sliding along something (loops).
+@export var scrape: AudioStream
 ## Louder (positive) or quieter (negative) than normal, in dB.
 @export var volume_db: float = 0.0
 ## Placeholder kinds (PlaceholderSounds) used while the fields above are empty.
 @export var step_placeholder: StringName = &"step_concrete"
 @export var land_placeholder: StringName = &"land_concrete"
+@export var impact_placeholder: StringName = &"impact_concrete"
+@export var scrape_placeholder: StringName = &"scrape_rough"
 
 static var _loaded: Dictionary[StringName, SurfaceType] = {}
 
@@ -51,3 +58,11 @@ func step_sound() -> AudioStream:
 
 func land_sound() -> AudioStream:
 	return land if land != null else PlaceholderSounds.get_sound(land_placeholder)
+
+
+func impact_sound() -> AudioStream:
+	return impact if impact != null else PlaceholderSounds.get_sound(impact_placeholder)
+
+
+func scrape_sound() -> AudioStream:
+	return scrape if scrape != null else PlaceholderSounds.get_sound(scrape_placeholder)

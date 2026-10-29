@@ -11,3 +11,4 @@ description = "Put it in a 3D printer to reprint a dead teammate."
 scene = ExtResource("2_scene")
 mass = 1.0
 tags = PackedStringArray("meat")
+surface = &"flesh"

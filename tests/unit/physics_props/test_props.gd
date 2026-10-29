@@ -243,7 +243,7 @@ func test_grab_carries_and_throw_sets_last_holder() -> void:
 	grab.try_grab(crate)
 	assert_eq(crate.get_holder_ids(), [body.player_id] as Array[int], "the host (us) confirmed the grab")
 	await wait_physics_frames(30)
-	var hold_point: Vector3 = body.get_aim_origin() + body.get_aim_direction() * Config.feel.props.hold_distance
+	var hold_point: Vector3 = grab.get_hold_point()
 	assert_lt(crate.global_position.distance_to(hold_point), 0.5, "carried at the hold point")
 	grab.throw()
 	await wait_physics_frames(2)
@@ -403,7 +403,7 @@ func test_client_grab_hands_physics_to_the_client_and_back() -> void:
 	assert_false(crate_on_client.freeze)
 	assert_eq(crate_on_host.get_owner_peer(), client_body.get_multiplayer_authority())
 	await wait_physics_frames(20)
-	var hold_point: Vector3 = client_body.get_aim_origin() + client_body.get_aim_direction() * Config.feel.props.hold_distance
+	var hold_point: Vector3 = PropsService.grab_of(client_body).get_hold_point()
 	assert_lt(crate_on_client.global_position.distance_to(hold_point), 0.5, "in the client's hands, no delay")
 	await wait_until(func() -> bool: return crate_on_host.global_position.distance_to(crate_on_client.global_position) < 0.5, WAIT)
 	assert_lt(crate_on_host.global_position.distance_to(crate_on_client.global_position), 0.5, "the host's copy follows")
@@ -479,7 +479,7 @@ func test_knock_on_ownership() -> void:
 	await wait_until(func() -> bool: return held.is_simulated_here(), WAIT)
 	await wait_physics_frames(10)
 	# A loose crate right where the held one floats: they bump.
-	var hold_point: Vector3 = client_body.get_aim_origin() + client_body.get_aim_direction() * Config.feel.props.hold_distance
+	var hold_point: Vector3 = PropsService.grab_of(client_body).get_hold_point()
 	var loose_on_host: NetProp = _props(host).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, hold_point + client_body.get_aim_direction() * 0.55))
 	await wait_until(func() -> bool: return loose_on_host.get_owner_peer() == client_body.get_multiplayer_authority(), WAIT)
 	assert_eq(loose_on_host.get_owner_peer(), client_body.get_multiplayer_authority(),
@@ -563,7 +563,8 @@ func test_heavier_props_are_thrown_less_far() -> void:
 	var heavy_speed: float = speed_of.call(heavy)
 	assert_gt(part_speed, crate_speed, "6 kg flies faster than 10 kg")
 	assert_gt(crate_speed, heavy_speed, "10 kg flies faster than 80 kg")
-	assert_almost_eq(crate_speed, 10.0, 1.0, "a 10 kg crate flies about 10 m/s")
+	# CHANGED 2026-10-29: throw_force 25.4 (Half-Life 2), was 34 (about 10 m/s).
+	assert_almost_eq(crate_speed, 7.1, 0.5, "a 10 kg crate flies about 7 m/s")
 
 
 func test_cannot_pick_up_what_you_stand_on() -> void:
@@ -660,3 +661,420 @@ func test_fragile_props_shatter_when_dropped_hard() -> void:
 	await wait_seconds(1.5)
 	assert_false(is_instance_valid(high) and high.is_inside_tree(), "a 4 m fall shatters it")
 	assert_true(is_instance_valid(low) and low.is_inside_tree(), "set down gently, it's fine")
+
+
+# --- HL2 feel step 2.1 and Zachary's stood-on rule (NEW 2026-10-29) ---
+
+func test_no_sprinting_while_carrying() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	assert_false(body.get_movement().can_sprint(), "carrying: no sprint")
+	PropsService.grab_of(body).drop()
+	assert_true(body.get_movement().can_sprint(), "hands free: sprint again")
+
+
+func test_held_prop_never_falls_asleep() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var crate: NetProp = held[1]
+	assert_false(crate.can_sleep, "a sleeping prop would freeze in your hands")
+	PropsService.grab_of(body).drop()
+	assert_true(crate.can_sleep)
+
+
+func test_plain_drop_against_something_stops_dead_but_a_throw_flies() -> void:
+	var pc := _make_pc()
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 0.3, -3)))
+	await wait_physics_frames(10)
+	assert_true(crate.is_touching_something(), "resting on the floor")
+	crate.linear_velocity = Vector3(5, 0, 0)
+	crate.let_go_here(1, false)
+	assert_eq(crate.linear_velocity, Vector3.ZERO, "a drop against the floor doesn't fling it")
+	crate.linear_velocity = Vector3(5, 0, 0)
+	crate.let_go_here(1, true)
+	assert_almost_eq(crate.linear_velocity.x, 5.0, 0.01, "a throw keeps its speed")
+
+
+func test_drop_in_mid_air_keeps_falling_naturally() -> void:
+	var pc := _make_pc()
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 3, -3)))
+	await wait_physics_frames(2)
+	crate.linear_velocity = Vector3(2, 0, 0)
+	crate.let_go_here(1, false)
+	assert_almost_eq(crate.linear_velocity.x, 2.0, 0.01, "touching nothing: speed kept")
+
+
+func test_props_never_go_past_the_speed_cap() -> void:
+	var pc := _make_pc()
+	var gem: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 5, -3)))
+	await wait_physics_frames(2)
+	gem.linear_velocity = Vector3(0, 0, -90)
+	await wait_physics_frames(2)
+	assert_lte(gem.linear_velocity.length(), Config.feel.props.prop_max_speed + 0.5)
+
+
+func _other_player_body(pc: Node, player_id: int) -> PlayerCharacter:
+	var other := (load("res://systems/player/player.tscn") as PackedScene).instantiate() as PlayerCharacter
+	other.player_id = player_id
+	other.name = str(player_id)
+	other.set_multiplayer_authority(player_id)
+	pc.get_node("Level/Players").add_child(other)
+	return other
+
+
+## Puts a body that isn't ours (it follows sync_position) just on top of `prop`.
+func _stand_on(body: PlayerCharacter, prop: NetProp) -> void:
+	var top: Vector3 = prop.global_position + Vector3(0, 0.32, 0)
+	body.sync_position = top
+	body.global_position = top
+
+
+func test_nobody_can_grab_a_prop_someone_else_stands_on() -> void:
+	var pc := _make_pc()
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var body: PlayerCharacter = _my_body(pc)
+	body.set_input_override(PlayerInputState.new())
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", _in_front_of(body))
+	await wait_physics_frames(30)
+	var other: PlayerCharacter = _other_player_body(pc, 50)
+	_stand_on(other, crate)
+	await wait_physics_frames(2)
+	_stand_on(other, crate)
+	var refusal: Array[String] = []
+	assert_eq(_props(pc).decide_grab(crate, body.player_id, refusal), [] as Array[int], "the host refuses")
+	assert_eq(refusal, [PropSpawner.REFUSE_STOOD_ON] as Array[String])
+	PropsService.grab_of(body).try_grab(crate)
+	assert_null(PropsService.grab_of(body).get_held(), "and our own PC doesn't even try")
+	other.free()
+	await wait_physics_frames(2)
+	refusal.clear()
+	assert_eq(_props(pc).decide_grab(crate, body.player_id, refusal), [body.player_id] as Array[int],
+		"once they're gone it can be grabbed")
+
+
+func test_held_prop_is_dropped_when_someone_steps_onto_it() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var crate: NetProp = held[1]
+	var other: PlayerCharacter = _other_player_body(pc, 50)
+	for _frame: int in 30:
+		if not crate.is_held():
+			break
+		_stand_on(other, crate)
+		await wait_physics_frames(1)
+	assert_false(crate.is_held(), "someone stepping onto it makes everyone drop it")
+	assert_null(PropsService.grab_of(body).get_held())
+
+
+# --- HL2 feel step 2.2: holding (NEW 2026-10-29) ---
+
+func _add_wall(pc: Node, center: Vector3, size: Vector3) -> StaticBody3D:
+	var wall := StaticBody3D.new()
+	wall.collision_layer = PhysicsLayers.bit(PhysicsLayers.WORLD)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	shape.shape = box
+	wall.add_child(shape)
+	pc.get_node("Level").add_child(wall)
+	wall.global_position = center
+	return wall
+
+
+func test_held_prop_sits_just_in_front_of_you() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var crate: NetProp = held[1]
+	await wait_physics_frames(20)
+	var distance: float = body.get_aim_origin().distance_to(crate.global_position)
+	var expected: float = Config.feel.props.hold_base_gap + body.tuning.radius + 0.3
+	assert_almost_eq(distance, expected, 0.2, "gap + body radius + half the crate (%.2f m)" % distance)
+
+
+func test_nearly_square_pickup_is_straightened() -> void:
+	var tilted := Quaternion(Vector3.UP, deg_to_rad(20.0)) * Quaternion(Vector3.RIGHT, deg_to_rad(10.0))
+	var tidy: Quaternion = NetProp.tidy_rotation(tilted, deg_to_rad(30.0))
+	assert_almost_eq(tidy.angle_to(Quaternion.IDENTITY), 0.0, 0.001, "20 and 10 degrees off: straightened")
+	var skewed := Quaternion(Vector3.UP, deg_to_rad(45.0))
+	assert_eq(NetProp.tidy_rotation(skewed, deg_to_rad(30.0)), skewed, "45 degrees off: left alone")
+	var on_side := Quaternion(Vector3.FORWARD, deg_to_rad(95.0))
+	var tidy_side: Quaternion = NetProp.tidy_rotation(on_side, deg_to_rad(30.0))
+	assert_almost_eq(tidy_side.angle_to(Quaternion(Vector3.FORWARD, deg_to_rad(90.0))), 0.0, 0.001,
+		"lying on its side: squared up on its side")
+
+
+func test_held_prop_does_not_jitter_against_a_wall() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	# A wall along our view, just to the right: the look ray misses it, but the crate presses into it.
+	var right: Vector3 = body.get_aim_direction().cross(Vector3.UP).normalized()
+	var crate: NetProp = held[1]
+	var wall: StaticBody3D = _add_wall(pc, body.get_aim_origin() + right * 0.3 + body.get_aim_direction() * 1.2,
+		Vector3(0.1, 4, 3))
+	wall.look_at(wall.global_position + body.get_aim_direction(), Vector3.UP)
+	await wait_physics_frames(30)
+	var positions: Array[Vector3] = []
+	for _frame: int in 30:
+		await wait_physics_frames(1)
+		positions.append(crate.global_position)
+	var wobble: float = 0.0
+	for index: int in range(1, positions.size()):
+		wobble = maxf(wobble, positions[index].distance_to(positions[index - 1]))
+	assert_lt(wobble, 0.02, "pressed against the wall it stays still (moved at most %.3f m a frame)" % wobble)
+	assert_lt(crate.angular_velocity.length(), 1.0, "and doesn't spin")
+	assert_true(crate.is_held(), "and is still held")
+
+
+func test_held_prop_stuck_behind_a_wall_is_dropped() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var crate: NetProp = held[1]
+	await wait_seconds(Config.feel.props.hold_error_grace)
+	# Box the crate in, then turn around: it can't follow.
+	var at: Vector3 = crate.global_position
+	_add_wall(pc, at + Vector3(0.45, 0, 0), Vector3(0.1, 1.2, 1.0))
+	_add_wall(pc, at + Vector3(-0.45, 0, 0), Vector3(0.1, 1.2, 1.0))
+	_add_wall(pc, at + Vector3(0, 0, 0.45), Vector3(1.0, 1.2, 0.1))
+	_add_wall(pc, at + Vector3(0, 0, -0.45), Vector3(1.0, 1.2, 0.1))
+	_add_wall(pc, at + Vector3(0, 0.45, 0), Vector3(1.0, 0.1, 1.0))
+	_add_wall(pc, at + Vector3(0, -0.45, 0), Vector3(1.0, 0.1, 1.0))
+	body.rotation.y = PI
+	await wait_until(func() -> bool: return not crate.is_held(), 2.0)
+	assert_false(crate.is_held(), "stuck in the box: dropped")
+
+
+func test_grab_forgives_a_near_miss() -> void:
+	var pc := _make_pc()
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var body: PlayerCharacter = _my_body(pc)
+	body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(5)
+	# A crate a little to the side of where we look (about 20 degrees).
+	var aside: Vector3 = body.get_aim_direction().rotated(Vector3.UP, deg_to_rad(20.0))
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, body.get_aim_origin() + aside * 1.6))
+	await wait_physics_frames(2)
+	var grab: GrabController = PropsService.grab_of(body)
+	assert_eq(grab.find_prop_in_view(), crate)
+	var interaction: InteractionController = InteractionService.controller_of(body)
+	interaction.press_use(null)
+	assert_eq(grab.get_held(), crate, "pressing use with the aim just off the crate still picks it up")
+
+
+# --- HL2 feel step 2.4: knocks and scrapes (NEW 2026-10-29) ---
+
+func test_a_dropped_crate_knocks_once_when_it_lands() -> void:
+	var pc := _make_pc()
+	var heard: Array[float] = []
+	_props(pc).impact_heard.connect(func(_prop: NetProp, speed_lost: float) -> void: heard.append(speed_lost))
+	_props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 3, -3)))
+	await wait_seconds(1.5)
+	assert_gt(heard.size(), 0, "landing from 3 m makes a knock")
+	assert_lte(heard.size(), 3, "a few at most (a bounce or two), not one every frame")
+	assert_gt(heard[0], 5.0, "a hard knock (lost %.1f m/s)" % heard[0])
+
+
+func test_a_resting_crate_is_silent() -> void:
+	var pc := _make_pc()
+	_props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 0.3, -3)))
+	await wait_physics_frames(20)
+	var heard: Array[float] = []
+	_props(pc).impact_heard.connect(func(_prop: NetProp, speed_lost: float) -> void: heard.append(speed_lost))
+	await wait_seconds(1.0)
+	assert_eq(heard.size(), 0)
+
+
+func test_crates_sound_like_wood_and_lift_parts_like_metal() -> void:
+	var pc := _make_pc()
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)))
+	var part: NetProp = _props(pc).spawn_prop(&"prop_lift_part_zoology", Transform3D(Basis.IDENTITY, Vector3(1, 1, -3)))
+	assert_eq(crate.get_surface(), SurfaceType.find(&"wood"))
+	assert_eq(part.get_surface(), SurfaceType.find(&"metal"))
+	assert_ne(crate.get_surface().impact_sound(), part.get_surface().impact_sound())
+
+
+func test_a_sliding_crate_scrapes() -> void:
+	var pc := _make_pc()
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 0.3, -3)))
+	await wait_physics_frames(20)
+	assert_false(crate.is_scraping(), "standing still: quiet")
+	crate.linear_velocity = Vector3(4, 0, 0)
+	await wait_physics_frames(5)
+	assert_true(crate.is_scraping(), "sliding along the floor scrapes")
+	await wait_seconds(2.0)
+	assert_false(crate.is_scraping(), "stopped again: quiet")
+
+
+func test_client_hits_are_heard_on_the_host() -> void:
+	var host := _make_pc()
+	var client := _make_pc()
+	var server := ENetMultiplayerPeer.new()
+	assert_eq(server.create_server(PORT + 9, 4), OK)
+	host.multiplayer.multiplayer_peer = server
+	var peer := ENetMultiplayerPeer.new()
+	peer.create_client("127.0.0.1", PORT + 9)
+	client.multiplayer.multiplayer_peer = peer
+	await wait_until(func() -> bool: return _my_body(client) != null, WAIT)
+	var client_body: PlayerCharacter = _my_body(client)
+	client_body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(10)
+	var crate_on_host: NetProp = _props(host).spawn_prop(&"prop_crate", _in_front_of(client_body))
+	await wait_until(func() -> bool: return _props(client).get_prop(crate_on_host.net_id) != null, WAIT)
+	var crate: NetProp = _props(client).get_prop(crate_on_host.net_id)
+	PropsService.grab_of(client_body).try_grab(crate)
+	await wait_until(func() -> bool: return crate.is_simulated_here(), WAIT)
+	await wait_physics_frames(20)
+	var heard_on_host: Array[float] = []
+	_props(host).impact_heard.connect(func(_prop: NetProp, speed_lost: float) -> void: heard_on_host.append(speed_lost))
+	# Throw it down at the floor: the client's PC runs it and hears the hit; the host plays it too.
+	client_body.set_look_pitch(deg_to_rad(-60.0))
+	await wait_physics_frames(10)
+	PropsService.grab_of(client_body).throw()
+	await wait_until(func() -> bool: return not heard_on_host.is_empty(), 2.0)
+	assert_false(heard_on_host.is_empty(), "the host heard the client's crate hit the floor")
+
+
+# --- HL2 feel step 2.5: impact damage (NEW 2026-10-29) ---
+
+## Something that can be hurt standing in front of `body`, `distance` metres along its view.
+func _victim(pc: Node, body: PlayerCharacter, distance: float, impact_mass: float) -> CharacterBody3D:
+	var victim := CharacterBody3D.new()
+	victim.collision_layer = PhysicsLayers.bit(PhysicsLayers.ENEMIES)
+	victim.set_meta(&"impact_mass", impact_mass)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(1.0, 2.4, 1.0)
+	shape.shape = box
+	shape.position.y = 1.2
+	victim.add_child(shape)
+	pc.get_node("Level").add_child(victim)
+	var ahead: Vector3 = body.get_aim_direction()
+	victim.global_position = body.global_position + Vector3(ahead.x, 0.0, ahead.z).normalized() * distance
+	DamageService.give_components(victim, 15.0, 0.0)
+	return victim
+
+
+func test_impact_damage_depends_on_weights() -> void:
+	var to_rat: float = PropSpawner.impact_damage(10.0, 6.0, 5.0)
+	var to_kangaroo: float = PropSpawner.impact_damage(10.0, 6.0, 50.0)
+	assert_gt(to_rat, 15.0, "a 10 kg crate at 6 m/s kills a rat (%.1f)" % to_rat)
+	assert_between(to_kangaroo, 2.0, 6.0, "and barely hurts a kangaroo (%.1f)" % to_kangaroo)
+	assert_eq(PropSpawner.impact_damage(0.3, 20.0, 5.0), 0.0, "a gem never hurts")
+	assert_lte(PropSpawner.impact_damage(4.0, 20.0, 0.5), Config.feel.props.impact_small_cap, "small props are capped")
+	assert_eq(PropSpawner.impact_damage(10.0, 1.0, 5.0), 0.0, "a gentle bump does nothing")
+
+
+func test_thrown_crate_kills_a_light_enemy_and_the_thrower_gets_the_credit() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var victim: CharacterBody3D = _victim(pc, body, 3.0, 5.0)
+	var health: HealthComponent = HealthComponent.of(victim)
+	var credit: Array[int] = []
+	health.died.connect(func(info: DamageInfo) -> void: credit.append(info.source_player_id))
+	await wait_physics_frames(5)
+	PropsService.grab_of(body).throw()
+	await wait_until(func() -> bool: return health.is_dead(), 2.0)
+	assert_true(health.is_dead(), "a 10 kg crate thrown at a 5 kg enemy kills it")
+	assert_eq(credit, [body.player_id] as Array[int], "the thrower gets the kill")
+
+
+func test_thrown_crate_barely_hurts_a_heavy_enemy() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var victim: CharacterBody3D = _victim(pc, body, 3.0, 50.0)
+	var health: HealthComponent = HealthComponent.of(victim)
+	var hits: Array[float] = []
+	_props(pc).prop_hit.connect(func(_prop: NetProp, _victim_node: Node3D, damage: float) -> void: hits.append(damage))
+	await wait_physics_frames(5)
+	PropsService.grab_of(body).throw()
+	await wait_seconds(1.5)
+	assert_false(health.is_dead())
+	assert_gt(health.get_current(), 9.0, "at most a few points (%.1f left)" % health.get_current())
+
+
+func test_a_held_crate_does_no_damage() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var victim: CharacterBody3D = _victim(pc, body, 1.3, 5.0)
+	var health: HealthComponent = HealthComponent.of(victim)
+	# Swing it about against the victim.
+	for step: int in 20:
+		body.rotation.y = sin(float(step) * 0.6) * 0.8
+		await wait_physics_frames(3)
+	assert_almost_eq(health.get_current(), 15.0, 0.01, "no ramming with a held prop")
+
+
+# --- HL2 feel step 2.6: breakables (NEW 2026-10-29) ---
+
+func test_a_crate_breaks_after_a_few_hard_knocks() -> void:
+	var pc := _make_pc()
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 0.3, -3)))
+	var broken: Array[NetProp] = []
+	_props(pc).prop_broken.connect(func(prop: NetProp) -> void: broken.append(prop))
+	await wait_physics_frames(10)
+	assert_true(crate.is_breakable())
+	_props(pc).report_wear(crate, 7.0)
+	assert_true(is_instance_valid(crate) and not crate.is_queued_for_deletion(), "one throw into a wall: still whole")
+	_props(pc).report_wear(crate, 7.0)
+	_props(pc).report_wear(crate, 7.0)
+	assert_eq(broken.size(), 1, "three: it breaks")
+	await wait_physics_frames(2)
+	assert_false(is_instance_valid(crate), "and is gone")
+	assert_gt(PropDebris.count_alive(), 0, "leaving pieces")
+
+
+func test_dropping_a_crate_from_high_up_wears_it() -> void:
+	var pc := _make_pc()
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 3, -3)))
+	await wait_seconds(1.5)
+	assert_true(is_instance_valid(crate))
+	assert_between(crate.health_left, 0.0, crate.data.health - 10.0, "a 3 m fall knocked it about (%.1f left)" % crate.health_left)
+
+
+func test_broken_pieces_only_hit_the_world_and_fade() -> void:
+	var pc := _make_pc()
+	var pieces: Array[PropDebris] = PropDebris.burst(pc.get_node("Level"), Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)),
+		Vector3(0.3, 0.3, 0.3), Color.BROWN, Vector3.ZERO, 6)
+	assert_eq(pieces.size(), 6)
+	assert_eq(pieces[0].collision_layer, PhysicsLayers.bit(PhysicsLayers.DEBRIS))
+	assert_eq(pieces[0].collision_mask, PhysicsLayers.bit(PhysicsLayers.WORLD), "they never block players or props")
+	await wait_seconds(Config.feel.props.gib_lifetime + Config.feel.props.gib_fade_seconds + 0.3)
+	assert_false(is_instance_valid(pieces[0]), "gone after a while")
+
+
+func test_never_more_than_max_gibs() -> void:
+	var pc := _make_pc()
+	for _burst: int in 20:
+		PropDebris.burst(pc.get_node("Level"), Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)), Vector3(0.3, 0.3, 0.3),
+			Color.BROWN, Vector3.ZERO, 6)
+	await wait_physics_frames(2)
+	assert_lte(PropDebris.count_alive(), Config.feel.props.max_gibs)
+
+
+# --- HL2 feel step 2.7: fast thrown items (NEW 2026-10-29) ---
+
+func test_fast_thrown_item_hits_what_it_flies_past_between_frames() -> void:
+	var pc := _make_pc()
+	var item: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 5, -3)))
+	var hurtbox := Hurtbox.new()
+	var shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = 0.3
+	shape.shape = sphere
+	hurtbox.add_child(shape)
+	pc.get_node("Level").add_child(hurtbox)
+	hurtbox.global_position = Vector3(0, 1, -5)
+	await wait_physics_frames(2)
+	var tracker := ThrownItem.new()
+	autofree(tracker)
+	# One frame's flight at about 60 m/s: from 2 m before the hurtbox to 2 m past it.
+	assert_eq(tracker._hurtbox_along(item, Vector3(0, 1, -3), Vector3(0, 1, -7)), hurtbox, "hit on the way past")
+	assert_null(tracker._touching_hurtbox(item, Vector3(0, 1, -7)), "(only checking where it ended up would miss)")

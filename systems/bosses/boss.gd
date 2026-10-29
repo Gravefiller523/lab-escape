@@ -60,6 +60,7 @@ func setup_from(content: ContentData, health_multiplier: float, rng_seed: int, r
 	numbers.move_speed = boss_move_speed
 	numbers.sight_range = boss_sight_range
 	numbers.loot_id = boss_data.loot_id
+	numbers.impact_mass = boss_data.impact_mass
 	setup(numbers, health_multiplier, rng_seed, rng_index)
 
 

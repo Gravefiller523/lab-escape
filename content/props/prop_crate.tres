@@ -11,3 +11,4 @@ description = "A wooden crate. Light enough to carry alone."
 scene = ExtResource("2_scene")
 mass = 10.0
 is_key_object = false
+health = 60.0

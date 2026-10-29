@@ -18,6 +18,8 @@ const TRIGGERS: int = 7
 const INTERACTABLES: int = 8
 ## Enemy attacks, thrown-item hits.
 const HITBOXES: int = 9
+## NEW 2026-10-29: pieces of broken props (only hit the world; cosmetic, made on each PC).
+const DEBRIS: int = 10
 
 
 ## Turns a layer number into the bit value Godot's collision_layer/mask use.

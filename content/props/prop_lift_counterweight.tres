@@ -14,3 +14,4 @@ mass = 80.0
 is_key_object = true
 lift_slot = &"counterweight"
 cart_allowed = false
+surface = &"metal"

@@ -77,7 +77,7 @@ InputActions.USE, .DROP, .PRIMARY, .SECONDARY, .JUMP, ...   # StringName constan
 static func InputActions.slot_action(slot_number: int) -> StringName
 static func InputActions.ensure_registered() -> void        # called by Config at startup
 
-PhysicsLayers.WORLD, .PLAYERS, .ENEMIES, .PROPS, .HELD_PROPS, .CARTS, .TRIGGERS, .INTERACTABLES, .HITBOXES
+PhysicsLayers.WORLD, .PLAYERS, .ENEMIES, .PROPS, .HELD_PROPS, .CARTS, .TRIGGERS, .INTERACTABLES, .HITBOXES, .DEBRIS (NEW 2026-10-29)
 static func PhysicsLayers.bit(layer: int) -> int
 
 static func SeededRng.make(base_seed: int, stream: StringName, index: int = 0) -> RandomNumberGenerator
@@ -123,3 +123,4 @@ None. Everything else depends on this.
 ## Changelog
 - 2026-10-07: created.
 - 2026-10-29 (feel step 0): NEW `Config.feel` (`FeelTuning`, `core/config/feel_tuning.gd`): every "how it feels" number in one file, `config/feel_tuning.tres`, with sections `player` (PlayerTuning), `props` (PropTuning) and `ai` (AiTuning). Loaded in `Config._enter_tree` after `Config.game`; an empty section falls back to its script defaults. GameConfig keeps game rules and network rates.
+- 2026-10-29 (HL2 feel step 2): NEW `PhysicsLayers.DEBRIS` (10): broken prop pieces, which only hit the world. NEW `MovementEffectData.can_sprint` (default true), `PropData.surface`, `health`, `break_pieces`, `break_scene`, `EnemyData.impact_mass`, `BossData.impact_mass`.

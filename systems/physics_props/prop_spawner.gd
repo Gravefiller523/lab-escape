@@ -9,8 +9,23 @@ extends Node3D
 ## - normal props: the newest grab takes it (the old holder lets go);
 ## - heavy props (above grab_max_mass, any weight): every grab joins the lift, and each holder takes
 ##   heavy_lift_per_holder kg off its weight (more helpers = faster). Nothing is too heavy to move.
+## - (Zachary, 2026-10-29) nobody can grab a prop that any player is standing on, and a held prop that
+##   any player steps onto is dropped (no_grab_while_stood_on), so nobody can launch a teammate.
+
+## NEW 2026-10-29: a prop knock was played on this PC (tests listen to it).
+signal impact_heard(prop: NetProp, speed_lost: float)
+## NEW 2026-10-29, every PC: a prop fell apart (shown here).
+signal prop_broken(prop: NetProp)
+## NEW 2026-10-29, host: a thrown or falling prop hurt something.
+signal prop_hit(prop: NetProp, victim: Node3D, damage: float)
 
 const REFUSE_TOO_FAR: String = "Too far away"
+const REFUSE_STOOD_ON: String = "Someone is standing on it"
+## Host: a reported hit only counts if the victim is this close to the prop (metres, allowing for lag).
+const HIT_REACH: float = 3.0
+## "Standing on it": a ray from just above a player's feet going this far down (metres).
+const FEET_RAY_START: float = 0.1
+const FEET_RAY_LENGTH: float = 0.3
 ## A pusher must be this close to the prop (metres, body to prop centre).
 const PUSH_REACH: float = 3.0
 ## Knock-on: one of the asker's props must be this close to the prop it wants (metres, centre to centre;
@@ -40,6 +55,8 @@ var _owned_timer: float = 0.0
 ## Host: when each prop last changed physics owner (msec), and hand-overs waiting for the cooldown.
 var _owner_changed_msec: Dictionary[int, int] = {}
 var _pending_owner: Dictionary[int, int] = {}
+## Host: when each prop last hurt each victim ("net id:instance id" -> msec).
+var _hit_msec: Dictionary[String, int] = {}
 
 
 ## For tests only: a different Net and config. Call before adding the node to the tree.
@@ -154,8 +171,10 @@ func apply_impulse(prop: NetProp, impulse: Vector3) -> void:
 
 ## Host: who may hold this prop if `player_id` grabs it now. Returns the new holder list, or an
 ## empty list plus a reason in `refusal` (refusal[0]) when the grab is refused.
-@warning_ignore("unused_parameter")
 func decide_grab(prop: NetProp, player_id: int, refusal: Array[String]) -> Array[int]:
+	if Config.feel.props.no_grab_while_stood_on and is_stood_on(prop):
+		refusal.append(REFUSE_STOOD_ON)
+		return [] as Array[int]
 	var holders: Array[int] = prop.get_holder_ids()
 	if prop.get_true_mass() <= Config.feel.props.grab_max_mass:
 		return [player_id] as Array[int]
@@ -263,6 +282,8 @@ func _request_release_rpc(net_id: int, throw_direction: Vector3) -> void:
 	# The thrower's PC applies its own throw (it runs the prop); the host only throws what it runs.
 	if thrown and prop.is_simulated_here():
 		prop.throw_now(throw_direction, throw_strength(prop))
+	elif holders.is_empty() and prop.is_simulated_here():
+		prop.settle_if_touching()
 	if holders.size() == 1:
 		hand_to(prop, peer_of_player(holders[0]))
 
@@ -319,6 +340,8 @@ func _set_holders(net_id: int, holder_list: Array, last_holder: int, thrown: boo
 	for player_id: int in holders:
 		if not before.has(player_id):
 			EventBus.prop_grabbed.emit(player_id, prop)
+			# Half-Life 2: a soft knock when something is picked up (NEW 2026-10-29).
+			_play_knock(prop, prop.global_position, Config.feel.props.pickup_sound_db)
 	for player_id: int in before:
 		if not holders.has(player_id):
 			EventBus.prop_released.emit(player_id, prop, thrown and player_id == last_holder)
@@ -402,8 +425,60 @@ func _request_break_rpc(net_id: int) -> void:
 func _break(prop: NetProp) -> void:
 	if prop == null or prop.is_queued_for_deletion():
 		return
-	_shattered_rpc.rpc(prop.data.display_name if prop.data != null else "It")
+	# CHANGED 2026-10-29: every PC shows it fall apart; only fragile things get the "shattered" message.
+	_broken_rpc.rpc(prop.net_id, prop.global_transform, prop.get_estimated_velocity())
+	if prop.is_fragile():
+		_shattered_rpc.rpc(prop.data.display_name if prop.data != null else "It")
 	despawn(prop)
+
+
+## Host -> everyone (NEW 2026-10-29): a prop broke. Each PC makes its own pieces and plays the crash.
+@rpc("authority", "call_local", "reliable")
+func _broken_rpc(net_id: int, xform: Transform3D, velocity: Vector3) -> void:
+	if not is_inside_tree():
+		return
+	var prop: NetProp = get_prop(net_id)
+	if prop == null:
+		return
+	var count: int = prop.data.break_pieces if prop.data != null else 6
+	if prop.data != null and prop.data.break_scene != null:
+		var pieces: Node3D = prop.data.break_scene.instantiate() as Node3D
+		add_child(pieces)
+		pieces.global_transform = xform
+	else:
+		PropDebris.burst(self, xform, prop.get_half_extents(), prop.get_main_color(), velocity, count)
+	_play_knock(prop, xform.origin, 0.0)
+	prop_broken.emit(prop)
+
+
+## A PC running a breakable prop heard it hit something hard (losing `speed_lost` m/s): the host wears it
+## down and breaks it when its health runs out (NEW 2026-10-29).
+func report_wear(prop: NetProp, speed_lost: float) -> void:
+	if multiplayer.is_server():
+		_apply_wear(prop, speed_lost)
+	elif _net.is_online():
+		_wear_rpc.rpc_id(1, prop.net_id, speed_lost)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _wear_rpc(net_id: int, speed_lost: float) -> void:
+	if not is_inside_tree() or not multiplayer.is_server():
+		return
+	var prop: NetProp = get_prop(net_id)
+	if prop != null and multiplayer.get_remote_sender_id() == prop.get_owner_peer():
+		_apply_wear(prop, speed_lost)
+
+
+func _apply_wear(prop: NetProp, speed_lost: float) -> void:
+	if not prop.is_breakable() or prop.is_queued_for_deletion():
+		return
+	var tuning: PropTuning = Config.feel.props
+	var speed: float = minf(speed_lost, tuning.prop_max_speed)
+	if prop.health_left < 0.0:
+		prop.health_left = prop.data.health
+	prop.health_left -= 0.5 * speed * speed * tuning.prop_self_damage_scale
+	if prop.health_left <= 0.0:
+		_break(prop)
 
 
 ## Host -> everyone: something fragile shattered.
@@ -605,6 +680,7 @@ func _physics_process(delta: float) -> void:
 		_run_owned_props(delta)
 		return
 	_handle_fallen_props()
+	_drop_props_stood_on()
 	_apply_pending_owners()
 	if not _net.is_online():
 		return
@@ -714,6 +790,169 @@ func _release_missing_players() -> void:
 				holders.append(holder)
 		if holders.size() != prop.get_holder_ids().size():
 			_set_holders.rpc(prop.net_id, holders, prop.last_holder_id, false)
+
+
+## NEW 2026-10-29: true if any player in this game is standing on the prop (on any PC; the host uses
+## its own copy of everyone's body).
+func is_stood_on(prop: NetProp) -> bool:
+	return get_body_standing_on(prop) != null
+
+
+## NEW 2026-10-29: a player standing on the prop, or null.
+func get_body_standing_on(prop: NetProp) -> PlayerCharacter:
+	if prop == null or not is_inside_tree():
+		return null
+	for body: PlayerCharacter in get_bodies():
+		if body.is_ghost() or not body.is_inside_tree():
+			continue
+		var feet: Vector3 = body.global_position + Vector3.UP * FEET_RAY_START
+		var query := PhysicsRayQueryParameters3D.create(feet, feet + Vector3.DOWN * FEET_RAY_LENGTH,
+			PhysicsLayers.bit(PhysicsLayers.PROPS))
+		var hit: Dictionary = body.get_world_3d().direct_space_state.intersect_ray(query)
+		if not hit.is_empty() and hit.get("collider") == prop:
+			return body
+	return null
+
+
+## Host (NEW 2026-10-29): anyone stepping onto a held prop makes its holders drop it.
+func _drop_props_stood_on() -> void:
+	if not Config.feel.props.no_grab_while_stood_on:
+		return
+	for prop: NetProp in _props.values():
+		if is_instance_valid(prop) and prop.is_held() and is_stood_on(prop):
+			release_all(prop)
+
+
+## The PC running a prop heard it hit something, losing `speed_lost` m/s (NEW 2026-10-29). Plays the
+## knock here and on every other PC (through the host, which only accepts it from that prop's owner).
+func report_impact(prop: NetProp, at: Vector3, speed_lost: float) -> void:
+	play_impact(prop, at, speed_lost)
+	if not _net.is_online():
+		return
+	if multiplayer.is_server():
+		_impact_rpc.rpc(prop.net_id, at, speed_lost)
+	else:
+		_impact_rpc.rpc_id(1, prop.net_id, at, speed_lost)
+
+
+## Plays a prop's knock (its surface's impact sound), louder for harder hits.
+func play_impact(prop: NetProp, at: Vector3, speed_lost: float) -> void:
+	var tuning: PropTuning = Config.feel.props
+	var loudness: float = clampf(inverse_lerp(tuning.impact_sound_min_speed, tuning.impact_sound_full_speed, speed_lost),
+		0.0, 1.0)
+	var volume: float = lerpf(tuning.impact_sound_quietest_db, 0.0, loudness)
+	_play_knock(prop, at, volume)
+	impact_heard.emit(prop, speed_lost)
+
+
+func _play_knock(prop: NetProp, at: Vector3, volume_db: float) -> void:
+	var surface: SurfaceType = prop.get_surface()
+	Sound.play_3d(surface.impact_sound(), at, volume_db + surface.volume_db, 0.1)
+
+
+@rpc("any_peer", "call_remote", "unreliable")
+func _impact_rpc(net_id: int, at: Vector3, speed_lost: float) -> void:
+	if not is_inside_tree():
+		return
+	var prop: NetProp = get_prop(net_id)
+	if prop == null:
+		return
+	var sender: int = multiplayer.get_remote_sender_id()
+	if multiplayer.is_server():
+		# Only the PC running it hears its real hits; pass them on to everyone else.
+		if sender != prop.get_owner_peer():
+			return
+		play_impact(prop, at, speed_lost)
+		for peer: int in multiplayer.get_peers():
+			if peer != sender:
+				_impact_rpc.rpc_id(peer, net_id, at, speed_lost)
+	elif sender == 1:
+		play_impact(prop, at, speed_lost)
+
+
+# --- Impact damage (NEW 2026-10-29, HL2 feel step 2.5) ------------------------------------------
+
+## Damage a prop of `prop_mass` kg does when it loses `speed_lost` m/s hitting something that counts as
+## `victim_mass` kg (Config.feel.props, "Impact damage"). 0 for light props and gentle bumps.
+static func impact_damage(prop_mass: float, speed_lost: float, victim_mass: float) -> float:
+	var tuning: PropTuning = Config.feel.props
+	if prop_mass < tuning.impact_min_mass or speed_lost < tuning.impact_damage_min_speed:
+		return 0.0
+	var energy: float = 0.5 * prop_mass * speed_lost * speed_lost
+	var damage: float = energy / maxf(victim_mass, 0.1) * tuning.impact_damage_scale
+	if prop_mass <= tuning.impact_small_mass:
+		damage = minf(damage, tuning.impact_small_cap)
+	return damage if damage >= tuning.impact_min_damage else 0.0
+
+
+## How heavy a victim counts as for impact damage (kg).
+static func impact_mass_of(victim: Node) -> float:
+	var tuning: PropTuning = Config.feel.props
+	if victim is PlayerCharacter:
+		return tuning.player_impact_mass
+	var enemy: Enemy = Enemy.of(victim)
+	if enemy != null:
+		return enemy.get_impact_mass()
+	if victim.has_meta(&"impact_mass"):
+		return float(victim.get_meta(&"impact_mass"))
+	return tuning.default_impact_mass
+
+
+## The PC running a prop says it hit `victim` (an enemy or a player) losing `speed_lost` m/s. The host
+## checks it and applies the damage.
+func report_hit(prop: NetProp, victim: Node3D, speed_lost: float) -> void:
+	if multiplayer.is_server():
+		_apply_hit(prop, victim, speed_lost)
+	elif _net.is_online():
+		_prop_hit_rpc.rpc_id(1, prop.net_id, _multiplayer_root().get_path_to(victim), speed_lost)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _prop_hit_rpc(net_id: int, victim_path: NodePath, speed_lost: float) -> void:
+	if not is_inside_tree() or not multiplayer.is_server():
+		return
+	var prop: NetProp = get_prop(net_id)
+	var victim := _multiplayer_root().get_node_or_null(victim_path) as Node3D
+	if prop == null or victim == null or multiplayer.get_remote_sender_id() != prop.get_owner_peer():
+		return
+	_apply_hit(prop, victim, speed_lost)
+
+
+## Host: check a hit is believable, then hurt the victim. The player who threw it gets the credit.
+func _apply_hit(prop: NetProp, victim: Node3D, speed_lost: float) -> void:
+	var tuning: PropTuning = Config.feel.props
+	if prop.is_held() or prop.is_attached() or prop.own_hit_damage \
+			or victim.global_position.distance_to(prop.global_position) > HIT_REACH:
+		return
+	var key: String = "%d:%d" % [prop.net_id, victim.get_instance_id()]
+	var now: int = Time.get_ticks_msec()
+	if now - int(_hit_msec.get(key, -100000)) < int(tuning.impact_report_cooldown * 1000.0):
+		return
+	var speed: float = minf(speed_lost, tuning.prop_max_speed)
+	var damage: float = impact_damage(prop.get_true_mass(), speed, impact_mass_of(victim))
+	if victim is PlayerCharacter:
+		damage *= tuning.friendly_physics_damage_scale
+	if damage <= 0.0 or HealthComponent.of(victim) == null:
+		return
+	if _hit_msec.size() > 256:
+		_hit_msec.clear()
+	_hit_msec[key] = now
+	var info := DamageInfo.make(damage, &"blunt", prop)
+	info.source_player_id = prop.get_recent_thrower(tuning.physics_attacker_window)
+	info.hit_position = victim.global_position
+	if victim is PlayerCharacter:
+		var push: Vector3 = prop.get_estimated_velocity()
+		info.knockback = Vector3(push.x, 0.0, push.z).normalized() * minf(speed * 0.3, 3.0)
+	Damage.hit(victim, info)
+	prop_hit.emit(prop, victim, damage)
+
+
+## Paths sent over the network are relative to the multiplayer root, so they match on every PC.
+func _multiplayer_root() -> Node:
+	var scene_multiplayer := multiplayer as SceneMultiplayer
+	if scene_multiplayer != null and not scene_multiplayer.root_path.is_empty():
+		return get_node(scene_multiplayer.root_path)
+	return get_tree().root
 
 
 ## Player bodies that belong to this spawner's game (same multiplayer).

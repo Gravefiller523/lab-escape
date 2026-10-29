@@ -27,6 +27,8 @@ const PROMPT_DROP: String = "Drop"
 const PROMPT_HEAVY: String = "Drag (heavy: more people make it faster)"
 const PROMPT_HELP_LIFT: String = "Help lift (%d holding)"
 const PROMPT_TAKE: String = "Take"
+## Movement modifier source while carrying (NEW 2026-10-29: no sprinting while carrying).
+const CARRY_MODIFIER: StringName = &"carrying_prop"
 
 var _body: PlayerCharacter
 var _held: NetProp
@@ -64,8 +66,8 @@ func get_held() -> NetProp:
 func try_grab(prop: NetProp) -> void:
 	if prop == null or prop.get_spawner() == null or prop.is_attached():
 		return
-	# Half-Life 2: you can't pick up what you're standing on.
-	if _standing_on(prop):
+	# Half-Life 2: you can't pick up what you're standing on. CHANGED 2026-10-29: nor what anyone stands on.
+	if _standing_on(prop) or _anyone_standing_on(prop):
 		return
 	if _held != null:
 		drop()
@@ -95,7 +97,7 @@ func _let_go(throw_direction: Vector3) -> void:
 	_set_held(null)
 	if not is_instance_valid(prop) or prop.get_spawner() == null:
 		return
-	prop.let_go_here(_body.player_id)
+	prop.let_go_here(_body.player_id, not throw_direction.is_zero_approx())
 	# If our PC runs it, throw it now (no waiting for the host).
 	if not throw_direction.is_zero_approx() and prop.is_simulated_here() and prop.is_lifted() \
 			and not _body.multiplayer.is_server():
@@ -111,7 +113,21 @@ func _set_held(prop: NetProp) -> void:
 	_pending = false
 	if _held != null:
 		_held.hold_changed.connect(_on_hold_changed)
+	_update_carry_modifier()
 	held_changed.emit(_held)
+
+
+## NEW 2026-10-29: no sprinting while carrying (Half-Life 2), if Config.feel.props says so.
+func _update_carry_modifier() -> void:
+	if _body == null:
+		return
+	var movement: PlayerMovement = _body.get_movement()
+	if _held != null and Config.feel.props.disable_sprint_while_holding:
+		var carrying := MovementEffectData.new()
+		carrying.can_sprint = false
+		movement.set_modifier(CARRY_MODIFIER, carrying)
+	else:
+		movement.remove_modifier(CARRY_MODIFIER)
 
 
 ## Interaction use handler: grab what we look at, or drop what we hold.
@@ -120,10 +136,43 @@ func _on_use(target: Node3D) -> bool:
 		drop()
 		return true
 	var prop: NetProp = NetProp.of(target) if target != null else null
+	# CHANGED 2026-10-29: the look ray missed (or hit a wall or floor): a prop near the middle of the view
+	# still counts. Never when aiming at something else you can use (a button, a door).
+	if prop == null and (target == null or Interactable.of(target) == null):
+		prop = find_prop_in_view()
 	if prop == null or prop.is_attached():
 		return false
 	try_grab(prop)
 	return true
+
+
+## NEW 2026-10-29: the loose prop within reach closest to the middle of the view (inside grab_cone_dot) that
+## nothing solid hides, or null.
+func find_prop_in_view() -> NetProp:
+	var spawner: PropSpawner = Props.spawner_for(_body) if _body != null else null
+	if spawner == null or _body == null:
+		return null
+	var tuning: PropTuning = Config.feel.props
+	var origin: Vector3 = _body.get_aim_origin()
+	var aim: Vector3 = _body.get_aim_direction()
+	var best: NetProp = null
+	var best_dot: float = tuning.grab_cone_dot
+	for prop: NetProp in spawner.get_props():
+		if not is_instance_valid(prop) or prop.is_attached():
+			continue
+		var to_prop: Vector3 = prop.global_position - origin
+		var distance: float = to_prop.length()
+		if distance > tuning.grab_reach or distance < 0.01:
+			continue
+		var dot: float = aim.dot(to_prop / distance)
+		if dot <= best_dot:
+			continue
+		var query := PhysicsRayQueryParameters3D.create(origin, prop.global_position, PhysicsLayers.bit(PhysicsLayers.WORLD))
+		if not _body.get_world_3d().direct_space_state.intersect_ray(query).is_empty():
+			continue
+		best = prop
+		best_dot = dot
+	return best
 
 
 ## Interaction prompt provider.
@@ -131,7 +180,8 @@ func _prompt_for(target: Node3D) -> String:
 	if _held != null:
 		return PROMPT_DROP
 	var prop: NetProp = NetProp.of(target) if target != null else null
-	if prop == null or prop.is_attached() or prop.get_spawner() == null or _standing_on(prop):
+	if prop == null or prop.is_attached() or prop.get_spawner() == null or _standing_on(prop) \
+			or _anyone_standing_on(prop):
 		return ""
 	if prop.needs_help():
 		return PROMPT_HELP_LIFT % prop.get_holder_ids().size() if prop.is_held() else PROMPT_HEAVY
@@ -215,7 +265,19 @@ func _standing_on(prop: NetProp) -> bool:
 	return not hit.is_empty() and hit.get("collider") == prop
 
 
-## Where held props float: hold_distance (Config.feel.props) in front of the eyes.
+## NEW 2026-10-29: any player (us included) standing on it, if that rule is on.
+func _anyone_standing_on(prop: NetProp) -> bool:
+	return Config.feel.props.no_grab_while_stood_on and prop.get_spawner() != null \
+		and prop.get_spawner().is_stood_on(prop)
+
+
+## NEW 2026-10-29: where the held prop should be now (tests use it). Vector3.ZERO when holding nothing.
+func get_hold_point() -> Vector3:
+	return _hold_point() if get_held() != null else Vector3.ZERO
+
+
+## Where held props float in front of the eyes. CHANGED 2026-10-29: hold_base_gap + our body's radius +
+## the prop's depth along the view (was hold_distance + its radius), so it sits just in front of us.
 func _hold_point() -> Vector3:
 	var origin: Vector3 = _body.get_aim_origin()
 	var direction: Vector3 = _body.get_aim_direction()
@@ -226,8 +288,8 @@ func _hold_point() -> Vector3:
 	var pitch: float = clampf(asin(clampf(direction.y, -1.0, 1.0)), -max_pitch, max_pitch)
 	direction = (flat * cos(pitch) + Vector3.UP * sin(pitch)).normalized()
 	# Further away for bigger props, so they never press into you.
-	var radius: float = _held.get_radius()
-	var distance: float = tuning.hold_distance + radius
+	var radius: float = _held.get_depth_along(direction)
+	var distance: float = tuning.hold_base_gap + _body.tuning.radius + radius
 	# A wall in front: bring it in closer instead of pushing it into the wall.
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * distance,
 		PhysicsLayers.bit(PhysicsLayers.WORLD))

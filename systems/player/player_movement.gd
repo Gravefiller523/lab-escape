@@ -80,6 +80,14 @@ func can_jump() -> bool:
 	return true
 
 
+## NEW 2026-10-29: false while any modifier stops sprinting (e.g. carrying a prop).
+func can_sprint() -> bool:
+	for effect: MovementEffectData in _modifiers.values():
+		if not effect.can_sprint:
+			return false
+	return true
+
+
 ## The mode the modifiers ask for (highest mode_priority), even if its file doesn't exist yet.
 func get_wanted_mode() -> StringName:
 	var best: StringName = DEFAULT_MODE

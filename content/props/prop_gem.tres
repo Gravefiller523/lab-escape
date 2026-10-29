@@ -12,3 +12,4 @@ scene = ExtResource("2_scene")
 mass = 0.3
 gem_value = 1
 tags = PackedStringArray("gem")
+surface = &"glass"

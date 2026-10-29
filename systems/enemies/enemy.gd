@@ -118,6 +118,11 @@ func setup(enemy_data: EnemyData, health_multiplier: float, rng_seed: int = 0, r
 	DamageService.give_components(self, data.max_health * health_multiplier, hurtbox_radius, hurtbox_height)
 
 
+## NEW 2026-10-29: how heavy it counts as when a thrown prop hits it (EnemyData.impact_mass).
+func get_impact_mass() -> float:
+	return data.impact_mass if data != null else 20.0
+
+
 func get_health() -> HealthComponent:
 	return HealthComponent.of(self)
 

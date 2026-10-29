@@ -7,3 +7,5 @@ script = ExtResource("1_surface")
 volume_db = 2.0
 step_placeholder = &"step_metal"
 land_placeholder = &"land_metal"
+impact_placeholder = &"impact_metal"
+scrape_placeholder = &"scrape_metal"

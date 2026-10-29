@@ -23,6 +23,9 @@ extends ContentData
 @export var loot_id: StringName = &""
 ## Can it knock items out of carts or steal them? (open question, default off)
 @export var can_steal_from_carts: bool = false
+## NEW 2026-10-29: how heavy it counts as when a thrown prop hits it (kg). Light enemies are hurt a lot by a
+## thrown crate, heavy ones barely (rat 5, bat 2, fly 0.5, kangaroo 50).
+@export var impact_mass: float = 20.0
 
 
 func get_type_key() -> StringName:

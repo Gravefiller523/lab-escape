@@ -13,8 +13,9 @@ extends Resource
 ## How quickly you reach full speed on the ground (higher = snappier). Source-style (CHANGED 2026-10-29):
 ## each second you gain this many times your target speed, so 10 reaches full speed in about 0.13 s.
 @export_range(1.0, 30.0, 0.5) var ground_acceleration: float = 10.0
-## How hard the ground slows you down (NEW 2026-10-29, Source-style). Higher = shorter stops.
-@export_range(0.0, 12.0, 0.1) var ground_friction: float = 4.0
+## How hard the ground slows you down (NEW 2026-10-29, Source-style). Higher = shorter stops. 6 after
+## Zachary's playtest (HL2's 4 slid a little too far): about 0.6 m and 0.28 s to stop from a walk.
+@export_range(0.0, 12.0, 0.1) var ground_friction: float = 6.0
 ## Below this speed (m/s) friction brakes as if you were going this fast, so stops end crisply instead of
 ## drifting (NEW 2026-10-29).
 @export_range(0.0, 6.0, 0.1) var stop_speed: float = 2.5
@@ -118,7 +119,8 @@ extends Resource
 
 @export_group("Slide (Slug)")
 ## Grip on the ground (1 = normal, lower = slippery: you keep sliding after letting go).
-@export var slide_grip: float = 0.2
+## 0.133 since ground_friction went from 4 to 6 (2026-10-29), so the slug slides as far as before.
+@export var slide_grip: float = 0.133
 ## How strongly slopes pull you downhill (1 = like a ball rolling).
 @export var slide_slope_pull: float = 0.6
 ## Top speed once fully built up, as a multiple of the normal sprint speed (2 = twice as fast as

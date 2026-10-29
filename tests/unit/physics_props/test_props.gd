@@ -156,11 +156,11 @@ func test_every_grab_helps_lift_heavy_prop() -> void:
 
 func test_each_helper_carries_more_of_the_weight() -> void:
 	var pc := _make_pc()
-	var config: GameConfig = _props(pc).get_config()
+	var tuning: PropTuning = Config.feel.props
 	var heavy: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(0, 1, -3)))
 	heavy.apply_holders([1] as Array[int], 1)
 	var one: float = heavy.get_support()
-	assert_almost_eq(one, config.heavy_lift_per_holder / heavy.get_true_mass(), 0.001, "1 person: a little")
+	assert_almost_eq(one, tuning.heavy_lift_per_holder / heavy.get_true_mass(), 0.001, "1 person: a little")
 	assert_false(heavy.is_lifted(), "1 person only drags it")
 	heavy.apply_holders([1, 2] as Array[int], 2)
 	var two: float = heavy.get_support()
@@ -243,7 +243,7 @@ func test_grab_carries_and_throw_sets_last_holder() -> void:
 	grab.try_grab(crate)
 	assert_eq(crate.get_holder_ids(), [body.player_id] as Array[int], "the host (us) confirmed the grab")
 	await wait_physics_frames(30)
-	var hold_point: Vector3 = body.get_aim_origin() + body.get_aim_direction() * _props(pc).get_config().hold_distance
+	var hold_point: Vector3 = body.get_aim_origin() + body.get_aim_direction() * Config.feel.props.hold_distance
 	assert_lt(crate.global_position.distance_to(hold_point), 0.5, "carried at the hold point")
 	grab.throw()
 	await wait_physics_frames(2)
@@ -403,7 +403,7 @@ func test_client_grab_hands_physics_to_the_client_and_back() -> void:
 	assert_false(crate_on_client.freeze)
 	assert_eq(crate_on_host.get_owner_peer(), client_body.get_multiplayer_authority())
 	await wait_physics_frames(20)
-	var hold_point: Vector3 = client_body.get_aim_origin() + client_body.get_aim_direction() * _props(client).get_config().hold_distance
+	var hold_point: Vector3 = client_body.get_aim_origin() + client_body.get_aim_direction() * Config.feel.props.hold_distance
 	assert_lt(crate_on_client.global_position.distance_to(hold_point), 0.5, "in the client's hands, no delay")
 	await wait_until(func() -> bool: return crate_on_host.global_position.distance_to(crate_on_client.global_position) < 0.5, WAIT)
 	assert_lt(crate_on_host.global_position.distance_to(crate_on_client.global_position), 0.5, "the host's copy follows")
@@ -479,7 +479,7 @@ func test_knock_on_ownership() -> void:
 	await wait_until(func() -> bool: return held.is_simulated_here(), WAIT)
 	await wait_physics_frames(10)
 	# A loose crate right where the held one floats: they bump.
-	var hold_point: Vector3 = client_body.get_aim_origin() + client_body.get_aim_direction() * _props(client).get_config().hold_distance
+	var hold_point: Vector3 = client_body.get_aim_origin() + client_body.get_aim_direction() * Config.feel.props.hold_distance
 	var loose_on_host: NetProp = _props(host).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, hold_point + client_body.get_aim_direction() * 0.55))
 	await wait_until(func() -> bool: return loose_on_host.get_owner_peer() == client_body.get_multiplayer_authority(), WAIT)
 	assert_eq(loose_on_host.get_owner_peer(), client_body.get_multiplayer_authority(),
@@ -515,7 +515,7 @@ func test_held_prop_is_light_and_heavy_again_when_dropped() -> void:
 	var held: Array = await _holding(pc)
 	var body: PlayerCharacter = held[0]
 	var crate: NetProp = held[1]
-	assert_almost_eq(crate.mass, NetProp.HELD_MASS, 0.001, "light while held, so it nudges things gently")
+	assert_almost_eq(crate.mass, Config.feel.props.held_mass, 0.001, "light while held, so it nudges things gently")
 	PropsService.grab_of(body).drop()
 	await wait_physics_frames(2)
 	assert_almost_eq(crate.mass, crate.get_true_mass(), 0.001, "real weight once dropped")
@@ -528,7 +528,7 @@ func test_dropping_a_fast_prop_does_not_fling_it() -> void:
 	var crate: NetProp = held[1]
 	crate.linear_velocity = Vector3(0, 0, -40)
 	PropsService.grab_of(body).drop()
-	assert_lte(crate.linear_velocity.length(), _props(pc).get_config().held_prop_release_max_speed + 0.01)
+	assert_lte(crate.linear_velocity.length(), Config.feel.props.held_prop_release_max_speed + 0.01)
 
 
 func test_held_prop_comes_closer_near_a_wall() -> void:

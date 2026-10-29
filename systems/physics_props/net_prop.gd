@@ -10,11 +10,8 @@ extends RigidBody3D
 
 signal hold_changed()
 
-## How hard the hold spring pulls (per metre, per kg) and how much it damps.
-const HOLD_STIFFNESS: float = 150.0
-const HOLD_DAMPING: float = 22.0
-## A held prop that stays further than hold_break_distance from its hold point this long is dropped.
-const HOLD_BREAK_SECONDS: float = 0.4
+## CHANGED 2026-10-29: the hold, drop, throw and push numbers moved to Config.feel.props (PropTuning,
+## res://config/feel_tuning.tres).
 ## How quickly copies catch up with snapshots, and when they jump instead.
 const SNAPSHOT_SMOOTHING: float = 40.0
 const SNAPSHOT_SNAP_DISTANCE: float = 3.0
@@ -22,8 +19,6 @@ const SNAPSHOT_SNAP_DISTANCE: float = 3.0
 const SAFE_HEIGHT_MARGIN: float = 5.0
 ## A push counts for this long after the last report (milliseconds), so pushes don't flicker.
 const PUSH_MEMORY_MSEC: int = 250
-## Pushed props move a little slower than the pusher, so the pusher stays pressed against them.
-const PUSH_SPEED_FACTOR: float = 0.9
 ## Snapshots kept per prop.
 const MAX_SNAPSHOTS: int = 12
 ## A player's PC gives a prop back to the host after nobody has touched it for this long
@@ -35,14 +30,6 @@ const SETTLED_SPEED: float = 0.15
 const MAX_EXTRAPOLATION_SECONDS: float = 0.2
 ## Contacts a prop reports per frame (for knock-on ownership).
 const MAX_CONTACTS: int = 4
-## Half-Life 2 numbers: held props weigh 1 kg (so they push gently), spin is damped while held, the
-## hold turns at most 3600 degrees a second, and a dropped prop spins at most 720 degrees a second.
-const HELD_MASS: float = 1.0
-const HELD_ANGULAR_DAMP: float = 10.0
-const HOLD_MAX_SPIN: float = 62.8
-const RELEASE_MAX_SPIN: float = 12.6
-## A thrown prop gets up to this much random spin (radians a second on each axis).
-const THROW_SPIN: float = 3.0
 ## Claiming ahead: look this far ahead in time (seconds), with this much extra room (metres), this
 ## often (seconds).
 const CLAIM_LOOKAHEAD: float = 0.15
@@ -87,7 +74,7 @@ var _stuck_seconds: float = 0.0
 var _handback_sent: bool = false
 ## Props we already asked to take over after bumping into them (net id -> true).
 var _knock_requested: Dictionary[int, bool] = {}
-## Its real weight (kg). While fully lifted, `mass` is set to HELD_MASS instead.
+## Its real weight (kg). While fully lifted, `mass` is set to Config.feel.props.held_mass instead.
 var _true_mass: float = 1.0
 ## Cached size for holding (see get_radius); below 0 = not worked out yet.
 var _radius: float = -1.0
@@ -140,7 +127,7 @@ func get_holder_ids() -> Array[int]:
 
 ## True for heavy props (above grab_max_mass): one person can only drag them slowly; helpers speed it up.
 func needs_help() -> bool:
-	return _true_mass > _config().grab_max_mass
+	return _true_mass > _tuning().grab_max_mass
 
 
 ## How much of its weight its holders carry, 0 to 1. Normal props: 1 while held. Heavy props: each
@@ -155,7 +142,7 @@ func support_for(people: int) -> float:
 		return 0.0
 	if not needs_help():
 		return 1.0
-	return clampf(float(people) * _config().heavy_lift_per_holder / _true_mass, 0.0, 1.0)
+	return clampf(float(people) * _tuning().heavy_lift_per_holder / _true_mass, 0.0, 1.0)
 
 
 ## True while it is fully off the ground in its holders' hands.
@@ -230,16 +217,17 @@ func apply_holders(holders: Array[int], last_holder: int) -> void:
 
 
 ## Held props behave like Half-Life 2's: the holders carry part (or all) of the weight, and a fully
-## lifted prop counts as very light (HELD_MASS) so it nudges other things gently instead of
+## lifted prop counts as very light (Config.feel.props.held_mass) so it nudges other things gently instead of
 ## bulldozing them. Let go: real weight back, and no flinging it by spinning around.
 func _apply_held_physics() -> void:
 	var was_held_light: bool = not is_equal_approx(mass, _true_mass)
 	gravity_scale = 1.0 - get_support()
-	angular_damp = HELD_ANGULAR_DAMP if is_held() else 0.0
-	mass = HELD_MASS if is_lifted() else _true_mass
+	var tuning: PropTuning = _tuning()
+	angular_damp = tuning.held_angular_damp if is_held() else 0.0
+	mass = tuning.held_mass if is_lifted() else _true_mass
 	if was_held_light and not is_lifted():
-		linear_velocity = linear_velocity.limit_length(_config().held_prop_release_max_speed)
-		angular_velocity = angular_velocity.limit_length(RELEASE_MAX_SPIN)
+		linear_velocity = linear_velocity.limit_length(tuning.held_prop_release_max_speed)
+		angular_velocity = angular_velocity.limit_length(tuning.release_max_spin)
 
 
 ## A new physics owner, starting from this state (sent by the host to every PC).
@@ -307,8 +295,8 @@ func let_go_here(player_id: int) -> void:
 		gravity_scale = 1.0
 		angular_damp = 0.0
 		mass = _true_mass
-		linear_velocity = linear_velocity.limit_length(_config().held_prop_release_max_speed)
-		angular_velocity = angular_velocity.limit_length(RELEASE_MAX_SPIN)
+		linear_velocity = linear_velocity.limit_length(_tuning().held_prop_release_max_speed)
+		angular_velocity = angular_velocity.limit_length(_tuning().release_max_spin)
 
 
 ## Owner: where a holder wants it now.
@@ -339,7 +327,7 @@ func _steer_rotation(delta: float) -> void:
 	if angle < 0.001:
 		angular_velocity = Vector3.ZERO
 		return
-	angular_velocity = (difference.get_axis() * angle / maxf(delta, 0.001)).limit_length(HOLD_MAX_SPIN)
+	angular_velocity = (difference.get_axis() * angle / maxf(delta, 0.001)).limit_length(_tuning().hold_max_spin)
 
 
 ## Owner: a player walking into this prop's side pushes it along `direction` at up to `speed` m/s,
@@ -368,7 +356,7 @@ func mark_handback_sent() -> void:
 	_handback_sent = true
 
 
-## Its real weight in kg (while it is lifted, the physics body weighs HELD_MASS instead).
+## Its real weight in kg (while it is lifted, the physics body weighs Config.feel.props.held_mass instead).
 func get_true_mass() -> float:
 	return _true_mass
 
@@ -389,7 +377,7 @@ func get_radius() -> float:
 ## Owner: throw it (an impulse along `direction`, plus a little random spin like Half-Life 2).
 func throw_now(direction: Vector3, strength: float) -> void:
 	apply_central_impulse(direction.normalized() * strength)
-	angular_velocity += Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * THROW_SPIN
+	angular_velocity += Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _tuning().throw_spin
 
 
 ## For tests: pretend it weighs this much.
@@ -400,6 +388,11 @@ func set_true_mass(kilograms: float) -> void:
 
 func _config() -> GameConfig:
 	return _spawner.get_config() if _spawner != null else Config.game
+
+
+## NEW 2026-10-29: how holding, dropping, throwing and pushing feel (Config.feel.props).
+func _tuning() -> PropTuning:
+	return Config.feel.props
 
 
 func _physics_process(delta: float) -> void:
@@ -431,22 +424,22 @@ func _simulate(delta: float) -> void:
 	for point: Vector3 in _hold_targets.values():
 		target += point
 	target /= float(_hold_targets.size())
-	var config: GameConfig = _config()
+	var tuning: PropTuning = _tuning()
 	var offset: Vector3 = target - global_position
-	var max_speed: float = config.held_prop_max_speed * support
+	var max_speed: float = tuning.held_prop_max_speed * support
 	if support >= 1.0:
 		# Half-Life 2's "shadow control": each physics step, set the speed that gets it exactly to
 		# the hold point by the next step (capped). Tight, no spring wobble, and it still collides.
-		linear_velocity = (offset / maxf(delta, 0.001)).limit_length(config.held_prop_track_speed)
+		linear_velocity = (offset / maxf(delta, 0.001)).limit_length(tuning.held_prop_track_speed)
 		_steer_rotation(delta)
 	else:
 		# Not fully lifted (a heavy prop with too few helpers): a weaker pull, so it drags.
-		apply_central_force((offset * HOLD_STIFFNESS - linear_velocity * HOLD_DAMPING) * mass * support)
+		apply_central_force((offset * tuning.hold_stiffness - linear_velocity * tuning.hold_damping) * mass * support)
 		if linear_velocity.length() > max_speed:
 			linear_velocity = linear_velocity.limit_length(max_speed)
-	if support >= 1.0 and offset.length() > config.hold_break_distance:
+	if support >= 1.0 and offset.length() > tuning.hold_break_distance:
 		_stuck_seconds += delta
-		if _stuck_seconds > HOLD_BREAK_SECONDS and _spawner != null:
+		if _stuck_seconds > tuning.hold_break_seconds and _spawner != null:
 			_stuck_seconds = 0.0
 			_spawner.report_stuck(self)
 	else:
@@ -473,7 +466,7 @@ func _apply_pushes() -> void:
 	if _pushes.is_empty() or direction.is_zero_approx():
 		return
 	direction = Vector3(direction.x, 0.0, direction.z).normalized()
-	var wanted: float = speed * PUSH_SPEED_FACTOR * support_for(_pushes.size())
+	var wanted: float = speed * _tuning().push_speed_factor * support_for(_pushes.size())
 	var current: float = linear_velocity.dot(direction)
 	if current < wanted:
 		linear_velocity += direction * (wanted - current)

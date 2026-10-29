@@ -79,6 +79,7 @@ Test scene: `systems/debug_console/test/console_test.tscn` (floor, player, PropS
 - 2026-10-18: CHANGED: test builds exported with the custom feature `cheats` (the "Windows Steam test"
   preset in export_presets.cfg) allow cheats, so console cheats work on the 2-PC Steam test. Release presets
   must not have this feature.
+- 2026-10-29 (feel step 0): NEW commands (cheats only, run on this PC): `tune` (list sections), `tune <section>` (list numbers), `tune <section>.<name> [value]` (show or change one now), `tune_save` (editor only: write them into the .tres files), `tune_reset` (reload from the files). Code in `systems/debug_console/tune_commands.gd` (`TuneCommands`). Player numbers change your own PC; props and enemies run on the host, so tune those there.
 
 ## HANDOFF
 **Built (2026-10-18):** `systems/debug_console/debug_console.gd` (`DebugConsoleService`, autoload `DebugConsole`,

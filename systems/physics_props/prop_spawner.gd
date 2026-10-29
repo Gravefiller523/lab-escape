@@ -157,7 +157,7 @@ func apply_impulse(prop: NetProp, impulse: Vector3) -> void:
 @warning_ignore("unused_parameter")
 func decide_grab(prop: NetProp, player_id: int, refusal: Array[String]) -> Array[int]:
 	var holders: Array[int] = prop.get_holder_ids()
-	if prop.get_true_mass() <= _config.grab_max_mass:
+	if prop.get_true_mass() <= Config.feel.props.grab_max_mass:
 		return [player_id] as Array[int]
 	# Heavy: everyone who grabs helps (no limit).
 	if not holders.has(player_id):
@@ -232,7 +232,7 @@ func _request_grab_rpc(net_id: int) -> void:
 	var body: PlayerCharacter = body_of_peer(sender)
 	if prop == null or body == null:
 		return
-	if body.get_aim_origin().distance_to(prop.global_position) > _config.grab_reach + REACH_TOLERANCE:
+	if body.get_aim_origin().distance_to(prop.global_position) > Config.feel.props.grab_reach + REACH_TOLERANCE:
 		_grab_refused.rpc_id(sender, net_id, REFUSE_TOO_FAR)
 		return
 	var refusal: Array[String] = []
@@ -336,12 +336,12 @@ func _grab_refused(net_id: int, reason: String) -> void:
 
 # --- Physics ownership (approach B) -----------------------------------------------------------
 
-## How hard a throw is: throw_impulse per kg, counting at most grab_max_mass kg.
+## How hard a throw is: Config.feel.props.throw_force x a weight factor.
 func throw_strength(prop: NetProp) -> float:
 	# Half-Life 2's rule: the force grows with weight up to 15 kg (factor 0.5 to 4), so light things
 	# fly fast and far and heavy things only go a little way.
 	var factor: float = remap(clampf(prop.get_true_mass(), 0.5, 15.0), 0.5, 15.0, 0.5, 4.0)
-	return _config.throw_force * factor
+	return Config.feel.props.throw_force * factor
 
 
 ## The network peer of a player in this game, or 0.

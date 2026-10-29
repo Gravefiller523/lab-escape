@@ -77,7 +77,12 @@ enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg", "res://addons/godo
 
 [physics]
 
+common/physics_jitter_fix=0.0
 3d/physics_engine="Jolt Physics"
+jolt_physics_3d/simulation/penetration_slop=0.01
+jolt_physics_3d/simulation/sleep_velocity_threshold=0.05
+jolt_physics_3d/limits/max_linear_velocity=100.0
+jolt_physics_3d/limits/max_angular_velocity=62.83
 common/physics_interpolation=true
 
 [rendering]

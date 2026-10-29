@@ -256,7 +256,7 @@ Things that look like dependencies but are **not**, because they go through Even
 
 | Autoload | System | Notes |
 |---|---|---|
-| `Config` | foundation | `Config.game` is the GameConfig. Registers default input actions. |
+| `Config` | foundation | `Config.game` is the GameConfig (rules, network rates). `Config.feel` is the FeelTuning (movement, prop and enemy feel; added 2026-10-29). Registers default input actions. |
 | `EventBus` | foundation | Signals only. |
 | `ContentRegistry` | foundation | Scans `res://content/`. |
 | `SaveSystem` | save_load | |

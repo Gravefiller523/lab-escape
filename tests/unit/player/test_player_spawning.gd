@@ -91,7 +91,16 @@ func _leave(pc: Node) -> void:
 				break
 			enet.poll()
 			OS.delay_msec(10)
-	pc.multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	# Quitting closes the game, so this PC goes away. (Fix 2026-10-29: keeping it alive but offline let
+	# its Net, now solo, tell the shared EventBus that everyone else left. With Steam running its id
+	# changes, so the host's own body was despawned too. In a real game that only reaches its own PC.)
+	var path: NodePath = pc.get_path()
+	var peer: MultiplayerPeer = pc.multiplayer.multiplayer_peer
+	_pcs.erase(pc)
+	pc.free()
+	if peer != null:
+		peer.close()
+	get_tree().set_multiplayer(null, path)
 
 
 func after_each() -> void:

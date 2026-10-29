@@ -198,6 +198,7 @@ launch options `-- host` / `-- join`.
 - 2026-10-24 (Zachary, later): Slug top speed raised to 1.75 x the normal sprint speed (`slide_max_speed` 1.75, 12.25 m/s). The host speed check follows it through `top_speed()`.
 - 2026-10-24 (Zachary's tuning): `slide_max_speed` 2.0 (14 m/s), `slide_build_up_seconds` 8, `slide_lose_seconds` 3. The slug tests now read these numbers instead of assuming them.
 - 2026-10-24 (Zachary): Frog reworked: no automatic hops, walks at `hop_walk_speed_multiplier` (0.5); jumping happens on release: hold jump to charge (`hop_charge_seconds` 1), a full charge leaps `hop_charge_height_multiplier` (1.6) x higher and `hop_charge_forward_multiplier` (2) x faster forward; `hop_forward_speed` 7, `hop_air_control` 0.1 (the leap isn't braked mid-air), `hop_max_speed` 15 (the host speed check allows it). Removed the unused `hop_auto_hops` and `hop_small_height`. The hop mode has `is_charging()` and `get_charge()` (for a HUD bar later). A full-charge leap goes about 12 m; 2 local instances saw it land in the same place.
+- 2026-10-29 (feel step 0): `player_tuning.tres` is also `Config.feel.player`: `config/feel_tuning.tres` points at the same file, so the player scene and Config share one instance and the `tune player.<name>` console command changes movement live. No values changed.
 
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,

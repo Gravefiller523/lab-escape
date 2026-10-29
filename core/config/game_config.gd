@@ -81,29 +81,47 @@ extends Resource
 
 @export_group("Physics props")
 ## Heaviest object (kg) one player can lift.
+## @deprecated 2026-10-29: moved to Config.feel.props.grab_max_mass (config/feel_tuning.tres). Not read any more;
+## kept so existing files keep working.
 @export var grab_max_mass: float = 40.0
 ## @deprecated Not used any more (2026-10-17): nothing is too heavy to move. Kept so existing
 ## files keep working.
 @export var two_player_lift_max_mass: float = 120.0
 ## Heavy objects (above grab_max_mass): each person holding one takes this many kg off its weight.
 ## 1 person moves it very slowly, more people faster; once they take off all of it, it is fully lifted.
+## @deprecated 2026-10-29: moved to Config.feel.props.heavy_lift_per_holder (config/feel_tuning.tres). Not read any more;
+## kept so existing files keep working.
 @export var heavy_lift_per_holder: float = 30.0
 ## Fastest (m/s) a held object can be carried; heavy ones go slower with fewer helpers.
+## @deprecated 2026-10-29: moved to Config.feel.props.held_prop_max_speed (config/feel_tuning.tres). Not read any more;
+## kept so existing files keep working.
 @export var held_prop_max_speed: float = 8.0
 ## How fast (m/s) a fully lifted prop may move to keep up with your hands (Half-Life 2: about 19).
+## @deprecated 2026-10-29: moved to Config.feel.props.held_prop_track_speed (config/feel_tuning.tres). Not read any more;
+## kept so existing files keep working.
 @export var held_prop_track_speed: float = 20.0
 ## A dropped prop moves at most this fast (m/s), so you can't fling things by spinning around.
+## @deprecated 2026-10-29: moved to Config.feel.props.held_prop_release_max_speed (config/feel_tuning.tres). Not read any more;
+## kept so existing files keep working.
 @export var held_prop_release_max_speed: float = 10.5
 ## How far away (m) a player can grab something.
+## @deprecated 2026-10-29: moved to Config.feel.props.grab_reach (config/feel_tuning.tres). Not read any more;
+## kept so existing files keep working.
 @export var grab_reach: float = 2.5
 ## How far in front of the camera (m) a held object floats.
+## @deprecated 2026-10-29: moved to Config.feel.props.hold_distance (config/feel_tuning.tres). Not read any more;
+## kept so existing files keep working.
 @export var hold_distance: float = 1.6
 ## If a held object gets stuck this far (m) from where it should be, it is dropped.
+## @deprecated 2026-10-29: moved to Config.feel.props.hold_break_distance (config/feel_tuning.tres). Not read any more;
+## kept so existing files keep working.
 @export var hold_break_distance: float = 1.5
 ## @deprecated Not used any more (2026-10-18): see throw_force.
 @export var throw_impulse: float = 10.0
 ## Throw strength, Half-Life 2 style: the push is throw_force x a weight factor (0.5 at 0.5 kg up to 4
 ## at 15 kg and above), so a 10 kg crate flies about 10 m/s and heavier things go less far.
+## @deprecated 2026-10-29: moved to Config.feel.props.throw_force (config/feel_tuning.tres). Not read any more;
+## kept so existing files keep working.
 @export var throw_force: float = 34.0
 ## How often (per second) moving props near players are sent to clients.
 @export var prop_sync_rate_near: int = 40

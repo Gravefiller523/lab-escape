@@ -90,7 +90,10 @@ with a collision shape and mesh), `mass` (kg; above 40 needs two players, above 
 `is_key_object` (lift parts, keycards), `cart_allowed`, `despawn_after_seconds`, `gem_value` (gems only),
 `grants_upgrade` (glowing gems and robot parts). NEW 2026-10-19: `lift_slot` (a lift part: the slot it fits; a new
 slot name adds a new slot to the lift), `fragile_break_speed` (above 0: shatters when it hits something this fast,
-m/s), `needs_charge_seconds` (above 0: must sit on the lift charger this long before it fits). **Tags that systems look for:** `meat`, `lift_part`,
+m/s), `needs_charge_seconds` (above 0: must sit on the lift charger this long before it fits). NEW 2026-10-30
+(lift parts, for the new floor generator): `part_size` (`small`, `medium`, `large`, `huge`: which `lift_part`
+markers it fits) and `part_category` (`mechanical`, `electrical`, `electronic`, `power`, `structural`: which
+rooms it turns up in). **Tags that systems look for:** `meat`, `lift_part`,
 `keycard`, `glowing_gem`, `robot_part`. **Test:** `spawn prop_<name>`.
 
 ## Enemy
@@ -123,6 +126,19 @@ floor height; the footprint covers `size_cells` cells along +x and +z (one cell 
 For a quick grey-box room, put the `GreyboxRoom` script on the root (it builds the floor and walls and
 leaves a gap at every doorway); see `systems/level_gen/rooms/` for examples. Navigation regions come
 with the enemies system.
+NEW 2026-10-30, **3 m tiles for the new floor generator** (rules: `docs/systems/level_gen.md`, "Tile
+standards"). **Copy** a tile from `systems/level_gen/tiles/` (root script `BlockoutTile`, set `size_units`)
+and its `content/rooms/room_tile_<name>.tres`. **Sockets:** `RoomDoorway` direct children of the root, on the
+edge, centred on a 3 m unit's edge, width 2.4, height 2.8; `connection` (`door`, `vent`, `crawl`, `jump`);
+`open_edge` for hallway ends. A room needs a socket on every side. **Markers** under a `Markers` node (kinds
+in the spec's marker table). **Damage:** keep the `Damage/Light`, `Damage/Heavy`, `Damage/Destroyed` nodes
+(empty = placeholder boxes). Furniture: CSG boxes with `use_collision` on and the metadata `material_slot`
+(`accent`). **Fill in** as above plus `grid` = `tile_3m`, `tile_role` (`room`, `main_hall`, `secondary_hall`,
+`template`), `size_category` (rooms: `small` 2x2/2x3/3x3, `medium` 3x4/4x4/4x5, `large` 5x6/6x6/6x8; empty
+otherwise), `damage_levels`, `part_categories` (lift part categories that fit, e.g. `mechanical`),
+`is_combat_room`. **Test:** run `tests/unit/level_gen/test_tile_standards.gd` and look at it in
+`systems/level_gen/test/tile_gallery.tscn` (F6). New tiles don't appear in today's floors (only the new
+generator, from step 3, uses them).
 
 ## Department
 A department is a bundle. Make its rooms, enemies, boss, loot tables and stock first, then one
@@ -130,6 +146,15 @@ A department is a bundle. Make its rooms, enemies, boss, loot tables and stock f
 `task_ids`, `lift_parts_per_floor`, NEW 2026-10-19 `lift_breaks_min`/`lift_breaks_max` (how many lift slots break per floor, 1 to 3) and `lift_part_ids` (which lift parts can break here; empty = all; `lift_parts_per_floor` and `lift_part_prop_id` are deprecated), NEW 2026-10-18 `lift_part_prop_id` (the prop carried back to the lift; CHANGED 2026-10-19: give that PropData the tag `lift_part` so the lift socket takes it), `rooms_per_floor_min/max`, `required_room_kinds`,
 `optional_room_chances` (e.g. `{"supply": 0.6}`), `tile_library`, `music`, colours, `order_hint`,
 NEW 2026-10-23: `upgrade_type` (`mutation` for DNA vials, `cybernetic` for data drives) and `upgrade_carrier_chance` (-1 = the GameConfig number). `in_run_rotation`. Put its art in `assets/<kind>/<department>/`. **Test:** `floor 1 department_<name>`.
+NEW 2026-10-30, for the new floor generator (not used by gameplay yet), in the Inspector's "Floor generation"
+group: `welcome_center_scene` (empty = the generic one), `room_types` (each a RoomTypeData: `id` like
+`room_type_robot_test_bay`, `room_kind`, `display_name`, `weight`, `max_per_floor`, `min_floor`,
+`size_categories`, `part_categories`), `shared_room_weight` (-1 = the tuning file's `shared_room_share`),
+`palette` (`"wall"`, `"floor"`, `"trim"`, `"accent"` -> Material), `signage_style` (sign scene), `lighting`
+(a LightingStyleData: light colour and energy, flicker share, emergency colour, lights off when damaged),
+`prop_pool` (prop ids with weights), `hazard_kinds` (e.g. `sparks`, `fire`), `incidents` (each an
+IncidentData: `id` like `incident_fabrication_fire`, `display_name`, `weight`, `origin_room_kinds`,
+`overlay_flavour`, `hazard_kinds`, `lighting`).
 
 ## Floor task
 **Fill in:** `scene` (built from `FloorTask` and `TaskStation` pieces), `min_players`,
@@ -160,6 +185,9 @@ Items only. Point a department at it with `stock_id`.
 ## Tuning numbers
 Global numbers (player limit, glow chance, meat cost, carry limits, difficulty scaling) are in
 `config/game_config.tres`. Click it and change values in the Inspector. Never type them into code.
+NEW 2026-10-30: floor generation numbers (hallway lengths, branch odds, damage, doors, keycards, lift parts
+per floor, cameras, hazards, tile sizes) are in `config/floor_gen_tuning.tres` (`Config.floor_gen`), grouped
+and commented. Lists named `..._by_bracket` have one number per floor bracket (`floor_brackets`: 1, 4, 8).
 
 ---
 

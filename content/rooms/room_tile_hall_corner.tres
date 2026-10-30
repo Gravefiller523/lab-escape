@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RoomData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/levels/room_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_hall_corner.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"room_tile_hall_corner"
+display_name = "Hallway, corner (blockout)"
+description = "Secondary hallway turn: open south and east, doorways north and west."
+tags = PackedStringArray("blockout")
+scene = ExtResource("2_scene")
+size_cells = Vector3i(1, 1, 1)
+room_kind = &"secondary_hall"
+grid = &"tile_3m"
+tile_role = &"secondary_hall"
+size_category = &""

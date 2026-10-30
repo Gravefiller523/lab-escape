@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RoomData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/levels/room_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_bathroom.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"room_tile_bathroom"
+display_name = "Bathroom (blockout)"
+description = "Small shared room: two stalls and a sink counter."
+tags = PackedStringArray("blockout")
+scene = ExtResource("2_scene")
+size_cells = Vector3i(2, 1, 3)
+room_kind = &"bathroom"
+grid = &"tile_3m"
+tile_role = &"room"
+size_category = &"small"

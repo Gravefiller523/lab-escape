@@ -46,6 +46,9 @@ const SCRAPE_LINGER: float = 0.1
 ## (so a crate sliding down an enemy and hitting the floor doesn't hurt the enemy again).
 const HIT_MARGIN: float = 0.12
 const HIT_DIRECTION_MIN_DOT: float = 0.3
+## NEW 2026-10-30: a hit can take a few physics steps to stop the prop; for this many steps after the first,
+## the speed it has lost since just before the hit counts as the same hit (the host tops up the damage).
+const HIT_GATHER_STEPS: int = 3
 
 ## Unique per spawned prop, set by the host.
 var net_id: int = 0
@@ -97,6 +100,9 @@ var _impact_skip: int = 2
 var _last_impact_msec: int = -100000
 ## Owner: when it last hurt each victim (instance id -> msec), and (every PC) when its holders last let go.
 var _hit_msec: Dictionary[int, int] = {}
+## Owner: the hit being added up: victim instance id -> [speed just before it, physics steps left, speed
+## lost reported so far].
+var _hit_gather: Dictionary[int, Array] = {}
 var _released_msec: int = -100000
 ## Every PC: where it was last physics step (to see how fast copies slide), and its scrape sound.
 var _scrape_last_position: Vector3 = Vector3.INF
@@ -584,6 +590,7 @@ func _listen_for_hits(delta: float) -> void:
 	var expected: Vector3 = _velocity_after_step + Vector3.DOWN * gravity * gravity_scale * delta
 	var lost: float = expected.length() - linear_velocity.length()
 	var tuning: PropTuning = _tuning()
+	_age_hits()
 	if lost >= tuning.impact_damage_min_speed and _true_mass >= tuning.impact_min_mass and not own_hit_damage:
 		_report_victim(expected - linear_velocity, lost)
 	if is_breakable():
@@ -612,10 +619,28 @@ func _report_victim(change: Vector3, speed_lost: float) -> void:
 		return
 	var now: int = Time.get_ticks_msec()
 	var key: int = victim.get_instance_id()
+	# CHANGED 2026-10-30: a hit spread over a few physics steps counts as one hit (the speed lost adds up),
+	# so a crate doesn't do less damage just because it took two steps to stop.
+	# What it has lost is measured from its speed just before the hit, so a bounce isn't counted twice.
+	if _hit_gather.has(key):
+		var total: float = float(_hit_gather[key][0]) - linear_velocity.length()
+		if total > float(_hit_gather[key][2]):
+			_hit_gather[key][2] = total
+			_spawner.report_hit(self, victim, total)
+		return
 	if now - int(_hit_msec.get(key, -100000)) < int(_tuning().impact_report_cooldown * 1000.0):
 		return
 	_hit_msec[key] = now
+	_hit_gather[key] = [linear_velocity.length() + speed_lost, HIT_GATHER_STEPS, speed_lost]
 	_spawner.report_hit(self, victim, speed_lost)
+
+
+## One physics step passed: hits being added up have a step less left.
+func _age_hits() -> void:
+	for key: int in _hit_gather.keys():
+		_hit_gather[key][1] = int(_hit_gather[key][1]) - 1
+		if int(_hit_gather[key][1]) < 0:
+			_hit_gather.erase(key)
 
 
 ## The nearest contact (point, collider_id...) with a body on `mask` within a few centimetres, or {}.

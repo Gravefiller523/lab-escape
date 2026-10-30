@@ -22,3 +22,5 @@ spawn_cost = 1
 min_floor = 1
 loot_id = &"loot_zoology_small"
 impact_mass = 5.0
+sight_cone_degrees = 140.0
+dodge_chance = 0.25

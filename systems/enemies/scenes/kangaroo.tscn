@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://systems/enemies/states/attack_melee_state.gd" id="6_attack"]
 [ext_resource type="Script" path="res://systems/enemies/states/flee_state.gd" id="7_flee"]
 [ext_resource type="Script" path="res://systems/enemies/behaviours/jump_attack_behaviour.gd" id="8_jump"]
+[ext_resource type="Script" path="res://systems/enemies/states/search_state.gd" id="9_search"]
 
 [sub_resource type="CapsuleShape3D" id="Shape_1"]
 radius = 0.35
@@ -23,6 +24,7 @@ height = 1.7
 
 [node name="Kangaroo" type="CharacterBody3D"]
 script = ExtResource("1_enemy")
+avoidance_priority = 1.0
 attack_knockback = 6.0
 hurtbox_radius = 0.45
 hurtbox_height = 1.7
@@ -51,3 +53,6 @@ script = ExtResource("6_attack")
 
 [node name="JumpAttack" type="Node" parent="."]
 script = ExtResource("8_jump")
+
+[node name="search" type="Node" parent="States"]
+script = ExtResource("9_search")

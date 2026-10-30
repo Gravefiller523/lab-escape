@@ -22,3 +22,6 @@ spawn_cost = 3
 min_floor = 2
 loot_id = &"loot_zoology_medium"
 impact_mass = 50.0
+sight_cone_degrees = 120.0
+attack_tickets = 2
+dodge_chance = 0.8

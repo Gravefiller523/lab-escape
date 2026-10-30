@@ -14,6 +14,7 @@ var _pcs: Array[Node] = []
 
 func before_each() -> void:
 	Perception.players_invisible = false
+	AttackTickets.clear()
 	_world = Node3D.new()
 	add_child_autofree(_world)
 	_add_box(_world, Vector3(0, -0.5, 0), Vector3(40, 1, 40))
@@ -202,7 +203,10 @@ func test_new_enemy_file_spawns_without_code() -> void:
 func test_navigation_goes_around_walls() -> void:
 	_add_box(_world, Vector3(0, 1.5, 0), Vector3(8, 3, 0.5))
 	await wait_physics_frames(2)
-	Enemies.bake_navigation(_world)
+	var region: NavigationRegion3D = Enemies.bake_navigation(_world)
+	assert_true(Enemies.is_baking_navigation(), "it bakes in the background (no freeze)")
+	await wait_for_signal(Enemies.navigation_baked, WAIT)
+	assert_not_null(region.navigation_mesh)
 	await wait_physics_frames(3)
 	var map: RID = _world.get_world_3d().navigation_map
 	var path: PackedVector3Array = NavigationServer3D.map_get_path(map, Vector3(0, 0, -3), Vector3(0, 0, 3), true)
@@ -229,6 +233,221 @@ func test_enemies_move_the_same_on_host_and_client() -> void:
 	rat.get_health().apply_damage(DamageInfo.make(100.0, &"blunt"))
 	await wait_until(func() -> bool: return copy.is_dead(), WAIT)
 	assert_true(copy.is_dead(), "and dies on the client too")
+
+
+# --- HL2 feel step 3 (NEW 2026-10-30) ------------------------------------------------------------
+
+func test_missed_attack_does_not_use_up_the_cooldown() -> void:
+	var player := _player(Vector3(0, 0, -8))
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	await wait_physics_frames(2)
+	rat.set_target(player)
+	assert_false(rat.try_attack(), "too far to bite")
+	assert_true(rat.attack_ready(), "and the miss didn't use up its cooldown")
+
+
+func test_chases_to_where_it_last_saw_you_not_through_walls() -> void:
+	var player := _player(Vector3(0, 0, -8))
+	var kangaroo := _spawn(&"enemy_kangaroo", Vector3(0, 0.1, 0))
+	await wait_until(func() -> bool: return kangaroo.get_state() == &"chase", WAIT)
+	var seen_at: Vector3 = player.global_position
+	# Duck behind a wall far to the side.
+	_add_box(_world, Vector3(5, 2, -6), Vector3(0.5, 4, 14))
+	player.global_position = Vector3(12, 0, -8)
+	await wait_seconds(0.5)
+	assert_false(kangaroo.can_see_target(), "it can't see you behind the wall")
+	assert_lt(kangaroo.last_known_position.distance_to(seen_at), 2.0, "it still thinks you're where it saw you")
+	assert_lt(kangaroo.chase_point().distance_to(seen_at), 2.0, "and runs there, not to where you really are")
+	await wait_until(func() -> bool: return kangaroo.get_state() == &"search", WAIT)
+	assert_eq(kangaroo.get_state(), &"search", "you're gone: it looks around there")
+	assert_null(kangaroo.get_target())
+	await wait_until(func() -> bool: return kangaroo.get_state() == &"idle", WAIT)
+	assert_eq(kangaroo.get_state(), &"idle", "then it gives up")
+
+
+func test_cannot_see_players_behind_it() -> void:
+	# Rats look along -Z when spawned; their view cone is 140 degrees.
+	var player := _player(Vector3(0, 0, 6))
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	await wait_seconds(1.0)
+	assert_null(rat.get_target(), "behind it: unseen")
+	player.global_position = Vector3(0, 0, -6)
+	await wait_until(func() -> bool: return rat.get_target() != null, WAIT)
+	assert_eq(rat.get_target(), player, "in front: seen")
+
+
+func test_noticing_takes_a_moment_and_squeaks() -> void:
+	var player := _player(Vector3(0, 0, -7))
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	watch_signals(rat)
+	await wait_physics_frames(2)
+	rat.get_perception().refresh()
+	assert_eq(rat.get_perception().get_visible_players().size(), 1, "it can see you...")
+	assert_null(rat.update_target(), "...but hasn't noticed you yet")
+	await wait_until(func() -> bool: return rat.get_target() != null, WAIT)
+	assert_eq(rat.get_target(), player, "a moment later it has")
+	assert_signal_emit_count(rat, "noticed", 1, "with one squeak")
+
+
+func test_players_right_behind_it_are_noticed_at_once() -> void:
+	var player := _player(Vector3(0, 0, 1.5))
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	await wait_physics_frames(2)
+	rat.get_perception().refresh()
+	assert_eq(rat.update_target(), player, "too close to sneak past, even from behind")
+
+
+func test_noise_brings_calm_enemies_to_look() -> void:
+	Perception.players_invisible = true
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	var far_rat := _spawn(&"enemy_rat", Vector3(-15, 0.1, 0))
+	await wait_physics_frames(3)
+	EventBus.noise_made.emit(Vector3(6, 0, 0), 10.0, 0)
+	assert_eq(rat.get_state(), &"search", "it heard the noise and goes to look")
+	assert_ne(far_rat.get_state(), &"search", "too far away to hear it")
+	await wait_until(func() -> bool: return rat.flat_distance_to(Vector3(6, 0, 0)) < 1.5, WAIT)
+	assert_lt(rat.flat_distance_to(Vector3(6, 0, 0)), 1.5, "it walked over there")
+
+
+func test_footsteps_are_noises_crouching_quietest() -> void:
+	var ai: AiTuning = Config.feel.ai
+	assert_lt(ai.noise_crouch_step, ai.noise_step)
+	assert_lt(ai.noise_step, ai.noise_sprint_step)
+	var player := _player(Vector3(0, 0.1, 0))
+	var heard: Array[float] = []
+	var listen := func(_at: Vector3, radius: float, _source: int) -> void: heard.append(radius)
+	EventBus.noise_made.connect(listen)
+	var input := PlayerInputState.new()
+	input.move = Vector2(0, -1)
+	player.set_input_override(input)
+	await wait_seconds(1.2)
+	EventBus.noise_made.disconnect(listen)
+	assert_gt(heard.size(), 0, "walking makes noise")
+	assert_true(heard.has(ai.noise_step), "a walking step carries noise_step metres")
+
+
+func test_a_rat_that_spots_you_alerts_its_pack() -> void:
+	var player := _player(Vector3(0, 0, 10))
+	var spotter := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	var packmate := _spawn(&"enemy_rat", Vector3(2, 0.1, 0))
+	var far_rat := _spawn(&"enemy_rat", Vector3(-20, 0.1, 0))
+	var kangaroo := _spawn(&"enemy_kangaroo", Vector3(-2, 0.1, 0))
+	await wait_physics_frames(3)
+	assert_null(packmate.get_target(), "nobody has seen you (you're behind them)")
+	spotter.on_hurt_by(player)
+	assert_eq(spotter.get_target(), player, "hurt: it turns on you")
+	assert_eq(packmate.get_target(), player, "and its packmate knows too")
+	assert_null(far_rat.get_target(), "a rat far away doesn't")
+	assert_null(kangaroo.get_target(), "other kinds of enemy don't")
+
+
+func test_enemies_spread_over_the_team() -> void:
+	var near := _player(Vector3(0, 0, -4), 101)
+	var other := _player(Vector3(3, 0, -4), 102)
+	var busy := _spawn(&"enemy_rat", Vector3(-1, 0.1, 0))
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	Perception.players_invisible = true
+	await wait_physics_frames(2)
+	busy.set_target(near)
+	Perception.players_invisible = false
+	rat.get_perception().know(near)
+	rat.get_perception().know(other)
+	rat.get_perception().refresh()
+	assert_eq(rat.get_perception().get_noticed_players().size(), 2)
+	assert_eq(rat.get_perception().choose_target(null, 0.0), other,
+		"the nearest player already has a rat on them, so it goes for the other one")
+
+
+func test_only_two_attack_tickets_per_player() -> void:
+	Perception.players_invisible = true
+	var player := _player(Vector3(0, 0, -6))
+	var first := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	var second := _spawn(&"enemy_rat", Vector3(1, 0.1, 0))
+	var third := _spawn(&"enemy_rat", Vector3(2, 0.1, 0))
+	var kangaroo := _spawn(&"enemy_kangaroo", Vector3(-2, 0.1, 0))
+	await wait_physics_frames(2)
+	assert_true(AttackTickets.claim(first, player), "the first rat gets a ticket")
+	assert_false(AttackTickets.claim(second, player), "not straight after another one")
+	await wait_seconds(Config.feel.ai.ticket_grant_gap + 0.05)
+	assert_true(AttackTickets.claim(second, player), "a moment later the second does")
+	await wait_seconds(Config.feel.ai.ticket_grant_gap + 0.05)
+	assert_false(AttackTickets.claim(third, player), "two is the limit: the third circles")
+	AttackTickets.release(first)
+	assert_false(AttackTickets.claim(kangaroo, player), "a kangaroo needs both tickets")
+	assert_true(AttackTickets.claim(third, player), "the first rat is done: the third gets its turn")
+
+
+func test_only_two_rats_bite_at_once() -> void:
+	var player := _player(Vector3(0, 0, -2))
+	HealthComponent.of(player).invulnerable = true
+	for index: int in 5:
+		_spawn(&"enemy_rat", Vector3(float(index) - 2.0, 0.1, 0))
+	var most: int = 0
+	for frame: int in 180:
+		await wait_physics_frames(1)
+		var attacking: int = 0
+		for enemy: Enemy in _spawner.get_alive():
+			if enemy.get_state() == &"attack_melee":
+				attacking += 1
+		most = maxi(most, attacking)
+	assert_between(most, 1, 2, "never more than two at once (most: %d)" % most)
+
+
+func test_attacks_wind_up_before_they_hit() -> void:
+	var player := _player(Vector3(0, 0, -0.8))
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	var health: HealthComponent = HealthComponent.of(player)
+	await wait_until(func() -> bool: return rat.get_state() == &"attack_melee", WAIT)
+	var started: int = Time.get_ticks_msec()
+	await wait_until(func() -> bool: return health.get_current() < health.get_max(), WAIT)
+	var waited: float = (Time.get_ticks_msec() - started) / 1000.0
+	assert_gt(waited, Config.feel.ai.attack_windup - 0.1, "the bite came after its wind-up (%.2f s)" % waited)
+
+
+func test_kangaroo_jumps_aside_from_a_heavy_throw() -> void:
+	Perception.players_invisible = true
+	var kangaroo := _spawn(&"enemy_kangaroo", Vector3(0, 0.1, 0))
+	kangaroo.data = kangaroo.data.duplicate() as EnemyData
+	kangaroo.data.dodge_chance = 1.0
+	await wait_seconds(0.5)
+	assert_false(kangaroo.consider_dodge(1, Vector3(4, 1, -6), Vector3(0, 0, 15)), "a throw that misses by far: no dodge")
+	assert_true(kangaroo.consider_dodge(2, Vector3(0, 1, -6), Vector3(0, 0, 15)), "one coming straight at it: it jumps aside")
+	assert_true(kangaroo.is_dodging())
+	assert_gt(absf(kangaroo.velocity.x), 3.0, "sideways")
+	assert_false(kangaroo.consider_dodge(3, Vector3(0, 1, -6), Vector3(0, 0, 15)), "not again straight away")
+
+
+func test_dead_enemy_leaves_a_tumbling_body() -> void:
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	await wait_physics_frames(2)
+	var before: int = Enemy.count_corpses()
+	var level: Node = rat.corpse_parent()
+	var info := DamageInfo.make(100.0, &"blunt")
+	info.knockback = Vector3(4, 0, 0)
+	rat.get_health().apply_damage(info)
+	assert_eq(Enemy.count_corpses(), before + 1, "a body appears")
+	var body := level.get_node_or_null(NodePath("%sBody" % rat.name)) as RigidBody3D
+	assert_not_null(body, "a loose physics body")
+	if body != null:
+		var start: Vector3 = body.global_position
+		await wait_seconds(0.3)
+		assert_gt(body.global_position.distance_to(start), 0.2, "that tumbles away from the hit")
+
+
+func test_walking_enemies_make_room_for_each_other() -> void:
+	Perception.players_invisible = true
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	var other := _spawn(&"enemy_rat", Vector3(0.3, 0.1, 0))
+	var kangaroo := _spawn(&"enemy_kangaroo", Vector3(-3, 0.1, 0))
+	await wait_physics_frames(3)
+	EventBus.noise_made.emit(Vector3(0, 0, -8), 12.0, 0)
+	await wait_seconds(1.0)
+	var apart: float = rat.flat_distance_to(other.global_position)
+	assert_gt(apart, 0.6, "two rats heading the same way spread out (%.2f m apart)" % apart)
+	rat.global_position = kangaroo.global_position + Vector3(0.4, 0, 0)
+	await wait_seconds(0.3)
+	assert_gt(rat.get_spacing_push().length(), kangaroo.get_spacing_push().length(),
+		"a rat makes more room for a kangaroo than the kangaroo does for it")
 
 
 func _make_pc(hosting: bool) -> Node:

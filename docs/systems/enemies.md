@@ -39,7 +39,28 @@ func update_target() -> PlayerCharacter       # NEW, host: from Perception (reme
 func move_towards(point: Vector3, speed_scale: float, delta: float) -> void   # NEW, host: navmesh path or straight
 func stop() -> void                           # NEW
 func face(point: Vector3, delta: float) -> void   # NEW
-func try_attack() -> bool                     # NEW, host: hit the target (cooldown, range)
+func try_attack() -> bool                     # NEW, host: hit the target (cooldown, range). CHANGED 2026-10-30: a miss out of range keeps the cooldown
+# NEW 2026-10-30 (HL2 feel step 3), host unless noted:
+signal noticed(player: PlayerCharacter)       # it noticed someone while calm (every PC hears a chirp)
+func can_see_target() -> bool
+func chase_point() -> Vector3                 # the target if seen, else where it last saw them
+func lose_target() -> StringName              # gave up at the last-seen spot: "search" (or "idle")
+func hear(at: Vector3, radius: float) -> void # a calm enemy in range goes to look
+static func hear_noise(tree: SceneTree, at: Vector3, radius: float) -> void
+func alert_to(player: PlayerCharacter) -> void   # a packmate spotted them
+func on_hurt_by(player: PlayerCharacter) -> void # remembers them; a calm enemy turns on them
+func interrupt(next: StringName) -> bool      # switch now unless the state can't be cut short (mid-attack)
+func circle(player: PlayerCharacter, delta: float) -> void   # wait for an attack ticket at circle_distance
+func claim_attack_ticket() -> bool / begin_windup() / strike() / end_attack()
+func consider_dodge(prop_id: int, prop_position: Vector3, prop_velocity: Vector3) -> bool
+func is_dodging() -> bool / get_spacing_push() -> Vector3 / corpse_parent() -> Node / flat_distance_to(point) -> float
+static func count_corpses() -> int
+var search_point: Vector3; @export var avoidance_priority: float
+class_name AttackTickets                      # NEW: static claim / release / holds / used_for / clear
+# EnemyState: NEW can_interrupt(enemy) -> bool, static engage_distance(enemy) -> float
+# EnemyBehaviour: NEW on_strike(enemy) (the kangaroo leaps here)
+# Perception: NEW can_see, get_noticed_players, choose_target(current, held_since), know, remember_hurt_by, last_seen_position
+# EnemiesService: NEW signal navigation_baked(region), is_baking_navigation(); bake_navigation(root, wait = false)
  var flying: bool, hover_height: float, attack_knockback: float, hurtbox_radius: float, hurtbox_height: float, start_state: StringName   # NEW
 var altitude_override: float                  # NEW: flying, e.g. a bat's dive
 var rng: RandomNumberGenerator                # NEW: SeededRng(run_seed, &"enemy_ai", net id)
@@ -142,6 +163,29 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
 - 2026-10-29 (feel step 0): REMOVED constants `Enemy.CLIENT_SMOOTHING`, `TURN_SPEED`, `TARGET_MEMORY`, `CORPSE_SECONDS`, `REPATH_SECONDS` and `Perception.CHECK_SECONDS`, `EYE_HEIGHT`, `PLAYER_CHEST`; the same numbers now live in `Config.feel.ai` (`AiTuning`, in `config/feel_tuning.tres`). No values changed.
 - 2026-10-29 (HL2 feel step 1.3): world gravity is 15.24 (was 9.8), so enemies fall faster. `JumpAttackBehaviour.leap_up` 4.5 -> 5.6 keeps the kangaroo's leap about 1 m high.
 - 2026-10-29 (HL2 feel step 2.5): NEW `EnemyData.impact_mass` (rat 5, bat 2, fly 0.5, kangaroo 50; default 20), `BossData.impact_mass` (300) and `Enemy.get_impact_mass()`: how heavy an enemy counts as when a thrown prop hits it. A thrown 10 kg crate kills a rat and barely hurts a kangaroo.
+- 2026-10-30 (HL2 feel step 3, Zachary's plan): enemies behave more like Half-Life 2's.
+  (3.1) Fixes: a missed attack no longer uses up the cooldown; chase and swarm run to where they last SAW you
+  (`Perception.last_seen_position`), so they no longer track you through walls for 3 s; the swarm's every-rat-against-every-rat
+  spacing each frame is gone.
+  (3.2) Sight: a view cone per enemy (NEW `EnemyData.sight_cone_degrees`: rat 140, kangaroo 120, bat and fly 360) plus an
+  all-round sense of 3 m; a player must stay in view 0.45 s before it reacts (a chirp), unless it already knows them; all
+  enemies share 10 sight lines a tick; memory 5.5 s (was 3); NEW shared state `search` (look around the last-seen spot or a
+  noise for 2.5 s), added to all four enemy scenes.
+  (3.3) Hearing: NEW `EventBus.noise_made` (footsteps, landings, prop knocks, death squeals); calm enemies (idle, patrol,
+  search) go to look. A hit from a player (or a prop they threw) turns a calm enemy on them at once. An enemy that notices
+  someone alerts others of its kind within 13 m. States can be interrupted except mid-attack.
+  (3.4) Fair fights: `Perception.choose_target` spreads enemies over the team (crowded players count as further away, the
+  current target is sticky, revenge on whoever hurt it); NEW `AttackTickets`: 2 per player, a kangaroo needs 2 (NEW
+  `EnemyData.attack_tickets`); the rest circle at 3.5 m. Every attack winds up 0.4 s with a growl and a crouch (everyone
+  sees it), then strikes; the kangaroo now leaps at the end of its wind-up.
+  (3.5) Navigation: the navmesh bakes on a background thread (no freeze on floor load); flyers follow the ground path at
+  their height. Walking enemies make room for each other with a cheap spacing check 5 times a second (NEW
+  `avoidance_priority` export: rat 0.3, kangaroo 1). Godot's own navigation avoidance was tried first but gave every enemy
+  zero speed in tests, so it is off. NOT DONE: navigation links for kangaroo leaps across gaps (today's rooms have no gaps)
+  and coarser 0.3 m cells (the navigation map's cell size is a project setting).
+  (3.6) A heavy thrown prop (10 kg+) heading at an enemy may make it jump aside (NEW `EnemyData.dodge_chance`: kangaroo
+  0.8, rat 0.25). A dead enemy leaves a tumbling physics body on each PC (debris layer, at most 8, shrinks away).
+  All numbers are in `Config.feel.ai` (new groups Hearing, Fighting, Dodging). Tests: 15 new in `test_enemies.gd` (30 in all).
 
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and

@@ -2,7 +2,8 @@ class_name FeelTuning
 extends Resource
 ## Every "how it feels" number in one place: movement, props and enemies. NEW 2026-10-29.
 ## The live copy is res://config/feel_tuning.tres, loaded by the Config autoload: read it with
-## Config.feel.player / Config.feel.props / Config.feel.ai. Open the file in the Inspector and fold out a
+## Config.feel.player / Config.feel.props / Config.feel.ai /
+## Config.feel.interaction. Open the file in the Inspector and fold out a
 ## section to tweak it. While the game runs, the debug console's `tune` command changes values live.
 ## Game rules (players, floors, loot, network rates) stay in GameConfig (res://config/game_config.tres).
 
@@ -13,3 +14,5 @@ extends Resource
 @export var props: PropTuning
 ## How enemies see, remember, turn and move.
 @export var ai: AiTuning
+## NEW 2026-10-30 (HL2 feel step 4.1): using things: the aim helper and the "can't use" buzz.
+@export var interaction: UseTuning

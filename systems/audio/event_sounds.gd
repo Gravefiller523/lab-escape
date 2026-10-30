@@ -26,6 +26,18 @@ extends Resource
 ## Someone bought something from a vendor.
 @export var purchase: AudioStream
 
+@export_group("World (NEW 2026-10-30)")
+## You pressed use and nothing happened, or it's locked (a buzz, on your PC only).
+@export var use_deny: AudioStream
+## A wall button was pressed (at it).
+@export var button_press: AudioStream
+## A door starts swinging (at it).
+@export var door_move: AudioStream
+## A door swung shut (at it).
+@export var door_shut: AudioStream
+## A valve or crank turned a notch (at it; plays every eighth of a turn).
+@export var crank_turn: AudioStream
+
 @export_group("Lift and boss")
 ## The cargo lift starts moving (loops while it rides).
 @export var lift_ride: AudioStream
@@ -47,6 +59,7 @@ extends Resource
 const PLACEHOLDERS: Dictionary = {
 	"hit": &"thunk", "enemy_death": &"squeak", "player_death": &"low", "item_use": &"whoosh",
 	"enemy_notice": &"chirp", "enemy_windup": &"growl",
+	"use_deny": &"buzz", "button_press": &"click", "door_move": &"creak", "door_shut": &"clunk", "crank_turn": &"ratchet",
 	"reprint": &"rise", "upgrade": &"sparkle", "purchase": &"chime",
 	"lift_ride": &"hum", "lift_arrive": &"chime", "lift_part": &"clunk", "boss_phase": &"roar", "boss_defeated": &"fanfare",
 	"menu_music": &"music_calm", "floor_music": &"music_floor", "boss_music": &"music_boss",

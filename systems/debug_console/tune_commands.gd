@@ -1,7 +1,7 @@
 class_name TuneCommands
 extends RefCounted
 ## NEW 2026-10-29: console commands to change feel numbers (Config.feel) while the game runs.
-##   tune                      the sections (player, props, ai)
+##   tune                      the sections (player, props, ai, interaction; NEW 2026-10-30: interaction)
 ##   tune props                every number in a section, with its value
 ##   tune props.throw_force    one value
 ##   tune props.throw_force 25 change it now
@@ -11,7 +11,7 @@ extends RefCounted
 ## Changes only this PC. Props and enemies run on the host, so tune those on the host.
 ## Registered by DebugConsole. Like other cheats, only works in editor and test builds.
 
-const SECTIONS: Array[StringName] = [&"player", &"props", &"ai"]
+const SECTIONS: Array[StringName] = [&"player", &"props", &"ai", &"interaction"]
 const MSG_USAGE: String = "Usage: tune <section>.<name> [value]   e.g. tune props.throw_force 25"
 
 
@@ -83,6 +83,8 @@ static func _section(feel: FeelTuning, section_name: String) -> Resource:
 			return feel.props
 		"ai":
 			return feel.ai
+		"interaction":
+			return feel.interaction
 	return null
 
 

@@ -146,6 +146,116 @@ func test_prompt_provider_overrides_text() -> void:
 	assert_eq(controller.get_prompt(), "Grab box", "an empty answer means no opinion")
 
 
+# --- HL2 feel step 4.1 (NEW 2026-10-30) ---
+
+func test_pressing_use_on_nothing_buzzes() -> void:
+	var body := _body()
+	await wait_physics_frames(2)
+	watch_signals(EventBus)
+	assert_false(_controller(body).press_use(null), "nothing took the press")
+	assert_signal_emitted_with_parameters(EventBus, "use_denied", [7])
+
+
+func test_a_refused_use_buzzes_and_tells_the_object() -> void:
+	var body := _body()
+	var button := _button(1.5)
+	button.use_condition = func(_player_id: int) -> bool: return false
+	await wait_physics_frames(2)
+	watch_signals(EventBus)
+	watch_signals(button)
+	_controller(body).request_use(button.get_anchor(), 0.0)
+	assert_signal_emitted_with_parameters(EventBus, "use_denied", [7])
+	assert_signal_emitted_with_parameters(button, "refused", [7])
+
+
+func test_reach_is_measured_to_the_use_point() -> void:
+	var body := _body()
+	var far := _button(3.0)
+	far.max_distance = 1.0
+	var point := Marker3D.new()
+	point.name = "Point"
+	point.position = Vector3(0, 0, 2.5)
+	far.get_anchor().add_child(point)
+	far.use_point = NodePath("../Point")
+	await wait_physics_frames(2)
+	watch_signals(far)
+	_controller(body).request_use(far.get_anchor(), 0.0)
+	assert_signal_emitted(far, "used", "its handle is close enough, though the object is 3 m away")
+
+
+func test_aim_helper_finds_a_tiny_button_just_beside_the_crosshair() -> void:
+	var body := _body()
+	body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(5)
+	var tiny := _tiny_button(body.get_aim_origin() + Vector3(0.1, 0, -1.5))
+	await wait_physics_frames(3)
+	assert_eq(_controller(body).get_target(), tiny, "the thin ray misses it, the ball finds it")
+
+
+func test_aim_helper_never_sees_through_a_wall() -> void:
+	var body := _body()
+	body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(5)
+	var eyes: Vector3 = body.get_aim_origin()
+	var wall := StaticBody3D.new()
+	wall.collision_layer = PhysicsLayers.bit(PhysicsLayers.WORLD)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(2, 3, 0.2)
+	shape.shape = box
+	wall.add_child(shape)
+	wall.position = Vector3(eyes.x, 1.5, eyes.z - 1.0)
+	_world.add_child(wall)
+	_tiny_button(eyes + Vector3(0.1, 0, -1.5))
+	await wait_physics_frames(3)
+	assert_eq(_controller(body).get_target(), wall, "it sees the wall, not the button behind it")
+
+
+func test_continuous_use_ticks_on_the_host_until_let_go() -> void:
+	var body := _body()
+	var valve := _button(1.5, null, "Turn valve")
+	valve.continuous = true
+	await wait_physics_frames(2)
+	var ticks: Array[float] = []
+	valve.use_tick.connect(func(_player_id: int, delta: float) -> void: ticks.append(delta))
+	watch_signals(valve)
+	var controller := _controller(body)
+	assert_true(controller.press_use(valve.get_anchor()), "pressing a continuous object takes the press (no buzz)")
+	controller.set_continuous_use(valve.get_anchor())
+	await wait_physics_frames(10)
+	assert_signal_emitted_with_parameters(valve, "use_started", [7])
+	assert_gt(ticks.size(), 5, "it ticks every physics step while held")
+	controller.set_continuous_use(null)
+	assert_signal_emitted_with_parameters(valve, "use_stopped", [7])
+	var count: int = ticks.size()
+	await wait_physics_frames(5)
+	assert_eq(ticks.size(), count, "and stops when let go")
+	controller.set_continuous_use(valve.get_anchor())
+	await wait_physics_frames(3)
+	body.global_position = Vector3(0, 0, 8)
+	await wait_physics_frames(3)
+	count = ticks.size()
+	await wait_physics_frames(3)
+	assert_eq(ticks.size(), count, "walking out of reach stops it too")
+
+
+## A 4 cm button (a plain StaticBody3D with an Interactable) at `where`.
+func _tiny_button(where: Vector3) -> StaticBody3D:
+	var button := StaticBody3D.new()
+	button.name = "Tiny"
+	button.collision_layer = PhysicsLayers.bit(PhysicsLayers.INTERACTABLES)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.04, 0.04, 0.04)
+	shape.shape = box
+	button.add_child(shape)
+	button.position = where
+	var interactable := Interactable.new()
+	button.add_child(interactable)
+	_world.add_child(button)
+	return button
+
+
 func test_client_use_goes_through_the_host() -> void:
 	# Two PCs, each with its own world, Net and Players container (paths match on both).
 	var host_pc := _pc()

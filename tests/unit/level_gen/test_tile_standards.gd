@@ -47,10 +47,10 @@ func test_the_step_2_tiles_exist() -> void:
 		roles[room.tile_role] = roles.get(room.tile_role, 0) + 1
 		if room.tile_role == TileStandards.ROLE_ROOM:
 			sizes[room.size_category] = sizes.get(room.size_category, 0) + 1
-	assert_gte(_tiles().size(), 19, "about 20 blockout tiles")
+	assert_gte(_tiles().size(), 23, "about 20 blockout tiles")
 	assert_eq(roles.get(TileStandards.ROLE_TEMPLATE, 0), 2, "the elevator and the welcome center")
-	assert_eq(roles.get(TileStandards.ROLE_MAIN_HALL, 0), 4, "main hallway: straight, corner, T, end")
-	assert_eq(roles.get(TileStandards.ROLE_SECONDARY_HALL, 0), 5, "secondary hallway: straight, corner, T, cross, end")
+	assert_eq(roles.get(TileStandards.ROLE_MAIN_HALL, 0), 6, "main hallway: straight, long, filler, corner, T, end")
+	assert_eq(roles.get(TileStandards.ROLE_SECONDARY_HALL, 0), 7, "secondary hallway: straight, long, filler, corner, T, cross, end")
 	for category: StringName in TileStandards.SIZE_CATEGORIES:
 		assert_gt(sizes.get(category, 0), 0, "at least one %s room" % category)
 
@@ -116,7 +116,7 @@ func test_size_category_matches_footprint() -> void:
 			TileStandards.ROLE_MAIN_HALL:
 				assert_eq(size.x, 2, "%s: main hallway pieces are 2 units wide (across x; they run along z)" % room.id)
 			TileStandards.ROLE_SECONDARY_HALL:
-				assert_eq(size, Vector2i.ONE, "%s: secondary hallway pieces are 1 x 1 unit" % room.id)
+				assert_eq(size.x, 1, "%s: secondary hallway pieces are 1 unit wide (across x; they run along z)" % room.id)
 		if room.tile_role != TileStandards.ROLE_ROOM:
 			assert_eq(room.size_category, &"", "%s: only rooms have a size category" % room.id)
 	var elevator := ContentRegistry.get_content(&"room_tile_elevator") as RoomData
@@ -336,3 +336,121 @@ func test_tuning_patterns() -> void:
 	assert_almost_eq(FloorGenTuning.grown(0.35, 0.06, 1.0, 1), 0.35, 0.001, "floor 1 is the base")
 	assert_almost_eq(FloorGenTuning.grown(0.35, 0.06, 1.0, 30), 1.0, 0.001, "never above the cap")
 	assert_not_null(Config.floor_gen, "Config.floor_gen is loaded from config/floor_gen_tuning.tres")
+
+
+## NEW 2026-10-30 (Zachary): hallways are walled, with few side doorways, centred on the long sides.
+func test_hallway_pieces_are_walled() -> void:
+	# Doorways (not open edges) per piece; "main" and "hall" pieces follow the same rule.
+	var expected: Dictionary[String, int] = {"straight": 2, "straight_long": 4, "filler": 0, "corner": 0, "t": 0,
+		"cross": 0, "end": 1}
+	var unit: float = _unit()
+	var checked: int = 0
+	for room: RoomData in _tiles():
+		if room.tile_role != TileStandards.ROLE_MAIN_HALL and room.tile_role != TileStandards.ROLE_SECONDARY_HALL:
+			continue
+		var piece: String = String(room.id).trim_prefix("room_tile_main_").trim_prefix("room_tile_hall_")
+		if not expected.has(piece):
+			continue
+		checked += 1
+		var doors: Array[Dictionary] = []
+		for doorway: Dictionary in RoomShape.of(room, unit).doorways:
+			if not doorway["open_edge"]:
+				doors.append(doorway)
+		assert_eq(doors.size(), expected[piece], "%s has %d doorways" % [room.id, expected[piece]])
+		if piece.begins_with("straight"):
+			var length: int = room.size_cells.z
+			assert_true(length == 3 or length == 5, "%s is 3 or 5 units long" % room.id)
+			var per_side: Dictionary[Vector2i, Array] = {}
+			for doorway: Dictionary in doors:
+				var dir: Vector2i = doorway["dir"]
+				assert_eq(dir.y, 0, "%s: doorways only on the long sides" % room.id)
+				if not per_side.has(dir):
+					per_side[dir] = []
+				per_side[dir].append((doorway["cell"] as Vector2i).y)
+			for dir: Vector2i in per_side:
+				var units: Array = per_side[dir]
+				units.sort()
+				# Evenly spaced and centred: unit 1 of 3, units 1 and 3 of 5 (counting from 0).
+				assert_eq(units, [1] if length == 3 else [1, 3], "%s: side doorways evenly spaced" % room.id)
+	assert_eq(checked, 13, "every main and secondary hallway piece was checked")
+
+
+## NEW 2026-10-30 (Zachary): damage lighting per level.
+func test_damage_lighting() -> void:
+	var tile := (ContentRegistry.get_content(&"room_tile_storage_large") as RoomData).scene.instantiate() as Node3D
+	_add_in_own_world(tile)
+	var flicker := TileLightFlicker.new()
+	tile.add_child(flicker)
+	var tuning := FloorGenTuning.new()
+	var lights: Array[Light3D] = _lights_in(tile, TileStandards.LIGHT_GROUP)
+	var emergency: Array[Light3D] = _lights_in(tile, TileStandards.EMERGENCY_LIGHT_GROUP)
+	assert_gt(lights.size(), 1, "the tile has ceiling lights")
+	assert_eq(emergency.size(), 2, "heavy and destroyed overlays each have a red emergency light")
+
+	flicker.setup(tile, &"pristine", tuning)
+	flicker.step(5.0)
+	assert_eq(_lit_share(lights), 1.0, "pristine: every light on")
+
+	# Heavy: lights spend most of their time dark, but they do flicker.
+	tuning.heavy_dead_share = 0.0
+	flicker.setup(tile, &"heavy", tuning)
+	var heavy_on: float = _average_lit_share(flicker, lights, 30.0)
+	assert_between(heavy_on, 0.01, 0.4, "heavy: mostly dark, with flickers (lit %.2f of the time)" % heavy_on)
+	var light_on: float = 0.0
+	flicker.setup(tile, &"light", tuning)
+	light_on = _average_lit_share(flicker, lights, 30.0)
+	assert_gt(light_on, heavy_on, "light damage is brighter than heavy (%.2f vs %.2f)" % [light_on, heavy_on])
+
+	# Destroyed: the remaining lights are dark nearly all the time; dead ones never come on.
+	tuning.destroyed_dead_share = 1.0
+	flicker.setup(tile, &"destroyed", tuning)
+	assert_eq(_average_lit_share(flicker, lights, 30.0), 0.0, "destroyed with every light dead: all dark")
+	tuning.destroyed_dead_share = 0.0
+	flicker.setup(tile, &"destroyed", tuning)
+	var destroyed_on: float = _average_lit_share(flicker, lights, 60.0)
+	assert_lt(destroyed_on, heavy_on, "destroyed flickers less than heavy (%.2f vs %.2f)" % [destroyed_on, heavy_on])
+	var red_on: float = _average_lit_share(flicker, emergency, 60.0)
+	assert_gt(red_on, 0.8, "the red emergency light is on most of the time (%.2f)" % red_on)
+
+
+func test_damage_lighting_is_the_same_every_time() -> void:
+	var tile := (ContentRegistry.get_content(&"room_tile_office") as RoomData).scene.instantiate() as Node3D
+	_add_in_own_world(tile)
+	var flicker := TileLightFlicker.new()
+	tile.add_child(flicker)
+	var lights: Array[Light3D] = _lights_in(tile, TileStandards.LIGHT_GROUP)
+	var runs: Array[PackedStringArray] = []
+	for attempt: int in 2:
+		flicker.setup(tile, &"heavy", FloorGenTuning.new())
+		var pattern := PackedStringArray()
+		for frame: int in 300:
+			flicker.step(0.05)
+			pattern.append(str(_lit_share(lights)))
+		runs.append(pattern)
+	assert_eq(runs[0], runs[1], "the same tile and level flicker the same way (seeded by each light's path)")
+
+
+func _lights_in(root: Node, group: StringName) -> Array[Light3D]:
+	var found: Array[Light3D] = []
+	for node: Node in RoomShape.all_children(root):
+		if node is Light3D and node.is_in_group(group):
+			found.append(node as Light3D)
+	return found
+
+
+func _lit_share(lights: Array[Light3D]) -> float:
+	var lit: int = 0
+	for light: Light3D in lights:
+		if light.visible:
+			lit += 1
+	return float(lit) / float(maxi(lights.size(), 1))
+
+
+## Steps the flicker for this many seconds and returns the average share of lights that were on.
+func _average_lit_share(flicker: TileLightFlicker, lights: Array[Light3D], seconds: float) -> float:
+	var total: float = 0.0
+	var frames: int = int(seconds / 0.05)
+	for frame: int in frames:
+		flicker.step(0.05)
+		total += _lit_share(lights)
+	return total / float(frames)

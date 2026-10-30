@@ -23,6 +23,8 @@ const OVERLAY_NODES: Dictionary[StringName, String] = {&"light": "Light", &"heav
 
 ## Group of a tile's normal lights (damage makes them flicker, go red or go out).
 const LIGHT_GROUP: StringName = &"tile_light"
+## Group of the red emergency lights in damage overlays (on in heavy and destroyed rooms). NEW 2026-10-30.
+const EMERGENCY_LIGHT_GROUP: StringName = &"tile_emergency_light"
 ## Group of a tile's ceiling (the tile gallery hides ceilings to look in from above).
 const CEILING_GROUP: StringName = &"tile_ceiling"
 

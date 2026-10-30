@@ -7,10 +7,10 @@
 script = ExtResource("1_data")
 id = &"room_tile_hall_straight"
 display_name = "Hallway, straight (blockout)"
-description = "Secondary hallway, 1 unit wide: open ends, a doorway on each side."
+description = "Secondary hallway, 1 unit wide and 3 long: open ends, walled sides with one centred doorway each."
 tags = PackedStringArray("blockout")
 scene = ExtResource("2_scene")
-size_cells = Vector3i(1, 1, 1)
+size_cells = Vector3i(1, 1, 3)
 room_kind = &"secondary_hall"
 grid = &"tile_3m"
 tile_role = &"secondary_hall"

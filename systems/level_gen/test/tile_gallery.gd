@@ -1,13 +1,16 @@
 extends Node3D
 ## Tile gallery (floor generation step 2; run alone with F6). Two things to look at:
-## - A small JOINED SAMPLE near where you spawn: the elevator, the welcome center, both main hallways,
-##   a side hallway and an office, placed by hand the way the generator will join them (step 3).
+## - A small JOINED SAMPLE near where you spawn: the elevator, the welcome center, both main hallways
+##   (3-long and 5-long walled pieces), two side hallways and an office, placed by hand the way the
+##   generator will join them (step 3).
 ## - Every 3 m tile ON ITS OWN, in rows behind the elevator (south), with gaps between them.
 ## Sockets are arrows pointing out (green = doorway, cyan = open edge). Markers are coloured balls with
 ## their kind written above. You start inside the elevator (the yellow square is the cargo lift's floor;
 ## its gate faces the welcome center). A cart waits in the welcome center: look at it and press E.
 ##
-## Keys: 1 pristine, 2 light, 3 heavy, 4 destroyed (damage overlays and lights on every tile).
+## Keys: 1 pristine, 2 light, 3 heavy, 4 destroyed (damage overlays and lights on every tile: light =
+## some lights blink, heavy = dim and mostly dark with flickers, destroyed = dark, rare faint flickers, red
+## emergency light that sometimes flickers).
 ## C ceilings on/off, M arrows and markers on/off, O overview camera on/off (use with C),
 ## T jump to the next tile, Y back to the elevator, P test palette on/off (material slots).
 
@@ -15,16 +18,22 @@ extends Node3D
 const SAMPLE: Array = [
 	[&"room_tile_elevator", 0, 0, 0],
 	[&"room_tile_welcome_center", -3, -6, 0],
-	[&"room_tile_main_straight", -4, -4, 1],
-	[&"room_tile_main_straight", -5, -4, 1],
-	[&"room_tile_main_end", -6, -4, 1],
-	[&"room_tile_hall_straight", -4, -5, 0],
-	[&"room_tile_hall_end", -4, -6, 0],
-	[&"room_tile_office", -5, -10, 0],
+	# West main hallway: a 3-long piece, a 5-long piece, an end.
+	[&"room_tile_main_straight", -6, -4, 1],
+	[&"room_tile_main_straight_long", -11, -4, 1],
+	[&"room_tile_main_end", -12, -4, 1],
+	# A side hallway from the 3-long piece's doorway, ending at an office.
+	[&"room_tile_hall_straight", -5, -7, 0],
+	[&"room_tile_hall_end", -5, -8, 0],
+	[&"room_tile_office", -6, -12, 0],
+	# A long side hallway from the 5-long piece's second doorway.
+	[&"room_tile_hall_straight_long", -8, -9, 0],
+	[&"room_tile_hall_end", -8, -10, 0],
+	# East main hallway: a 3-long piece, a corner, another 3-long piece, an end.
 	[&"room_tile_main_straight", 5, -4, 1],
-	[&"room_tile_main_corner", 6, -4, 3],
-	[&"room_tile_main_straight", 6, -2, 0],
-	[&"room_tile_main_end", 6, -1, 2],
+	[&"room_tile_main_corner", 8, -4, 3],
+	[&"room_tile_main_straight", 8, -2, 0],
+	[&"room_tile_main_end", 8, 1, 2],
 ]
 ## Where the rows of single tiles start (grid units) and how wide a row may get.
 const ROWS_START: Vector2i = Vector2i(0, 12)
@@ -51,7 +60,7 @@ var _damage: StringName = &"pristine"
 var _ceilings_on: bool = true
 var _palette_on: bool = false
 var _next_tile: int = 0
-var _flicker_left: float = 0.0
+var _flickers: Array[TileLightFlicker] = []
 
 
 func _ready() -> void:
@@ -100,7 +109,7 @@ func _start() -> void:
 		Props.spawn_prop(&"prop_cart_standard", _cart_spot)
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	var body: PlayerCharacter = PlayerCharacter.find(Net.local_player_id())
 	if body == null and not _overview.current:
 		_overview.make_current()
@@ -112,8 +121,6 @@ func _process(delta: float) -> void:
 		where = _tile_at(body.global_position)
 	_status.text = "damage: %s | ceilings %s | palette %s | in: %s" % [_damage, "on" if _ceilings_on else "off",
 		"test" if _palette_on else "grey", where if not where.is_empty() else "outside"]
-	if _damage == &"light":
-		_flicker(delta)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -163,6 +170,12 @@ func _place(room_id: StringName, cell: Vector2i, turns: int, single: bool) -> vo
 	tile.transform = RoomShape.of(room, _unit).placement_transform(placement, _unit)
 	_tiles_root.add_child(tile)
 	_tiles.append(tile)
+	# Damage lighting: flicker, dim, dead lights and the red emergency light (Config.floor_gen).
+	var flicker := TileLightFlicker.new()
+	flicker.name = "LightFlicker"
+	tile.add_child(flicker)
+	flicker.setup(tile, _damage)
+	_flickers.append(flicker)
 	_tile_names.append(String(room_id))
 	if single:
 		var size: Vector2i = RoomShape.of(room, _unit).rotated_size(turns)
@@ -227,29 +240,9 @@ func _tile_at(point: Vector3) -> String:
 
 func _set_damage(level: StringName) -> void:
 	_damage = level
-	for tile: Node3D in _tiles:
-		TileStandards.show_damage(tile, level)
-	for node: Node in get_tree().get_nodes_in_group(TileStandards.LIGHT_GROUP):
-		var light := node as Light3D
-		match level:
-			&"heavy":
-				light.visible = true
-				light.light_energy = 0.3
-			&"destroyed":
-				light.visible = false
-			_:
-				light.visible = true
-				light.light_energy = 0.9
-
-
-## Lightly damaged: now and then a light blinks off.
-func _flicker(delta: float) -> void:
-	_flicker_left -= delta
-	if _flicker_left > 0.0:
-		return
-	_flicker_left = 0.08
-	for node: Node in get_tree().get_nodes_in_group(TileStandards.LIGHT_GROUP):
-		(node as Light3D).visible = randf() > 0.12
+	for index: int in _tiles.size():
+		TileStandards.show_damage(_tiles[index], level)
+		_flickers[index].setup(_tiles[index], level)
 
 
 func _toggle_overview() -> void:

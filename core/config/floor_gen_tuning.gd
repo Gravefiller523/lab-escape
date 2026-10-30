@@ -48,11 +48,14 @@ extends Resource
 ## Most turns in one main hallway.
 @export var main_hall_max_turns: int = 2
 
+## CHANGED 2026-10-30 (Zachary): main hallways are built from walled pieces, 3 units long (one side doorway
+## per side) or 5 units long (two per side). Share of straight stretches that use the 5-long piece.
+@export var main_hall_long_piece_share: float = 0.5
+
 @export_group("Branches (V4)")
-## Grid units between branch rolls along a hallway: rolled between these.
-@export var branch_interval_min: int = 2
-@export var branch_interval_max: int = 4
-## What grows at each branch roll (weights, compared with each other).
+## CHANGED 2026-10-30 (Zachary): branches only grow from a hallway's side doorways (the walled pieces
+## decide the spacing), so there is no "branch every few units" number any more. Each side doorway rolls
+## what grows there (weights, compared with each other); "nothing" leaves it capped.
 @export var branch_room_weight: float = 0.4
 @export var branch_cluster_weight: float = 0.2
 @export var branch_hall_weight: float = 0.3
@@ -96,6 +99,34 @@ extends Resource
 @export var start_area_max_damage: StringName = &"light"
 ## The incident starts at least this share of the farthest walking distance from the elevator (Q13).
 @export var incident_min_distance_share: float = 0.5
+
+@export_group("Damage lighting")
+## NEW 2026-10-30 (Zachary): what damage does to a tile's ceiling lights (group "tile_light") and red emergency
+## lights (group "tile_emergency_light"). Ranges are seconds, rolled between x and y each time. Flickering is
+## looks only (not sent over the network) and seeded by each light's node path, so every PC looks alike.
+## While a light flickers it switches on and off this often.
+@export var flicker_toggle_seconds: Vector2 = Vector2(0.03, 0.1)
+## Lightly damaged: share of lights that flicker now and then; the rest stay on.
+@export var light_flicker_share: float = 0.3
+## Lightly damaged: on this long between flickers, then flickers for this long.
+@export var light_on_seconds: Vector2 = Vector2(2.0, 6.0)
+@export var light_flicker_seconds: Vector2 = Vector2(0.05, 0.3)
+## Heavily damaged: share of lights that are dead; the rest flicker more and stay dark longer.
+@export var heavy_dead_share: float = 0.3
+## Heavily damaged: brightness of the lights that still work (1 = normal).
+@export var heavy_energy: float = 0.6
+## Heavily damaged: dark this long between flickers, then flickers for this long.
+@export var heavy_dark_seconds: Vector2 = Vector2(1.5, 4.0)
+@export var heavy_flicker_seconds: Vector2 = Vector2(0.4, 1.2)
+## Destroyed: share of lights that are dead; the rest only flicker faintly once in a while.
+@export var destroyed_dead_share: float = 0.7
+@export var destroyed_energy: float = 0.35
+@export var destroyed_dark_seconds: Vector2 = Vector2(6.0, 15.0)
+@export var destroyed_flicker_seconds: Vector2 = Vector2(0.05, 0.2)
+## Destroyed: the red emergency light stays on this long, then flickers for this long.
+## (Heavily damaged rooms keep their emergency light steady.)
+@export var emergency_on_seconds: Vector2 = Vector2(3.0, 8.0)
+@export var emergency_flicker_seconds: Vector2 = Vector2(0.1, 0.4)
 
 @export_group("Doors (V8)")
 ## Door type weights by damage level, in this order: open, broken open, jammed, debris.

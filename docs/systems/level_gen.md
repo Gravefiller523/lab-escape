@@ -71,6 +71,9 @@ class_name TileStandards extends RefCounted     # the names every tile uses (rol
 static func overlay_of(tile: Node, level: StringName) -> Node3D
 static func show_damage(tile: Node, level: StringName) -> void
 static func apply_palette(root: Node, palette: Dictionary) -> void   # "wall"/"floor"/"trim"/"accent" -> Material
+class_name TileLightFlicker extends Node        # NEW 2026-10-30 (Zachary): damage lighting for one tile
+func setup(tile: Node, level: StringName, tuning: FloorGenTuning = null) -> void
+func step(delta: float) -> void                  # called every frame; tests call it directly
 class_name BlockoutTile extends Node3D          # @tool: builds a CSG blockout tile (floor, ceiling, walls, holes, frames, lights)
 @export var size_units: Vector2i
 @export var auto_lights: bool = true
@@ -112,7 +115,8 @@ rooms keep working until the new generator replaces them (Q18): a `RoomData.grid
 | Elevator | 3 x 3 units (the lift cage plus its shaft gap is 6.6 m wide) |
 | Welcome center | 8 x 6 units |
 | Main hallway | 2 units wide; pieces run along z (2 units across x) |
-| Secondary hallway | 1 unit wide; pieces are 1 x 1 unit |
+| Secondary hallway | 1 unit wide; pieces run along z |
+| Hallway pieces (CHANGED 2026-10-30, Zachary) | walled. Straight pieces are 3 units long (one centred side doorway per side) or 5 long (two per side, on units 2 and 4); a 1-unit filler has solid sides; corners, T junctions and crossings are solid wherever nothing joins; an end has one doorway in its end wall |
 
 **Room sizes** (`RoomData.size_category`, checked against the footprint by a test; either way round counts):
 
@@ -164,8 +168,14 @@ the welcome center.
 **Damage overlays.** Every tile has a `Damage` node with children `Light`, `Heavy` and `Destroyed` (hidden).
 Pristine is the tile itself. When the floor is built (step 4b) the room's level is shown and the rest
 deleted. `BlockoutTile` fills an overlay you left empty with placeholder boxes (yellow, orange, red; heavy
-adds a red emergency light). Tile lights are in the group **`tile_light`** (damage makes them flicker, dim or
-go out); the ceiling is in `tile_ceiling`. `TileStandards.show_damage()` switches levels.
+and destroyed add a red emergency light). Tile lights are in the group **`tile_light`**, the overlays' red
+emergency lights in **`tile_emergency_light`**; the ceiling is in `tile_ceiling`. `TileStandards.show_damage()`
+switches levels.
+**Damage lighting** (NEW 2026-10-30, Zachary; `TileLightFlicker`, numbers in `Config.floor_gen`, "Damage
+lighting"): pristine = steady; light = some lights blink now and then; heavy = some lights dead, the rest dim,
+dark for a few seconds then flickering, red emergency light steady; destroyed = most lights dead, the rest
+dark with a rare faint flicker, red emergency light on and now and then flickering. Looks only (not
+networked); each light is seeded by its node path, so every PC shows the same pattern.
 
 **Material slots.** Geometry that should take the department's look has the metadata `material_slot` =
 `wall`, `floor`, `trim` or `accent`. `TileStandards.apply_palette(tile, department.palette)` swaps them.
@@ -174,9 +184,9 @@ Blockout defaults: `systems/level_gen/tiles/materials/blockout_<slot>.tres`.
 **The step 2 tiles** (`content/rooms/room_tile_*.tres`, scenes in `systems/level_gen/tiles/`):
 templates `room_tile_elevator` (3x3), `room_tile_welcome_center` (8x6: reception desk facing the elevator,
 security room on the far wall with a door, 2-unit connectors left and right, printer and cart markers);
-main hallway `room_tile_main_straight` (2x1, a side doorway every unit), `_main_corner`, `_main_t` (2x2),
-`_main_end` (2x1); secondary hallway `room_tile_hall_straight`, `_hall_corner`, `_hall_t`, `_hall_cross`,
-`_hall_end` (1x1); shared rooms `room_tile_janitor_closet` (2x2), `_bathroom` (2x3), `_storage_small` (3x3),
+main hallway `room_tile_main_straight` (2x3), `_main_straight_long` (2x5), `_main_filler` (2x1), `_main_corner`,
+`_main_t` (2x2), `_main_end` (2x1); secondary hallway `room_tile_hall_straight` (1x3), `_hall_straight_long`
+(1x5), `_hall_filler`, `_hall_corner`, `_hall_t`, `_hall_cross`, `_hall_end` (1x1); shared rooms `room_tile_janitor_closet` (2x2), `_bathroom` (2x3), `_storage_small` (3x3),
 `_office` (3x4), `_break_room` (4x4), `_office_open` (4x5), `_storage_large` (5x6), `_cafeteria` (6x6).
 
 **Cart rules every room must follow** (checked by a GUT test over every room scene):
@@ -273,6 +283,11 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   `prop_pool`, `hazard_kinds`, `incidents`; NEW `RoomTypeData`, `IncidentData`, `LightingStyleData`; PropData
   `part_size`, `part_category` (filled in for the 9 lift parts); NEW `FloorGenTuning` as `Config.floor_gen`.
   Why: the plan's step 2, so the new generator (step 3) has standard tiles to join.
+- 2026-10-30 (Zachary, after playing step 2): hallway pieces are walled and longer (3 and 5 units with 2 and 4
+  side doorways, a 1-unit filler, walled corners, T junctions and ends), main and secondary alike. NEW
+  `TileLightFlicker` and "Damage lighting" numbers in FloorGenTuning (heavy: darker with longer gaps;
+  destroyed: nearly dark, red emergency light). FloorGenTuning `branch_interval_min/max` replaced by
+  `main_hall_long_piece_share` (branches grow from side doorways). LightingStyleData keeps colours only.
 - 2026-10-19 (cargo_lift slots): NEW marker kind `charger` (where the lift's battery charger may go), one in
   `room_hall_grey` and one in `room_corridor_grey`.
 

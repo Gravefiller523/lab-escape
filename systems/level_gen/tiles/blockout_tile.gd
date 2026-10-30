@@ -214,7 +214,8 @@ func _add_lights(parent: Node3D, tuning: FloorGenTuning) -> void:
 
 
 ## Damage overlays the designer left empty get placeholder boxes (debris), more for worse damage.
-## A heavy overlay also gets a red emergency light. The same tile always gets the same boxes.
+## Heavy and destroyed overlays also get a red emergency light (group "tile_emergency_light").
+## The same tile always gets the same boxes.
 func _fill_overlays(tuning: FloorGenTuning) -> void:
 	var unit: float = tuning.grid_unit
 	var length := Vector2(float(size_units.x) * unit, float(size_units.y) * unit)
@@ -241,13 +242,14 @@ func _fill_overlays(tuning: FloorGenTuning) -> void:
 			var where := Vector3(rng.randf_range(0.6, length.x - 0.6), size.y / 2.0, rng.randf_range(0.6, length.y - 0.6))
 			var mesh := _mesh_box(placeholder, "Debris%d" % index, where, size, OVERLAY_COLORS[level])
 			mesh.rotation.y = rng.randf_range(0.0, TAU)
-		if level == &"heavy":
+		if level == &"heavy" or level == &"destroyed":
 			var emergency := OmniLight3D.new()
 			emergency.name = "EmergencyLight"
 			emergency.light_color = Color(1.0, 0.15, 0.1)
 			emergency.light_energy = 1.2
 			emergency.omni_range = maxf(length.x, length.y) * 0.6
 			emergency.position = Vector3(length.x / 2.0, tuning.ceiling_height - 0.5, length.y / 2.0)
+			emergency.add_to_group(TileStandards.EMERGENCY_LIGHT_GROUP)
 			placeholder.add_child(emergency)
 		if level == &"destroyed":
 			# A fallen ceiling panel.

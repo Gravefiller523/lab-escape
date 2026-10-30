@@ -11,7 +11,9 @@ static var _made: Dictionary[StringName, AudioStreamWAV] = {}
 
 ## A placeholder for a kind of sound: &"blip", &"thunk", &"whoosh", &"chime", &"squeak", &"low", &"rise",
 ## &"hum", &"roar", &"sparkle", &"clunk", &"fanfare", &"music_calm", &"music_floor", &"music_boss",
-## and for surfaces (NEW 2026-10-29): &"step_concrete", &"land_concrete", &"step_metal", &"land_metal".
+## and for surfaces (NEW 2026-10-29): &"step_concrete", &"land_concrete", &"step_metal", &"land_metal",
+## &"impact_concrete", &"impact_metal", &"impact_wood", &"impact_glass", &"impact_flesh", and looping
+## &"scrape_rough", &"scrape_metal".
 static func get_sound(kind: StringName) -> AudioStreamWAV:
 	if not _made.has(kind):
 		_made[kind] = _make(kind)
@@ -50,6 +52,20 @@ static func _make(kind: StringName) -> AudioStreamWAV:
 			return _render(0.18, func(t: float) -> float: return (sin(TAU * 520.0 * t) + sin(TAU * 1310.0 * t) * 0.6) * 0.3 * exp(-t * 25.0) + _noise(t) * 0.3 * exp(-t * 80.0))
 		&"land_metal":
 			return _render(0.35, func(t: float) -> float: return (sin(TAU * 310.0 * t) + sin(TAU * 870.0 * t) * 0.7) * 0.4 * exp(-t * 12.0) + _noise(t) * 0.4 * exp(-t * 40.0))
+		&"impact_concrete":
+			return _render(0.22, func(t: float) -> float: return _noise(t) * 0.7 * exp(-t * 35.0) + sin(TAU * 70.0 * t) * 0.5 * exp(-t * 22.0))
+		&"impact_wood":
+			return _render(0.25, func(t: float) -> float: return (sin(TAU * 180.0 * t) + sin(TAU * 410.0 * t) * 0.5) * 0.45 * exp(-t * 24.0) + _noise(t) * 0.4 * exp(-t * 60.0))
+		&"impact_metal":
+			return _render(0.5, func(t: float) -> float: return (sin(TAU * 430.0 * t) + sin(TAU * 1150.0 * t) * 0.6 + sin(TAU * 2310.0 * t) * 0.3) * 0.3 * exp(-t * 8.0) + _noise(t) * 0.4 * exp(-t * 70.0))
+		&"impact_glass":
+			return _render(0.3, func(t: float) -> float: return (sin(TAU * 2600.0 * t) + sin(TAU * 3900.0 * t) * 0.5) * 0.25 * exp(-t * 18.0) + _noise(t) * 0.2 * exp(-t * 90.0))
+		&"impact_flesh":
+			return _render(0.2, func(t: float) -> float: return sin(TAU * (110.0 - 200.0 * t) * t) * 0.6 * exp(-t * 20.0) + _noise(t) * 0.25 * exp(-t * 30.0))
+		&"scrape_rough":
+			return _render(1.0, func(t: float) -> float: return _noise(t) * 0.3 * (0.75 + 0.25 * sin(TAU * 7.0 * t)), true)
+		&"scrape_metal":
+			return _render(1.0, func(t: float) -> float: return (_noise(t) * 0.2 + sin(TAU * 1700.0 * t) * 0.08) * (0.75 + 0.25 * sin(TAU * 5.0 * t)), true)
 		&"music_calm":
 			return _render(8.0, func(t: float) -> float: return _chord(t, [130.8, 196.0, 261.6]) * 0.12 * (0.7 + 0.3 * sin(TAU * t / 8.0)), true)
 		&"music_floor":

@@ -12,3 +12,4 @@ scene = ExtResource("2_scene")
 mass = 30.0
 cart_allowed = false
 tags = PackedStringArray("cart")
+surface = &"metal"

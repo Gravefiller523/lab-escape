@@ -141,6 +141,7 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
   `Enemy.has_fled`), for 2.5 s (was 4), then go straight back after the player they ran from.
 - 2026-10-29 (feel step 0): REMOVED constants `Enemy.CLIENT_SMOOTHING`, `TURN_SPEED`, `TARGET_MEMORY`, `CORPSE_SECONDS`, `REPATH_SECONDS` and `Perception.CHECK_SECONDS`, `EYE_HEIGHT`, `PLAYER_CHEST`; the same numbers now live in `Config.feel.ai` (`AiTuning`, in `config/feel_tuning.tres`). No values changed.
 - 2026-10-29 (HL2 feel step 1.3): world gravity is 15.24 (was 9.8), so enemies fall faster. `JumpAttackBehaviour.leap_up` 4.5 -> 5.6 keeps the kangaroo's leap about 1 m high.
+- 2026-10-29 (HL2 feel step 2.5): NEW `EnemyData.impact_mass` (rat 5, bat 2, fly 0.5, kangaroo 50; default 20), `BossData.impact_mass` (300) and `Enemy.get_impact_mass()`: how heavy an enemy counts as when a thrown prop hits it. A thrown 10 kg crate kills a rat and barely hurts a kangaroo.
 
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and

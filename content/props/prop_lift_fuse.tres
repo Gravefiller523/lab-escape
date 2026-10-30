@@ -13,4 +13,4 @@ scene = ExtResource("2_scene")
 mass = 1.0
 is_key_object = true
 lift_slot = &"fuse"
-
+surface = &"metal"

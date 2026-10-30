@@ -12,3 +12,4 @@ scene = ExtResource("2_scene")
 mass = 0.3
 grants_upgrade = true
 tags = PackedStringArray("data_drive")
+surface = &"metal"

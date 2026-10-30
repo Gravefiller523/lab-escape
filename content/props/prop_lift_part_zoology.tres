@@ -11,3 +11,4 @@ description = "A part for the cargo lift. Comes back if it falls out of the worl
 scene = ExtResource("2_scene")
 mass = 6.0
 is_key_object = true
+surface = &"metal"

@@ -21,3 +21,4 @@ flee_health_fraction = 0.0
 spawn_cost = 3
 min_floor = 2
 loot_id = &"loot_zoology_medium"
+impact_mass = 50.0

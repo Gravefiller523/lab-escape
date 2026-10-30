@@ -11,6 +11,8 @@ extends Node3D
 ##   heavy_lift_per_holder kg off its weight (more helpers = faster). Nothing is too heavy to move.
 ## - (Zachary, 2026-10-29) nobody can grab a prop that any player is standing on, and a held prop that
 ##   any player steps onto is dropped (no_grab_while_stood_on), so nobody can launch a teammate.
+## - (NEW 2026-10-30, HL2 feel step 4.3) a player with the punt arm (PropPunter) can punt a loose prop or the one
+##   they hold; the same "nobody stands on it" rule applies, and nobody else may be holding it.
 
 ## NEW 2026-10-29: a prop knock was played on this PC (tests listen to it).
 signal impact_heard(prop: NetProp, speed_lost: float)
@@ -18,9 +20,24 @@ signal impact_heard(prop: NetProp, speed_lost: float)
 signal prop_broken(prop: NetProp)
 ## NEW 2026-10-29, host: a thrown or falling prop hurt something.
 signal prop_hit(prop: NetProp, victim: Node3D, damage: float)
+## NEW 2026-10-30, host: a player punted a prop.
+signal prop_punted(prop: NetProp, player_id: int)
+## NEW 2026-10-30, host: a player punted an enemy (a shove, no damage).
+signal enemy_punted(enemy: Enemy, player_id: int)
 
 const REFUSE_TOO_FAR: String = "Too far away"
 const REFUSE_STOOD_ON: String = "Someone is standing on it"
+## NEW 2026-10-30 (punt): why the host refused a punt.
+const REFUSE_NO_PUNT_ARM: String = "No punt arm"
+const REFUSE_TOO_SOON: String = "Too soon"
+const REFUSE_HELD: String = "Someone is holding it"
+const REFUSE_ATTACHED: String = "It is fixed in place"
+const REFUSE_TOO_HEAVY: String = "Too heavy to pull"
+const REFUSE_DEAD: String = "It is dead"
+## The host only pulls towards a point this close to the puller's eyes (metres).
+const PULL_POINT_REACH: float = 3.0
+## The host lets a punt come this much sooner than punt_cooldown (seconds), for network timing.
+const PUNT_COOLDOWN_TOLERANCE: float = 0.1
 ## Host: a reported hit only counts if the victim is this close to the prop (metres, allowing for lag).
 const HIT_REACH: float = 3.0
 ## "Standing on it": a ray from just above a player's feet going this far down (metres).
@@ -59,6 +76,8 @@ var _pending_owner: Dictionary[int, int] = {}
 var _hit_msec: Dictionary[String, int] = {}
 ## Host (NEW 2026-10-30): the damage each of those hits has dealt so far ("prop:victim" -> damage).
 var _hit_dealt: Dictionary[String, float] = {}
+## Host (NEW 2026-10-30): when each player last punted (player id -> msec).
+var _punt_msec: Dictionary[int, int] = {}
 
 
 ## For tests only: a different Net and config. Call before adding the node to the tree.
@@ -253,7 +272,8 @@ func _request_grab_rpc(net_id: int) -> void:
 	var body: PlayerCharacter = body_of_peer(sender)
 	if prop == null or body == null:
 		return
-	if body.get_aim_origin().distance_to(prop.global_position) > Config.feel.props.grab_reach + REACH_TOLERANCE:
+	# CHANGED 2026-10-30: a bit further with the punt arm.
+	if body.get_aim_origin().distance_to(prop.global_position) > grab_reach_of(body) + REACH_TOLERANCE:
 		_grab_refused.rpc_id(sender, net_id, REFUSE_TOO_FAR)
 		return
 	var refusal: Array[String] = []
@@ -347,6 +367,203 @@ func _set_holders(net_id: int, holder_list: Array, last_holder: int, thrown: boo
 	for player_id: int in before:
 		if not holders.has(player_id):
 			EventBus.prop_released.emit(player_id, prop, thrown and player_id == last_holder)
+
+
+# --- Punting (NEW 2026-10-30, HL2 feel step 4.3; called by PropPunter on the PC that punts) ------------
+
+## How hard a punt is (an impulse, kg x m/s): it flies off at punt_speed, plus up to punt_light_bonus for props
+## lighter than punt_light_mass, but the push is never more than punt_max_impulse, so heavy things only shift.
+func punt_strength(prop: NetProp) -> float:
+	var tuning: PropTuning = Config.feel.props
+	var mass: float = maxf(prop.get_true_mass(), 0.1)
+	var light: float = clampf(1.0 - mass / maxf(tuning.punt_light_mass, 0.01), 0.0, 1.0)
+	return minf(mass * (tuning.punt_speed + tuning.punt_light_bonus * light), tuning.punt_max_impulse)
+
+
+## Which way a punt along `aim` sends this prop: a prop resting on something hops up a little instead of
+## being driven into it (punt_floor_lift).
+func punt_direction(prop: NetProp, aim: Vector3) -> Vector3:
+	var direction: Vector3 = aim.normalized()
+	var lift: float = Config.feel.props.punt_floor_lift
+	if direction.y < lift and prop.is_touching_something():
+		var flat := Vector3(direction.x, 0.0, direction.z).normalized()
+		direction = (flat * sqrt(1.0 - lift * lift) + Vector3.UP * lift).normalized()
+	return direction
+
+
+## Ask the host to punt this prop along `direction`. `predicted`: our PC runs it and has already launched it.
+func request_punt(prop: NetProp, direction: Vector3, predicted: bool) -> void:
+	_request_punt_rpc.rpc_id(1, prop.net_id, direction, predicted)
+
+
+## Host: why `body` can't punt `prop` now, or "" if it can.
+func decide_punt(body: PlayerCharacter, prop: NetProp) -> String:
+	var tuning: PropTuning = Config.feel.props
+	if PropPunter.of(body) == null:
+		return REFUSE_NO_PUNT_ARM
+	if prop.is_attached():
+		return REFUSE_ATTACHED
+	var others: Array[int] = prop.get_holder_ids()
+	others.erase(body.player_id)
+	if not others.is_empty():
+		return REFUSE_HELD
+	if tuning.no_grab_while_stood_on and is_under_a_player(prop):
+		return REFUSE_STOOD_ON
+	if body.get_aim_origin().distance_to(prop.global_position) > tuning.punt_range + REACH_TOLERANCE:
+		return REFUSE_TOO_FAR
+	return REFUSE_TOO_SOON if _punted_too_recently(body) else ""
+
+
+## Host: did this player punt less than punt_cooldown ago (with a little allowance for network timing)?
+func _punted_too_recently(body: PlayerCharacter) -> bool:
+	var since: int = Time.get_ticks_msec() - int(_punt_msec.get(body.player_id, -100000))
+	return since < int((Config.feel.props.punt_cooldown - PUNT_COOLDOWN_TOLERANCE) * 1000.0)
+
+
+## NEW 2026-10-30 (Zachary): the push a punt gives an enemy (m/s): away along `direction` (flat) with a little hop,
+## less for heavier enemies. Never any damage.
+static func punt_push_for(enemy: Enemy, direction: Vector3) -> Vector3:
+	var tuning: PropTuning = Config.feel.props
+	var flat := Vector3(direction.x, 0.0, direction.z)
+	flat = flat.normalized() if not flat.is_zero_approx() else Vector3.FORWARD
+	var speed: float = minf(tuning.punt_enemy_impulse / maxf(enemy.get_impact_mass(), 0.1), tuning.punt_enemy_max_speed)
+	return flat * speed + Vector3.UP * tuning.punt_enemy_lift * (speed / maxf(tuning.punt_enemy_max_speed, 0.01))
+
+
+## Ask the host to punt an enemy along `direction`.
+func request_punt_enemy(enemy: Enemy, direction: Vector3) -> void:
+	_request_punt_enemy_rpc.rpc_id(1, _multiplayer_root().get_path_to(enemy), direction)
+
+
+## Host: why `body` can't punt `enemy` now, or "" if it can.
+func decide_punt_enemy(body: PlayerCharacter, enemy: Enemy) -> String:
+	if PropPunter.of(body) == null:
+		return REFUSE_NO_PUNT_ARM
+	if enemy.is_dead():
+		return REFUSE_DEAD
+	if body.get_aim_origin().distance_to(enemy.global_position) > Config.feel.props.punt_range + REACH_TOLERANCE:
+		return REFUSE_TOO_FAR
+	return REFUSE_TOO_SOON if _punted_too_recently(body) else ""
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _request_punt_enemy_rpc(enemy_path: NodePath, direction: Vector3) -> void:
+	if not is_inside_tree() or not multiplayer.is_server():
+		return
+	var sender: int = multiplayer.get_remote_sender_id()
+	var enemy := _multiplayer_root().get_node_or_null(enemy_path) as Enemy
+	var body: PlayerCharacter = body_of_peer(sender)
+	if enemy == null or body == null or direction.is_zero_approx() or decide_punt_enemy(body, enemy) != "":
+		return
+	_punt_msec[body.player_id] = Time.get_ticks_msec()
+	enemy.knock_back(punt_push_for(enemy, direction))
+	# It doesn't hurt, but it does make it angry.
+	enemy.alert_to(body)
+	_punt_sound_rpc.rpc(enemy.global_position, body.player_id)
+	enemy_punted.emit(enemy, body.player_id)
+
+
+## Host -> everyone: a punt happened here (everyone but the punter, who already heard it, plays the sound).
+@rpc("authority", "call_local", "reliable")
+func _punt_sound_rpc(at: Vector3, player_id: int) -> void:
+	if not is_inside_tree():
+		return
+	var punter: PlayerCharacter = get_body_of_player(player_id)
+	if punter == null or not punter.is_local():
+		Sound.play_3d(Sound.event_sound(&"punt"), at)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _request_punt_rpc(net_id: int, direction: Vector3, predicted: bool) -> void:
+	if not is_inside_tree() or not multiplayer.is_server():
+		return
+	var sender: int = multiplayer.get_remote_sender_id()
+	var prop: NetProp = get_prop(net_id)
+	var body: PlayerCharacter = body_of_peer(sender)
+	if prop == null or body == null or direction.is_zero_approx() or decide_punt(body, prop) != "":
+		return
+	_punt_msec[body.player_id] = Time.get_ticks_msec()
+	# Punting what you hold lets go of it first (the punter's PC normally did that a moment ago).
+	if prop.get_holder_ids().has(body.player_id):
+		_set_holders.rpc(net_id, [], body.player_id, true)
+	_punted_rpc.rpc(net_id, body.player_id)
+	# The punter's PC already launched it if it runs it; otherwise whoever runs it does now.
+	if not predicted or prop.get_owner_peer() != sender:
+		apply_impulse(prop, punt_direction(prop, direction) * punt_strength(prop))
+	prop_punted.emit(prop, body.player_id)
+
+
+## NEW 2026-10-30: how far `body` can grab from (metres): grab_reach, plus pull_grab_bonus with the punt arm.
+static func grab_reach_of(body: PlayerCharacter) -> float:
+	var tuning: PropTuning = Config.feel.props
+	return tuning.grab_reach + (tuning.pull_grab_bonus if PropPunter.of(body) != null else 0.0)
+
+
+## NEW 2026-10-30 (pull, Zachary's idea): `body` holds E on this prop with the punt arm: draw it towards
+## `point`. If this PC runs it, at once; otherwise the host checks it and usually hands it to the puller's PC,
+## so the next pulls are instant (like pushing). Called many times a second while E is held.
+func request_pull(prop: NetProp, body: PlayerCharacter, point: Vector3) -> void:
+	if prop.is_simulated_here():
+		prop.add_pull(body.player_id, point, Config.feel.props.pull_speed)
+	elif multiplayer.is_server():
+		_host_pull(prop, body, point)
+	else:
+		_pull_rpc.rpc_id(1, prop.net_id, point)
+
+
+## Host: why `body` can't pull `prop` now, or "" if it can.
+func decide_pull(body: PlayerCharacter, prop: NetProp) -> String:
+	var tuning: PropTuning = Config.feel.props
+	if PropPunter.of(body) == null:
+		return REFUSE_NO_PUNT_ARM
+	if prop.is_attached():
+		return REFUSE_ATTACHED
+	if prop.is_held():
+		return REFUSE_HELD
+	if prop.needs_help():
+		return REFUSE_TOO_HEAVY
+	if tuning.no_grab_while_stood_on and is_under_a_player(prop):
+		return REFUSE_STOOD_ON
+	if body.get_aim_origin().distance_to(prop.global_position) > tuning.pull_range + REACH_TOLERANCE:
+		return REFUSE_TOO_FAR
+	return ""
+
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func _pull_rpc(net_id: int, point: Vector3) -> void:
+	if not is_inside_tree() or not multiplayer.is_server():
+		return
+	var prop: NetProp = get_prop(net_id)
+	var body: PlayerCharacter = body_of_peer(multiplayer.get_remote_sender_id())
+	if prop != null and body != null:
+		_host_pull(prop, body, point)
+
+
+func _host_pull(prop: NetProp, body: PlayerCharacter, point: Vector3) -> void:
+	if decide_pull(body, prop) != "" or point.distance_to(body.get_aim_origin()) > PULL_POINT_REACH:
+		return
+	# Hand it to the puller's PC so their pulls are instant from now on.
+	var peer: int = body.get_multiplayer_authority()
+	if prop.get_owner_peer() != peer:
+		hand_to(prop, peer)
+	# Still run here (the hand-over may be waiting for its cooldown): pull it here meanwhile.
+	if prop.is_simulated_here():
+		prop.add_pull(body.player_id, point, Config.feel.props.pull_speed)
+
+
+## Host -> everyone: this player punted this prop. They get the credit for its hits (like a throw), and
+## everyone else hears it (the punter already did).
+@rpc("authority", "call_local", "reliable")
+func _punted_rpc(net_id: int, player_id: int) -> void:
+	if not is_inside_tree():
+		return
+	var prop: NetProp = get_prop(net_id)
+	if prop == null:
+		return
+	prop.mark_launched_by(player_id)
+	var punter: PlayerCharacter = get_body_of_player(player_id)
+	if punter == null or not punter.is_local():
+		Sound.play_3d(Sound.event_sound(&"punt"), prop.global_position)
 
 
 ## Host -> one client: your grab was refused (the GrabController snaps the prop back).
@@ -561,6 +778,8 @@ func _impulse_rpc(net_id: int, impulse: Vector3) -> void:
 		return
 	var prop: NetProp = get_prop(net_id)
 	if prop != null and prop.is_simulated_here():
+		# CHANGED 2026-10-30 (punt): wake it first, so a resting prop always moves.
+		prop.sleeping = false
 		prop.apply_central_impulse(impulse)
 
 

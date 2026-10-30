@@ -96,6 +96,48 @@ extends Resource
 ## NEW 2026-10-29: no sprinting while carrying something (Half-Life 2; Zachary's choice).
 @export var disable_sprint_while_holding: bool = true
 
+@export_group("Punt (punt arm cybernetic)")
+## NEW 2026-10-30 (HL2 feel step 4.3): how far away (m) the punt reaches (Half-Life 2: about 6.35).
+@export var punt_range: float = 6.35
+## Seconds between punts (Half-Life 2: 0.5).
+@export var punt_cooldown: float = 0.5
+## A punted prop flies off at this speed (m/s; Half-Life 2: about 15)...
+@export var punt_speed: float = 15.0
+## ...plus up to this much more (m/s) the lighter it is below punt_light_mass (kg)...
+@export var punt_light_bonus: float = 5.0
+@export var punt_light_mass: float = 5.0
+## ...but the push is never more than this (kg x m/s), so heavy things only shift: 600 sends a 40 kg prop
+## at 15 m/s and an 80 kg one at 7.5.
+@export var punt_max_impulse: float = 600.0
+## A prop resting on something is never punted down into it: the launch points at least this far up (the
+## upward part of the direction; 0.2 = about 12 degrees up; 0 = off), so things on the floor hop up and fly.
+@export_range(0.0, 1.0, 0.01) var punt_floor_lift: float = 0.2
+## NEW 2026-10-30 (Zachary): punting an enemy shoves it and never hurts it. It slides off at this push
+## (kg x m/s) divided by its impact mass (a 5 kg rat: fast; a 50 kg kangaroo: 3 m/s)...
+@export var punt_enemy_impulse: float = 150.0
+## ...but no faster than this (m/s)...
+@export var punt_enemy_max_speed: float = 10.0
+## ...plus this much upwards (m/s) times the same share, so it hops instead of scraping the floor.
+@export var punt_enemy_lift: float = 3.0
+## If the look ray misses, a prop this close to the middle of the view still counts (0.97 = within about
+## 14 degrees).
+@export_range(0.0, 1.0, 0.01) var punt_cone_dot: float = 0.97
+
+@export_group("Pull (punt arm cybernetic)")
+## NEW 2026-10-30 (Zachary's idea): with the punt arm, holding E on a prop that is too far to pick up drags it
+## towards you like a magnet (it keeps its weight and tumbles along), from up to this far (m).
+## CHANGED 2026-10-30 (Zachary's playtest): 8 (was 15).
+@export var pull_range: float = 8.0
+## ...at up to this speed (m/s)...
+@export var pull_speed: float = 10.0
+## ...speeding up this fast (m/s per second).
+@export var pull_acceleration: float = 40.0
+## With the punt arm you can pick things up from this much further away (m) than grab_reach, and a pulled
+## prop is picked up as soon as it is that close.
+@export var pull_grab_bonus: float = 1.5
+## How far above its middle the tug acts, as a share of its half height (0 = no tumbling, 1 = at its top).
+@export_range(0.0, 1.0, 0.05) var pull_tumble: float = 0.5
+
 @export_group("Sounds")
 ## NEW 2026-10-29 (Half-Life 2 numbers): a prop that loses less speed than this in a hit (m/s) is silent...
 @export var impact_sound_min_speed: float = 1.8

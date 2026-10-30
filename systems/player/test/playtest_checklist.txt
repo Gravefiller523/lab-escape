@@ -1,11 +1,11 @@
-HL2 FEEL, STEP 4: using things and doors
+HL2 FEEL, STEP 4.3: the punt arm (punt, pull, shove)
 
-Turn round: the door course is behind you, on the right: four walls in a row, each with a door (look for the "door course" sign). The enemy pen and keys F2 to F5 are still there.
-1. Press E at a wall or at nothing: a short "can't use that" buzz.
-2. The tiny button on the post before the first wall: you don't have to aim exactly at it. It opens and shuts door 1.
-3. Door 1 swings away from you, from either side. Press E again to shut it. The prompt only shows when you're close to its handle.
-4. Stand in door 1's way while it shuts: it goes back open instead of shoving you. The crates behind it get pushed.
-5. Door 2 is locked: E on it buzzes. The red button beside it opens it; it shuts after 3 s and locks itself again.
-6. Door 3 is a gate you can't open by hand (buzz). Hold E on the red valve to turn it; let go early and it turns back. Fully turned, the gate opens, and shuts again once the valve has turned back.
-7. Door 4 opens by itself when you walk up to it, and shuts a second after you leave.
-8. With a second player (Host local / Join local): both see the doors and the valve move, and both can use them. Two people turning the valve go twice as fast.
+Press F6 to get the punt arm (a robot arm on your right side); F6 again takes it away. The prop yard is ahead of you on the right; the enemy pen and keys F2 to F5 are still there.
+1. Right click at a crate up to about 6 m away: it flies off hard, with a whump. Further away (or behind a wall), nothing happens.
+2. Pick something up with E and right click: it's launched out of your hands, much faster than a left-click throw.
+3. Light things (gems, the meat) fly faster than crates; the big heavy crate only shifts a bit.
+4. Hold E on a crate further away (up to about 8 m): it is dragged towards you like a magnet, tumbling along the floor, and you pick it up. Let go of E early and it stops. The heavy crate can't be pulled.
+5. With the arm you can also pick things up with E from a bit further away than before.
+6. Right click a rat or the kangaroo (F2 refills the pen): it's shoved away and not hurt, but it comes after you. Rats fly, the kangaroo only stumbles.
+7. Punt a crate at the rats: that still kills them. You can punt about twice a second, no faster.
+8. With a second player (Host local / Join local, then F6 in the host window): both can punt and pull, and both see things fly.

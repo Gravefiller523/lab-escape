@@ -1017,7 +1017,7 @@ func test_thrown_crate_barely_hurts_a_heavy_enemy() -> void:
 	PropsService.grab_of(body).throw()
 	await wait_seconds(1.5)
 	assert_false(health.is_dead())
-	assert_gt(health.get_current(), 9.0, "at most a few points (%.1f left)" % health.get_current())
+	assert_gt(health.get_current(), 9.0, "at most a few points (%.1f left, hits %s)" % [health.get_current(), str(hits)])
 
 
 func test_a_held_crate_does_no_damage() -> void:

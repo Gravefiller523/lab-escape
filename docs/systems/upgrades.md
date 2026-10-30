@@ -64,7 +64,7 @@ A new mutation or cybernetic is one `.tres` in `content/mutations/` or `content/
 existing effect pieces. **No code.** A brand-new *kind* of effect piece (rare) is a new data class in
 `core/data/upgrades/effects/` plus a matching `systems/upgrades/effects/<name>.gd`.
 
-Launch examples: Fly (voice pitch 1.5 + "buzz", wings at back, hover mode, behaviour "attracted_to_trash"),
+Launch examples (NEW 2026-10-30: plus the Punt arm cybernetic, see the changelog): Fly (voice pitch 1.5 + "buzz", wings at back, hover mode, behaviour "attracted_to_trash"),
 Octo (wall_climb mode, can_jump false, clash "legs"), Slug (slide mode, hides "shoes", clash "legs"),
 Giraffe (height 1.6, long-neck attachment; hats switch to their giraffe variant if they have one), Frog (hop mode, jump 1.8, clash "legs").
 
@@ -114,6 +114,10 @@ GUT tests: `test_grant_applies_every_effect_piece`, `test_unique_does_not_stack`
   boost works).
 - 2026-10-24: playtest fix: the machine hopper also checks what is already in it every physics tick, so a vial carried into it and let go there goes in.
 - 2026-10-24 (player): the movement modes `hover`, `hop`, `wall_climb` and `slide` now exist, so Fly, Frog, Octo and Slug move differently (no content changes needed).
+- 2026-10-30 (HL2 feel step 4.3): NEW cybernetic `cybernetic_punt_arm` ("Punt arm", body part arm, drop_weight 1, so data drives on
+  Robotics floors can hold it): a behaviour piece (`systems/upgrades/behaviours/punt_arm.tscn`, whose root is physics_props'
+  `PropPunter`) plus the robot arm at `right_arm`. Right click punts props (see docs/systems/physics_props.md, "Punt"). No code
+  in upgrades. Test: `test_the_punt_arm_gives_the_punt`.
 
 ## HANDOFF
 **Built (2026-10-23):** the `Upgrades` autoload (`UpgradesService`), `UpgradeCarrier`, `UpgradeEffect` + six runtime pieces

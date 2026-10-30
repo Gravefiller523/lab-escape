@@ -148,6 +148,24 @@ func test_prompt_provider_overrides_text() -> void:
 
 # --- HL2 feel step 4.1 (NEW 2026-10-30) ---
 
+## FIX 2026-10-30 (found by Zachary): the thing you look at is removed, then you press E before the next physics
+## step: no error, it just counts as looking at nothing.
+func test_pressing_use_right_after_the_target_is_removed_is_safe() -> void:
+	var body := _body()
+	var button := _button(1.5)
+	body.set_input_override(PlayerInputState.new())
+	await wait_physics_frames(5)
+	assert_eq(_controller(body).get_target(), button.get_parent())
+	button.get_parent().free()
+	assert_null(_controller(body).get_target(), "the removed thing is forgotten")
+	assert_eq(_controller(body).get_prompt(), "")
+	var press := InputEventAction.new()
+	press.action = InputActions.USE
+	press.pressed = true
+	_controller(body)._unhandled_input(press)
+	assert_true(true, "pressing E did not crash")
+
+
 func test_pressing_use_on_nothing_buzzes() -> void:
 	var body := _body()
 	await wait_physics_frames(2)

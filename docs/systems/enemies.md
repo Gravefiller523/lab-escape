@@ -53,6 +53,7 @@ func interrupt(next: StringName) -> bool      # switch now unless the state can'
 func circle(player: PlayerCharacter, delta: float) -> void   # wait for an attack ticket at circle_distance
 func claim_attack_ticket() -> bool / begin_windup() / strike() / end_attack()
 func consider_dodge(prop_id: int, prop_position: Vector3, prop_velocity: Vector3) -> bool
+func knock_back(push: Vector3) -> void / is_knocked_back() -> bool   # NEW 2026-10-30 (punt): host: shoved, no damage
 func is_dodging() -> bool / get_spacing_push() -> Vector3 / corpse_parent() -> Node / flat_distance_to(point) -> float
 static func count_corpses() -> int
 var search_point: Vector3; @export var avoidance_priority: float
@@ -186,6 +187,9 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
   (3.6) A heavy thrown prop (10 kg+) heading at an enemy may make it jump aside (NEW `EnemyData.dodge_chance`: kangaroo
   0.8, rat 0.25). A dead enemy leaves a tumbling physics body on each PC (debris layer, at most 8, shrinks away).
   All numbers are in `Config.feel.ai` (new groups Hearing, Fighting, Dodging). Tests: 15 new in `test_enemies.gd` (30 in all).
+- 2026-10-30 (HL2 feel step 4.3, Zachary): NEW `Enemy.knock_back(push)` and `is_knocked_back()`: the punt arm shoves an
+  enemy (it slides for `KNOCK_SECONDS` 0.6, slowing by `KNOCK_FRICTION`, without thinking) and never hurts it; it does
+  turn on whoever punted it. The push is worked out by physics_props (`PropSpawner.punt_push_for`).
 
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and

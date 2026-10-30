@@ -13,4 +13,6 @@ scene = ExtResource("2_scene")
 mass = 2.0
 is_key_object = true
 lift_slot = &"button"
+part_size = &"small"
+part_category = &"electrical"
 surface = &"metal"

@@ -13,5 +13,7 @@ scene = ExtResource("2_scene")
 mass = 80.0
 is_key_object = true
 lift_slot = &"counterweight"
+part_size = &"huge"
+part_category = &"structural"
 cart_allowed = false
 surface = &"metal"

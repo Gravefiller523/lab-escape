@@ -52,6 +52,32 @@ extends ContentData
 ## False hides it from runs (e.g. a department still being built).
 @export var in_run_rotation: bool = true
 
+@export_group("Floor generation")
+## NEW 2026-10-30 (floor generation, docs/design/floor-generation-plan.md section 4.1). Not used by
+## gameplay yet: the new FloorGenerator reads these from step 3 of the plan.
+## The fixed tile players walk into from the elevator: reception desk, security room and the two main
+## hallway connectors. Empty = the generic welcome center.
+@export var welcome_center_scene: PackedScene
+## This department's own rooms, with weights (shared rooms like offices come on top of these).
+@export var room_types: Array[RoomTypeData] = []
+## Share of room slots that get a shared room (office, storage...) instead of a department room
+## (0 to 1). -1 = Config.floor_gen.shared_room_share.
+@export var shared_room_weight: float = -1.0
+@export_subgroup("Look")
+## Materials for the tiles' named material slots: "wall", "floor", "trim", "accent" -> Material.
+@export var palette: Dictionary = {}
+## The room-name sign scene put at "sign" markers.
+@export var signage_style: PackedScene
+## Light colour and what damage does to the lights.
+@export var lighting: LightingStyleData
+@export_subgroup("Props, hazards and incidents")
+## Props for "prop_spawn" markers that don't name their own (PropData ids, with weights).
+@export var prop_pool: Array[WeightedIdData] = []
+## Hazards that can appear here, e.g. ["sparks", "fire", "malfunction"].
+@export var hazard_kinds: PackedStringArray = PackedStringArray()
+## What can go wrong on this department's floors (each floor picks one).
+@export var incidents: Array[IncidentData] = []
+
 
 func get_type_key() -> StringName:
 	return &"department"

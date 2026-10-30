@@ -172,7 +172,7 @@ func apply_impulse(prop: NetProp, impulse: Vector3) -> void:
 ## Host: who may hold this prop if `player_id` grabs it now. Returns the new holder list, or an
 ## empty list plus a reason in `refusal` (refusal[0]) when the grab is refused.
 func decide_grab(prop: NetProp, player_id: int, refusal: Array[String]) -> Array[int]:
-	if Config.feel.props.no_grab_while_stood_on and is_stood_on(prop):
+	if Config.feel.props.no_grab_while_stood_on and is_under_a_player(prop):
 		refusal.append(REFUSE_STOOD_ON)
 		return [] as Array[int]
 	var holders: Array[int] = prop.get_holder_ids()
@@ -474,6 +474,8 @@ func _apply_wear(prop: NetProp, speed_lost: float) -> void:
 		return
 	var tuning: PropTuning = Config.feel.props
 	var speed: float = minf(speed_lost, tuning.prop_max_speed)
+	if speed < tuning.prop_wear_min_speed:
+		return
 	if prop.health_left < 0.0:
 		prop.health_left = prop.data.health
 	prop.health_left -= 0.5 * speed * speed * tuning.prop_self_damage_scale
@@ -796,6 +798,28 @@ func _release_missing_players() -> void:
 ## its own copy of everyone's body).
 func is_stood_on(prop: NetProp) -> bool:
 	return get_body_standing_on(prop) != null
+
+
+## NEW 2026-10-29 (after Zachary's playtest): true if the prop is under any player's feet, standing or in
+## the air up to no_grab_below_depth above it. Nobody may grab it then (no "prop flying").
+func is_under_a_player(prop: NetProp) -> bool:
+	if prop == null or not is_inside_tree():
+		return false
+	var depth: float = Config.feel.props.no_grab_below_depth
+	for body: PlayerCharacter in get_bodies():
+		if body.is_ghost() or not body.is_inside_tree():
+			continue
+		var column := CylinderShape3D.new()
+		column.radius = body.tuning.radius
+		column.height = depth
+		var query := PhysicsShapeQueryParameters3D.new()
+		query.shape = column
+		query.transform = Transform3D(Basis.IDENTITY, body.global_position + Vector3.DOWN * (depth / 2.0 - FEET_RAY_START))
+		query.collision_mask = PhysicsLayers.bit(PhysicsLayers.PROPS)
+		for hit: Dictionary in body.get_world_3d().direct_space_state.intersect_shape(query, 8):
+			if hit.get("collider") == prop:
+				return true
+	return is_stood_on(prop)
 
 
 ## NEW 2026-10-29: a player standing on the prop, or null.

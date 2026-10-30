@@ -19,6 +19,9 @@ extends Resource
 ## NEW 2026-10-29: nobody can pick up a prop that any player is standing on (Zachary's rule, so nobody
 ## can launch a teammate by grabbing the crate under them). Also drops a held prop someone steps onto.
 @export var no_grab_while_stood_on: bool = true
+## NEW 2026-10-29 (after Zachary's playtest): nor a prop under any player's feet down to this depth (m), even
+## mid-jump, so nobody can "prop fly" by jumping and grabbing the box under them again and again.
+@export var no_grab_below_depth: float = 1.2
 
 @export_group("Holding")
 ## @deprecated 2026-10-29: use hold_base_gap (held props now float closer, by their size along your view).
@@ -27,6 +30,9 @@ extends Resource
 ## hold_base_gap + your body's radius + its own depth along your view in front of the eyes, so big and
 ## small things both sit just in front of you (Half-Life 2: about 1.2 m plus the object's size).
 @export var hold_base_gap: float = 0.6
+## NEW 2026-10-29 (after Zachary's playtest): a held object is always kept at least this far (m) outside your
+## own body, so looking down at your feet never shoves you backwards.
+@export var hold_body_clearance: float = 0.1
 ## A held object never comes closer to a wall in front of you than this (m).
 @export var min_hold_gap: float = 0.2
 ## Furthest up or down (degrees) a held object follows your look (Half-Life 2: 75).
@@ -137,6 +143,12 @@ extends Resource
 ## NEW 2026-10-29: hard hits wear down breakable props (PropData.health): wear = this x half the speed lost
 ## squared. A crate thrown into a wall (about 7 m/s) loses about 25 of its 60.
 @export var prop_self_damage_scale: float = 1.0
+## NEW 2026-10-29 (after Zachary's playtests): sideways hits that take away less speed than this (m/s) never
+## wear a prop down. A throw into a wall (about 7 m/s) counts.
+@export var prop_wear_min_speed: float = 5.0
+## Landing from a fall only wears a prop if it lands faster than this (m/s): 9 is a fall of about 2.7 m, so
+## dropping a crate from head height (or looking up) is harmless.
+@export var prop_wear_min_fall_speed: float = 9.0
 ## Most broken pieces lying around at once (the oldest go first).
 @export var max_gibs: int = 64
 ## Seconds broken pieces stay before they shrink away...

@@ -1,4 +1,4 @@
-HL2 FEEL, STEP 2: props like Half-Life 2
+HL2 FEEL, STEP 2: props like Half-Life 2 (with your fixes)
 
 The prop yard is ahead and to the right (crates, a heavy crate, metal parts, a glass tube, gems, meat).
 1. Look at a crate and press E: it floats just in front of you. Press E or Q to drop, left click to throw.
@@ -6,10 +6,10 @@ The prop yard is ahead and to the right (crates, a heavy crate, metal parts, a g
 3. Hold a crate against a wall and look around: no shaking. Push it into a corner hard: you drop it.
 4. Drop a crate while it touches a wall or the floor: it stops dead, no flinging.
 5. While carrying, Shift doesn't sprint.
-6. Stand on a crate and try to pick it up: you can't. (In co-op, nobody can grab a crate a teammate stands on.)
+6. Stand on a crate, or jump off it, and try to pick it up: you can't, even mid-jump. Look down at your feet while carrying: you aren't pushed back.
 7. Throw things: the throw is a bit softer than before (HL2 strength). Listen: wood knocks, metal clangs, glass tinks. Push a crate along the floor: it scrapes.
 8. Throw crates at the targets: a crate knocks out a light target in one or two hits; the heavy one barely notices.
-9. Throw a crate at the wall a few times: it breaks into pieces that fade away. The glass tube shatters if thrown.
+9. Dropping a crate from your hands, even looking up, never hurts it. Throw it at the wall a few times: it breaks into pieces that fade away. The glass tube shatters if thrown.
 10. Aim slightly off a prop and press E: it still picks it up.
 
 Thrown inventory items (coffee, plants) were fixed too, but there are none in this level.

@@ -328,6 +328,22 @@ static func _time_of(snapshot: Dictionary) -> int:
 	return msec
 
 
+## NEW 2026-10-29: how hard a hit that took away `change` (m/s) counts for wear: sideways hits from
+## prop_wear_min_speed, landings only from prop_wear_min_fall_speed (falls wear far less than throws).
+## Never more than the speed it really lost (`lost`), so glancing off something without slowing down
+## (like a crate thrown at an enemy) does not smash it. 0 = no wear.
+static func wear_speed_of(change: Vector3, lost: float = INF) -> float:
+	var tuning: PropTuning = Config.feel.props
+	var sideways: float = Vector2(change.x, change.z).length()
+	var landing: float = absf(change.y)
+	var counted: float = 0.0
+	if sideways >= tuning.prop_wear_min_speed:
+		counted = sideways
+	if landing >= tuning.prop_wear_min_fall_speed:
+		counted = maxf(counted, landing)
+	return minf(counted, maxf(lost, 0.0))
+
+
 ## NEW 2026-10-29: hard knocks wear it down until it breaks (PropData.health > 0).
 func is_breakable() -> bool:
 	return data != null and data.health > 0.0
@@ -570,8 +586,10 @@ func _listen_for_hits(delta: float) -> void:
 	var tuning: PropTuning = _tuning()
 	if lost >= tuning.impact_damage_min_speed and _true_mass >= tuning.impact_min_mass and not own_hit_damage:
 		_report_victim(expected - linear_velocity, lost)
-	if lost >= tuning.impact_damage_min_speed and is_breakable():
-		_spawner.report_wear(self, lost)
+	if is_breakable():
+		var wear_speed: float = wear_speed_of(expected - linear_velocity, lost)
+		if wear_speed > 0.0:
+			_spawner.report_wear(self, wear_speed)
 	if lost < tuning.impact_sound_min_speed:
 		return
 	var now: int = Time.get_ticks_msec()

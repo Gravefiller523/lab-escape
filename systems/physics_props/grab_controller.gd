@@ -265,10 +265,10 @@ func _standing_on(prop: NetProp) -> bool:
 	return not hit.is_empty() and hit.get("collider") == prop
 
 
-## NEW 2026-10-29: any player (us included) standing on it, if that rule is on.
+## NEW 2026-10-29: any player (us included) standing on it or above it, if that rule is on.
 func _anyone_standing_on(prop: NetProp) -> bool:
 	return Config.feel.props.no_grab_while_stood_on and prop.get_spawner() != null \
-		and prop.get_spawner().is_stood_on(prop)
+		and prop.get_spawner().is_under_a_player(prop)
 
 
 ## NEW 2026-10-29: where the held prop should be now (tests use it). Vector3.ZERO when holding nothing.
@@ -296,7 +296,18 @@ func _hold_point() -> Vector3:
 	var hit: Dictionary = _body.get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
 		distance = maxf(origin.distance_to(hit["position"] as Vector3) - radius, radius + tuning.min_hold_gap)
-	return origin + direction * distance
+	var point: Vector3 = origin + direction * distance
+	# CHANGED 2026-10-29 (Zachary's playtest): never inside our own body. Looking down, the point would be at
+	# our feet and the prop would shove us backwards, so keep it out in front of us instead.
+	var half_height: float = _held.get_depth_along(Vector3.UP)
+	var feet: float = _body.global_position.y
+	var head: float = feet + _body.get_movement().get_height()
+	if point.y - half_height < head and point.y + half_height > feet:
+		var clearance: float = _body.tuning.radius + _held.get_depth_along(flat) + tuning.hold_body_clearance
+		var out := Vector3(point.x - _body.global_position.x, 0.0, point.z - _body.global_position.z)
+		if out.length() < clearance:
+			point = Vector3(_body.global_position.x, point.y, _body.global_position.z) + flat * clearance
+	return point
 
 
 ## The host changed who holds our prop: confirmed, or someone took it from us.

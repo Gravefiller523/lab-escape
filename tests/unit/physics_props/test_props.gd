@@ -708,7 +708,8 @@ func test_drop_in_mid_air_keeps_falling_naturally() -> void:
 
 func test_props_never_go_past_the_speed_cap() -> void:
 	var pc := _make_pc()
-	var gem: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 5, -3)))
+	# A heavy crate, because a plain crate this fast can smash itself apart on whatever it hits.
+	var gem: NetProp = _props(pc).spawn_prop(&"prop_crate_heavy", Transform3D(Basis.IDENTITY, Vector3(0, 5, -3)))
 	await wait_physics_frames(2)
 	gem.linear_velocity = Vector3(0, 0, -90)
 	await wait_physics_frames(2)
@@ -1033,10 +1034,25 @@ func test_a_crate_breaks_after_a_few_hard_knocks() -> void:
 
 func test_dropping_a_crate_from_high_up_wears_it() -> void:
 	var pc := _make_pc()
-	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 3, -3)))
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 4, -3)))
 	await wait_seconds(1.5)
 	assert_true(is_instance_valid(crate))
-	assert_between(crate.health_left, 0.0, crate.data.health - 10.0, "a 3 m fall knocked it about (%.1f left)" % crate.health_left)
+	assert_between(crate.health_left, 0.0, crate.data.health - 10.0, "a 3.7 m fall knocked it about (%.1f left)" % crate.health_left)
+
+
+func test_dropping_a_crate_from_above_head_height_does_not_wear_it() -> void:
+	var pc := _make_pc()
+	# Its bottom 2.2 m up: dropped while looking a little up.
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 2.5, -3)))
+	await wait_seconds(1.5)
+	assert_lt(crate.health_left, 0.0, "untouched")
+
+
+func test_falls_wear_less_than_sideways_hits() -> void:
+	assert_eq(NetProp.wear_speed_of(Vector3(0, 8, 0)), 0.0, "landing at 8 m/s: no wear")
+	assert_almost_eq(NetProp.wear_speed_of(Vector3(7, 0, 0)), 7.0, 0.001, "hitting a wall at 7 m/s: wear")
+	assert_almost_eq(NetProp.wear_speed_of(Vector3(0, -10, 0)), 10.0, 0.001, "landing at 10 m/s: wear")
+	assert_eq(NetProp.wear_speed_of(Vector3(14, 0, 0), 0.5), 0.5, "turned around without slowing down: barely any")
 
 
 func test_broken_pieces_only_hit_the_world_and_fade() -> void:
@@ -1078,3 +1094,46 @@ func test_fast_thrown_item_hits_what_it_flies_past_between_frames() -> void:
 	# One frame's flight at about 60 m/s: from 2 m before the hurtbox to 2 m past it.
 	assert_eq(tracker._hurtbox_along(item, Vector3(0, 1, -3), Vector3(0, 1, -7)), hurtbox, "hit on the way past")
 	assert_null(tracker._touching_hurtbox(item, Vector3(0, 1, -7)), "(only checking where it ended up would miss)")
+
+
+# --- After Zachary's step 2 playtest (2026-10-29) ---
+
+func test_dropping_a_crate_from_your_hands_does_not_wear_it() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var crate: NetProp = held[1]
+	PropsService.grab_of(body).drop()
+	await wait_seconds(1.5)
+	assert_true(is_instance_valid(crate))
+	assert_lt(crate.health_left, 0.0, "a drop from your hands leaves it untouched")
+
+
+func test_cannot_grab_a_prop_under_you_mid_jump() -> void:
+	var pc := _make_pc()
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var body: PlayerCharacter = _my_body(pc)
+	body.set_input_override(PlayerInputState.new())
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, Vector3(0, 0.3, -8)))
+	await wait_physics_frames(10)
+	# In the air, 0.8 m above the crate's top (as at the top of a jump off it).
+	body.global_position = crate.global_position + Vector3(0, 1.1, 0)
+	var refusal: Array[String] = []
+	assert_eq(_props(pc).decide_grab(crate, body.player_id, refusal), [] as Array[int], "the host refuses")
+	PropsService.grab_of(body).try_grab(crate)
+	assert_null(PropsService.grab_of(body).get_held(), "no grabbing the box under you to fly on it")
+
+
+func test_looking_down_while_holding_does_not_push_you_back() -> void:
+	var pc := _make_pc()
+	var held: Array = await _holding(pc)
+	var body: PlayerCharacter = held[0]
+	var crate: NetProp = held[1]
+	var start: Vector3 = body.global_position
+	body.set_look_pitch(deg_to_rad(-89.0))
+	await wait_physics_frames(60)
+	var moved: float = Vector2(body.global_position.x - start.x, body.global_position.z - start.z).length()
+	assert_lt(moved, 0.05, "the crate at your feet doesn't shove you (moved %.2f m)" % moved)
+	var apart: float = Vector2(crate.global_position.x - body.global_position.x, crate.global_position.z - body.global_position.z).length()
+	assert_gt(apart, body.tuning.radius + 0.25, "it stays out in front of your body")
+	assert_true(crate.is_held(), "and you still hold it")

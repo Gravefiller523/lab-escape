@@ -12,6 +12,8 @@ extends CharacterBody3D
 ## it last saw you (not through walls), searches there, hears noises (EventBus.noise_made), tells its pack,
 ## takes attack tickets (AttackTickets) and winds up before it strikes, steers around other enemies, dodges
 ## heavy thrown props, and leaves a tumbling body when it dies.
+## NEW 2026-10-30 (doors): it paths through doorways with doors it can open, and a door it walks into
+## swings open for it (WorldDoor watches get_walk_intent()).
 
 signal state_changed(state: StringName)
 ## NEW 2026-10-23 (bosses branch): it died (every PC, once), after it fell over.
@@ -97,6 +99,9 @@ var _dodge_ready_at: float = 0.0
 var _dodge_decided: Dictionary[int, bool] = {}
 ## NEW 2026-10-30 (punt): seconds left of being shoved (no thinking, it just slides).
 var _knock_left: float = 0.0
+## NEW 2026-10-30 (doors): the way move_towards last wanted to go, and on which physics frame.
+var _walk_intent: Vector3 = Vector3.ZERO
+var _walk_intent_frame: int = -100
 
 
 ## The enemy a node belongs to (a hitbox, a mesh), or null.
@@ -360,6 +365,8 @@ func move_towards(point: Vector3, speed_scale: float, delta: float) -> void:
 		direction.y = 0.0
 	var speed: float = move_speed() * speed_scale
 	var wanted: Vector3 = direction.normalized() * speed if direction.length() > 0.05 else Vector3.ZERO
+	_walk_intent = wanted
+	_walk_intent_frame = Engine.get_physics_frames()
 	if flying:
 		velocity = wanted
 	else:
@@ -498,6 +505,14 @@ func knock_back(push: Vector3) -> void:
 		return
 	velocity = push
 	_knock_left = KNOCK_SECONDS
+
+
+## NEW 2026-10-30 (doors): host: the way it is trying to walk right now (m/s): what it asked move_towards for in
+## the last couple of physics frames, even if a wall or a shut door stops it. Zero when it isn't walking.
+func get_walk_intent() -> Vector3:
+	if _dead or Engine.get_physics_frames() - _walk_intent_frame > 2:
+		return Vector3.ZERO
+	return _walk_intent
 
 
 ## NEW 2026-10-30 (punt): is it being shoved right now?

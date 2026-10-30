@@ -11,20 +11,38 @@ extends Node
 ## NEW 2026-10-30 (HL2 feel step 3): the host passes noises (EventBus.noise_made) and who hurt an enemy
 ## (EventBus.damage_dealt) on to the enemies, and watches heavy thrown props so enemies can jump aside.
 ## The navigation mesh is baked on a background thread (no freeze when a floor loads).
+##
+## NEW 2026-10-30 (doors): bodies in NAV_SKIP_GROUP (doors enemies can open, or that stand open) are left out
+## of the bake, so enemies path through those doorways. A door that changes (locked, unlocked, a gate
+## opened) asks for request_navigation_update(), and the mesh is baked again in the background; the old one
+## stays in use until the new one is ready.
 
 ## NEW 2026-10-30: the navigation mesh for the floor is ready (baking happens in the background).
 signal navigation_baked(region: NavigationRegion3D)
 
 const NAV_REGION_NAME: String = "EnemyNavigation"
-const NAV_AGENT_RADIUS: float = 0.5
+## CHANGED 2026-10-30 (doors): 0.25 (was 0.5). With 0.25 m cells, 0.5 kept the path a whole 0.5 m off every
+## wall, which closed 1.2 to 1.3 m doorways (the size of a door). Enemies wider than this just slide along walls.
+const NAV_AGENT_RADIUS: float = 0.25
 const NAV_AGENT_HEIGHT: float = 1.0
 ## Room kind where every floor starts: no enemies there.
 const START_ROOM_KIND: StringName = &"lift"
 ## NEW 2026-10-30: a thrown prop is watched for this long (s) for enemies to dodge.
 const WATCH_THROWN_SECONDS: float = 2.0
+## NEW 2026-10-30 (doors): bodies in this group are left out of the navigation bake (enemies path through them).
+const NAV_SKIP_GROUP: StringName = &"nav_skip"
+## NEW 2026-10-30 (doors): a bake asked for by request_navigation_update() waits this long (s), so a door that
+## is still swinging has stopped, and several changes at once make one bake.
+const NAV_UPDATE_DELAY: float = 1.0
 
 var _spawner: EnemySpawner
 var _nav_region: NavigationRegion3D
+## NEW 2026-10-30 (doors): what was baked last (baked again by update_navigation), and regions a newer bake is
+## replacing (in use until it is ready).
+var _nav_root: Node3D
+var _old_regions: Array[NavigationRegion3D] = []
+## Seconds until an asked-for bake starts (< 0 = none asked for).
+var _nav_update_left: float = -1.0
 ## Counts bakes, so a slow bake that finishes after a newer one started is thrown away.
 var _bake_number: int = 0
 ## Thrown heavy props the host is watching: {"prop": WeakRef, "until": seconds}.
@@ -106,8 +124,35 @@ static func pool_for(department: DepartmentData) -> Array[WeightedIdData]:
 ## CHANGED 2026-10-30 (HL2 feel step 3.5): the region is returned at once and its mesh is baked on a
 ## background thread; navigation_baked fires when it's ready (until then enemies head straight for things).
 ## `wait` true bakes on the spot instead (tests).
+## CHANGED 2026-10-30 (doors): bodies in NAV_SKIP_GROUP are left out, so enemies path through doors they can open.
 func bake_navigation(root: Node3D, wait: bool = false) -> NavigationRegion3D:
 	_clear_navigation()
+	_nav_root = root
+	return _bake(root, wait)
+
+
+## NEW 2026-10-30 (doors): host: something that changes where enemies can go (a door was locked or unlocked,
+## a gate opened) happened: bake the navigation again in NAV_UPDATE_DELAY seconds. Does nothing before the
+## first bake of a floor.
+func request_navigation_update() -> void:
+	if _nav_root == null or not is_instance_valid(_nav_root) or not multiplayer.is_server():
+		return
+	if _nav_update_left < 0.0:
+		_nav_update_left = NAV_UPDATE_DELAY
+
+
+## NEW 2026-10-30 (doors): host: bake the last baked root again now. The old mesh stays in use until the new
+## one is ready (`wait` true bakes on the spot, for tests). Null if nothing was baked yet.
+func update_navigation(wait: bool = false) -> NavigationRegion3D:
+	_nav_update_left = -1.0
+	if _nav_root == null or not is_instance_valid(_nav_root) or not _nav_root.is_inside_tree():
+		return null
+	if _nav_region != null and is_instance_valid(_nav_region):
+		_old_regions.append(_nav_region)
+	return _bake(_nav_root, wait)
+
+
+func _bake(root: Node3D, wait: bool) -> NavigationRegion3D:
 	var mesh := NavigationMesh.new()
 	mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
 	mesh.geometry_collision_mask = PhysicsLayers.bit(PhysicsLayers.WORLD)
@@ -116,8 +161,7 @@ func bake_navigation(root: Node3D, wait: bool = false) -> NavigationRegion3D:
 	mesh.agent_height = NAV_AGENT_HEIGHT
 	mesh.cell_size = 0.25
 	mesh.cell_height = 0.25
-	var source := NavigationMeshSourceGeometryData3D.new()
-	NavigationServer3D.parse_source_geometry_data(mesh, source, root)
+	var source: NavigationMeshSourceGeometryData3D = _parse_source(mesh, root)
 	_nav_region = NavigationRegion3D.new()
 	_nav_region.name = NAV_REGION_NAME
 	root.add_child(_nav_region)
@@ -135,6 +179,24 @@ func bake_navigation(root: Node3D, wait: bool = false) -> NavigationRegion3D:
 	return region
 
 
+## The solid shapes under `root`, leaving out bodies in NAV_SKIP_GROUP (they are taken off the world layer
+## just while the shapes are read, which happens on the spot).
+func _parse_source(mesh: NavigationMesh, root: Node3D) -> NavigationMeshSourceGeometryData3D:
+	var skipped: Array[CollisionObject3D] = []
+	var layers: Array[int] = []
+	for node: Node in get_tree().get_nodes_in_group(NAV_SKIP_GROUP):
+		var body := node as CollisionObject3D
+		if body != null and root.is_ancestor_of(body):
+			skipped.append(body)
+			layers.append(body.collision_layer)
+			body.collision_layer = 0
+	var source := NavigationMeshSourceGeometryData3D.new()
+	NavigationServer3D.parse_source_geometry_data(mesh, source, root)
+	for index: int in skipped.size():
+		skipped[index].collision_layer = layers[index]
+	return source
+
+
 ## True while a navigation mesh is still being baked in the background.
 func is_baking_navigation() -> bool:
 	return _nav_region != null and is_instance_valid(_nav_region) and _nav_region.navigation_mesh == null
@@ -143,6 +205,12 @@ func is_baking_navigation() -> bool:
 func _on_navigation_baked(mesh: NavigationMesh, region: NavigationRegion3D, number: int) -> void:
 	if number != _bake_number or not is_instance_valid(region) or region.is_queued_for_deletion():
 		return
+	# The regions it replaces stop counting at once (so the two never overlap) and go away.
+	for old: NavigationRegion3D in _old_regions:
+		if is_instance_valid(old):
+			old.enabled = false
+			old.queue_free()
+	_old_regions.clear()
 	region.navigation_mesh = mesh
 	navigation_baked.emit(region)
 
@@ -211,7 +279,11 @@ func _on_prop_released(_player_id: int, prop: Node3D, thrown: bool) -> void:
 	_thrown.append({"prop": weakref(net_prop), "until": Time.get_ticks_msec() / 1000.0 + WATCH_THROWN_SECONDS})
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
+	if _nav_update_left >= 0.0:
+		_nav_update_left -= delta
+		if _nav_update_left < 0.0:
+			update_navigation()
 	if _thrown.is_empty():
 		return
 	var now: float = Time.get_ticks_msec() / 1000.0
@@ -240,6 +312,12 @@ func _clear_navigation() -> void:
 	if _nav_region != null and is_instance_valid(_nav_region):
 		_nav_region.queue_free()
 	_nav_region = null
+	for old: NavigationRegion3D in _old_regions:
+		if is_instance_valid(old):
+			old.queue_free()
+	_old_regions.clear()
+	_nav_root = null
+	_nav_update_left = -1.0
 
 
 func _run_seed() -> int:

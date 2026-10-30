@@ -41,12 +41,28 @@ opened by a button swings away from whoever pressed the button.
 |---|---|---|---|
 | `WorldButton` | a wall button; press E (or hold `press_seconds`); pops back out after `reset_seconds` (0 = stays in) | pressed, released, denied (pressed while locked) | press, lock, unlock |
 | `WorldTrigger` | an invisible box (`size`) that notices players, and optionally props or enemies | entered (first in), exited (last out) | none |
-| `WorldDoor` | a hinged door; swings away from whoever opens it; goes back if it would hit a player or enemy; pushes props; `auto_close_seconds`; `usable` (E works); `one_way` | opening, opened, closing, closed, blocked, locked_use | open, close, toggle, lock, unlock |
+| `WorldDoor` | a hinged door; swings away from whoever opens it; goes back if it would hit a player or enemy; pushes props; `auto_close_seconds`; `usable` (E works); `one_way`; NEW 2026-10-30 `enemies_can_open` (enemies push it open, see below) | opening, opened, closing, closed, blocked, locked_use | open, close, toggle, lock, unlock |
 | `WorldRelay` | passes a signal on (fan out, or switch a chain off in one place) | triggered | trigger |
 | `WorldCounter` | counts to `goal` | changed, reached, left | add, subtract, reset |
 | `WorldCrank` | a valve wheel turned by holding E (continuous use) for `turn_seconds`; turns back when let go (`rewind_seconds`); two players turn it twice as fast | started, completed, rewound | reset, lock, unlock |
 
 Geometry: a door's node is its hinge and the door runs `width` along +X; buttons and valves face +Z.
+
+NEW 2026-10-30, doors and enemies:
+```gdscript
+@export var enemies_can_open: bool = true        # WorldDoor
+func lets_enemies_through() -> bool              # it stands open, or an enemy could push it open
+func can_enemies_open() -> bool                  # enemies_can_open, usable, not locked, enabled
+func open_away_from(point: Vector3, activator_id: int = 0) -> void   # host
+func find_enemy_walking_in() -> Enemy            # host: an enemy close to the shut door and heading into it
+```
+- Enemies path through a door they can open, and through any door that stands open: its panel is then in
+  `Enemies.NAV_SKIP_GROUP` and is left out of the navigation bake. A locked door, or a shut gate players
+  can't open by hand (`usable` false), is a wall to them, so they go another way. When that changes, the
+  host asks `Enemies.request_navigation_update()` and the mesh is baked again a second later.
+- The host checks each shut door 7 times a second for an enemy walking into it (`Enemy.get_walk_intent()`,
+  within `ENEMY_REACH` 0.6 m plus its radius). The door swings open away from that enemy, with the usual
+  sounds and outputs (activator 0). While it swings open for an enemy it only stops for players.
 
 ## EventBus
 None. The "can't use" buzz on a locked or disabled device comes from interaction (`use_denied`).
@@ -71,10 +87,12 @@ is a new script that extends `WorldDevice`.
 
 ## Dependencies
 interaction (Interactable, continuous use, use points, `refused`), physics layers, audio (Sound), voice
-(`SoundDoor` in each doorway), player (`PlayerCharacter.find` for which way a door opens).
+(`SoundDoor` in each doorway), player (`PlayerCharacter.find` for which way a door opens), enemies (NEW
+2026-10-30: `Enemy.get_walk_intent`, `Enemies.NAV_SKIP_GROUP`, `Enemies.request_navigation_update`).
 
 ## Test scene and GUT tests
-Test level: the door course in `systems/player/test/feel_playtest.tscn`.
+Test level: the door course in `systems/player/test/feel_playtest.tscn`, and the enemy pen's door (F7 locks it).
+Doors and enemies are tested in `tests/unit/enemies/test_enemies.gd` (see enemies.md).
 GUT (`tests/unit/world_io/test_world_io.gd`): `test_a_wire_waits_its_delay_and_once_means_once`,
 `test_pressing_a_wired_button_opens_the_door`, `test_a_door_swings_away_from_whoever_opens_it`,
 `test_a_closing_door_goes_back_when_a_player_is_in_the_way`, `test_a_locked_door_buzzes_and_reports_the_try`,
@@ -83,11 +101,13 @@ GUT (`tests/unit/world_io/test_world_io.gd`): `test_a_wire_waits_its_delay_and_o
 `test_other_pcs_see_doors_move_and_joiners_get_the_state` (real ENet, two "PCs").
 
 ## Not done yet
-- Enemies: the navigation bake treats a door as a wall (shut, as it was when baked), so enemies don't
-  path through doorways that have doors. Needs navigation links that switch with the door.
-- Enemies can't open doors.
+- Enemies don't shut doors behind them (set `auto_close_seconds` for that).
 - level_gen doesn't place devices yet; objectives' keycard doors should be built on `WorldDoor`.
 
 ## Changelog
 - 2026-10-30 (HL2 feel step 4.2): created. `IOConnection`, `WorldDevice`, `WorldButton`, `WorldTrigger`,
   `WorldDoor`, `WorldRelay`, `WorldCounter`, `WorldCrank`, and 10 GUT tests.
+- 2026-10-30 (Zachary: let enemies walk through and open doors): NEW `WorldDoor.enemies_can_open`,
+  `lets_enemies_through`, `can_enemies_open`, `open_away_from`, `find_enemy_walking_in`. Enemies path through doors
+  they can open, and through ones that stand open, and push them open; locked doors and hand-proof gates are walls to them, and
+  the navigation is baked again when that changes. A door swinging open for an enemy only stops for players.

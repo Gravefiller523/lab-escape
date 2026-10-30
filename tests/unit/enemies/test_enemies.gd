@@ -450,6 +450,92 @@ func test_walking_enemies_make_room_for_each_other() -> void:
 		"a rat makes more room for a kangaroo than the kangaroo does for it")
 
 
+
+## NEW 2026-10-30 (doors): a wall across z = 0 (x -10..10, 3 m high) with a 1.2 m doorway at x -0.6..0.6 and a
+## door in it (hinge at x = -0.6). Going round the wall instead is about 21 m.
+func _door_wall(locked: bool = false) -> WorldDoor:
+	_add_box(_world, Vector3(-5.3, 1.5, 0), Vector3(9.4, 3, 0.2))
+	_add_box(_world, Vector3(5.3, 1.5, 0), Vector3(9.4, 3, 0.2))
+	var door := WorldDoor.new()
+	door.name = "Door"
+	door.locked = locked
+	door.position = Vector3(-0.6, 0, 0)
+	_world.add_child(door)
+	return door
+
+
+## How long the navigation path from `from` to `to` is (INF if it doesn't get there).
+func _path_length(from: Vector3, to: Vector3) -> float:
+	var path: PackedVector3Array = NavigationServer3D.map_get_path(_world.get_world_3d().navigation_map, from, to, true)
+	if path.size() < 2 or path[path.size() - 1].distance_to(to) > 1.0:
+		return INF
+	var length: float = 0.0
+	for index: int in range(1, path.size()):
+		length += path[index - 1].distance_to(path[index])
+	return length
+
+
+func test_enemies_path_through_doors_they_can_open_but_not_locked_ones() -> void:
+	var door := _door_wall()
+	await wait_physics_frames(2)
+	Enemies.bake_navigation(_world, true)
+	await wait_physics_frames(3)
+	var from := Vector3(0, 0, -3)
+	var to := Vector3(0, 0, 3)
+	var through: float = _path_length(from, to)
+	assert_lt(through, 8.0, "a shut door they can open doesn't block the path (%.1f m)" % through)
+	door.receive(&"lock")
+	Enemies.update_navigation(true)
+	await wait_physics_frames(3)
+	var around: float = _path_length(from, to)
+	assert_between(around, 15.0, 40.0, "locked, the path goes round the wall (%.1f m)" % around)
+	door.receive(&"unlock")
+	await wait_for_signal(Enemies.navigation_baked, WAIT)
+	await wait_physics_frames(3)
+	through = _path_length(from, to)
+	assert_lt(through, 8.0, "unlocking it bakes the navigation again by itself (%.1f m)" % through)
+
+
+func test_an_enemy_walking_into_a_door_pushes_it_open() -> void:
+	Perception.players_invisible = true
+	var door := _door_wall()
+	await wait_physics_frames(2)
+	Enemies.bake_navigation(_world, true)
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, -4))
+	await wait_physics_frames(3)
+	var spot := Vector3(0, 0, 4)
+	EventBus.noise_made.emit(spot, 12.0, 0)
+	assert_eq(rat.get_state(), &"search", "it heard the noise behind the door")
+	await wait_until(func() -> bool: return door.get_target_angle() != 0.0, WAIT)
+	assert_lt(door.get_target_angle(), 0.0, "the door swings away from the rat (towards +Z)")
+	await wait_until(func() -> bool: return rat.flat_distance_to(spot) < 1.5, WAIT)
+	assert_lt(rat.flat_distance_to(spot), 1.5, "and the rat walked through to where the noise was")
+
+
+func test_enemies_dont_open_locked_doors_or_doors_they_only_stand_by() -> void:
+	Perception.players_invisible = true
+	var locked := _door_wall(true)
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, -0.6))
+	await wait_physics_frames(3)
+	await wait_seconds(0.5)
+	assert_eq(rat.get_walk_intent(), Vector3.ZERO, "an idle rat isn't walking anywhere")
+	locked.receive(&"unlock")
+	await wait_seconds(0.5)
+	assert_eq(locked.get_target_angle(), 0.0, "a rat just standing by the door doesn't open it")
+	locked.receive(&"lock")
+	rat.search_point = Vector3(0, 0, 4)
+	rat.interrupt(&"search")
+	await wait_seconds(1.0)
+	assert_ne(rat.get_walk_intent(), Vector3.ZERO, "it tries to walk through")
+	assert_eq(locked.get_target_angle(), 0.0, "but it can't open a locked door")
+	locked.enemies_can_open = false
+	locked.receive(&"unlock")
+	await wait_seconds(0.5)
+	assert_eq(locked.get_target_angle(), 0.0, "nor one that enemies_can_open is off for")
+	locked.enemies_can_open = true
+	await wait_until(func() -> bool: return locked.get_target_angle() != 0.0, WAIT)
+	assert_ne(locked.get_target_angle(), 0.0, "otherwise it pushes it open")
+
 func _make_pc(hosting: bool) -> Node:
 	var pc := SubViewport.new()
 	pc.own_world_3d = true

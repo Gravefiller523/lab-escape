@@ -9,6 +9,8 @@ extends "res://systems/player/test/movement_test.gd"
 ## god mode on or off (enemies still attack, you just don't die).
 ## CHANGED 2026-10-30: you always come back at the start after dying (the real game runs out of free
 ## reprints), and the mouse wheel scrolls the list while it's shown (F1 hides it to get item switching back).
+## NEW 2026-10-30 (step 4): a door course (world_io devices): four walls in a row, each with a door worked a
+## different way (by hand, by a button, by a valve, by walking up to it), and a tiny button on a post.
 
 const CHECKLIST_PATH: String = "res://systems/player/test/playtest_checklist.txt"
 const COURSE_COLOR: Color = Color(0.5, 0.42, 0.55)
@@ -26,6 +28,10 @@ const RESPAWN_SECONDS: float = 2.0
 const CHECKLIST_WIDTH: float = 440.0
 ## How far one mouse wheel notch scrolls the list.
 const CHECKLIST_SCROLL_STEP: int = 48
+## NEW 2026-10-30 (step 4): the door course: walls across x 11..19 at these z, each with a doorway at x = 15.
+const DOOR_COURSE_X: float = 15.0
+const DOOR_COURSE_WALLS: Array[float] = [5.0, 9.0, 13.0, 17.0]
+const DOOR_WALL_COLOR: Color = Color(0.5, 0.5, 0.56)
 
 var _checklist: PanelContainer
 var _props: PropSpawner
@@ -98,6 +104,10 @@ func _fill_prop_yard() -> void:
 		&"prop_gem", &"prop_meat"]
 	for index: int in second.size():
 		_props.spawn_prop(second[index], Transform3D(Basis.IDENTITY, PROP_YARD + Vector3(index * 1.0 - 2.5, 0.4, -1.8)))
+	# NEW 2026-10-30 (step 4): crates behind the first door of the door course, for it to push.
+	for index: int in 2:
+		var spot := Vector3(DOOR_COURSE_X - 0.1 + float(index) * 0.7, 0.4, DOOR_COURSE_WALLS[0] + 0.8)
+		_props.spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, spot))
 	# Crates outside the enemy pen, to throw in (noise) or at a kangaroo (it dodges).
 	for index: int in 3:
 		var spot: Vector3 = PEN_CENTER + Vector3(float(index) * 1.2 - 1.2, 0.4, PEN_SIZE.y * 0.5 + 3.0)
@@ -125,6 +135,7 @@ func _build_world() -> void:
 	plate.set_meta(SurfaceType.META_KEY, "metal")
 	_add_label(Vector3(0, 1.2, 15), "metal floor")
 	_build_pen()
+	_build_door_course()
 
 
 ## The enemy pen: four walls 2.5 m high with a 2 m doorway in the +Z wall, and a pillar inside to hide behind.
@@ -140,6 +151,78 @@ func _build_pen() -> void:
 	_add_box(PEN_CENTER + Vector3(1.0 + side * 0.5, height * 0.5, half_z), Vector3(side, height, 0.3), PEN_COLOR)
 	_add_box(PEN_CENTER + Vector3(-1.5, 1.0, 0.5), Vector3(1, 2, 1), PEN_COLOR)
 	_add_label(PEN_CENTER + Vector3(0, height + 0.8, half_z), "enemy pen (F2 resets it)")
+
+
+## NEW 2026-10-30 (step 4): four walls, each with a door: (1) by hand, toggled by a tiny button too; (2) locked,
+## opened by a button and locking itself again; (3) a gate turned open with a valve; (4) opens when you walk up.
+func _build_door_course() -> void:
+	_add_label(Vector3(DOOR_COURSE_X, 3.4, DOOR_COURSE_WALLS[0] - 0.2), "door course")
+	# 1: a plain door, with two crates behind it to get pushed.
+	var plain: WorldDoor = _door_wall(DOOR_COURSE_WALLS[0], "1: opens away from you")
+	var tiny_post: StaticBody3D = _add_box(Vector3(12.5, 0.6, 3.2), Vector3(0.15, 1.2, 0.15), DOOR_WALL_COLOR)
+	tiny_post.name = "TinyPost"
+	var tiny := WorldButton.new()
+	tiny.name = "TinyButton"
+	tiny.prompt = "Press tiny button"
+	tiny.size = Vector3(0.04, 0.04, 0.03)
+	tiny.position = Vector3(12.5, 1.25, 3.11)
+	tiny.rotation_degrees.y = 180.0
+	add_child(tiny)
+	tiny.wire(&"pressed", plain, &"toggle")
+	_add_label(Vector3(12.5, 1.7, 3.2), "tiny button")
+	# 2: locked; the button beside it unlocks and opens it; it shuts after 3 s and locks itself again.
+	var locked: WorldDoor = _door_wall(DOOR_COURSE_WALLS[1], "2: locked, use the button", func(door: WorldDoor) -> void:
+		door.locked = true
+		door.auto_close_seconds = 3.0)
+	var button := WorldButton.new()
+	button.name = "LockButton"
+	button.prompt = "Open the door"
+	button.position = Vector3(DOOR_COURSE_X + 1.3, 1.3, DOOR_COURSE_WALLS[1] - 0.14)
+	button.rotation_degrees.y = 180.0
+	add_child(button)
+	button.wire(&"pressed", locked, &"unlock")
+	button.wire(&"pressed", locked, &"open", 0.05)
+	locked.wire(&"closed", locked, &"lock")
+	# 3: a gate you can't open by hand; turn the valve. It shuts again once the valve has turned back.
+	var gate: WorldDoor = _door_wall(DOOR_COURSE_WALLS[2], "3: turn the valve", func(door: WorldDoor) -> void:
+		door.usable = false
+		door.color = Color(0.35, 0.37, 0.4))
+	var valve := WorldCrank.new()
+	valve.name = "Valve"
+	valve.stays_done = false
+	valve.position = Vector3(DOOR_COURSE_X + 1.4, 1.3, DOOR_COURSE_WALLS[2] - 0.14)
+	valve.rotation_degrees.y = 180.0
+	add_child(valve)
+	valve.wire(&"completed", gate, &"open")
+	valve.wire(&"rewound", gate, &"close")
+	# 4: opens when you walk up to it, shuts a second after you've gone.
+	var auto: WorldDoor = _door_wall(DOOR_COURSE_WALLS[3], "4: walk up to it")
+	var near := WorldTrigger.new()
+	near.name = "NearDoor4"
+	near.size = Vector3(3.0, 2.0, 2.0)
+	near.position = Vector3(DOOR_COURSE_X, 1.0, DOOR_COURSE_WALLS[3] - 1.3)
+	add_child(near)
+	near.wire(&"entered", auto, &"open")
+	near.wire(&"exited", auto, &"close", 1.0)
+
+
+## A wall across the course at `z` (x 11..19, 2.6 m high) with a 1.3 m doorway at DOOR_COURSE_X and a door in it.
+## `setup` can change the door before it's built.
+func _door_wall(z: float, label: String, setup: Callable = Callable()) -> WorldDoor:
+	var gap_from: float = DOOR_COURSE_X - 0.65
+	var gap_to: float = DOOR_COURSE_X + 0.65
+	_add_box(Vector3((11.0 + gap_from) * 0.5, 1.3, z), Vector3(gap_from - 11.0, 2.6, 0.2), DOOR_WALL_COLOR)
+	_add_box(Vector3((gap_to + 19.0) * 0.5, 1.3, z), Vector3(19.0 - gap_to, 2.6, 0.2), DOOR_WALL_COLOR)
+	_add_box(Vector3(DOOR_COURSE_X, 2.45, z), Vector3(1.3, 0.3, 0.2), DOOR_WALL_COLOR)
+	var door := WorldDoor.new()
+	door.name = "Door%d" % int(z)
+	door.swing_degrees = 90.0
+	door.position = Vector3(DOOR_COURSE_X - 0.6, 0.0, z)
+	if setup.is_valid():
+		setup.call(door)
+	add_child(door)
+	_add_label(Vector3(DOOR_COURSE_X, 2.9, z - 0.2), label)
+	return door
 
 
 func _build_ui() -> void:

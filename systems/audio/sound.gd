@@ -7,7 +7,8 @@ extends Node
 ##   that's empty, generated placeholders).
 ## - A pool of 3D and 2D players, so 200 sounds at once never make 200 nodes (the oldest is reused).
 ## - Game events make their sounds on every PC locally (nothing is sent over the network): hits and deaths
-##   (any HealthComponent), item use, reprints, upgrades, purchases, the lift and the boss.
+##   (any HealthComponent), item use, reprints, upgrades, purchases, the lift and the boss, and (NEW 2026-10-30)
+##   the "can't use" buzz (EventBus.use_denied). World devices (doors, buttons, valves) play their own.
 
 const BUSES: Array[StringName] = [&"Music", &"SFX", &"Voice", &"UI"]
 const POOL_3D: int = 32
@@ -249,6 +250,8 @@ func _connect_events() -> void:
 		_at_player(player_id, &"upgrade", 0.0))
 	EventBus.vendor_purchase.connect(func(player_id: int, _item_id: StringName, _price: int) -> void:
 		_at_player(player_id, &"purchase", 0.0))
+	# NEW 2026-10-30 (step 4.1): the "can't use that" buzz, only on the PC of the player who tried.
+	EventBus.use_denied.connect(func(_player_id: int) -> void: play_ui(event_sound(&"use_deny")))
 	EventBus.lift_departed.connect(func(_floor_number: int) -> void:
 		_lift_hum.stream = event_sound(&"lift_ride")
 		_lift_hum.play())

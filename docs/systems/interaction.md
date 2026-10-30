@@ -40,6 +40,22 @@ const NODE_NAME: String = "Interaction"
 func get_anchor() -> Node3D                     # the object distance is measured to (its parent)
 func allows(player_id: int) -> bool             # host: enabled and use_condition
 
+# NEW 2026-10-30 (HL2 feel step 4.1) on Interactable:
+signal refused(player_id: int)                  # host: in reach, but disabled or use_condition said no
+signal use_started(player_id: int)              # host, continuous objects: started holding E on it
+signal use_tick(player_id: int, delta: float)   # host, continuous objects: every physics step while held
+signal use_stopped(player_id: int)              # host, continuous objects: let go, looked away, walked off
+@export var continuous: bool = false            # hold E to keep using it (valves, cranks)
+@export var use_point: NodePath                 # reach is measured to this Node3D (a handle), e.g. "../Handle"
+func get_use_position() -> Vector3
+
+# NEW 2026-10-30 on InteractionController:
+func set_continuous_use(target: Node3D) -> void # start (target) or stop (null) holding E on a continuous object
+func deny() -> void                             # the "can't use" buzz on this PC (EventBus.use_denied)
+
+# NEW 2026-10-30: Config.feel.interaction (UseTuning, systems/interaction/use_tuning.gd):
+#   aim_assist_radius (0.12 m), deny_cooldown (0.3 s)
+
 # NEW 2026-10-17: autoload "Interaction" (systems/interaction/interaction.gd, class_name InteractionService)
 func get_local_controller() -> InteractionController   # null if you have no body
 static func controller_of(body: PlayerCharacter) -> InteractionController
@@ -55,7 +71,7 @@ holding a normal prop → drop it; looking at a prop → grab it); (2) otherwise
 `Interactable`, request a use from the host.
 
 ## EventBus
-None.
+- Emits: `use_denied(player_id)` (NEW 2026-10-30), on the PC of the player who tried.
 
 ## Data it owns and saves
 Nothing.
@@ -93,6 +109,17 @@ NEW 2026-10-17: `test_controller_added_to_every_body`, `test_press_fires_used_on
 - 2026-10-07: spec created.
 - 2026-10-17: built. Added the `Interaction` autoload, `press_use`, `request_use`,
   `unregister_prompt_provider`, `Interactable.get_anchor`/`allows`.
+- 2026-10-30 (HL2 feel step 4.1): (1) The "can't use" buzz: pressing use when nothing takes it (a wall,
+  nothing, something out of reach or switched off) emits NEW `EventBus.use_denied` on your PC, and so does
+  the host turning a use down (it sends NEW `_denied_rpc` to that player's PC and emits NEW
+  `Interactable.refused` on the host). Audio plays it; at most once per `deny_cooldown`. `press_use` now
+  returns true for hold-to-use and continuous objects (the held key does the work) instead of false.
+  (2) Continuous use: NEW `Interactable.continuous`; holding E sends NEW `_continuous_rpc` to the host,
+  which fires `use_started`, `use_tick` every physics step while you're in reach and allowed, then
+  `use_stopped`. (3) NEW `Interactable.use_point`: reach (prompt and host check) is measured to it.
+  (4) A fatter aim check: if the thin look ray finds nothing usable, a ball of `aim_assist_radius` is swept
+  along the same line, stopping at the wall the ray hit, and only counts if no wall is in between.
+  NEW tuning section `Config.feel.interaction` (UseTuning). 6 new GUT tests.
 
 ## HANDOFF
 **Done:** `Interactable`, `InteractionController` (look ray, prompt, hold-to-use, use handlers and prompt

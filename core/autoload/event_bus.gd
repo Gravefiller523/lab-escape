@@ -65,6 +65,11 @@ signal boss_defeated(boss_id: StringName)
 ## [enemies]. source_player_id is 0 if no player made it.
 signal noise_made(noise_position: Vector3, radius: float, source_player_id: int)
 
+# --- Interaction [interaction] -------------------------------------------------
+## NEW 2026-10-30 (HL2 feel step 4.1). Fires on: the PC of the player who tried (local), when pressing use
+## did nothing or the host said no (a locked door). Audio plays the "can't use" buzz.
+signal use_denied(player_id: int)
+
 # --- Upgrades [upgrades] -----------------------------------------------------
 ## Fires on: all.
 signal upgrade_gained(player_id: int, upgrade_id: StringName)

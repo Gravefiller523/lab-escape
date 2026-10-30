@@ -125,11 +125,12 @@ func test_markers_sorted_same_order() -> void:
 
 
 func test_every_room_follows_cart_rules() -> void:
-	var cell_size: float = Config.game.room_cell_size
 	var rooms: Array[ContentData] = ContentRegistry.get_all(&"room", true)
 	assert_gt(rooms.size(), 0)
 	for content: ContentData in rooms:
 		var room := content as RoomData
+		# CHANGED 2026-10-30: each room on its own grid (12 m grey-box rooms, 3 m floor generation tiles).
+		var cell_size: float = RoomShape.cell_size_for(room)
 		var root: Node = room.scene.instantiate()
 		var shape := RoomShape.new()
 		shape.size = Vector2i(room.size_cells.x, room.size_cells.z)

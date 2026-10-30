@@ -57,6 +57,8 @@ var _owner_changed_msec: Dictionary[int, int] = {}
 var _pending_owner: Dictionary[int, int] = {}
 ## Host: when each prop last hurt each victim ("net id:instance id" -> msec).
 var _hit_msec: Dictionary[String, int] = {}
+## Host (NEW 2026-10-30): the damage each of those hits has dealt so far ("prop:victim" -> damage).
+var _hit_dealt: Dictionary[String, float] = {}
 
 
 ## For tests only: a different Net and config. Call before adding the node to the tree.
@@ -867,6 +869,10 @@ func play_impact(prop: NetProp, at: Vector3, speed_lost: float) -> void:
 	var volume: float = lerpf(tuning.impact_sound_quietest_db, 0.0, loudness)
 	_play_knock(prop, at, volume)
 	impact_heard.emit(prop, speed_lost)
+	# NEW 2026-10-30 (HL2 feel step 3.3): enemies hear knocks too (the host tells them).
+	if multiplayer.is_server():
+		var ai: AiTuning = Config.feel.ai
+		EventBus.noise_made.emit(at, lerpf(ai.noise_prop_quietest, ai.noise_prop_loudest, loudness), 0)
 
 
 func _play_knock(prop: NetProp, at: Vector3, volume_db: float) -> void:
@@ -950,17 +956,25 @@ func _apply_hit(prop: NetProp, victim: Node3D, speed_lost: float) -> void:
 		return
 	var key: String = "%d:%d" % [prop.net_id, victim.get_instance_id()]
 	var now: int = Time.get_ticks_msec()
-	if now - int(_hit_msec.get(key, -100000)) < int(tuning.impact_report_cooldown * 1000.0):
-		return
+	# CHANGED 2026-10-30: within the cooldown a report is the same hit again with more speed lost (the prop
+	# took a few steps to stop): only the extra damage is dealt, so one hit never does more than one hit can.
+	var counted: float = 0.0
+	var again: bool = now - int(_hit_msec.get(key, -100000)) < int(tuning.impact_report_cooldown * 1000.0)
+	if again:
+		counted = float(_hit_dealt.get(key, INF))
 	var speed: float = minf(speed_lost, tuning.prop_max_speed)
-	var damage: float = impact_damage(prop.get_true_mass(), speed, impact_mass_of(victim))
+	var full: float = impact_damage(prop.get_true_mass(), speed, impact_mass_of(victim))
 	if victim is PlayerCharacter:
-		damage *= tuning.friendly_physics_damage_scale
+		full *= tuning.friendly_physics_damage_scale
+	var damage: float = full - counted
 	if damage <= 0.0 or HealthComponent.of(victim) == null:
 		return
 	if _hit_msec.size() > 256:
 		_hit_msec.clear()
-	_hit_msec[key] = now
+		_hit_dealt.clear()
+	if not again:
+		_hit_msec[key] = now
+	_hit_dealt[key] = full
 	var info := DamageInfo.make(damage, &"blunt", prop)
 	info.source_player_id = prop.get_recent_thrower(tuning.physics_attacker_window)
 	info.hit_position = victim.global_position

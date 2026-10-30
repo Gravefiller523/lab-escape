@@ -4,6 +4,8 @@ extends RefCounted
 ## Works the same for your own body and other players' bodies: it only looks at where the body is each
 ## physics tick and what is under its feet, so nothing extra is synced. PlayerCharacter owns one and calls
 ## update() every physics tick. The sound depends on what the floor is made of (SurfaceType).
+## NEW 2026-10-30 (HL2 feel step 3.3): on the host, every step and landing is also a noise enemies can hear
+## (EventBus.noise_made): crouching is nearly silent, sprinting carries far (Config.feel.ai, "Hearing").
 
 ## Played a step (`landing` false) or a landing (`landing` true). Tests listen to this.
 signal stepped(surface: SurfaceType, volume_db: float, landing: bool)
@@ -46,22 +48,24 @@ func update(body: PlayerCharacter, delta: float) -> void:
 	if grounded and not _grounded:
 		if _air_seconds >= MIN_AIR_SECONDS and _fall_speed >= tuning.landing_sound_min_speed:
 			var louder: float = clampf((_fall_speed - tuning.landing_sound_min_speed) * 1.5, 0.0, 9.0)
-			_play(body, under, tuning.footstep_volume_db - 3.0 + louder, true)
+			_play(body, under, tuning.footstep_volume_db - 3.0 + louder, true, Config.feel.ai.noise_landing)
 		_walked = 0.0
 	elif not grounded and _grounded and moved.y / delta > JUMP_RISE_SPEED:
 		# Pushing off: a step on whatever was underfoot last tick.
 		var below: Node = _floor_under(body, moved.y + FLOOR_PROBE)
-		_play(body, below, _volume(tuning, crouching), false)
+		_play(body, below, _volume(tuning, crouching), false, _noise(crouching, false))
 	if grounded:
 		_air_seconds = 0.0
 		_fall_speed = 0.0
 		var flat_speed: float = Vector2(moved.x, moved.z).length() / delta
 		if flat_speed >= tuning.footstep_min_speed:
 			_walked += Vector2(moved.x, moved.z).length()
-			var stride: float = _stride(tuning, crouching, flat_speed, body.get_movement().get_speed_multiplier())
+			var speed_multiplier: float = body.get_movement().get_speed_multiplier()
+			var stride: float = _stride(tuning, crouching, flat_speed, speed_multiplier)
 			if _walked >= stride:
 				_walked = 0.0
-				_play(body, under, _volume(tuning, crouching), false)
+				var sprinting: bool = flat_speed > tuning.walk_speed * speed_multiplier * 1.1
+				_play(body, under, _volume(tuning, crouching), false, _noise(crouching, sprinting))
 	else:
 		_air_seconds += delta
 		_fall_speed = maxf(-moved.y / delta, 0.0)
@@ -73,6 +77,14 @@ static func _stride(tuning: PlayerTuning, crouching: bool, flat_speed: float, sp
 		return tuning.footstep_crouch_stride
 	var walk_top: float = tuning.walk_speed * speed_multiplier
 	return tuning.footstep_sprint_stride if flat_speed > walk_top * 1.1 else tuning.footstep_stride
+
+
+## How far (m) a step carries for enemies.
+static func _noise(crouching: bool, sprinting: bool) -> float:
+	var ai: AiTuning = Config.feel.ai
+	if crouching:
+		return ai.noise_crouch_step
+	return ai.noise_sprint_step if sprinting else ai.noise_step
 
 
 static func _volume(tuning: PlayerTuning, crouching: bool) -> float:
@@ -92,8 +104,10 @@ func _floor_under(body: PlayerCharacter, depth: float = FLOOR_PROBE) -> Node:
 	return hit.get("collider") as Node if not hit.is_empty() else null
 
 
-func _play(body: PlayerCharacter, floor_node: Node, volume_db: float, landing: bool) -> void:
+func _play(body: PlayerCharacter, floor_node: Node, volume_db: float, landing: bool, noise_radius: float) -> void:
 	var surface: SurfaceType = SurfaceType.of(floor_node)
 	var total_db: float = volume_db + surface.volume_db
 	stepped.emit(surface, total_db, landing)
 	Sound.play_3d(surface.land_sound() if landing else surface.step_sound(), body.global_position, total_db, 0.08)
+	if body.multiplayer.is_server():
+		EventBus.noise_made.emit(body.global_position, noise_radius, body.player_id)

@@ -60,6 +60,10 @@ signal enemy_killed(enemy_id: StringName, death_position: Vector3, killer_player
 signal boss_phase_changed(boss_id: StringName, phase_index: int)
 ## Fires on: all. [bosses]
 signal boss_defeated(boss_id: StringName)
+## NEW 2026-10-30 (HL2 feel step 3.3). Fires on: host. Something made a noise that enemies within `radius`
+## metres can hear: footsteps and landings [player], prop knocks [physics_props], an enemy's death squeal
+## [enemies]. source_player_id is 0 if no player made it.
+signal noise_made(noise_position: Vector3, radius: float, source_player_id: int)
 
 # --- Upgrades [upgrades] -----------------------------------------------------
 ## Fires on: all.

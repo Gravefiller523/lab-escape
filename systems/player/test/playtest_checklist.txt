@@ -1,15 +1,13 @@
-HL2 FEEL, STEP 2: props like Half-Life 2 (with your fixes)
+HL2 FEEL, STEP 3: enemies like Half-Life 2
 
-The prop yard is ahead and to the right (crates, a heavy crate, metal parts, a glass tube, gems, meat).
-1. Look at a crate and press E: it floats just in front of you. Press E or Q to drop, left click to throw.
-2. Pick up a crate that sits at a slight angle: it straightens out.
-3. Hold a crate against a wall and look around: no shaking. Push it into a corner hard: you drop it.
-4. Drop a crate while it touches a wall or the floor: it stops dead, no flinging.
-5. While carrying, Shift doesn't sprint.
-6. Stand on a crate, or jump off it, and try to pick it up: you can't, even mid-jump. Look down at your feet while carrying: you aren't pushed back.
-7. Throw things: the throw is a bit softer than before (HL2 strength). Listen: wood knocks, metal clangs, glass tinks. Push a crate along the floor: it scrapes.
-8. Throw crates at the targets: a crate knocks out a light target in one or two hits; the heavy one barely notices.
-9. Dropping a crate from your hands, even looking up, never hurts it. Throw it at the wall a few times: it breaks into pieces that fade away. The glass tube shatters if thrown.
-10. Aim slightly off a prop and press E: it still picks it up.
-
-Thrown inventory items (coffee, plants) were fixed too, but there are none in this level.
+The enemy pen is behind the ladder platform (back left): a room with 4 rats and a kangaroo. Crates sit outside its door.
+F2 puts the pen's enemies back. F3 drops a kangaroo 8 m in front of you. F4 kills every enemy. F5 is god mode.
+1. Sneak up behind a rat (crouch): it doesn't see you. Step in front of it: a short pause, a chirp, then it comes. Its friends come too.
+2. Crouch-walk near the pen: they don't hear you. Sprint past the door: they come out to look around.
+3. Throw a crate into the pen: they come to see what made the noise.
+4. Let the rats chase you, then duck behind the pillar or the platform: they run to where they last saw you and look around, not straight through walls.
+5. Only two rats bite at once; the others circle about 3.5 m away. Every bite and kick has a short growl and wind-up first.
+6. A kangaroo crouches, growls, then leaps. Throw a crate straight at a kangaroo (F3): it often jumps aside.
+7. Kill a rat (throw crates, or F4): it tumbles away as a body instead of tipping over.
+8. A pack moving together slides around each other instead of stacking up.
+9. With a second player (Host local / Join local): the enemies split up between you.

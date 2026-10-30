@@ -985,6 +985,26 @@ func test_thrown_crate_kills_a_light_enemy_and_the_thrower_gets_the_credit() -> 
 	assert_eq(credit, [body.player_id] as Array[int], "the thrower gets the kill")
 
 
+## NEW 2026-10-30: a crate that takes a few physics steps to stop does the damage of the whole hit, once.
+func test_a_hit_spread_over_steps_counts_as_one_hit() -> void:
+	var pc := _make_pc()
+	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
+	var body: PlayerCharacter = _my_body(pc)
+	var victim: CharacterBody3D = _victim(pc, body, 3.0, 50.0)
+	var health: HealthComponent = HealthComponent.of(victim)
+	var crate: NetProp = _props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, victim.global_position + Vector3(0, 1, 1)))
+	await wait_physics_frames(2)
+	var start: float = health.get_current()
+	_props(pc).report_hit(crate, victim, 4.0)
+	var first: float = start - health.get_current()
+	_props(pc).report_hit(crate, victim, 8.0)
+	var whole: float = PropSpawner.impact_damage(crate.get_true_mass(), 8.0, 50.0)
+	assert_lt(first, whole, "the first step alone does less")
+	assert_almost_eq(start - health.get_current(), whole, 0.01, "both steps together do the damage of losing 8 m/s")
+	_props(pc).report_hit(crate, victim, 8.0)
+	assert_almost_eq(start - health.get_current(), whole, 0.01, "and the same hit again adds nothing")
+
+
 func test_thrown_crate_barely_hurts_a_heavy_enemy() -> void:
 	var pc := _make_pc()
 	var held: Array = await _holding(pc)

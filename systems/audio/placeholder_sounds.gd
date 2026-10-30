@@ -13,7 +13,7 @@ static var _made: Dictionary[StringName, AudioStreamWAV] = {}
 ## &"hum", &"roar", &"sparkle", &"clunk", &"fanfare", &"music_calm", &"music_floor", &"music_boss",
 ## and for surfaces (NEW 2026-10-29): &"step_concrete", &"land_concrete", &"step_metal", &"land_metal",
 ## &"impact_concrete", &"impact_metal", &"impact_wood", &"impact_glass", &"impact_flesh", and looping
-## &"scrape_rough", &"scrape_metal".
+## &"scrape_rough", &"scrape_metal", and for enemies (NEW 2026-10-30): &"chirp" (noticed you), &"growl" (wind-up).
 static func get_sound(kind: StringName) -> AudioStreamWAV:
 	if not _made.has(kind):
 		_made[kind] = _make(kind)
@@ -62,6 +62,10 @@ static func _make(kind: StringName) -> AudioStreamWAV:
 			return _render(0.3, func(t: float) -> float: return (sin(TAU * 2600.0 * t) + sin(TAU * 3900.0 * t) * 0.5) * 0.25 * exp(-t * 18.0) + _noise(t) * 0.2 * exp(-t * 90.0))
 		&"impact_flesh":
 			return _render(0.2, func(t: float) -> float: return sin(TAU * (110.0 - 200.0 * t) * t) * 0.6 * exp(-t * 20.0) + _noise(t) * 0.25 * exp(-t * 30.0))
+		&"chirp":
+			return _render(0.16, func(t: float) -> float: return sin(TAU * (1400.0 + 2600.0 * t) * t) * 0.45 * sin(PI * t / 0.16))
+		&"growl":
+			return _render(0.4, func(t: float) -> float: return (sin(TAU * 95.0 * t) * 0.6 + _noise(t) * 0.25) * (0.6 + 0.4 * sin(TAU * 23.0 * t)) * sin(PI * t / 0.4))
 		&"scrape_rough":
 			return _render(1.0, func(t: float) -> float: return _noise(t) * 0.3 * (0.75 + 0.25 * sin(TAU * 7.0 * t)), true)
 		&"scrape_metal":

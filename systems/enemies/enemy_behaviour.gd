@@ -12,3 +12,8 @@ func on_state_changed(_enemy: Enemy, _state: StringName) -> void:
 ## Host: the enemy is about to hit; change the hit (more knockback, a status...).
 func on_attack(_enemy: Enemy, _info: DamageInfo) -> void:
 	pass
+
+
+## NEW 2026-10-30 (HL2 feel step 3.4): host: its wind-up is over and the attack starts (a kangaroo leaps now).
+func on_strike(_enemy: Enemy) -> void:
+	pass

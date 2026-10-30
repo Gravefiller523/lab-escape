@@ -1,6 +1,8 @@
 class_name JumpAttackBehaviour
 extends EnemyBehaviour
 ## Kangaroo: when it starts attacking it leaps at you, and its kick knocks you flying.
+## CHANGED 2026-10-30 (HL2 feel step 3.4): it leaps when its wind-up is over (on_strike), not the moment it
+## decides to attack, so you can see it coming.
 
 ## Speed of the leap forward and up (metres per second).
 @export var leap_forward: float = 7.0
@@ -10,8 +12,8 @@ extends EnemyBehaviour
 @export var kick_knockback: float = 9.0
 
 
-func on_state_changed(enemy: Enemy, state: StringName) -> void:
-	if state != &"attack_melee" or not enemy.multiplayer.is_server() or enemy.get_target() == null:
+func on_strike(enemy: Enemy) -> void:
+	if not enemy.multiplayer.is_server() or enemy.get_target() == null:
 		return
 	var toward: Vector3 = enemy.get_target().global_position - enemy.global_position
 	toward.y = 0.0

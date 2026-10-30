@@ -7,15 +7,28 @@ extends Node
 ## The spawner spends RunDifficulty.enemy_budget(floor, players) on the department's enemy_spawns
 ## (weights, min_floor, spawn_cost) at enemy_spawn markers, never in the lift room.
 ## STUB (department content): a department with no enemy_spawns uses every enemy (weight 1).
+##
+## NEW 2026-10-30 (HL2 feel step 3): the host passes noises (EventBus.noise_made) and who hurt an enemy
+## (EventBus.damage_dealt) on to the enemies, and watches heavy thrown props so enemies can jump aside.
+## The navigation mesh is baked on a background thread (no freeze when a floor loads).
+
+## NEW 2026-10-30: the navigation mesh for the floor is ready (baking happens in the background).
+signal navigation_baked(region: NavigationRegion3D)
 
 const NAV_REGION_NAME: String = "EnemyNavigation"
 const NAV_AGENT_RADIUS: float = 0.5
 const NAV_AGENT_HEIGHT: float = 1.0
 ## Room kind where every floor starts: no enemies there.
 const START_ROOM_KIND: StringName = &"lift"
+## NEW 2026-10-30: a thrown prop is watched for this long (s) for enemies to dodge.
+const WATCH_THROWN_SECONDS: float = 2.0
 
 var _spawner: EnemySpawner
 var _nav_region: NavigationRegion3D
+## Counts bakes, so a slow bake that finishes after a newer one started is thrown away.
+var _bake_number: int = 0
+## Thrown heavy props the host is watching: {"prop": WeakRef, "until": seconds}.
+var _thrown: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -25,6 +38,10 @@ func _ready() -> void:
 	EventBus.floor_ready.connect(_on_floor_ready)
 	EventBus.floor_loading.connect(func(_floor_number: int, _department_id: StringName) -> void: _clear_floor())
 	EventBus.run_ended.connect(func(_result: StringName) -> void: _clear_floor())
+	EventBus.noise_made.connect(func(at: Vector3, radius: float, _source_player_id: int) -> void:
+		Enemy.hear_noise(get_tree(), at, radius))
+	EventBus.damage_dealt.connect(_on_damage_dealt)
+	EventBus.prop_released.connect(_on_prop_released)
 	DebugConsole.register_spawner(&"enemy", _console_spawn)
 	DebugConsole.register_command(&"killall", _cmd_killall, "killall: kill every enemy")
 
@@ -86,7 +103,10 @@ static func pool_for(department: DepartmentData) -> Array[WeightedIdData]:
 
 ## Host: a navigation mesh for everything solid under `root` (rooms, arenas), so enemies path through
 ## doorways. Replaces the last one. Baked at runtime, so room scenes need no navigation region.
-func bake_navigation(root: Node3D) -> NavigationRegion3D:
+## CHANGED 2026-10-30 (HL2 feel step 3.5): the region is returned at once and its mesh is baked on a
+## background thread; navigation_baked fires when it's ready (until then enemies head straight for things).
+## `wait` true bakes on the spot instead (tests).
+func bake_navigation(root: Node3D, wait: bool = false) -> NavigationRegion3D:
 	_clear_navigation()
 	var mesh := NavigationMesh.new()
 	mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
@@ -98,14 +118,33 @@ func bake_navigation(root: Node3D) -> NavigationRegion3D:
 	mesh.cell_height = 0.25
 	var source := NavigationMeshSourceGeometryData3D.new()
 	NavigationServer3D.parse_source_geometry_data(mesh, source, root)
-	NavigationServer3D.bake_from_source_geometry_data(mesh, source)
 	_nav_region = NavigationRegion3D.new()
 	_nav_region.name = NAV_REGION_NAME
-	_nav_region.navigation_mesh = mesh
 	root.add_child(_nav_region)
 	_nav_region.top_level = true
 	_nav_region.global_transform = Transform3D.IDENTITY
-	return _nav_region
+	_bake_number += 1
+	var region: NavigationRegion3D = _nav_region
+	if wait:
+		NavigationServer3D.bake_from_source_geometry_data(mesh, source)
+		_on_navigation_baked(mesh, region, _bake_number)
+	else:
+		var number: int = _bake_number
+		NavigationServer3D.bake_from_source_geometry_data_async(mesh, source,
+			func() -> void: _on_navigation_baked.call_deferred(mesh, region, number))
+	return region
+
+
+## True while a navigation mesh is still being baked in the background.
+func is_baking_navigation() -> bool:
+	return _nav_region != null and is_instance_valid(_nav_region) and _nav_region.navigation_mesh == null
+
+
+func _on_navigation_baked(mesh: NavigationMesh, region: NavigationRegion3D, number: int) -> void:
+	if number != _bake_number or not is_instance_valid(region) or region.is_queued_for_deletion():
+		return
+	region.navigation_mesh = mesh
+	navigation_baked.emit(region)
 
 
 ## Host: spawn a floor's enemies at its enemy_spawn markers (not in the lift room). Returns them.
@@ -145,6 +184,51 @@ func _on_floor_ready(floor_number: int, _department_id: StringName) -> void:
 		bake_navigation(root)
 	var floor_in_department: int = run.floor_in_department if run != null else floor_number
 	spawn_floor(floor_in_department, GameFlow.get_current_department(), _run_seed(), Level.get_markers(&"enemy_spawn"))
+
+
+## Host: an enemy got hurt; whoever did it (a player, or the player who threw the prop) makes it turn on them.
+func _on_damage_dealt(target: Node, _amount: float, _damage_type: StringName, source: Node) -> void:
+	var enemy := target as Enemy
+	if enemy == null or not enemy.is_inside_tree() or not enemy.multiplayer.is_server() or source == null:
+		return
+	var attacker: PlayerCharacter = PlayerCharacter.of(source)
+	var prop := source as NetProp
+	if attacker == null and prop != null:
+		var thrower: int = prop.get_recent_thrower(Config.feel.props.physics_attacker_window)
+		if thrower != 0:
+			attacker = PlayerCharacter.find(thrower)
+	if attacker != null:
+		enemy.on_hurt_by(attacker)
+
+
+## Host: a heavy prop was thrown: watch it for a moment so enemies in its way can jump aside.
+func _on_prop_released(_player_id: int, prop: Node3D, thrown: bool) -> void:
+	var net_prop := prop as NetProp
+	if not thrown or net_prop == null or not net_prop.multiplayer.is_server():
+		return
+	if net_prop.get_true_mass() < Config.feel.ai.dodge_min_mass:
+		return
+	_thrown.append({"prop": weakref(net_prop), "until": Time.get_ticks_msec() / 1000.0 + WATCH_THROWN_SECONDS})
+
+
+func _physics_process(_delta: float) -> void:
+	if _thrown.is_empty():
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	var kept: Array[Dictionary] = []
+	for entry: Dictionary in _thrown:
+		var prop := (entry["prop"] as WeakRef).get_ref() as NetProp
+		if prop == null or not prop.is_inside_tree() or float(entry["until"]) < now or prop.is_held():
+			continue
+		kept.append(entry)
+		var moving: Vector3 = prop.get_estimated_velocity()
+		if moving.length() < Config.feel.ai.dodge_min_speed:
+			continue
+		for node: Node in get_tree().get_nodes_in_group(Enemy.GROUP):
+			var enemy := node as Enemy
+			if enemy != null and enemy.get_world_3d() == prop.get_world_3d():
+				enemy.consider_dodge(prop.get_instance_id(), prop.global_position, moving)
+	_thrown = kept
 
 
 func _clear_floor() -> void:

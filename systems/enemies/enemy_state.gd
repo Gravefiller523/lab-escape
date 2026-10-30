@@ -17,9 +17,22 @@ func exit(_enemy: Enemy) -> void:
 	pass
 
 
+## NEW 2026-10-30 (HL2 feel step 3.3): may a noise or a hit switch it to another state right now? False while
+## it can't stop (mid-attack).
+func can_interrupt(_enemy: Enemy) -> bool:
+	return true
+
+
 ## Runs every physics frame while active. Returns the next state's name, or &"" to stay.
 func physics_update(_enemy: Enemy, _delta: float) -> StringName:
 	return &""
+
+
+## NEW 2026-10-30 (HL2 feel step 3.4): within this flat distance of its target an enemy stops running at
+## them and either takes an attack ticket (attacks) or circles.
+static func engage_distance(enemy: Enemy) -> float:
+	var reach: float = enemy.data.attack_range if enemy.data != null else 1.5
+	return maxf(Config.feel.ai.circle_distance, reach) + 0.5
 
 
 ## Shared rule for every state: low on health and the enemy has a flee state -> flee (only once).

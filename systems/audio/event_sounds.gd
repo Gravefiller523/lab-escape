@@ -13,6 +13,10 @@ extends Resource
 @export var player_death: AudioStream
 ## A player used their item (swing, throw, drink).
 @export var item_use: AudioStream
+## NEW 2026-10-30: an enemy noticed a player (a squeak, at it).
+@export var enemy_notice: AudioStream
+## NEW 2026-10-30: an enemy winds up an attack (a growl, at it), just before it strikes.
+@export var enemy_windup: AudioStream
 
 @export_group("Players")
 ## A dead player came out of the 3D printer.
@@ -42,6 +46,7 @@ extends Resource
 ## field name -> placeholder kind (PlaceholderSounds) used while the field is empty.
 const PLACEHOLDERS: Dictionary = {
 	"hit": &"thunk", "enemy_death": &"squeak", "player_death": &"low", "item_use": &"whoosh",
+	"enemy_notice": &"chirp", "enemy_windup": &"growl",
 	"reprint": &"rise", "upgrade": &"sparkle", "purchase": &"chime",
 	"lift_ride": &"hum", "lift_arrive": &"chime", "lift_part": &"clunk", "boss_phase": &"roar", "boss_defeated": &"fanfare",
 	"menu_music": &"music_calm", "floor_music": &"music_floor", "boss_music": &"music_boss",

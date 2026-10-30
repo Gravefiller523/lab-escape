@@ -162,7 +162,8 @@ func find_prop_in_view() -> NetProp:
 			continue
 		var to_prop: Vector3 = prop.global_position - origin
 		var distance: float = to_prop.length()
-		if distance > tuning.grab_reach or distance < 0.01:
+		# CHANGED 2026-10-30: a bit further with the punt arm (PropSpawner.grab_reach_of).
+		if distance > PropSpawner.grab_reach_of(_body) or distance < 0.01:
 			continue
 		var dot: float = aim.dot(to_prop / distance)
 		if dot <= best_dot:

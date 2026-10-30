@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CyberneticData" format=3]
+
+[ext_resource type="Script" path="res://core/data/upgrades/cybernetic_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/upgrade_effect_data.gd" id="2_base"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/behaviour_effect_data.gd" id="3_behaviour"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/visual_attachment_effect_data.gd" id="4_visual"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/visuals/robot_arm.tscn" id="5_arm"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/behaviours/punt_arm.tscn" id="6_punt"]
+
+[sub_resource type="Resource" id="Punt"]
+script = ExtResource("3_behaviour")
+note = "Right click punts props (physics_props PropPunter; numbers in Config.feel.props, punt_*)."
+behaviour_scene = ExtResource("6_punt")
+
+[sub_resource type="Resource" id="Arm"]
+script = ExtResource("4_visual")
+scene = ExtResource("5_arm")
+attach_point = &"right_arm"
+
+[resource]
+script = ExtResource("1_data")
+id = &"cybernetic_punt_arm"
+display_name = "Punt arm"
+description = "A robot arm that punts things, like a gravity gun: right click launches whatever you hold, or the prop you aim at up to about 6 m away."
+effects = Array[ExtResource("2_base")]([SubResource("Punt"), SubResource("Arm")])
+glow_color = Color(1, 0.6, 0.2, 1)
+body_part = &"arm"

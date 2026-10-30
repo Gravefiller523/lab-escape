@@ -120,6 +120,9 @@ NEW 2026-10-17: `test_controller_added_to_every_body`, `test_press_fires_used_on
   (4) A fatter aim check: if the thin look ray finds nothing usable, a ball of `aim_assist_radius` is swept
   along the same line, stopping at the wall the ray hit, and only counts if no wall is in between.
   NEW tuning section `Config.feel.interaction` (UseTuning). 6 new GUT tests.
+- 2026-10-30 (fix, found by Zachary): the controller forgets a target that was removed between physics steps (a crate broke
+  or was despawned), so pressing E right then no longer errors ("previously freed"). Test:
+  `test_pressing_use_right_after_the_target_is_removed_is_safe`.
 
 ## HANDOFF
 **Done:** `Interactable`, `InteractionController` (look ray, prompt, hold-to-use, use handlers and prompt

@@ -73,6 +73,7 @@ GUT tests: `test_buses_exist`, `test_music_switches_on_floor_ready`, `test_pool_
 - 2026-10-29 (HL2 feel step 2.4): `SurfaceType` NEW `impact` and `scrape` sounds (`impact_sound()`, `scrape_sound()`, placeholders `impact_placeholder`, `scrape_placeholder`). NEW surfaces `wood.tres`, `glass.tres`, `flesh.tres`; `metal.tres` gets metal knocks and scrapes. NEW placeholder kinds `impact_concrete`, `impact_wood`, `impact_metal`, `impact_glass`, `impact_flesh`, looping `scrape_rough`, `scrape_metal`. Props knock and scrape with their own material (PropData.surface; see physics_props).
 - 2026-10-30 (HL2 feel step 3): NEW `EventSounds.enemy_notice` (an enemy noticed you, placeholder `chirp`) and `enemy_windup` (an enemy winds up an attack, placeholder `growl`); NEW placeholder kinds `chirp` and `growl`.
 - 2026-10-30 (HL2 feel step 4): NEW event sounds in a "World" group: `use_deny` (a buzz, on your PC when use does nothing or is refused; played from `EventBus.use_denied`), `button_press`, `door_move`, `door_shut` and `crank_turn` (played by world_io devices on every PC). NEW placeholder kinds `buzz`, `click`, `creak`, `ratchet`.
+- 2026-10-30 (HL2 feel step 4.3): NEW `EventSounds.punt` (someone punted a prop with the punt arm, at the prop; placeholder NEW kind `whump`).
 
 ## HANDOFF
 **Built (2026-10-23):** the `Sound` autoload (`SoundService`), `EventSounds` + `event_sounds.tres`, `PlaceholderSounds`, the

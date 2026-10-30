@@ -84,6 +84,8 @@ var _snapshots: Array[Dictionary] = []
 var _hold_targets: Dictionary[int, Vector3] = {}
 ## Owner: players pushing it right now (player id -> {time, direction, speed}).
 var _pushes: Dictionary[int, Dictionary] = {}
+## Owner (NEW 2026-10-30): players pulling it with the punt arm (player id -> {time, point, speed}).
+var _pulls: Dictionary[int, Dictionary] = {}
 ## Owner (a client): when someone last held or pushed it here.
 var _last_touch_msec: int = 0
 ## Host: last place it was resting safely (for key objects).
@@ -489,6 +491,20 @@ func add_push(player_id: int, direction: Vector3, speed: float) -> void:
 	_last_touch_msec = Time.get_ticks_msec()
 
 
+## Owner (NEW 2026-10-30, Zachary's idea): a player with the punt arm holding E on it drags it towards `point`
+## (in front of them) at up to `speed` m/s, like a magnet. CHANGED 2026-10-30 (Zachary's playtest): it is dragged,
+## not floated: gravity still acts and it tumbles along. It stops PUSH_MEMORY_MSEC after the last call, so the
+## puller keeps sending it.
+func add_pull(player_id: int, point: Vector3, speed: float) -> void:
+	_pulls[player_id] = {"time": Time.get_ticks_msec(), "point": point, "speed": speed}
+	_last_touch_msec = Time.get_ticks_msec()
+
+
+## Owner: someone is pulling it right now.
+func is_pulled() -> bool:
+	return not _pulls.is_empty()
+
+
 ## How fast it is moving: its real speed where it is simulated, otherwise the owner's last report.
 ## Used when handing it to another PC, so a flying prop keeps flying.
 func get_estimated_velocity() -> Vector3:
@@ -545,6 +561,18 @@ func get_radius() -> float:
 func throw_now(direction: Vector3, strength: float) -> void:
 	apply_central_impulse(direction.normalized() * strength)
 	angular_velocity += Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _tuning().throw_spin
+
+
+## Owner (NEW 2026-10-30, punt): launch it, awake, like a throw.
+func punt_now(direction: Vector3, strength: float) -> void:
+	sleeping = false
+	throw_now(direction, strength)
+
+
+## NEW 2026-10-30 (punt): `player_id` punted it: like a throw, they get the credit for its hits for a while.
+func mark_launched_by(player_id: int) -> void:
+	last_holder_id = player_id
+	_released_msec = Time.get_ticks_msec()
 
 
 ## For tests: pretend it weighs this much.
@@ -730,6 +758,7 @@ func _simulate(delta: float) -> void:
 	if not multiplayer.is_server():
 		_claim_ahead(delta)
 	_apply_pushes()
+	_apply_pulls(delta)
 	# CHANGED 2026-10-29: no prop goes faster than prop_max_speed.
 	var top_speed: float = _tuning().prop_max_speed
 	if linear_velocity.length_squared() > top_speed * top_speed:
@@ -819,6 +848,41 @@ func _apply_pushes() -> void:
 	if current < wanted:
 		linear_velocity += direction * (wanted - current)
 		sleeping = false
+
+
+## Owner (NEW 2026-10-30): drag it across the ground towards whoever pulls it (the middle of their points, if
+## several), slowing down as it arrives so it doesn't fly past them. The tug acts a little above its middle, so
+## with the floor holding its bottom back it rolls and tumbles; gravity is left alone (no hovering).
+func _apply_pulls(delta: float) -> void:
+	if _pulls.is_empty():
+		return
+	if is_held():
+		_pulls.clear()
+		return
+	var now: int = Time.get_ticks_msec()
+	var target := Vector3.ZERO
+	var speed: float = 0.0
+	for player_id: int in _pulls.keys():
+		var pull: Dictionary = _pulls[player_id]
+		var pulled_at: int = pull["time"]
+		if now - pulled_at > PUSH_MEMORY_MSEC:
+			_pulls.erase(player_id)
+			continue
+		target += pull["point"] as Vector3
+		var pull_speed: float = pull["speed"]
+		speed = maxf(speed, pull_speed)
+	if _pulls.is_empty():
+		return
+	target /= float(_pulls.size())
+	var offset: Vector3 = target - global_position
+	offset.y = 0.0
+	var wanted: Vector3 = offset.normalized() * minf(speed, offset.length() * 4.0)
+	var flat := Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	var change: Vector3 = flat.move_toward(wanted, _tuning().pull_acceleration * delta) - flat
+	if change.is_zero_approx():
+		return
+	sleeping = false
+	apply_impulse(change * mass, Vector3.UP * get_depth_along(Vector3.UP) * _tuning().pull_tumble)
 
 
 ## Everyone else: show where the owner had it a moment ago (interpolation delay), gliding between

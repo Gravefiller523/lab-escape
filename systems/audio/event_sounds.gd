@@ -37,6 +37,8 @@ extends Resource
 @export var door_shut: AudioStream
 ## A valve or crank turned a notch (at it; plays every eighth of a turn).
 @export var crank_turn: AudioStream
+## NEW 2026-10-30 (HL2 feel step 4.3): someone punted a prop with the punt arm (at the prop).
+@export var punt: AudioStream
 
 @export_group("Lift and boss")
 ## The cargo lift starts moving (loops while it rides).
@@ -59,7 +61,7 @@ extends Resource
 const PLACEHOLDERS: Dictionary = {
 	"hit": &"thunk", "enemy_death": &"squeak", "player_death": &"low", "item_use": &"whoosh",
 	"enemy_notice": &"chirp", "enemy_windup": &"growl",
-	"use_deny": &"buzz", "button_press": &"click", "door_move": &"creak", "door_shut": &"clunk", "crank_turn": &"ratchet",
+	"use_deny": &"buzz", "button_press": &"click", "door_move": &"creak", "door_shut": &"clunk", "crank_turn": &"ratchet", "punt": &"whump",
 	"reprint": &"rise", "upgrade": &"sparkle", "purchase": &"chime",
 	"lift_ride": &"hum", "lift_arrive": &"chime", "lift_part": &"clunk", "boss_phase": &"roar", "boss_defeated": &"fanfare",
 	"menu_music": &"music_calm", "floor_music": &"music_floor", "boss_music": &"music_boss",

@@ -64,7 +64,51 @@ func release_all(prop: NetProp) -> void   # host
 func get_snapshot_batch(near: bool) -> Array   # what the host would send now (moving props only)
 func get_config() -> GameConfig
 func use_net(net: NetService, config: GameConfig) -> void   # tests only
+# NEW 2026-10-30 (HL2 feel step 4.3): the punt
+signal prop_punted(prop: NetProp, player_id: int)   # host
+func punt_strength(prop: NetProp) -> float            # the punt's impulse (kg x m/s)
+func request_punt(prop: NetProp, direction: Vector3, predicted: bool) -> void   # PropPunter calls it
+func decide_punt(body: PlayerCharacter, prop: NetProp) -> String   # host: "" or why not (REFUSE_*)
+signal enemy_punted(enemy: Enemy, player_id: int)   # host
+static func punt_push_for(enemy: Enemy, direction: Vector3) -> Vector3
+func request_punt_enemy(enemy: Enemy, direction: Vector3) -> void
+func decide_punt_enemy(body: PlayerCharacter, enemy: Enemy) -> String
+static func grab_reach_of(body: PlayerCharacter) -> float   # grab_reach, longer with the punt arm
+func request_pull(prop: NetProp, body: PlayerCharacter, point: Vector3) -> void   # PropPunter, while E is held
+func decide_pull(body: PlayerCharacter, prop: NetProp) -> String
+
+# class_name PropPunter extends Node (NEW 2026-10-30): the punt arm cybernetic's behaviour node, under a body
+signal punted(prop: NetProp)                          # local
+static func of(body: Node) -> PropPunter              # null = no punt arm
+func try_punt() -> bool                               # local: what right click does
+func find_target(reach: float = -1.0) -> NetProp      # the loose prop aimed at within punt_range (or reach)
+func find_enemy() -> Enemy                            # the living enemy aimed at within punt_range
+func pull(prop: NetProp, by_key: bool = false) / stop_pull() / get_pulled() / can_pull(prop)   # local
+signal punted_enemy(enemy: Enemy)                     # local
+# NetProp: punt_now(direction, strength) (owner), mark_launched_by(player_id) (the punter gets hit credit),
+# add_pull(player_id, point, speed) / is_pulled() (owner)
 ```
+**Punt (NEW 2026-10-30, HL2 feel step 4.3):** like Half-Life 2's gravity gun punt, given by the punt arm
+cybernetic (`content/cybernetics/cybernetic_punt_arm.tres`, from a data drive in the mutation machine, or
+`upgrade cybernetic_punt_arm` in the console). Right click launches the prop you hold, or else the loose prop
+you aim at within `punt_range` (6.35 m; if the look ray misses, the one nearest the middle of the view inside
+`punt_cone_dot` that no wall hides). It flies off at `punt_speed` (15 m/s), up to `punt_light_bonus` faster for
+light things, but never with more than `punt_max_impulse` (heavy crates only shift). A prop resting on
+something is never driven down into it: the launch points at least `punt_floor_lift` up (about 12 degrees),
+so things on the floor hop up and fly (our choice, for feel). One punt per
+`punt_cooldown` (0.5 s). With nothing to punt, the click goes on to the item in your hand. The host checks it
+(`decide_punt`: the arm, the cooldown, reach, nobody else holding it, nobody standing on it), then the PC
+that runs the prop launches it; if that is the punter's PC it already did, at once. The punter gets the
+credit for its hits, as with a throw. Sound: `EventSounds.punt`. Numbers: `Config.feel.props`, `punt_*`.
+**Punting enemies (NEW 2026-10-30, Zachary):** an enemy nearer the middle of the view than any prop is shoved
+instead (`Enemy.knock_back`): away from you with a little hop, `punt_enemy_impulse` / its impact mass m/s (at most
+`punt_enemy_max_speed`), so a rat flies and a kangaroo stumbles. It never does damage, but the enemy turns on you.
+**Pull (NEW 2026-10-30, Zachary's idea):** with the arm, holding E on a prop that is too far to pick up (within
+`pull_range`, 8 m) drags it towards you like a magnet (`pull_speed`), and it is picked up as soon as it is in
+reach. CHANGED 2026-10-30 (Zachary's playtest): it keeps its weight and tumbles along the ground (the tug acts
+`pull_tumble` above its middle) instead of floating, and the range is 8 m (was 15). The arm also makes your reach `pull_grab_bonus` (1.5 m) longer (`PropSpawner.grab_reach_of`).
+Props that need helpers aren't pulled. Like pushing, the host hands a pulled prop to the puller's PC, so it
+moves without delay.
 NEW 2026-10-17: `NetProp.apply_holders`, `apply_snapshot`, `start_predicting`, `stop_predicting`,
 `set_hold_target` and `set_spawner`, and PropSpawner's `request_grab`, `request_release` and
 `send_hold_point`, are internal to physics_props (only PropSpawner and GrabController call them).
@@ -208,6 +252,15 @@ two people), `prop_lift_part_zoology` (key object), with scenes in `systems/phys
 The proof scene has 4 light crates (all the same mass for now), the heavy crate, a lift part, a table,
 a pit (no kill zone: things fall out of the world), and R to reset the props.
 
+NEW 2026-10-30 (punt): `tests/unit/physics_props/test_punt.gd`: `test_light_things_fly_faster_and_heavy_things_barely_move`,
+`test_right_click_punts_the_crate_you_aim_at`, `test_nothing_in_reach_leaves_the_click_to_the_item`,
+`test_a_held_crate_is_punted_out_of_your_hands_faster_than_a_throw`, `test_only_a_punt_arm_can_punt_and_not_too_often`,
+`test_a_punted_crate_kills_a_light_enemy_and_the_punter_gets_the_credit`, `test_a_client_punt_launches_the_crate_on_every_pc`,
+`test_holding_e_pulls_a_far_crate_in_and_picks_it_up`, `test_the_arm_lets_e_reach_a_bit_further_and_e_starts_a_pull`,
+`test_heavy_props_are_not_pulled`, `test_a_client_pulls_a_crate_from_afar`, `test_punting_an_enemy_shoves_it_but_never_hurts_it`,
+`test_heavy_enemies_are_shoved_less`.
+Playtest: F6 in `systems/player/test/feel_playtest.tscn` gives everyone the punt arm.
+
 ## Acceptance criteria
 - [x] Two players on two PCs can pass one box with no visible lag for the holder and smooth motion for the watcher.
   *Two local windows (2026-10-17) and 2 PCs on real Steam (Zachary, 2026-10-18).*
@@ -289,6 +342,7 @@ a pit (no kill zone: things fall out of the world), and R to reset the props.
 - 2026-10-29 (Zachary's step 2 playtest): (1) "prop flying" (jump off a box, grab it mid-air, land on it, repeat) is blocked: nobody can grab a prop under any player's feet down to NEW `no_grab_below_depth` (1.2 m), even mid-jump (NEW `PropSpawner.is_under_a_player(prop)`, used by the host's grab rules and the grab prompt). (2) Looking down while carrying no longer shoves you backwards: the hold point always stays NEW `hold_body_clearance` (0.1 m) outside your own body. (3) Crates broke too easily: sideways hits only wear a prop down from NEW `prop_wear_min_speed` (5 m/s; a throw into a wall is about 7), and landings only from NEW `prop_wear_min_fall_speed` (9 m/s, a fall of about 2.7 m), so dropping a crate from head height is harmless (`NetProp.wear_speed_of`). Wear never counts more than the speed the prop really lost, so a crate that glances off an enemy still hurts it instead of smashing first.
 - 2026-10-30 (HL2 feel step 3.3): every prop knock is also a noise enemies hear (`EventBus.noise_made`, on the host), carrying 3 m for a soft bump up to 15 m for a hard hit (`Config.feel.ai.noise_prop_quietest` / `noise_prop_loudest`).
 - 2026-10-30 (fix): a hit that takes a few physics steps to stop a prop counts as one hit. For NEW `NetProp.HIT_GATHER_STEPS` (3) steps after a hit, the prop keeps reporting how much speed it has lost since just before the hit (so a bounce is not counted twice), and within `impact_report_cooldown` the host deals only the extra damage (it remembers what each hit dealt). A thrown crate sometimes did a quarter of its damage when its stop was split over two steps.
+- 2026-10-30 (HL2 feel step 4.3): the punt. NEW `PropPunter` (`prop_punter.gd`), PropSpawner `punt_strength`, `request_punt`, `decide_punt`, `prop_punted` and `REFUSE_NO_PUNT_ARM` / `REFUSE_TOO_SOON` / `REFUSE_HELD` / `REFUSE_ATTACHED`, NetProp `punt_now` and `mark_launched_by`, PropTuning "Punt" group (`punt_range` 6.35, `punt_cooldown` 0.5, `punt_speed` 15, `punt_light_bonus` 5, `punt_light_mass` 5, `punt_max_impulse` 600, `punt_floor_lift` 0.2, `punt_cone_dot` 0.97), PropSpawner `punt_direction`. CHANGED: `_impulse_rpc` wakes a sleeping prop before pushing it. 7 GUT tests (`test_punt.gd`). Same day, Zachary's ideas: punting an enemy shoves it and never hurts it (`punt_enemy_impulse` 150, `punt_enemy_max_speed` 10, `punt_enemy_lift` 3; `REFUSE_DEAD`); holding E pulls far props in like a magnet and the arm reaches 1.5 m further (`pull_range` 8, `pull_speed` 10, `pull_acceleration` 40, `pull_grab_bonus` 1.5, `pull_tumble` 0.5; `REFUSE_TOO_HEAVY`; after Zachary's playtest it drags and tumbles instead of floating, and reaches 8 m, not 15). FIX: `InteractionController` forgets a target that was removed between physics steps, so pressing E right then no longer errors (`test_pressing_use_right_after_the_target_is_removed_is_safe`). GrabController and the host's grab check use `grab_reach_of`. 13 GUT tests in `test_punt.gd`.
 
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,

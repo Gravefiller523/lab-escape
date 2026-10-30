@@ -27,6 +27,9 @@ const ARRIVE_DISTANCE: float = 1.0
 const CALM_STATES: Array[StringName] = [&"idle", &"patrol", &"search"]
 ## NEW 2026-10-30: how long (s) a jump aside lasts.
 const DODGE_SECONDS: float = 0.4
+## NEW 2026-10-30 (punt): how long a shove lasts, and how fast it slows down meanwhile (m/s per second).
+const KNOCK_SECONDS: float = 0.6
+const KNOCK_FRICTION: float = 12.0
 ## CHANGED 2026-10-29: turn speed, target memory, repath time, client smoothing and corpse time moved to
 ## Config.feel.ai (AiTuning, res://config/feel_tuning.tres).
 
@@ -92,6 +95,8 @@ var _circle_side: float = 1.0
 var _dodge_left: float = 0.0
 var _dodge_ready_at: float = 0.0
 var _dodge_decided: Dictionary[int, bool] = {}
+## NEW 2026-10-30 (punt): seconds left of being shoved (no thinking, it just slides).
+var _knock_left: float = 0.0
 
 
 ## The enemy a node belongs to (a hitbox, a mesh), or null.
@@ -486,6 +491,20 @@ func consider_dodge(prop_id: int, prop_position: Vector3, prop_velocity: Vector3
 	return true
 
 
+## NEW 2026-10-30 (punt): host: shove it at `push` m/s. For KNOCK_SECONDS it doesn't think, it just slides
+## (and falls), slowing down. No damage: whoever shoves it decides that.
+func knock_back(push: Vector3) -> void:
+	if _dead:
+		return
+	velocity = push
+	_knock_left = KNOCK_SECONDS
+
+
+## NEW 2026-10-30 (punt): is it being shoved right now?
+func is_knocked_back() -> bool:
+	return _knock_left > 0.0
+
+
 ## NEW 2026-10-30: is it in the middle of jumping aside?
 func is_dodging() -> bool:
 	return _dodge_left > 0.0
@@ -505,6 +524,15 @@ func _physics_process(delta: float) -> void:
 	if _dodge_left > 0.0:
 		# Mid-jump aside: no thinking, just fly.
 		_dodge_left -= delta
+	elif _knock_left > 0.0:
+		# NEW 2026-10-30: shoved (punt): no thinking, slide to a stop.
+		_knock_left -= delta
+		if flying or is_on_floor():
+			var flat := Vector3(velocity.x, 0.0, velocity.z).move_toward(Vector3.ZERO, KNOCK_FRICTION * delta)
+			velocity.x = flat.x
+			velocity.z = flat.z
+			if flying:
+				velocity.y = move_toward(velocity.y, 0.0, KNOCK_FRICTION * delta)
 	elif _state != null:
 		var next: StringName = _state.physics_update(self, delta)
 		if next != &"" and next != _state_name and _states.has(next) and _states[next].can_enter(self):

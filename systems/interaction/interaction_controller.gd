@@ -55,11 +55,23 @@ func _exit_tree() -> void:
 
 ## What the local player is looking at (a collision object), or null.
 func get_target() -> Node3D:
+	_forget_freed()
 	return _target
+
+
+## FIX 2026-10-30 (found by Zachary): what we were looking at can be removed between physics steps (a crate
+## broke, a prop was despawned); forget it, so nothing is handed a freed object.
+func _forget_freed() -> void:
+	# (A freed object compares equal to null, so only is_instance_valid can tell.)
+	if not is_instance_valid(_target):
+		_target = null
+	if not is_instance_valid(_hold_target):
+		_hold_target = null
 
 
 ## "Press E to ..." text for the current target, or "" for nothing to do.
 func get_prompt() -> String:
+	_forget_freed()
 	if _target == null:
 		return ""
 	for entry: Dictionary in _providers:
@@ -75,6 +87,7 @@ func get_prompt() -> String:
 
 ## 0 to 1 while holding the use key on a hold-to-use object (for the HUD ring).
 func get_hold_progress() -> float:
+	_forget_freed()
 	var interactable: Interactable = Interactable.of(_hold_target) if _hold_target != null else null
 	if interactable == null or interactable.hold_seconds <= 0.0:
 		return 0.0
@@ -183,6 +196,7 @@ func _physics_process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _body == null or not _body.is_local() or not event.is_action_pressed(InputActions.USE):
 		return
+	_forget_freed()
 	if press_use(_target):
 		get_viewport().set_input_as_handled()
 

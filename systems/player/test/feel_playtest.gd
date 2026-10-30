@@ -11,6 +11,7 @@ extends "res://systems/player/test/movement_test.gd"
 ## reprints), and the mouse wheel scrolls the list while it's shown (F1 hides it to get item switching back).
 ## NEW 2026-10-30 (step 4): a door course (world_io devices): four walls in a row, each with a door worked a
 ## different way (by hand, by a button, by a valve, by walking up to it), and a tiny button on a post.
+## NEW 2026-10-30 (step 4.3): F6 (host) gives every player the punt arm cybernetic, or takes it away again.
 
 const CHECKLIST_PATH: String = "res://systems/player/test/playtest_checklist.txt"
 const COURSE_COLOR: Color = Color(0.5, 0.42, 0.55)
@@ -32,6 +33,8 @@ const CHECKLIST_SCROLL_STEP: int = 48
 const DOOR_COURSE_X: float = 15.0
 const DOOR_COURSE_WALLS: Array[float] = [5.0, 9.0, 13.0, 17.0]
 const DOOR_WALL_COLOR: Color = Color(0.5, 0.5, 0.56)
+## NEW 2026-10-30 (step 4.3): F6 toggles this upgrade on every player.
+const PUNT_ARM: StringName = &"cybernetic_punt_arm"
 
 var _checklist: PanelContainer
 var _props: PropSpawner
@@ -283,7 +286,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	super._unhandled_key_input(event)
 
 
-## F2 to F5 (enemy pen keys). True if the key was one of them.
+## F2 to F5 (enemy pen keys), and F6 (punt arm, NEW 2026-10-30). True if the key was one of them.
 func _enemy_key(keycode: Key) -> bool:
 	match keycode:
 		KEY_F2:
@@ -303,9 +306,23 @@ func _enemy_key(keycode: Key) -> bool:
 			var health: HealthComponent = HealthComponent.of(body) if body != null else null
 			if health != null:
 				health.invulnerable = not health.invulnerable
+		KEY_F6:
+			_toggle_punt_arm()
 		_:
 			return false
 	return true
+
+
+## Host (NEW 2026-10-30, step 4.3): everyone gets the punt arm, or loses it if the host has it.
+func _toggle_punt_arm() -> void:
+	if not multiplayer.is_server():
+		return
+	var taking: bool = Upgrades.has_upgrade(Net.local_player_id(), PUNT_ARM)
+	for body: PlayerCharacter in _props.get_bodies():
+		if taking:
+			Upgrades.remove(body.player_id, PUNT_ARM)
+		else:
+			Upgrades.grant(body.player_id, PUNT_ARM)
 
 
 func _read_checklist() -> String:

@@ -256,3 +256,12 @@ func test_prompt_and_e_survive_a_held_vial_vanishing() -> void:
 
 func _held_prompt(controller: InteractionController) -> String:
 	return controller.get_prompt()
+
+
+## NEW 2026-10-30 (HL2 feel step 4.3): the punt arm cybernetic gives the punt (physics_props' PropPunter).
+func test_the_punt_arm_gives_the_punt() -> void:
+	assert_null(PropPunter.of(_body), "no punt without it")
+	assert_true(Upgrades.grant(_me, &"cybernetic_punt_arm"))
+	assert_not_null(PropPunter.of(_body), "installed: the body can punt")
+	Upgrades.remove(_me, &"cybernetic_punt_arm")
+	assert_null(PropPunter.of(_body), "removed: it can't")

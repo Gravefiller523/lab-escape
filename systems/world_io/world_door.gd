@@ -8,6 +8,11 @@ extends WorldDevice
 ## Outputs: opening, opened, closing, closed, blocked, locked_use.
 ## Inputs: open, close, toggle, lock, unlock (and enable, disable).
 ## It keeps a SoundDoor (voice) in the doorway up to date. The host moves it; other PCs follow.
+## NEW 2026-10-30 (doors and enemies): an enemy that walks into a shut door it can open (`enemies_can_open`,
+## not locked, `usable`, enabled) pushes it open, away from itself; while it swings open for an enemy it
+## doesn't stop for enemies. Enemies path through such doors, and through any door that stands open: the
+## panel is then in Enemies.NAV_SKIP_GROUP, left out of the navigation bake. When that changes (locked,
+## unlocked, a gate opened or shut) the host asks Enemies for a new bake.
 
 @export var width: float = 1.2
 @export var height: float = 2.2
@@ -24,12 +29,18 @@ extends WorldDevice
 ## True: it always opens the same way (towards -Z), instead of away from whoever opened it.
 @export var one_way: bool = false
 @export var color: Color = Color(0.45, 0.38, 0.3)
+## NEW 2026-10-30: enemies that walk into it push it open (when it isn't locked and players could open it).
+@export var enemies_can_open: bool = true
 
 ## Counts as open (for voice) past this many degrees.
 const OPEN_FOR_SOUND_DEGREES: float = 3.0
 ## The handle: this far in from the door's free edge, this high up.
 const HANDLE_INSET: float = 0.12
 const HANDLE_HEIGHT: float = 1.0
+## NEW 2026-10-30: how often (s) the host looks for enemies walking into it, and how far (m) from the shut
+## door an enemy may be (plus its own radius).
+const ENEMY_CHECK_SECONDS: float = 0.15
+const ENEMY_REACH: float = 0.6
 
 var _angle: float = 0.0
 var _target: float = 0.0
@@ -40,6 +51,11 @@ var _sound_door: SoundDoor
 var _shape_offset: Vector3
 var _full_query: PhysicsShapeQueryParameters3D
 var _inner_query: PhysicsShapeQueryParameters3D
+## NEW 2026-10-30: an enemy started the opening swing (it doesn't stop for enemies then).
+var _opened_by_enemy: bool = false
+var _enemy_check_left: float = 0.0
+## Whether enemies can get through it (the panel is left out of the navigation bake), as last worked out.
+var _lets_enemies_through: bool = false
 
 
 func _build() -> void:
@@ -79,6 +95,7 @@ func _build() -> void:
 	_full_query = _make_query(Vector3(width, height, thickness))
 	_inner_query = _make_query(Vector3(maxf(width - 0.1, 0.05), maxf(height - 0.1, 0.05), maxf(thickness - 0.06, 0.01)))
 	_refresh_prompt()
+	_refresh_navigation()
 
 
 func get_inputs() -> PackedStringArray:
@@ -107,14 +124,53 @@ func get_interactable() -> Interactable:
 	return _interactable
 
 
+## NEW 2026-10-30: can an enemy get through? It stands open (or is opening), or an enemy could push it open.
+func lets_enemies_through() -> bool:
+	return _target != 0.0 or can_enemies_open()
+
+
+## NEW 2026-10-30: would an enemy walking into it push it open?
+func can_enemies_open() -> bool:
+	return enemies_can_open and usable and not locked and _enabled
+
+
 ## Host: open it away from this player (or the usual way if there's none, or it is one-way).
 func open(activator_id: int = 0) -> void:
-	var direction: float = 1.0
-	var body: PlayerCharacter = PlayerCharacter.find(activator_id) if activator_id != 0 and not one_way else null
+	var body: PlayerCharacter = PlayerCharacter.find(activator_id) if activator_id != 0 else null
 	if body != null and body.is_inside_tree():
-		# Turning +Y swings the free edge towards -Z, away from someone standing on the +Z side.
-		direction = 1.0 if to_local(body.global_position).z >= 0.0 else -1.0
+		open_away_from(body.global_position, activator_id)
+	else:
+		_set_target(swing_degrees, activator_id)
+
+
+## NEW 2026-10-30: host: open it away from a point (whoever is pushing it), or the usual way if it is one-way.
+func open_away_from(point: Vector3, activator_id: int = 0) -> void:
+	# Turning +Y swings the free edge towards -Z, away from someone standing on the +Z side.
+	var direction: float = 1.0 if one_way or to_local(point).z >= 0.0 else -1.0
 	_set_target(swing_degrees * direction, activator_id)
+
+
+## NEW 2026-10-30: host: the first living enemy that is walking into the shut door (close to it, inside its
+## width, heading for it), or null.
+func find_enemy_walking_in() -> Enemy:
+	if not is_inside_tree():
+		return null
+	var to_door: Basis = global_basis.orthonormalized().inverse()
+	for node: Node in get_tree().get_nodes_in_group(Enemy.GROUP):
+		var enemy := node as Enemy
+		if enemy == null or enemy.is_dead() or not enemy.is_inside_tree() or enemy.get_world_3d() != get_world_3d():
+			continue
+		var where: Vector3 = to_door * (enemy.global_position - global_position)
+		var radius: float = enemy.hurtbox_radius
+		if where.x < -radius or where.x > width + radius or absf(where.z) > ENEMY_REACH + radius \
+				or where.y < -1.0 or where.y > height:
+			continue
+		var heading: Vector3 = to_door * enemy.get_walk_intent()
+		heading.y = 0.0
+		var side: float = 1.0 if where.z >= 0.0 else -1.0
+		if heading.length() > 0.1 and heading.z * side < -0.3 * heading.length():
+			return enemy
+	return null
 
 
 ## Host.
@@ -142,10 +198,12 @@ func _on_input(action: StringName, activator_id: int) -> void:
 		&"lock":
 			locked = true
 			_refresh_prompt()
+			_refresh_navigation()
 			push_state()
 		&"unlock":
 			locked = false
 			_refresh_prompt()
+			_refresh_navigation()
 			push_state()
 
 
@@ -155,6 +213,7 @@ func _set_target(angle: float, activator_id: int) -> void:
 		return
 	_target = angle
 	_open_for = 0.0
+	_opened_by_enemy = false
 	_on_start_moving()
 	push_state()
 	fire_output(&"opening" if angle != 0.0 else &"closing", activator_id)
@@ -163,6 +222,14 @@ func _set_target(angle: float, activator_id: int) -> void:
 func _physics_process(delta: float) -> void:
 	if _panel == null:
 		return
+	if _is_host() and _target == 0.0 and can_enemies_open():
+		_enemy_check_left -= delta
+		if _enemy_check_left <= 0.0:
+			_enemy_check_left = ENEMY_CHECK_SECONDS
+			var enemy: Enemy = find_enemy_walking_in()
+			if enemy != null:
+				open_away_from(enemy.global_position)
+				_opened_by_enemy = true
 	if _angle == _target:
 		if _target != 0.0 and auto_close_seconds > 0.0 and _is_host():
 			_open_for += delta
@@ -194,6 +261,8 @@ func _go_back() -> void:
 		back = swing_degrees * (signf(_angle) if _angle != 0.0 else 1.0)
 	_target = back
 	_open_for = 0.0
+	_opened_by_enemy = false
+	_refresh_navigation()
 	push_state()
 	fire_output(&"blocked")
 	fire_output(&"opening" if back != 0.0 else &"closing")
@@ -209,6 +278,7 @@ func _set_angle(angle: float) -> void:
 ## Every PC: it starts to move (creak) and the prompt changes.
 func _on_start_moving() -> void:
 	_refresh_prompt()
+	_refresh_navigation()
 	_play(&"door_move", -4.0, _panel.global_position + _panel.global_basis * _shape_offset)
 
 
@@ -221,11 +291,34 @@ func _refresh_prompt() -> void:
 		_interactable.prompt_text = "Close door" if _target != 0.0 else "Open door"
 
 
+## NEW 2026-10-30: every PC: keep the panel in or out of the navigation bake (Enemies.NAV_SKIP_GROUP); when
+## that changes on the host, Enemies bakes again.
+func _refresh_navigation() -> void:
+	if _panel == null:
+		return
+	var through: bool = lets_enemies_through()
+	if through == _lets_enemies_through and _panel.is_in_group(EnemiesService.NAV_SKIP_GROUP) == through:
+		return
+	_lets_enemies_through = through
+	if through:
+		_panel.add_to_group(EnemiesService.NAV_SKIP_GROUP)
+	else:
+		_panel.remove_from_group(EnemiesService.NAV_SKIP_GROUP)
+	if _is_host() and is_inside_tree():
+		Enemies.request_navigation_update()
+
+
 ## Would the door, turned to `angle`, newly run into a player or an enemy? Someone already overlapping
 ## it now doesn't count (so nobody gets the door stuck), but someone just touching it does.
+## CHANGED 2026-10-30: swinging open for an enemy, it only stops for players.
 func _would_hit_someone(angle: float) -> bool:
 	if not is_inside_tree():
 		return false
+	var mask: int = PhysicsLayers.bit(PhysicsLayers.PLAYERS)
+	if not (_opened_by_enemy and _target != 0.0):
+		mask |= PhysicsLayers.bit(PhysicsLayers.ENEMIES)
+	_full_query.collision_mask = mask
+	_inner_query.collision_mask = mask
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var already: Dictionary[int, bool] = _hits(space, _inner_query, _angle)
 	for id: int in _hits(space, _full_query, angle):
@@ -265,6 +358,7 @@ func _apply_state(state: Array) -> void:
 	var started: bool = target != _target
 	locked = state[2]
 	_target = target
+	_refresh_navigation()
 	var angle: float = state[0]
 	_set_angle(angle)
 	if started:
@@ -276,3 +370,4 @@ func _apply_state(state: Array) -> void:
 func _apply_enabled() -> void:
 	if _interactable != null:
 		_interactable.enabled = _enabled and usable
+	_refresh_navigation()

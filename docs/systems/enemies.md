@@ -17,6 +17,10 @@ func get_alive() -> Array[Enemy]
 func despawn_all() -> void                                          # host, between floors
 func get_spawner() -> EnemySpawner                                   # NEW 2026-10-19
 func bake_navigation(root: Node3D) -> NavigationRegion3D             # NEW 2026-10-19, host: navmesh for everything solid under root
+# NEW 2026-10-30 (doors), host:
+const NAV_SKIP_GROUP = &"nav_skip"            # bodies left out of the bake (doors enemies can open, or that stand open)
+func request_navigation_update() -> void      # bake again in NAV_UPDATE_DELAY (1 s); several asks make one bake
+func update_navigation(wait: bool = false) -> NavigationRegion3D   # bake again now; the old mesh is used until it's ready
 func spawn_floor(floor_in_department: int, department: DepartmentData, run_seed: int, markers: Array[RoomMarker]) -> Array[Enemy]   # NEW, host
 static func plan_spawns(pool: Array[WeightedIdData], floor_in_department: int, budget: int, rng: RandomNumberGenerator) -> Array[StringName]   # NEW
 static func pool_for(department: DepartmentData) -> Array[WeightedIdData]   # NEW (STUB: empty pool = every enemy)
@@ -54,6 +58,7 @@ func circle(player: PlayerCharacter, delta: float) -> void   # wait for an attac
 func claim_attack_ticket() -> bool / begin_windup() / strike() / end_attack()
 func consider_dodge(prop_id: int, prop_position: Vector3, prop_velocity: Vector3) -> bool
 func knock_back(push: Vector3) -> void / is_knocked_back() -> bool   # NEW 2026-10-30 (punt): host: shoved, no damage
+func get_walk_intent() -> Vector3             # NEW 2026-10-30 (doors): host: the way move_towards wants to go now (doors open for it)
 func is_dodging() -> bool / get_spacing_push() -> Vector3 / corpse_parent() -> Node / flat_distance_to(point) -> float
 static func count_corpses() -> int
 var search_point: Vector3; @export var avoidance_priority: float
@@ -190,6 +195,15 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
 - 2026-10-30 (HL2 feel step 4.3, Zachary): NEW `Enemy.knock_back(push)` and `is_knocked_back()`: the punt arm shoves an
   enemy (it slides for `KNOCK_SECONDS` 0.6, slowing by `KNOCK_FRICTION`, without thinking) and never hurts it; it does
   turn on whoever punted it. The push is worked out by physics_props (`PropSpawner.punt_push_for`).
+
+- 2026-10-30 (Zachary: let enemies walk through and open doors): the navigation bake leaves out `NAV_SKIP_GROUP`
+  bodies (a `WorldDoor` panel joins it while enemies can get through), so enemies path through doors; a door they
+  walk into swings open away from them (world_io). Locked doors and gates only wires open are walls to them, and
+  `request_navigation_update()` bakes again (in the background, keeping the old mesh until the new one is ready)
+  when a door changes. NEW `Enemy.get_walk_intent()`. CHANGED `Enemies.NAV_AGENT_RADIUS` 0.5 -> 0.25: with 0.25 m
+  cells, 0.5 kept paths 0.5 m off every wall and closed 1.2 to 1.3 m doorways (door size); 1.5 m was the narrowest
+  that worked. Bigger enemies slide along walls at corners. Tests: `test_enemies_path_through_doors_they_can_open_but_not_locked_ones`,
+  `test_an_enemy_walking_into_a_door_pushes_it_open`, `test_enemies_dont_open_locked_doors_or_doors_they_only_stand_by`.
 
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and

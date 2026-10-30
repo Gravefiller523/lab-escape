@@ -1,11 +1,10 @@
-HL2 FEEL, STEP 4.3: the punt arm (punt, pull, shove)
+HL2 FEEL: enemies and doors
 
-Press F6 to get the punt arm (a robot arm on your right side); F6 again takes it away. The prop yard is ahead of you on the right; the enemy pen and keys F2 to F5 are still there.
-1. Right click at a crate up to about 6 m away: it flies off hard, with a whump. Further away (or behind a wall), nothing happens.
-2. Pick something up with E and right click: it's launched out of your hands, much faster than a left-click throw.
-3. Light things (gems, the meat) fly faster than crates; the big heavy crate only shifts a bit.
-4. Hold E on a crate further away (up to about 8 m): it is dragged towards you like a magnet, tumbling along the floor, and you pick it up. Let go of E early and it stops. The heavy crate can't be pulled.
-5. With the arm you can also pick things up with E from a bit further away than before.
-6. Right click a rat or the kangaroo (F2 refills the pen): it's shoved away and not hurt, but it comes after you. Rats fly, the kangaroo only stumbles.
-7. Punt a crate at the rats: that still kills them. You can punt about twice a second, no faster.
-8. With a second player (Host local / Join local, then F6 in the host window): both can punt and pull, and both see things fly.
+The enemy pen (behind the ladder platform) now has a door. F2 refills the pen, F4 kills every enemy, F5 god mode, F7 locks or unlocks the pen door. The door course is to the right of the start.
+1. Stand outside the shut pen door and make noise (sprint about, jump, or throw a crate at the door). The rats come to look: they push the door open, away from themselves, and come out.
+2. Let them see you and run off. They follow you through doors, not round them.
+3. Open the pen door yourself, then shut it with rats chasing you from inside: they push it open again.
+4. Press F2 (rats back in the pen), then F7 to lock the door. Make noise outside: the rats can't open a locked door. F7 again unlocks it, and a moment later they come out.
+5. Run through the door course with rats after you (F3 drops a kangaroo in front of you too). Doors 1 and 4 they push open. Door 2 is locked and door 3 is a gate (only the valve opens it), so they go round the end of those walls instead.
+6. A door never swings into you while a rat opens it, and doors still swing away from you when you open them.
+7. With a second player (Host local / Join local): the joiner sees the doors the rats open swing open too.

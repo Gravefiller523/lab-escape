@@ -12,6 +12,8 @@ extends "res://systems/player/test/movement_test.gd"
 ## NEW 2026-10-30 (step 4): a door course (world_io devices): four walls in a row, each with a door worked a
 ## different way (by hand, by a button, by a valve, by walking up to it), and a tiny button on a post.
 ## NEW 2026-10-30 (step 4.3): F6 (host) gives every player the punt arm cybernetic, or takes it away again.
+## NEW 2026-10-30 (doors and enemies): the pen's doorway has a door the enemies push open; F7 (host) locks or
+## unlocks it.
 
 const CHECKLIST_PATH: String = "res://systems/player/test/playtest_checklist.txt"
 const COURSE_COLOR: Color = Color(0.5, 0.42, 0.55)
@@ -41,6 +43,7 @@ var _props: PropSpawner
 var _enemies: EnemySpawner
 var _health_label: Label
 var _checklist_scroll: ScrollContainer
+var _pen_door: WorldDoor
 
 
 func _ready() -> void:
@@ -153,7 +156,14 @@ func _build_pen() -> void:
 	_add_box(PEN_CENTER + Vector3(-1.0 - side * 0.5, height * 0.5, half_z), Vector3(side, height, 0.3), PEN_COLOR)
 	_add_box(PEN_CENTER + Vector3(1.0 + side * 0.5, height * 0.5, half_z), Vector3(side, height, 0.3), PEN_COLOR)
 	_add_box(PEN_CENTER + Vector3(-1.5, 1.0, 0.5), Vector3(1, 2, 1), PEN_COLOR)
-	_add_label(PEN_CENTER + Vector3(0, height + 0.8, half_z), "enemy pen (F2 resets it)")
+	_add_label(PEN_CENTER + Vector3(0, height + 0.8, half_z), "enemy pen (F2 resets it, F7 locks the door)")
+	# NEW 2026-10-30: a door in the doorway (2 m wide), which the enemies push open.
+	_add_box(PEN_CENTER + Vector3(0, 2.35, half_z), Vector3(2, 0.3, 0.3), PEN_COLOR)
+	_pen_door = WorldDoor.new()
+	_pen_door.name = "PenDoor"
+	_pen_door.width = 2.0
+	_pen_door.position = PEN_CENTER + Vector3(-1.0, 0, half_z)
+	add_child(_pen_door)
 
 
 ## NEW 2026-10-30 (step 4): four walls, each with a door: (1) by hand, toggled by a tiny button too; (2) locked,
@@ -286,7 +296,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	super._unhandled_key_input(event)
 
 
-## F2 to F5 (enemy pen keys), and F6 (punt arm, NEW 2026-10-30). True if the key was one of them.
+## F2 to F5 (enemy pen keys), F6 (punt arm, NEW 2026-10-30) and F7 (lock the pen door, NEW 2026-10-30). True if
+## the key was one of them.
 func _enemy_key(keycode: Key) -> bool:
 	match keycode:
 		KEY_F2:
@@ -308,6 +319,9 @@ func _enemy_key(keycode: Key) -> bool:
 				health.invulnerable = not health.invulnerable
 		KEY_F6:
 			_toggle_punt_arm()
+		KEY_F7:
+			if multiplayer.is_server():
+				_pen_door.receive(&"unlock" if _pen_door.is_locked() else &"lock")
 		_:
 			return false
 	return true

@@ -1,0 +1,234 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/level_gen/tiles/blockout_tile.gd" id="1_tile"]
+[ext_resource type="Script" path="res://systems/level_gen/room_doorway.gd" id="2_door"]
+[ext_resource type="Script" path="res://systems/level_gen/room_marker.gd" id="3_marker"]
+[ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_accent.tres" id="4_accent"]
+[ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_wall.tres" id="5_wall"]
+[ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_trim.tres" id="6_trim"]
+
+[node name="TileRoboticsAssemblyFloor" type="Node3D"]
+script = ExtResource("1_tile")
+size_units = Vector2i(6, 8)
+
+[node name="SocketN1" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0, 0)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="SocketN4" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.5, 0, 0)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="SocketS1" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0, 24)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="SocketS4" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.5, 0, 24)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="SocketW1" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4.5)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="SocketW6" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 19.5)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="SocketE1" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, 4.5)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="SocketE6" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, 19.5)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="LiftPart0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.5, 12)
+script = ExtResource("3_marker")
+kind = &"lift_part"
+params = {"max_size": "huge", "visible_from_entrance": true}
+
+[node name="LiftPart1" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0.5, 21.5)
+script = ExtResource("3_marker")
+kind = &"lift_part"
+params = {"max_size": "large", "visible_from_entrance": false}
+
+[node name="LiftPart2" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.4, 8)
+script = ExtResource("3_marker")
+kind = &"lift_part"
+params = {"max_size": "medium", "visible_from_entrance": true}
+
+[node name="PropSpawn0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5, 0.4, 3)
+script = ExtResource("3_marker")
+kind = &"prop_spawn"
+params = {"prop_id": "prop_crate"}
+
+[node name="PropSpawn1" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0.4, 12)
+script = ExtResource("3_marker")
+kind = &"prop_spawn"
+
+[node name="PropSpawn2" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5, 0.4, 21)
+script = ExtResource("3_marker")
+kind = &"prop_spawn"
+
+[node name="Keycard0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5, 0.3, 12)
+script = ExtResource("3_marker")
+kind = &"keycard"
+
+[node name="EnemySpawn0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.1, 4)
+script = ExtResource("3_marker")
+kind = &"enemy_spawn"
+
+[node name="EnemySpawn1" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.1, 20)
+script = ExtResource("3_marker")
+kind = &"enemy_spawn"
+
+[node name="EnemySpawn2" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0.1, 12)
+script = ExtResource("3_marker")
+kind = &"enemy_spawn"
+
+[node name="Patrol0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 12)
+script = ExtResource("3_marker")
+kind = &"patrol"
+params = {"route": "assembly"}
+
+[node name="Patrol1" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, 12)
+script = ExtResource("3_marker")
+kind = &"patrol"
+params = {"route": "assembly"}
+
+[node name="Patrol2" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0, 22)
+script = ExtResource("3_marker")
+kind = &"patrol"
+params = {"route": "assembly"}
+
+[node name="Cover0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0, 9.4)
+script = ExtResource("3_marker")
+kind = &"cover"
+
+[node name="Cover1" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0, 14.6)
+script = ExtResource("3_marker")
+kind = &"cover"
+
+[node name="Hazard0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 12)
+script = ExtResource("3_marker")
+kind = &"hazard"
+params = {"hazard_kinds": ["sparks", "malfunction"], "min_damage": "heavy"}
+
+[node name="Hazard1" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0, 12)
+script = ExtResource("3_marker")
+kind = &"hazard"
+params = {"hazard_kinds": ["fire"], "min_damage": "heavy"}
+
+[node name="Camera0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, 3.3, 0.4)
+script = ExtResource("3_marker")
+kind = &"camera"
+
+[node name="Camera1" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.6, 3.3, 23.6)
+script = ExtResource("3_marker")
+kind = &"camera"
+
+[node name="Sign0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 3.1, 0.3)
+script = ExtResource("3_marker")
+kind = &"sign"
+
+[node name="Furniture" type="CSGCombiner3D" parent="."]
+use_collision = true
+collision_mask = 0
+
+[node name="Conveyor0" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.5, 8)
+size = Vector3(12, 1, 1.2)
+material = ExtResource("4_accent")
+metadata/material_slot = &"accent"
+
+[node name="Conveyor1" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.5, 16)
+size = Vector3(12, 1, 1.2)
+material = ExtResource("4_accent")
+metadata/material_slot = &"accent"
+
+[node name="ConveyorStripe0" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1.01, 8)
+size = Vector3(12, 0.02, 0.2)
+material = ExtResource("6_trim")
+metadata/material_slot = &"trim"
+
+[node name="ConveyorStripe1" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1.01, 16)
+size = Vector3(12, 0.02, 0.2)
+material = ExtResource("6_trim")
+metadata/material_slot = &"trim"
+
+[node name="ArmNW" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.1, 10.5)
+size = Vector3(0.8, 2.2, 0.8)
+material = ExtResource("4_accent")
+metadata/material_slot = &"accent"
+
+[node name="ArmNE" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 1.1, 10.5)
+size = Vector3(0.8, 2.2, 0.8)
+material = ExtResource("4_accent")
+metadata/material_slot = &"accent"
+
+[node name="ArmSW" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.1, 13.5)
+size = Vector3(0.8, 2.2, 0.8)
+material = ExtResource("4_accent")
+metadata/material_slot = &"accent"
+
+[node name="ArmSE" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 1.1, 13.5)
+size = Vector3(0.8, 2.2, 0.8)
+material = ExtResource("4_accent")
+metadata/material_slot = &"accent"
+
+[node name="Damage" type="Node3D" parent="."]
+
+[node name="Light" type="Node3D" parent="Damage"]
+visible = false
+
+[node name="Heavy" type="Node3D" parent="Damage"]
+visible = false
+
+[node name="Destroyed" type="Node3D" parent="Damage"]
+visible = false

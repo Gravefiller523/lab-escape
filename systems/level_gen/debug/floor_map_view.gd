@@ -61,6 +61,7 @@ func _draw() -> void:
 		var screen := Rect2(to_screen.call(rects[index].position), rects[index].size * scale_fit)
 		draw_rect(screen, _color_of(index))
 		draw_rect(screen, OUTLINE_COLOR, false, 1.0)
+	_draw_room_names(rects, to_screen, scale_fit)
 	for pair: Vector2i in layout.loops:
 		if pair.x < rects.size() and pair.y < rects.size():
 			draw_line(to_screen.call(rects[pair.x].get_center()), to_screen.call(rects[pair.y].get_center()), LOOP_COLOR, 3.0)
@@ -77,6 +78,20 @@ func _draw() -> void:
 		draw_colored_polygon(PackedVector2Array([tip + forward * 10.0, tip - forward * 6.0 + side * 6.0,
 			tip - forward * 6.0 - side * 6.0]), color)
 
+
+
+## NEW 2026-10-31 (step 4a): each room's name (its room type in the department) in rooms big enough to hold it.
+func _draw_room_names(rects: Array[Rect2], to_screen: Callable, scale_fit: float) -> void:
+	var department := ContentRegistry.get_content(layout.department_id) as DepartmentData
+	var font: Font = ThemeDB.fallback_font
+	for index: int in rects.size():
+		var room := ContentRegistry.get_content(layout.placements[index].room_id) as RoomData
+		if room == null or room.tile_role != TileStandards.ROLE_ROOM or rects[index].size.x * scale_fit < 50.0:
+			continue
+		var text: String = LevelService.room_display_name(room, department)
+		var at: Vector2 = to_screen.call(rects[index].get_center()) - Vector2(rects[index].size.x * scale_fit / 2.0 - 4.0, 0)
+		var width: float = rects[index].size.x * scale_fit - 8.0
+		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_CENTER, width, 11, OUTLINE_COLOR)
 
 ## A placement's footprint in grid cells (x, z), as a rectangle.
 func _cell_rect(index: int, unit: float) -> Rect2:

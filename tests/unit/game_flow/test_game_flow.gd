@@ -39,6 +39,9 @@ func _config() -> GameConfig:
 	config.floor_load_timeout = 3.0
 	config.floors_per_department = 5
 	config.departments_per_run = 2
+	# CHANGED 2026-10-31: a department every floor; a boss floor every 6th floor; 12 floors in a test run.
+	config.run_floor_count = 12
+	config.boss_every_floors = 6
 	return config
 
 
@@ -133,41 +136,85 @@ func test_state_order_menu_breakroom_run_floor() -> void:
 	assert_signal_emitted(EventBus, "floor_loading")
 	assert_signal_emitted(EventBus, "floor_ready")
 	assert_eq(flow.get_run().floor_number, 1)
-	assert_eq(flow.get_run().department_ids[0], &"department_test_first")
+	# CHANGED 2026-10-31: a department is rolled for every floor of the run.
+	assert_eq(flow.get_run().department_ids.size(), 12, "one department per floor")
+	assert_eq(flow.get_run().get_department_id(), flow.get_run().department_ids[0])
 
 	EventBus.lift_departed.emit(1)
 	await wait_until(func() -> bool: return flow.get_run().floor_number == 2 and flow.get_state() == GameFlowService.State.ON_FLOOR, WAIT)
 	assert_eq(flow.get_run().floor_number, 2, "the lift goes to the next floor")
 
 
-func test_floor_six_is_next_department_after_boss() -> void:
+func test_every_sixth_floor_is_a_boss_floor_and_the_last_one_ends_the_run() -> void:
+	# CHANGED 2026-10-31 (Zachary, F1 and F3): boss floors every boss_every_floors floors, run_floor_count floors.
 	var pc := _make_pc(_config())
 	var flow: GameFlowService = _flow(pc)
 	flow.go_to_break_room()
 	await wait_until(_state_is(pc, GameFlowService.State.BREAK_ROOM), WAIT)
 	flow.debug_go_to_floor(5)
 	await wait_until(_state_is(pc, GameFlowService.State.ON_FLOOR), WAIT)
-	assert_eq(flow.get_run().floor_in_department, 5, "floor_count 0 uses Config floors_per_department (5)")
+	assert_eq(flow.get_run().floor_in_department, 5, "floor 5 is the 5th of its block")
 	watch_signals(EventBus)
 	EventBus.lift_departed.emit(5)
 	await wait_until(_state_is(pc, GameFlowService.State.BOSS_FIGHT), WAIT)
 	assert_eq(flow.get_run().floor_number, 6)
-	assert_true(flow.get_run().is_boss_floor, "floor 6 is the boss floor")
-	assert_signal_emitted_with_parameters(EventBus, "boss_floor_started", [&"boss_test"])
+	assert_true(flow.get_run().is_boss_floor, "floor 6 is a boss floor")
+	var boss_department: DepartmentData = flow.get_current_department()
+	assert_signal_emitted_with_parameters(EventBus, "boss_floor_started", [boss_department.boss_id])
 	# The lift (cargo_lift) only leaves a boss floor once the boss is beaten; then it goes on.
 	EventBus.lift_departed.emit(6)
 	await wait_until(_state_is(pc, GameFlowService.State.ON_FLOOR), WAIT)
 	assert_eq(flow.get_run().floor_number, 7)
-	assert_eq(flow.get_run().get_department_id(), &"department_test_second", "the next department")
-	assert_eq(flow.get_run().floor_in_department, 1)
+	assert_false(flow.get_run().is_boss_floor)
+	assert_eq(flow.get_run().floor_in_department, 1, "a new block of floors")
 
-	# The second department has 2 floors: floor 9 is its boss, and beating the last boss wins the run.
-	flow.debug_go_to_floor(9)
+	# Floor 12 is the last floor (a boss floor): beating its boss wins the run.
+	flow.debug_go_to_floor(12)
 	await wait_until(_state_is(pc, GameFlowService.State.BOSS_FIGHT), WAIT)
-	EventBus.lift_departed.emit(9)
+	EventBus.lift_departed.emit(12)
 	assert_signal_emitted_with_parameters(EventBus, "run_ended", [GameFlowService.RESULT_ESCAPED])
 	await wait_until(_state_is(pc, GameFlowService.State.BREAK_ROOM), WAIT)
 	assert_false(flow.is_in_run())
+
+
+func test_a_department_is_rolled_every_floor() -> void:
+	var config := _config()
+	config.run_floor_count = 18
+	var flow: GameFlowService = _flow(_make_pc(config))
+	var floors: Array[StringName] = flow.floor_departments(42)
+	assert_eq(floors.size(), 18, "one department per floor")
+	assert_eq(flow.floor_departments(42), floors, "same seed, same departments")
+	var runs: Dictionary[String, bool] = {}
+	for run_seed: int in 20:
+		var ids: Array[StringName] = flow.floor_departments(run_seed)
+		runs[str(ids)] = true
+		for index: int in range(1, ids.size()):
+			assert_ne(ids[index], ids[index - 1], "seed %d floor %d: never the same department twice in a row" % [run_seed, index + 1])
+		for boss_floor: int in [6, 12, 18]:
+			var department: DepartmentData = flow.get_department(ids[boss_floor - 1])
+			assert_true(department.boss_floors and ContentRegistry.has_content(department.boss_id),
+				"seed %d: boss floor %d is a department with its own boss (%s)" % [run_seed, boss_floor, department.id])
+	assert_gt(runs.size(), 1, "other seeds, other departments")
+	var run := RunState.new()
+	run.department_ids = floors
+	assert_true(flow.place_on_floor(run, 13))
+	assert_eq(run.get_department_id(), floors[12], "floor 13's department")
+	assert_eq(run.floor_in_department, 1)
+	assert_false(run.is_boss_floor)
+	assert_true(flow.place_on_floor(run, 18))
+	assert_true(run.is_boss_floor)
+	assert_false(flow.place_on_floor(run, 19), "a run has run_floor_count floors")
+
+
+func test_debug_floor_with_a_department_sets_that_floor() -> void:
+	var pc := _make_pc(_config())
+	var flow: GameFlowService = _flow(pc)
+	flow.go_to_break_room()
+	await wait_until(_state_is(pc, GameFlowService.State.BREAK_ROOM), WAIT)
+	flow.debug_go_to_floor(3, &"department_test_second")
+	await wait_until(_state_is(pc, GameFlowService.State.ON_FLOOR), WAIT)
+	assert_eq(flow.get_run().floor_number, 3)
+	assert_eq(flow.get_run().get_department_id(), &"department_test_second")
 
 
 func test_department_order_is_same_for_same_seed() -> void:

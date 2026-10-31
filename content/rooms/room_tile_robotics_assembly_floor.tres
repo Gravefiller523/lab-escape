@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="RoomData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/levels/room_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_robotics_assembly_floor.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"room_tile_robotics_assembly_floor"
+display_name = "Assembly floor (blockout)"
+description = "Robotics fabrication floor: two conveyor lines and robot arms."
+tags = PackedStringArray("blockout")
+scene = ExtResource("2_scene")
+size_cells = Vector3i(6, 1, 8)
+room_kind = &"assembly_floor"
+grid = &"tile_3m"
+tile_role = &"room"
+size_category = &"large"
+part_categories = PackedStringArray("mechanical", "structural")
+is_combat_room = true
+department_ids = Array[StringName]([&"department_robotics"])

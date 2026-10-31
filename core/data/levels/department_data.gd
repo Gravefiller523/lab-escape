@@ -4,8 +4,12 @@ extends ContentData
 ## Example id: "department_zoology". Files live in res://content/departments/.
 ## Adding a department = add its content files plus one of these. No code changes.
 
+## @deprecated runs roll a department every floor (2026-10-31); see GameConfig.run_floor_count.
 ## Number of floors before the boss floor.
 @export var floor_count: int = 5
+## NEW 2026-10-31: boss floors can be this department's (its boss_id). Off for a department whose boss_id is
+## only a stand-in until it gets its own boss (the content test needs every department to name one).
+@export var boss_floors: bool = true
 ## Rooms this department may use (in addition to rooms with no department set).
 @export var room_ids: Array[StringName] = []
 ## Enemies that spawn here and how often.

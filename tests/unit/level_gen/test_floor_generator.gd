@@ -229,3 +229,85 @@ func test_every_floor_has_room_for_its_lift_parts_and_a_charger() -> void:
 		assert_gte(parts, maxi(tuning.by_bracket(tuning.parts_max_by_bracket, floor_number), 3),
 			"floor %d seed %d: a separate spot for every broken part (%d spots)" % [floor_number, floor_seed, parts])
 		assert_gt(chargers, 0, "floor %d seed %d: a battery charger spot" % [floor_number, floor_seed])
+
+
+## NEW 2026-10-31 (step 4a): Robotics floors.
+func _robotics() -> DepartmentData:
+	return ContentRegistry.get_content(&"department_robotics") as DepartmentData
+
+
+func _kinds_on(layout: FloorLayout) -> Dictionary[StringName, int]:
+	var kinds: Dictionary[StringName, int] = {}
+	for placement: RoomPlacement in layout.placements:
+		var room: RoomData = _room(placement)
+		kinds[room.room_kind] = kinds.get(room.room_kind, 0) + 1
+	return kinds
+
+
+func test_robotics_floors_have_their_required_rooms() -> void:
+	var robotics: DepartmentData = _robotics()
+	assert_not_null(robotics, "content/departments/department_robotics.tres")
+	var department_rooms: int = 0
+	var shared_rooms: int = 0
+	for floor_seed: int in 40:
+		var floor_number: int = 1 + floor_seed % 18
+		var layout: FloorLayout = FloorGenerator.generate_from_seed(robotics, floor_number, floor_seed * 13 + 5, Config.floor_gen)
+		assert_false(layout.is_fallback, "floor %d seed %d: a real floor\n%s" % [floor_number, floor_seed, "\n".join(layout.log_lines)])
+		var kinds: Dictionary[StringName, int] = _kinds_on(layout)
+		for required: String in robotics.required_room_kinds:
+			if required == "lift":
+				continue
+			assert_eq(kinds.get(StringName(required), 0), 1, "floor %d seed %d: exactly one %s" % [floor_number, floor_seed, required])
+		assert_eq(_room(layout.placements[1]).id, &"room_tile_robotics_welcome_center", "Robotics floors use its welcome center")
+		for placement: RoomPlacement in layout.placements:
+			var room: RoomData = _room(placement)
+			if room.tile_role != TileStandards.ROLE_ROOM:
+				continue
+			if room.department_ids.has(robotics.id):
+				department_rooms += 1
+			else:
+				shared_rooms += 1
+	assert_gt(department_rooms, shared_rooms, "most rooms are Robotics rooms (shared share %.2f)" % Config.floor_gen.shared_room_share)
+	assert_gt(shared_rooms, 0, "but offices, storage and break rooms turn up too")
+
+
+func test_room_types_respect_max_per_floor() -> void:
+	var robotics: DepartmentData = _robotics()
+	for floor_seed: int in 20:
+		var kinds: Dictionary[StringName, int] = _kinds_on(FloorGenerator.generate_from_seed(robotics, 18, floor_seed, Config.floor_gen))
+		for room_type: RoomTypeData in robotics.room_types:
+			if room_type.max_per_floor > 0:
+				assert_lte(kinds.get(room_type.room_kind, 0), room_type.max_per_floor, "seed %d: %s" % [floor_seed, room_type.room_kind])
+
+
+func test_other_departments_never_get_robotics_rooms() -> void:
+	var botany := ContentRegistry.get_content(&"department_botany") as DepartmentData
+	for floor_seed: int in 10:
+		var layout: FloorLayout = FloorGenerator.generate_from_seed(botany, 3, floor_seed, Config.floor_gen)
+		for placement: RoomPlacement in layout.placements:
+			assert_false(_room(placement).department_ids.has(&"department_robotics"), "seed %d: %s" % [floor_seed, placement.room_id])
+
+
+func test_robotics_floors_get_the_palette_and_room_signs() -> void:
+	var robotics: DepartmentData = _robotics()
+	var layout: FloorLayout = FloorGenerator.generate_from_seed(robotics, 4, 2024, Config.floor_gen)
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	add_child_autofree(viewport)
+	var parent := Node3D.new()
+	viewport.add_child(parent)
+	Level.build(layout, parent)
+	var wall: Material = robotics.palette["wall"]
+	var painted: int = 0
+	var signs: PackedStringArray = PackedStringArray()
+	for node: Node in RoomShape.all_children(parent):
+		if node is CSGBox3D and node.get_meta(TileStandards.MATERIAL_SLOT_META, &"") == &"wall":
+			assert_eq((node as CSGBox3D).material, wall, "%s has the Robotics wall material" % node.get_path())
+			painted += 1
+		var label := node as Label3D
+		if label != null and label.name == "Sign":
+			signs.append(label.text)
+	assert_gt(painted, 10, "walls take the Robotics palette")
+	assert_true(signs.has("ASSEMBLY FLOOR"), "the assembly floor has its sign (%s)" % ", ".join(signs))
+	assert_true(signs.has("SECURITY"), "the welcome center's security room sign")
+	Level.clear()

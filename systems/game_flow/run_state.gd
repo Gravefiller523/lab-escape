@@ -5,13 +5,15 @@ extends RefCounted
 
 ## (Named run_seed, not seed: `seed` is a built-in GDScript function.)
 var run_seed: int = 0
-## Department ids in the order this run visits them.
+## Department ids in the order this run visits them. CHANGED 2026-10-31: one per floor (index = floor_number - 1),
+## rolled when the run starts (a department every floor, boss floors included).
 var department_ids: Array[StringName] = []
 ## 1-based across the whole run (boss floors count too).
 var floor_number: int = 0
-## Which department of department_ids we are in (0-based).
+## Which department of department_ids we are in (0-based). CHANGED 2026-10-31: floor_number - 1.
 var department_index: int = 0
-## 1..floor_count for regular floors; floor_count + 1 is the boss floor.
+## 1..floor_count for regular floors; floor_count + 1 is the boss floor. CHANGED 2026-10-31: the floor's place in
+## its block of GameConfig.boss_every_floors floors (1 to 5, the boss floor is 6). Enemy budgets and min_floor use it.
 var floor_in_department: int = 0
 var is_boss_floor: bool = false
 

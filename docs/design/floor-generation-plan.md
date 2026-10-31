@@ -635,6 +635,9 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
   next step (game_flow). Main hallways don't use T pieces yet; loops are straight 1-unit filler runs.
 
 ### Step 4: Robotics end to end (split into small steps, each played before the next)
+- **Built 2026-10-31 (4a, with F1-F3):** a department rolled every floor (game_flow), the Robotics department
+  and its 8 tiles, generator step 5 with required rooms, palettes and room signs. Botany and Zoology are
+  placeholder department files (shared rooms only). Waiting for Zachary to play it.
 - 4a: Robotics department file, its welcome center, its required and other room tiles; step 5 with
   required rooms. *Test: every Robotics floor has the assembly floor, test bay and server room (F8 shows them).*
 - 4b: incident and damage: overlays, lighting, hazards (placeholder sparks and fire). *Test: walk toward

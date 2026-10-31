@@ -28,11 +28,12 @@ func debug_go_to_floor(floor_number: int, department_id: StringName = &"") -> St
 # NEW 2026-10-18
 func get_state_name() -> String                 # "ON_FLOOR" etc.
 func describe() -> String                       # one line about the state and run (console, test scenes)
-func department_order(run_seed: int) -> Array[StringName]   # the departments a run with this seed visits
+func department_order(run_seed: int) -> Array[StringName]   # the departments a run with this seed visits (@deprecated 2026-10-31: use floor_departments)
+func floor_departments(run_seed: int) -> Array[StringName]   # NEW 2026-10-31: the department of every floor (run_floor_count of them)
 func get_department(department_id: StringName) -> DepartmentData   # includes the placeholder department
-func floors_in(department: DepartmentData) -> int   # regular floors before its boss floor
-func total_floors(run: RunState) -> int
-func place_on_floor(run: RunState, floor_number: int) -> bool   # moves a RunState to a floor of the whole run
+func floors_in(department: DepartmentData) -> int   # regular floors before its boss floor (@deprecated 2026-10-31)
+func total_floors(run: RunState) -> int    # CHANGED 2026-10-31: department_ids.size() (one per floor)
+func place_on_floor(run: RunState, floor_number: int) -> bool   # moves a RunState to a floor of the whole run. CHANGED 2026-10-31: department_index = floor - 1, floor_in_department = place in the 6-floor block, a boss floor every boss_every_floors
 func use_test_setup(net: NetService, config: GameConfig, scene_loader: Callable) -> void   # tests only
 const RESULT_ESCAPED, RESULT_WIPED, RESULT_ABANDONED   # run_ended results
 const MAIN_MENU_SCENE, BREAK_ROOM_SCENE, FLOOR_SCENE, LOADING_SCENE   # FLOOR_SCENE: CHANGED 2026-10-18, was STUB_FLOOR_SCENE
@@ -108,7 +109,9 @@ Test scene `systems/game_flow/test/flow_test.tscn`: buttons for each transition,
 Test scene done 2026-10-18 (buttons stay on screen across scene changes; launch options `host`, `join`, `port=`).
 GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
 - `test_state_order_menu_breakroom_run_floor`
-- `test_floor_six_is_next_department_after_boss` (5 floors + boss, with floors_per_department from config)
+- CHANGED 2026-10-31: `test_every_sixth_floor_is_a_boss_floor_and_the_last_one_ends_the_run`,
+  `test_a_department_is_rolled_every_floor` (one per floor, same seed same floors, never twice in a row, boss
+  floors only for departments with their own boss), `test_debug_floor_with_a_department_sets_that_floor`
 - `test_department_order_is_same_for_same_seed`
 - `test_new_department_file_joins_rotation` (register a DepartmentData in the test; it appears)
 - `test_team_wipe_ends_run_and_returns_to_break_room`
@@ -136,6 +139,17 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-31 (Zachary Q1, F1-F3; branch system/level_gen-floorgen-step4a): **a department is rolled every floor.**
+  `floor_departments(run_seed)` rolls one per floor with `SeededRng(run_seed, &"floor_department", floor)`, never
+  the same two floors in a row (also not the floor before a boss floor only one department can have). Every
+  `boss_every_floors`-th floor (6, 12, 18) is a boss floor, rolled among departments with `boss_floors` on and a
+  boss that exists (today only Zoology's giant rat; any department if none). A run is `run_floor_count` floors
+  (18); beating the last floor's boss wins. NEW GameConfig `run_floor_count`, `boss_every_floors`; deprecated
+  `floors_per_department`, `departments_per_run`, `department_order`, `floors_in`, `DepartmentData.floor_count`
+  (kept so nothing breaks). `RunState.department_ids` is one id per floor, `department_index` = floor - 1,
+  `floor_in_department` = the floor's place in its 6-floor block (1-5, boss 6): enemy budgets, enemy `min_floor`
+  and old rooms' `min_floor` still use it, so difficulty climbs through each block as before. `floor <n>
+  [department]` now always counts floors across the run and sets that floor's department.
 - 2026-10-31 (level_gen floor generation step 3): `_floor_level` makes regular floors with
   `FloorGenerator.generate_for_run` (3 m tiles) while `Config.floor_gen.use_floor_generator` is on; boss floors
   unchanged. F9 and `floorgen` (level_gen) use `debug_go_to_floor`.

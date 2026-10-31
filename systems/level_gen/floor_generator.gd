@@ -39,7 +39,7 @@ static var debug_origin: StringName = &""
 static var debug_damage: StringName = &""
 
 
-## Debug (F9, `floorgen <seed>`): the next generated floor uses this seed.
+## Debug (F4, `floorgen <seed>`): the next generated floor uses this seed.
 static func set_next_seed(floor_seed: int) -> void:
 	_next_seed_override = floor_seed
 
@@ -55,7 +55,7 @@ static func generate(department: DepartmentData, floor_number: int, run_seed: in
 	return generate_from_seed(department, floor_number, floor_seed, numbers)
 
 
-## Makes a floor from a floor seed (what F9 and `floorgen <seed>` set), trying again on failure.
+## Makes a floor from a floor seed (what F4 and `floorgen <seed>` set), trying again on failure.
 static func generate_from_seed(department: DepartmentData, floor_number: int, floor_seed: int,
 		numbers: FloorGenTuning) -> FloorLayout:
 	var log_lines := PackedStringArray()

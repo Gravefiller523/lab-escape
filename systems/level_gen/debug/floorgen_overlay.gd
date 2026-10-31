@@ -1,9 +1,10 @@
 class_name FloorgenOverlay
 extends CanvasLayer
-## NEW 2026-10-31 (floor generation step 3): the F8 debug view. The floor from above (FloorMapView) with
+## NEW 2026-10-31 (floor generation step 3): the F3 debug view (CHANGED 2026-10-31: was F8, which the Godot
+## editor uses to stop a running game). The floor from above (FloorMapView) with
 ## your position, the seed in the corner ("seed 1837261 / attempt 2 / floor 4 department_robotics"), a seed
 ## box (host: type a seed, press Go, the same floor comes back), and the end of the generation log.
-## Level owns it: F8 shows and hides it, F9 (host) makes a new floor. Esc frees the mouse to click the box.
+## Level owns it: F3 shows and hides it, F4 (host) makes a new floor. Esc frees the mouse to click the box.
 
 ## Asks Level to rebuild this floor with a seed (host only).
 signal seed_entered(floor_seed: int)
@@ -41,7 +42,7 @@ func _ready() -> void:
 	var row := HBoxContainer.new()
 	column.add_child(row)
 	var hint := Label.new()
-	hint.text = "F8 close   F9 new floor (host)   wheel zoom   seed:"
+	hint.text = "F3 close   F4 new floor (host)   wheel zoom   seed:"
 	row.add_child(hint)
 	_seed_box = LineEdit.new()
 	_seed_box.custom_minimum_size = Vector2(140, 0)

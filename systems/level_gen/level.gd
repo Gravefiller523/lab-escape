@@ -30,7 +30,7 @@ func use_config(config: GameConfig) -> void:
 func _ready() -> void:
 	if _config == null:
 		_config = Config.game
-	# NEW 2026-10-31 (floor generation step 3): the F8 debug view, F9 and the floorgen console commands.
+	# NEW 2026-10-31 (floor generation step 3): the F3 debug view, F4 and the floorgen console commands.
 	_overlay = FloorgenOverlay.new()
 	_overlay.name = "FloorgenOverlay"
 	_overlay.seed_entered.connect(func(floor_seed: int) -> void: _regenerate(floor_seed))
@@ -39,15 +39,16 @@ func _ready() -> void:
 		"floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | log | map")
 
 
-## NEW 2026-10-31: F8 shows the floor from above (cheats only), F9 makes a new floor (host, cheats only).
+## NEW 2026-10-31: F3 shows the floor from above (cheats only), F4 makes a new floor (host, cheats only).
+## Input actions InputActions.DEBUG_FLOOR_MAP / DEBUG_FLOOR_REGENERATE (CHANGED 2026-10-31: were F8 and F9,
+## but the Godot editor stops a running game on F8).
 func _unhandled_key_input(event: InputEvent) -> void:
-	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo or not DebugConsole.cheats_allowed():
+	if not DebugConsole.cheats_allowed():
 		return
-	if key.keycode == KEY_F8:
+	if event.is_action_pressed(InputActions.DEBUG_FLOOR_MAP, false):
 		_overlay.toggle()
 		get_viewport().set_input_as_handled()
-	elif key.keycode == KEY_F9:
+	elif event.is_action_pressed(InputActions.DEBUG_FLOOR_REGENERATE, false):
 		var result: String = _regenerate(0)
 		EventBus.toast_requested.emit(result)
 		get_viewport().set_input_as_handled()

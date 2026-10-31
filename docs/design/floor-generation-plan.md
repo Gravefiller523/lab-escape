@@ -583,13 +583,13 @@ locks or collapses) and logs loudly, so a run can never get stuck (Q24).
 ---
 
 ## 14. Debug tools (built alongside, in step 3)
-- **Overhead debug view** (proposed key **F8**, Q22): a 2D overlay drawn from the plan. Main hallways
+- **Overhead debug view** (proposed key **F3**, Q22): a 2D overlay drawn from the plan. Main hallways
   thick, secondary thin, rooms filled by damage colour (green, yellow, orange, red), the incident origin
   as a star, parts as numbered diamonds with their carry paths, locked doors as coloured padlocks with a
   line to their keycard, cameras as small triangles (crossed out if broken), wings outlined, loops
   highlighted, your position as an arrow. Mouse wheel zooms.
 - **Seed on screen** in the corner of the overlay: `seed 1837261 / attempt 2 / floor 4 Robotics`.
-- **Regenerate instantly** (proposed **F9**, host only): new random seed, same floor number, players
+- **Regenerate instantly** (proposed **F4**, host only): new random seed, same floor number, players
   back in the elevator.
 - **Enter a seed:** a text box in the overlay, plus console commands `floorgen <seed>`,
   `floorgen dept <id>`, `floorgen floor <n>`, `floorgen log`.
@@ -627,8 +627,8 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
 - Measure the navmesh bake time on the biggest floors (decides section 12).
 - GUT: same seed same floor; no overlaps; every socket joined or capped; both main hallways exist;
   branch depth within the limit; loops within the limit; 500 seeds never crash.
-- **How to test:** start a run, ride to floor 1, press F8 to see the map, walk both main hallways, press
-  F9 a few times, type a seed you liked and get the same floor back. Then 2 game copies: both see the same floor.
+- **How to test:** start a run, ride to floor 1, press F3 to see the map, walk both main hallways, press
+  F4 a few times, type a seed you liked and get the same floor back. Then 2 game copies: both see the same floor.
 - **Built 2026-10-31.** Measured on floor 18 (68-87 tiles, 27 rooms): planning about 9 ms, building about
   55 ms, the whole-floor navigation bake about 50 ms (about 1,200 polygons), so section 12's whole-floor bake
   stays. 500 seeds over floors 1-18 needed no fallback floor. Department per floor (F1-F3) is left to the
@@ -639,12 +639,12 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
   and its 8 tiles, generator step 5 with required rooms, palettes and room signs. Botany and Zoology are
   placeholder department files (shared rooms only). Waiting for Zachary to play it.
 - 4a: Robotics department file, its welcome center, its required and other room tiles; step 5 with
-  required rooms. *Test: every Robotics floor has the assembly floor, test bay and server room (F8 shows them).*
+  required rooms. *Test: every Robotics floor has the assembly floor, test bay and server room (F3 shows them).*
 - **Built 2026-10-31 (4b):** incidents and damage levels, real blockout debris, collapses only with a detour,
-  placeholder sparks and fire (`systems/hazards`), loose debris props, damage on the F8 map, `floorgen origin` and
+  placeholder sparks and fire (`systems/hazards`), loose debris props, damage on the F3 map, `floorgen origin` and
   `floorgen damage` debug commands. Waiting for Zachary to play it.
 - 4b: incident and damage: overlays, lighting, hazards (placeholder sparks and fire). *Test: walk toward
-  the origin and see damage grow; the F8 view matches.*
+  the origin and see damage grow; the F3 view matches.*
 - 4c: doors: open, broken open, pry doors (crowbar), power doors (breaker box), debris, keycards, collapsed
   hallways. *Test: find a keycard, open its door; find the crowbar and pry a door; follow a cable to a breaker
   and power a door; clear debris; find the detour around a collapse.*
@@ -657,7 +657,7 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
 
 ### Step 5: Botany and Zoology
 Mostly content: department files, welcome centers, room tiles, incidents (gas, flood), hazards,
-palettes. New code only for new hazard kinds. *Test: play 3 floors of each; F8 view on 10 seeds each.*
+palettes. New code only for new hazard kinds. *Test: play 3 floors of each; F3 view on 10 seeds each.*
 
 ### Step 6: tuning pass
 Every number in `config/floor_gen_tuning.tres`, grouped and commented. Play floors 1, 4, 8 and 12 in
@@ -755,6 +755,9 @@ you want different.
 - **Q21. NPCs:** enemies only for now (friendly scientists could use the same markers later)?
   *Recommend:* yes.
 - **Q22. Debug keys:** F8 overlay, F9 regenerate (F7 is already used in the feel playtest).
+  **CHANGED 2026-10-31 (Zachary's playtest):** F3 map, F4 new floor. F8 can't be used: the Godot editor stops
+  a running game on F8 (F5 to F8 are its run keys). They are input actions (`debug_floor_map`,
+  `debug_floor_regenerate`), so they can be rebound.
   *Recommend:* yes.
 - **Q24. When every attempt fails:** build the safe fallback floor and log it. *Recommend:* yes.
 - **Q25. Welcome centers:** one generic template until each department gets its own (Robotics in step 4).

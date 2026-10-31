@@ -2,7 +2,7 @@ class_name FloorMapView
 extends Control
 ## NEW 2026-10-31 (floor generation step 3): draws a floor layout from above, from the plan (not a camera):
 ## main hallways dark and thick, secondary hallways lighter, rooms coloured by wing, the elevator yellow,
-## the welcome center teal, loops as magenta lines, wing names, and players as arrows. Used by the F8
+## the welcome center teal, loops as magenta lines, wing names, and players as arrows. Used by the F3
 ## overlay and the floorgen viewer test scene. Mouse wheel (or zoom_by) zooms.
 
 const ELEVATOR_COLOR: Color = Color(0.95, 0.8, 0.2)

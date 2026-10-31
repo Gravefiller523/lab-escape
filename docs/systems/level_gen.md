@@ -86,7 +86,7 @@ static func generate(department: DepartmentData, floor_number: int, run_seed: in
 static func generate_from_seed(department: DepartmentData, floor_number: int, floor_seed: int, numbers: FloorGenTuning) -> FloorLayout
 static func generate_for_run(department: DepartmentData, floor_number: int, run_seed: int, player_count: int) -> FloorLayout  # + report()
 static func report(layout: FloorLayout) -> void  # prints "[floorgen] ..." lines, saves user://floorgen/last_floor.log
-static func set_next_seed(floor_seed: int) -> void   # debug: the next floor uses this seed (F9, `floorgen <seed>`)
+static func set_next_seed(floor_seed: int) -> void   # debug: the next floor uses this seed (F4, `floorgen <seed>`)
 static func tile_pool(department: DepartmentData) -> Array[RoomData]
 static func piece_kind(room: RoomData) -> StringName # straight / corner / t / cross / end, from its open sides
 static var last_layout: FloorLayout
@@ -109,9 +109,9 @@ var markers: Array[Dictionary]                  # NEW: {"kind", "path"} read fro
 func get_floor_transform() -> Transform3D      # NEW: where the (moved, turned) floor is
 func get_markers(kind)                          # CHANGED: only the markers the plan switched on, if it chose for that kind
 # Level.build CHANGED: 3 m tile floors; an open hallway end nothing joins gets a "Cap..." wall (grid unit wide,
-# ceiling high, wall material), a doorway gets a "Plug..." as before. Keys F8 (map) and F9 (new floor, host).
+# ceiling high, wall material), a doorway gets a "Plug..." as before. Keys F3 (map) and F4 (new floor, host).
 class_name FloorMapView extends Control         # draws a FloorLayout from above (layout, players, zoom)
-class_name FloorgenOverlay extends CanvasLayer  # the F8 view: map, seed, seed box, log (owned by Level)
+class_name FloorgenOverlay extends CanvasLayer  # the F3 view: map, seed, seed box, log (owned by Level)
 ```
 **Console (NEW 2026-10-31):** `floorgen <seed>` (this floor again with that seed), `floorgen floor <n>`,
 `floorgen dept <department_id>`, `floorgen log`, `floorgen map`. Host and cheats only, like `floor`.
@@ -174,13 +174,13 @@ incident) and prop spots (more used in damaged rooms, many get loose debris `pro
 `origin`, `collapsed`, `marker_params` (copied into the markers' params by `Level.build`: `prop_id`,
 `hazard_kind`). `Level.build` keeps only each tile's damage overlay, adds `TileLightFlicker` in the
 department's `lighting` colours, and fills collapsed pieces with rubble. Debug: `floorgen origin
-near|far|normal`, `floorgen damage light|heavy|destroyed|pristine|off` (both stay until changed). The F8 map
+near|far|normal`, `floorgen damage light|heavy|destroyed|pristine|off` (both stay until changed). The F3 map
 fills rooms by damage colour, stars the origin and crosses out collapsed pieces.
 
 NEW 2026-10-31 (step 4a): `Level.build` dresses tile floors for their department: the department's `palette`
 on every tile (and the caps), and a room-name sign at every `sign` marker (the marker's `text` param, else the
 room type's `display_name`, else the tile's name; the department's `signage_style` scene if set, else a
-label in its `accent_color`). The F8 map writes each room's name. `LevelService.room_display_name()`.
+label in its `accent_color`). The F3 map writes each room's name. `LevelService.room_display_name()`.
 
 ## Tile standards (NEW 2026-10-30, floor generation step 2)
 The new floor generator (docs/design/floor-generation-plan.md) builds floors from **tiles**: hand-made
@@ -317,7 +317,7 @@ the generator must treat a kind specially. A new department reuses everything.
 ## Multiplayer
 Only the host runs `generate`. It sends `layout.to_dict()` (a few hundred bytes) to every client;
 everyone runs `build`. NEW 2026-10-31: a tile floor's dictionary is a few kilobytes (rooms, wings,
-main hallways, loops, active markers); the generation log stays on the host. F9 and `floorgen` go through
+main hallways, loops, active markers); the generation log stays on the host. F4 and `floorgen` go through
 game_flow's normal floor change, so every PC follows. Static geometry is not networked. Dynamic things are spawned by their systems
 on the host. Reconnecting players receive the current layout on join.
 
@@ -414,16 +414,19 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-31 (Zachary): flickering much more random: per-light speed, single blinks or stuttering bursts,
   random on/off switches and random brightness per flash, wider timing ranges. NEW FloorGenTuning
   `flicker_light_speed`, `flicker_on_chance`, `flicker_brightness`, `flicker_single_blink_chance`.
+- 2026-10-31 (Zachary's playtest): the debug keys are now **F3** (map) and **F4** (new floor, host), input actions
+  `InputActions.DEBUG_FLOOR_MAP` / `DEBUG_FLOOR_REGENERATE` (rebindable). F8 stopped the game: the Godot editor
+  uses F5 to F8 while a game runs.
 - 2026-10-31 (floor generation step 4b, branch `system/level_gen-floorgen-step4b`): incidents, damage levels,
   collapses, hazards (new system `hazards`), loose debris props, real blockout debris in overlays, damage on
-  the F8 map, `floorgen origin` / `floorgen damage`. NEW FloorLayout `damage`, `incident_id`, `origin`,
+  the F3 map, `floorgen origin` / `floorgen damage`. NEW FloorLayout `damage`, `incident_id`, `origin`,
   `collapsed`, `marker_params`, `damage_level()`; `TileStandards.keep_damage`, slot `rubble`,
   `RoomShape.markers` carry `params`. CHANGED `TileStandards.show_damage` (debris solid only when shown).
 - 2026-10-31 (floor generation step 4a, branch `system/level_gen-floorgen-step4a`): generator step 5 (required
   rooms, department room types, shared share), Robotics tiles and department, Botany and Zoology placeholders,
-  palettes and room-name signs in `Level.build`, room names on the F8 map. FloorLayout unchanged.
+  palettes and room-name signs in `Level.build`, room names on the F3 map. FloorLayout unchanged.
 - 2026-10-31 (floor generation step 3, branch `system/level_gen-floorgen-step3`): NEW `FloorGenerator`,
-  `FloorMapView`, `FloorgenOverlay` (F8 map, F9 new floor, `floorgen` commands), the floorgen viewer. NEW
+  `FloorMapView`, `FloorgenOverlay` (F3 map, F4 new floor, `floorgen` commands), the floorgen viewer. NEW
   FloorLayout fields (grid, attempt, is_fallback, wings, main_halls, loops, active_markers; log_lines and
   stats host only), `RoomPlacement.wing`, `RoomShape.markers`, `Level.get_floor_transform()`. CHANGED
   `Level.build` (tile floors, caps), `Level.get_markers` (only markers the plan switched on). game_flow:

@@ -147,7 +147,7 @@ rooms (no `department_ids`) on every floor, a department's own tiles on its floo
 code: the generator works out what a piece is from its open edges (2 opposite = straight, 2 next to each
 other = corner, 3 = T, 4 = crossing, 1 = end) and asks for straight pieces 1, 3 or 5 units long. A
 department's own welcome center is a `template` tile with `room_kind` `welcome_center` and the department in
-`department_ids`. **Test:** `systems/level_gen/test/floorgen_viewer.tscn` (F6), or in a run press F8.
+`department_ids`. **Test:** `systems/level_gen/test/floorgen_viewer.tscn` (F6), or in a run press F3.
 
 ## Department
 A department is a bundle. Make its rooms, enemies, boss, loot tables and stock first, then one
@@ -170,7 +170,7 @@ whose `boss_id` is only a stand-in, so its boss floors aren't rolled. Runs roll 
 departments with `in_run_rotation`); `floor_count` is deprecated. Its own rooms: tiles with the department in
 `department_ids` and the room type's `room_kind`; its own welcome center: a template tile with `room_kind`
 `welcome_center`. Example: `content/departments/department_robotics.tres`. **Test:** `floor 1 department_<name>`
-then F8.
+then F3.
 
 ## Floor task
 **Fill in:** `scene` (built from `FloorTask` and `TaskStation` pieces), `min_players`,

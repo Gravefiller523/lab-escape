@@ -196,7 +196,7 @@ func test_runs_use_the_new_generator() -> void:
 	assert_true(FileAccess.file_exists(FloorGenerator.LOG_PATH), "the log is saved")
 	assert_true(Config.floor_gen.use_floor_generator, "on by default")
 	FloorGenerator.set_next_seed(98765)
-	assert_eq(FloorGenerator.generate(_department(), 3, 555).floor_seed, 98765, "F9 / `floorgen <seed>` picks the seed")
+	assert_eq(FloorGenerator.generate(_department(), 3, 555).floor_seed, 98765, "F4 / `floorgen <seed>` picks the seed")
 	assert_ne(FloorGenerator.generate(_department(), 3, 555).floor_seed, 98765, "only for the next floor")
 	assert_eq(FloorGenerator.generate_from_seed(_department(), 3, 98765, Config.floor_gen).to_dict(),
 		FloorGenerator.generate_from_seed(_department(), 3, 98765, Config.floor_gen).to_dict(), "a seed you liked comes back")
@@ -469,3 +469,17 @@ func test_built_floor_shows_its_damage() -> void:
 				found = true
 		assert_true(found, "%s's settings reached its marker" % key)
 	Level.clear()
+
+
+## NEW 2026-10-31 (Zachary's playtest: F8 stopped the game): the map and new-floor keys are input actions on
+## keys the Godot editor doesn't use while a game runs (it uses F5 to F8).
+func test_debug_keys_avoid_the_editor_run_keys() -> void:
+	var editor_keys: Array[Key] = [KEY_F5, KEY_F6, KEY_F7, KEY_F8]
+	for action: StringName in [InputActions.DEBUG_FLOOR_MAP, InputActions.DEBUG_FLOOR_REGENERATE]:
+		assert_true(InputMap.has_action(action), "%s is an input action" % action)
+		for event: InputEvent in InputMap.action_get_events(action):
+			var key := event as InputEventKey
+			if key != null:
+				assert_false(editor_keys.has(key.physical_keycode), "%s isn't on an editor run key" % action)
+	assert_eq(InputActions.DEFAULT_KEYS[InputActions.DEBUG_FLOOR_MAP], KEY_F3)
+	assert_eq(InputActions.DEFAULT_KEYS[InputActions.DEBUG_FLOOR_REGENERATE], KEY_F4)

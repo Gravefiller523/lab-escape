@@ -29,6 +29,10 @@ const EQUIP: StringName = &"equip"
 const PUSH_TO_TALK: StringName = &"push_to_talk"
 const PAUSE: StringName = &"pause"
 const DEBUG_CONSOLE: StringName = &"debug_console"
+## NEW 2026-10-31 (level_gen floor generation, debug): show the floor from above, and make a new floor (host).
+## Not F5 to F8: the Godot editor uses those while a game runs (F8 stops it).
+const DEBUG_FLOOR_MAP: StringName = &"debug_floor_map"
+const DEBUG_FLOOR_REGENERATE: StringName = &"debug_floor_regenerate"
 
 ## Direct slot keys 1 to 9. Slots beyond 9 are reached with SLOT_NEXT / SLOT_PREV.
 const MAX_SLOT_KEYS: int = 9
@@ -48,6 +52,8 @@ const DEFAULT_KEYS: Dictionary = {
 	EQUIP: KEY_F,
 	PAUSE: KEY_ESCAPE,
 	DEBUG_CONSOLE: KEY_QUOTELEFT,
+	DEBUG_FLOOR_MAP: KEY_F3,
+	DEBUG_FLOOR_REGENERATE: KEY_F4,
 }
 
 const DEFAULT_MOUSE_BUTTONS: Dictionary = {

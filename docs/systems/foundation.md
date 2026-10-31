@@ -123,6 +123,7 @@ None. Everything else depends on this.
 ## Changelog
 - 2026-10-07: created.
 - 2026-10-29 (feel step 0): NEW `Config.feel` (`FeelTuning`, `core/config/feel_tuning.gd`): every "how it feels" number in one file, `config/feel_tuning.tres`, with sections `player` (PlayerTuning), `props` (PropTuning) and `ai` (AiTuning). Loaded in `Config._enter_tree` after `Config.game`; an empty section falls back to its script defaults. GameConfig keeps game rules and network rates.
+- 2026-10-31 (level_gen): InputActions NEW `DEBUG_FLOOR_MAP` (F3) and `DEBUG_FLOOR_REGENERATE` (F4). Additions only.
 - 2026-10-31 (floor generation step 4b): FloorGenTuning NEW damaged-room prop shares, `debris_prop_ids`, hazard
   damage numbers. project.godot NEW autoload line `Hazards` (after `Level`). Additions only.
 - 2026-10-31 (floor generation step 4a): GameConfig NEW `run_floor_count` (18), `boss_every_floors` (6);

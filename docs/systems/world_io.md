@@ -108,6 +108,9 @@ GUT (`tests/unit/world_io/test_world_io.gd`): `test_a_wire_waits_its_delay_and_o
 - level_gen doesn't place devices yet; objectives' keycard doors should be built on `WorldDoor`.
 
 ## Changelog
+- 2026-10-31 (step 4c fix): FIXED `WorldDoor`: moving what a door sits in (the game lines each floor up with the lift
+  after building it) now moves its panel too. The panel syncs to physics and so only followed its own swings; it
+  stayed floating where the floor was built. Test `test_a_door_moves_with_what_it_sits_in`.
 - 2026-10-31 (level_gen floor generation step 4c, approved in the plan's Q10): NEW `WorldPryPoint`, `WorldKeycardReader`,
   `WorldBreaker` for jammed, keycard and powerless doors. Level.build wires them to a double door's two leaves
   (unlock, open). Tests `tests/unit/world_io/test_lock_devices.gd`.

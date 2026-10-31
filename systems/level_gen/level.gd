@@ -153,7 +153,11 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 			continue
 		if link.get("open_edge", false):
 			_add_cap(link, cell)
-		else:
+			continue
+		# CHANGED 2026-10-31: a tile's unused door socket becomes plain wall (no frame around a grey plug).
+		var placement: int = link["placement"]
+		var tile := _room_nodes[placement] as BlockoutTile if placement < _room_nodes.size() else null
+		if tile == null or not tile.seal_socket(str(link["name"])):
 			_add_plug(link, cell)
 	if layout.grid == RoomData.GRID_TILE:
 		_build_doors(layout)

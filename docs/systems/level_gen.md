@@ -75,6 +75,8 @@ class_name TileLightFlicker extends Node        # NEW 2026-10-30 (Zachary): dama
 func setup(tile: Node, level: StringName, tuning: FloorGenTuning = null) -> void
 func step(delta: float) -> void                  # called every frame; tests call it directly
 class_name BlockoutTile extends Node3D          # @tool: builds a CSG blockout tile (floor, ceiling, walls, holes, frames, lights)
+func seal_socket(socket_name) -> bool          # NEW 2026-10-31: an unused door socket becomes plain wall (hole and frame go)
+func is_socket_sealed(socket_name) -> bool
 @export var size_units: Vector2i
 @export var auto_lights: bool = true
 @export var floor_hole: Rect2                   # e.g. under the cargo lift's own floor
@@ -109,7 +111,8 @@ var markers: Array[Dictionary]                  # NEW: {"kind", "path"} read fro
 func get_floor_transform() -> Transform3D      # NEW: where the (moved, turned) floor is
 func get_markers(kind)                          # CHANGED: only the markers the plan switched on, if it chose for that kind
 # Level.build CHANGED: 3 m tile floors; an open hallway end nothing joins gets a "Cap..." wall (grid unit wide,
-# ceiling high, wall material), a doorway gets a "Plug..." as before. Keys F3 (map) and F4 (new floor, host).
+# ceiling high, wall material); an unused door socket on a tile is sealed (BlockoutTile.seal_socket: plain wall,
+# no frame; CHANGED 2026-10-31), other rooms' doorways get a "Plug..." as before. Keys F3 (map) and F4 (new floor, host).
 class_name FloorMapView extends Control         # draws a FloorLayout from above (layout, players, zoom)
 class_name FloorgenOverlay extends CanvasLayer  # the F3 view: map, seed, seed box, log (owned by Level)
 ```
@@ -491,3 +494,8 @@ props at `prop_spawn` markers). Joiners get the layout in net_core's join handsh
 - **enemies:** `enemy_spawn` markers; add navigation regions to rooms.
 - **bosses:** the arena's `boss_spawn` and `minion_spawn` markers; remove the "Defeat the boss" stub.
 - **Content:** Zoology rooms go in `content/rooms/` with `department_ids = [department_zoology]`.
+- 2026-10-31 (step 4c fix, Zachary's playtest: doors floating at odd angles, the pry door only a black strip):
+  the door leaves were built right but stayed behind when the game moved the floor to line it up with the lift
+  (fixed in `WorldDoor`, see world_io). NEW `BlockoutTile.seal_socket` / `is_socket_sealed`: a tile's unused door
+  socket is now plain wall instead of a frame around a grey plug. Tests `test_door_leaves_sit_shut_on_their_jambs`
+  (a moved heavy-damage floor) and `test_every_door_type_on_every_side_and_turn`.

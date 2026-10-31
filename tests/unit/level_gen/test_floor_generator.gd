@@ -102,7 +102,18 @@ func test_every_socket_is_joined_or_capped_when_built() -> void:
 		for node: Node in RoomShape.all_children(parent):
 			if node.name.begins_with("Plug") or node.name.begins_with("Cap"):
 				caps += 1
-		var open: int = links.filter(func(link: Dictionary) -> bool: return link["connected"] == false).size()
+		# CHANGED 2026-10-31: a tile's unused door socket is sealed (plain wall) instead of plugged.
+		var rooms: Array[Node3D] = Level.get_room_nodes()
+		var open: int = 0
+		for link: Dictionary in links:
+			if link["connected"]:
+				continue
+			var tile := rooms[link["placement"]] as BlockoutTile
+			if not link.get("open_edge", false) and tile != null:
+				assert_true(tile.is_socket_sealed(str(link["name"])), "seed %d: unused socket %s is plain wall" % [floor_seed, link["name"]])
+				assert_null(tile.find_child("Frame_%s_top" % link["name"], true, false), "seed %d: and has no frame" % floor_seed)
+			else:
+				open += 1
 		assert_eq(caps, open, "seed %d: every socket that leads nowhere has a cap" % floor_seed)
 		# Every tile can be reached from the elevator through joined sockets.
 		var reached: Dictionary[int, bool] = {0: true}
@@ -720,3 +731,112 @@ func test_built_floor_has_its_doors() -> void:
 			FloorGenerator.DOOR_KEYCARD:
 				assert_not_null(holder.get_node_or_null("Reader"), "a card reader")
 	Level.clear()
+
+
+## NEW 2026-10-31 (Zachary's playtest: leaves floating open, the pry door missing its leaves): on a built floor
+## that the game then moves (to line it up with the lift), every door's leaves stay shut, hang on the
+## doorway's jambs, close the whole opening, and sit only on doorways that lead somewhere.
+func test_door_leaves_sit_shut_on_their_jambs() -> void:
+	FloorGenerator.debug_damage = &"heavy"
+	var layout: FloorLayout = _robotics_floor(4242, 9)
+	FloorGenerator.debug_damage = &""
+	var links: Array[Dictionary] = LevelGenerator.doorway_links(layout, _unit())
+	var parent: Node3D = _door_test_parent()
+	Level.build(layout, parent)
+	# The game moves the whole floor after building it, to line it up with the lift (GameWorld._line_up).
+	parent.transform = Transform3D(Basis(Vector3.UP, 1.3), Vector3(40, 2, -25))
+	await wait_physics_frames(60)
+	var rooms: Array[Node3D] = Level.get_room_nodes()
+	var checked: int = 0
+	for index: int in layout.doors.size():
+		var door: Array = layout.doors[index]
+		var label: String = "door %d (%s)" % [index, FloorGenerator.DOOR_NAMES[door[3]]]
+		var connected: bool = false
+		for link: Dictionary in links:
+			if link["placement"] == door[0] and link["name"] == str(door[1]):
+				connected = link["connected"]
+		assert_true(connected, "%s is on a doorway that leads somewhere" % label)
+		checked += _check_door(rooms[door[0]], index, str(door[1]), door[3], label)
+	assert_gt(checked, 10, "leaves were checked")
+	Level.clear()
+
+
+## NEW 2026-10-31: every kind of door on every side of a tile, in all 4 turns of the tile: the leaves hang on
+## the jambs, start shut, fill the doorway and can be seen.
+func test_every_door_type_on_every_side_and_turn() -> void:
+	var types: Array[int] = [FloorGenerator.DOOR_OPEN, FloorGenerator.DOOR_PRY, FloorGenerator.DOOR_POWER,
+		FloorGenerator.DOOR_KEYCARD]
+	var sockets: Array[String] = ["SocketN1", "SocketE1", "SocketS1", "SocketW1"]
+	for steps: int in 4:
+		var layout := FloorLayout.new()
+		layout.grid = RoomData.GRID_TILE
+		layout.department_id = _robotics().id
+		layout.floor_number = 5
+		layout.placements = [RoomPlacement.make(&"room_tile_storage_small", Vector3i(2, 0, 3), steps)]
+		for side: int in sockets.size():
+			layout.doors.append([0, sockets[side], -1, types[(side + steps) % types.size()], 1])
+		var parent: Node3D = _door_test_parent()
+		Level.build(layout, parent)
+		parent.transform = Transform3D(Basis(Vector3.UP, -0.7), Vector3(-12, 0, 30))
+		await wait_physics_frames(10)
+		var room: Node3D = Level.get_room_nodes()[0]
+		for index: int in layout.doors.size():
+			var door: Array = layout.doors[index]
+			var label: String = "turn %d, %s, %s" % [steps, door[1], FloorGenerator.DOOR_NAMES[door[3]]]
+			assert_eq(_check_door(room, index, str(door[1]), door[3], label), 2, "%s has two leaves" % label)
+			if door[3] == FloorGenerator.DOOR_PRY:
+				assert_not_null(room.get_node_or_null("Door%d/PryPoint" % index), "%s has its pry point" % label)
+		Level.clear()
+
+
+func _door_test_parent() -> Node3D:
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	add_child_autofree(viewport)
+	var parent := Node3D.new()
+	viewport.add_child(parent)
+	return parent
+
+
+## Checks one built door's leaves against its doorway, worked out from the tile itself (not from the door's
+## own node): returns how many leaves it checked.
+func _check_door(room: Node3D, index: int, socket_name: String, type: int, label: String) -> int:
+	var socket := room.get_node(NodePath(socket_name)) as RoomDoorway
+	var holder := room.get_node_or_null("Door%d" % index) as Node3D
+	assert_not_null(holder, "%s was built" % label)
+	if holder == null:
+		return 0
+	var tile := room as BlockoutTile
+	# The socket lies on one edge of the footprint: the wall runs along that edge.
+	var size := Vector2(tile.size_units) * _unit()
+	var p: Vector3 = socket.position
+	var on_x_edge: bool = absf(p.x) < 0.1 or absf(p.x - size.x) < 0.1
+	var along: Vector3 = (room.global_basis * (Vector3.BACK if on_x_edge else Vector3.RIGHT)).normalized()
+	var middle: Vector3 = socket.global_position
+	var jambs: Array[Vector3] = [middle - along * socket.width / 2.0, middle + along * socket.width / 2.0]
+	var used: Array[int] = []
+	var checked: int = 0
+	for side: String in ["Left", "Right"]:
+		var leaf := holder.get_node_or_null(side) as WorldDoor
+		if leaf == null:
+			if type != FloorGenerator.DOOR_BROKEN and type != FloorGenerator.DOOR_DEBRIS:
+				fail_test("%s has no %s leaf" % [label, side])
+			continue
+		checked += 1
+		assert_almost_eq(leaf.get_angle(), 0.0, 0.5, "%s %s starts shut" % [label, side])
+		var jamb: int = 0 if leaf.global_position.distance_to(jambs[0]) < leaf.global_position.distance_to(jambs[1]) else 1
+		assert_almost_eq(leaf.global_position.distance_to(jambs[jamb]), 0.0, 0.05, "%s %s hangs on a jamb" % [label, side])
+		assert_false(used.has(jamb), "%s: the two leaves hang on different jambs" % label)
+		used.append(jamb)
+		assert_gt(absf(leaf.global_basis.x.normalized().dot(along)), 0.99, "%s %s lies along the wall" % [label, side])
+		var far_edge: Vector3 = leaf.global_transform * Vector3(leaf.width, 0, 0)
+		assert_almost_eq(far_edge.distance_to(middle), 0.0, 0.05, "%s %s reaches the middle (no gap)" % [label, side])
+		var panel := leaf.get_node("Panel") as Node3D
+		assert_almost_eq(panel.global_position.distance_to(leaf.global_position), 0.0, 0.05,
+			"%s %s: its panel is where the leaf is" % [label, side])
+		var mesh_count: int = 0
+		for node: Node in RoomShape.all_children(panel):
+			if node is MeshInstance3D and (node as MeshInstance3D).is_visible_in_tree():
+				mesh_count += 1
+		assert_gt(mesh_count, 0, "%s %s can be seen" % [label, side])
+	return checked

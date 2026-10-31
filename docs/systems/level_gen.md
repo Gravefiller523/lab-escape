@@ -220,6 +220,15 @@ Older kinds keep working: `lift`, `printer`, `cart`, `vendor`, `upgrade_machine`
 `player_spawn`, `supply_counter`, `task`, `boss_spawn`, `minion_spawn`, `locked_door`. Placement (Q19):
 printer and cart in the welcome center; vendors in break rooms and offices; upgrade machine in medium rooms.
 Any marker may carry `min_damage` / `max_damage` params so it only exists in rooms that damaged.
+NEW 2026-10-31 (Zachary's playtest), checked by tests:
+- **Machines** (`vendor`, `printer`, `upgrade_machine`, `charger`) stand with their back to a wall and their
+  **+Z axis pointing into the room** (the side those machines open to), at least 1 m clear of every doorway,
+  never in a hallway.
+- **Spawn spots** (`lift_part`, `prop_spawn`, `item_spawn`, `keycard`) sit high enough that the biggest thing
+  they hold starts in free space with something to land on within 1 m (floor spots about 0.4-0.5 m up,
+  desk and counter spots about 0.4 m above the top). The tiles' CSG walls and furniture are thin shells, so a
+  part that starts inside a desk stays trapped there (that is how a fuse went missing).
+- Every floor has a `charger` spot (the welcome center has one) and more `lift_part` spots than broken parts.
 The elevator's `lift` marker faces so the cargo lift's gate (its -z side) looks out of the open side, toward
 the welcome center.
 

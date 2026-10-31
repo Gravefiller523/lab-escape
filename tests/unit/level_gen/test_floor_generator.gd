@@ -209,3 +209,23 @@ func test_hallway_pieces_are_recognised() -> void:
 		&"room_tile_hall_filler": FloorGenerator.PIECE_STRAIGHT}
 	for id: StringName in kinds:
 		assert_eq(FloorGenerator.piece_kind(ContentRegistry.get_content(id) as RoomData), kinds[id], String(id))
+
+
+## NEW 2026-10-31 (Zachary's playtest): every floor has enough distinct places for the broken lift parts, and a
+## battery charger spot (the welcome center always has one).
+func test_every_floor_has_room_for_its_lift_parts_and_a_charger() -> void:
+	var tuning: FloorGenTuning = Config.floor_gen
+	for floor_seed: int in 60:
+		var floor_number: int = 1 + floor_seed % 18
+		var layout: FloorLayout = _floor(floor_seed * 31 + 7, floor_number)
+		var parts: int = 0
+		var chargers: int = 0
+		for placement: RoomPlacement in layout.placements:
+			for marker: Dictionary in RoomShape.of(_room(placement), _unit()).markers:
+				if marker["kind"] == &"lift_part":
+					parts += 1
+				elif marker["kind"] == &"charger":
+					chargers += 1
+		assert_gte(parts, maxi(tuning.by_bracket(tuning.parts_max_by_bracket, floor_number), 3),
+			"floor %d seed %d: a separate spot for every broken part (%d spots)" % [floor_number, floor_seed, parts])
+		assert_gt(chargers, 0, "floor %d seed %d: a battery charger spot" % [floor_number, floor_seed])

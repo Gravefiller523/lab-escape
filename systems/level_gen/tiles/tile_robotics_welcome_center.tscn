@@ -10,6 +10,7 @@
 [node name="TileRoboticsWelcomeCenter" type="Node3D"]
 script = ExtResource("1_tile")
 size_units = Vector2i(8, 6)
+emergency_keep_out = Array[Rect2]([Rect2(9, 0, 9, 6)])
 
 [node name="SocketS3" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0, 18)
@@ -61,6 +62,18 @@ height = 2.8
 open_edge = true
 
 [node name="Markers" type="Node3D" parent="."]
+
+[node name="SecuritySlit0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.15, 0, 0.15)
+script = ExtResource("3_marker")
+kind = &"emergency_slit"
+params = {"corner": true}
+
+[node name="SecuritySlit1" type="Marker3D" parent="Markers"]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 17.85, 0, 0.15)
+script = ExtResource("3_marker")
+kind = &"emergency_slit"
+params = {"corner": true}
 
 [node name="Printer" type="Marker3D" parent="Markers"]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.85, 0, 15)

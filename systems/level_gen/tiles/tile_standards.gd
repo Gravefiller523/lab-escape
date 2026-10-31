@@ -23,7 +23,8 @@ const OVERLAY_NODES: Dictionary[StringName, String] = {&"light": "Light", &"heav
 
 ## Group of a tile's normal lights (damage makes them flicker, go red or go out).
 const LIGHT_GROUP: StringName = &"tile_light"
-## Group of the red emergency lights in damage overlays (on in heavy and destroyed rooms). NEW 2026-10-30.
+## Group of the red emergency lights (on in heavy and destroyed rooms). NEW 2026-10-30; CHANGED 2026-10-31: they
+## are the lights of the emergency slits (EmergencySlits), no longer in the damage overlays.
 const EMERGENCY_LIGHT_GROUP: StringName = &"tile_emergency_light"
 ## Group of a tile's ceiling (the tile gallery hides ceilings to look in from above).
 const CEILING_GROUP: StringName = &"tile_ceiling"
@@ -42,6 +43,8 @@ const MARKER_KINDS: Array[StringName] = [
 	&"supply_counter", &"task", &"boss_spawn", &"minion_spawn", &"locked_door",
 	# NEW 2026-10-30: where the security room's map table and camera monitors go (step 4e).
 	&"security_map", &"security_monitor",
+	# NEW 2026-10-31: a red emergency slit placed by hand (EmergencySlits; params {"corner": true} for an L).
+	&"emergency_slit",
 ]
 
 ## Lift part sizes (PropData.part_size and the "max_size" param of lift_part markers), smallest first.

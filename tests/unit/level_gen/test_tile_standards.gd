@@ -49,8 +49,9 @@ func test_the_step_2_tiles_exist() -> void:
 			sizes[room.size_category] = sizes.get(room.size_category, 0) + 1
 	assert_gte(_tiles().size(), 23, "about 20 blockout tiles")
 	assert_gte(roles.get(TileStandards.ROLE_TEMPLATE, 0), 2, "the elevator and the welcome centers")
-	assert_eq(roles.get(TileStandards.ROLE_MAIN_HALL, 0), 6, "main hallway: straight, long, filler, corner, T, end")
-	assert_eq(roles.get(TileStandards.ROLE_SECONDARY_HALL, 0), 7, "secondary hallway: straight, long, filler, corner, T, cross, end")
+	assert_eq(roles.get(TileStandards.ROLE_MAIN_HALL, 0), 7, "main hallway: straight, long, filler, dark filler, corner, T, end")
+	assert_eq(roles.get(TileStandards.ROLE_SECONDARY_HALL, 0), 8,
+		"secondary hallway: straight, long, filler, dark filler, corner, T, cross, end")
 	for category: StringName in TileStandards.SIZE_CATEGORIES:
 		assert_gt(sizes.get(category, 0), 0, "at least one %s room" % category)
 
@@ -342,8 +343,8 @@ func test_tuning_patterns() -> void:
 ## NEW 2026-10-30 (Zachary): hallways are walled, with few side doorways, centred on the long sides.
 func test_hallway_pieces_are_walled() -> void:
 	# Doorways (not open edges) per piece; "main" and "hall" pieces follow the same rule.
-	var expected: Dictionary[String, int] = {"straight": 2, "straight_long": 4, "filler": 0, "corner": 0, "t": 0,
-		"cross": 0, "end": 1}
+	var expected: Dictionary[String, int] = {"straight": 2, "straight_long": 4, "filler": 0, "filler_dark": 0, "corner": 0,
+		"t": 0, "cross": 0, "end": 1}
 	var unit: float = _unit()
 	var checked: int = 0
 	for room: RoomData in _tiles():
@@ -373,7 +374,7 @@ func test_hallway_pieces_are_walled() -> void:
 				units.sort()
 				# Evenly spaced and centred: unit 1 of 3, units 1 and 3 of 5 (counting from 0).
 				assert_eq(units, [1] if length == 3 else [1, 3], "%s: side doorways evenly spaced" % room.id)
-	assert_eq(checked, 13, "every main and secondary hallway piece was checked")
+	assert_eq(checked, 15, "every main and secondary hallway piece was checked")
 
 
 ## NEW 2026-10-30 (Zachary): damage lighting per level.
@@ -386,20 +387,26 @@ func test_damage_lighting() -> void:
 	var lights: Array[Light3D] = _lights_in(tile, TileStandards.LIGHT_GROUP)
 	var emergency: Array[Light3D] = _lights_in(tile, TileStandards.EMERGENCY_LIGHT_GROUP)
 	assert_gt(lights.size(), 1, "the tile has ceiling lights")
-	assert_eq(emergency.size(), 2, "heavy and destroyed overlays each have a red emergency light")
+	# CHANGED 2026-10-31 (emergency slits): the red lights are slits low on the walls, not one per overlay.
+	assert_gt(emergency.size(), 1, "the tile has red emergency slits")
+	for light: Light3D in emergency:
+		assert_lt(light.position.y, 1.0, "%s sits low on a wall (no ceiling emergency light)" % light.name)
 
 	flicker.setup(tile, &"pristine", tuning)
 	flicker.step(5.0)
 	assert_eq(_lit_share(lights), 1.0, "pristine: every light on")
+	assert_eq(_lit_share(emergency), 0.0, "pristine: the slits are dark grooves")
 
 	# Heavy: lights spend most of their time dark, but they do flicker.
 	tuning.heavy_dead_share = 0.0
 	flicker.setup(tile, &"heavy", tuning)
 	var heavy_on: float = _average_lit_share(flicker, lights, 30.0)
+	assert_eq(_lit_share(emergency), 1.0, "heavy: every slit on")
 	assert_between(heavy_on, 0.01, 0.4, "heavy: mostly dark, with flickers (lit %.2f of the time)" % heavy_on)
 	var light_on: float = 0.0
 	flicker.setup(tile, &"light", tuning)
 	light_on = _average_lit_share(flicker, lights, 30.0)
+	assert_eq(_lit_share(emergency), 0.0, "light damage: the slits stay dark")
 	assert_gt(light_on, heavy_on, "light damage is brighter than heavy (%.2f vs %.2f)" % [light_on, heavy_on])
 
 	# Destroyed: the remaining lights are dark nearly all the time; dead ones never come on.
@@ -410,8 +417,13 @@ func test_damage_lighting() -> void:
 	flicker.setup(tile, &"destroyed", tuning)
 	var destroyed_on: float = _average_lit_share(flicker, lights, 60.0)
 	assert_lt(destroyed_on, heavy_on, "destroyed flickers less than heavy (%.2f vs %.2f)" % [destroyed_on, heavy_on])
+	tuning.emergency_slit_dead_share = 0.0
+	flicker.setup(tile, &"destroyed", tuning)
 	var red_on: float = _average_lit_share(flicker, emergency, 60.0)
 	assert_gt(red_on, 0.8, "the red emergency light is on most of the time (%.2f)" % red_on)
+	tuning.emergency_slit_dead_share = 1.0
+	flicker.setup(tile, &"destroyed", tuning)
+	assert_eq(_average_lit_share(flicker, emergency, 30.0), 0.0, "destroyed with every slit dead: no red light")
 
 
 func test_damage_lighting_is_the_same_every_time() -> void:

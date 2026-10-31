@@ -9,8 +9,9 @@ extends Node3D
 ## its gate faces the welcome center). A cart waits in the welcome center: look at it and press E.
 ##
 ## Keys: 1 pristine, 2 light, 3 heavy, 4 destroyed (damage overlays and lights on every tile: light =
-## some lights blink, heavy = dim and mostly dark with flickers, destroyed = dark, rare faint flickers, red
-## emergency light that sometimes flickers).
+## some lights blink, heavy = dim and mostly dark with flickers and the red emergency slits low on the walls
+## glowing, destroyed = dark, rare faint flickers, a third of the slits dead and the rest flickering now and then).
+## In 1 and 2 the slits are dark grooves (CHANGED 2026-10-31).
 ## C ceilings on/off, M arrows and markers on/off, O overview camera on/off (use with C),
 ## T jump to the next tile, Y back to the elevator, P test palette on/off (material slots).
 
@@ -18,17 +19,19 @@ extends Node3D
 const SAMPLE: Array = [
 	[&"room_tile_elevator", 0, 0, 0],
 	[&"room_tile_welcome_center", -3, -6, 0],
-	# West main hallway: a 3-long piece, a 5-long piece, an end.
+	# West main hallway: a 3-long piece, a dark filler (CHANGED 2026-10-31: so the red slits come every other
+	# unit), a 5-long piece, an end.
 	[&"room_tile_main_straight", -6, -4, 1],
-	[&"room_tile_main_straight_long", -11, -4, 1],
-	[&"room_tile_main_end", -12, -4, 1],
+	[&"room_tile_main_filler_dark", -7, -4, 1],
+	[&"room_tile_main_straight_long", -12, -4, 1],
+	[&"room_tile_main_end", -13, -4, 1],
 	# A side hallway from the 3-long piece's doorway, ending at an office.
 	[&"room_tile_hall_straight", -5, -7, 0],
 	[&"room_tile_hall_end", -5, -8, 0],
 	[&"room_tile_office", -6, -12, 0],
 	# A long side hallway from the 5-long piece's second doorway.
-	[&"room_tile_hall_straight_long", -8, -9, 0],
-	[&"room_tile_hall_end", -8, -10, 0],
+	[&"room_tile_hall_straight_long", -9, -9, 0],
+	[&"room_tile_hall_end", -9, -10, 0],
 	# East main hallway: a 3-long piece, a corner, another 3-long piece, an end.
 	[&"room_tile_main_straight", 5, -4, 1],
 	[&"room_tile_main_corner", 8, -4, 3],

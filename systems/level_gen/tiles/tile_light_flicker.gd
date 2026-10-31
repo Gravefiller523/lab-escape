@@ -4,9 +4,10 @@ extends Node
 ## a tile and call setup(). Numbers come from Config.floor_gen ("Damage lighting"):
 ## - pristine: every light steady.
 ## - light: some lights flicker now and then, the rest stay on.
-## - heavy: some lights are dead; the rest are dim, stay dark for a while, then flicker. Emergency light steady.
-## - destroyed: most lights are dead; the rest flicker faintly once in a long while. The red emergency light
-##   stays on and now and then flickers.
+## - heavy: some lights are dead; the rest are dim, stay dark for a while, then flicker. Emergency slits steady.
+## - destroyed: most lights are dead; the rest flicker faintly once in a long while. A third of the red
+##   emergency slits are dead; the rest stay on and now and then flicker.
+## The emergency slits (EmergencySlits) are off in pristine and lightly damaged rooms.
 ## CHANGED 2026-10-31 (Zachary: "way more random"): each light has its own speed, a flicker is either one
 ## quick blink or a stuttering burst, switches don't strictly alternate, and every flash has its own brightness.
 ## Looks only: never sent over the network. Each light's pattern is seeded by its node path and the damage
@@ -75,13 +76,21 @@ func _ceiling_light(light: Light3D, level: StringName) -> _Flicker:
 	return flicker
 
 
+## CHANGED 2026-10-31 (emergency slits): off (a dark groove) in pristine and lightly damaged rooms, steady in
+## heavily damaged ones; in destroyed rooms a share is dead and the rest flicker, each on its own.
 func _emergency_light(light: Light3D, level: StringName) -> _Flicker:
 	var flicker: _Flicker = _new_flicker(light, level)
 	var base: float = light.get_meta(BASE_ENERGY_META)
-	if level == &"destroyed":
-		flicker.flickering(true, base, _tuning.emergency_on_seconds, _tuning.emergency_flicker_seconds)
-	else:
-		flicker.steady(true, base)
+	match level:
+		&"heavy":
+			flicker.steady(true, base)
+		&"destroyed":
+			if flicker.rng.randf() < _tuning.emergency_slit_dead_share:
+				flicker.steady(false, base)
+			else:
+				flicker.flickering(true, base, _tuning.emergency_on_seconds, _tuning.emergency_flicker_seconds)
+		_:
+			flicker.steady(false, base)
 	return flicker
 
 

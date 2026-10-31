@@ -138,7 +138,7 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 		_room_nodes.append(node)
 		if layout.grid == RoomData.GRID_TILE:
 			_dress_room(node, room, department)
-			_apply_damage(node, index, layout, department)
+			_apply_damage(node, index, layout)
 		for marker: RoomMarker in _markers_in(node):
 			var key: String = FloorLayout.marker_key(index, String(node.get_path_to(marker)))
 			if layout.marker_params.has(key):
@@ -160,6 +160,8 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 		if tile == null or not tile.seal_socket(str(link["name"])):
 			_add_plug(link, cell)
 	if layout.grid == RoomData.GRID_TILE:
+		for index: int in _room_nodes.size():
+			_light_room(_room_nodes[index], index, layout, department)
 		_build_doors(layout)
 	if layout.grid == RoomData.GRID_TILE and department != null and not department.palette.is_empty():
 		for node: Node in _rooms_root.get_children():
@@ -353,13 +355,21 @@ static func room_display_name(room: RoomData, department: DepartmentData) -> Str
 	return room.display_name.replace("(blockout)", "").strip_edges()
 
 
-## NEW 2026-10-31 (floor generation step 4b): a tile at its damage level: only that level's overlay is kept,
-## its lights flicker (TileLightFlicker) in the department's light colours, and a collapsed hallway piece is
-## filled with rubble.
-func _apply_damage(node: Node3D, index: int, layout: FloorLayout, department: DepartmentData) -> void:
-	var level: StringName = layout.damage_level(index)
-	TileStandards.keep_damage(node, level)
+## NEW 2026-10-31 (step 4b), CHANGED 2026-10-31 (emergency slits): a tile at its damage level: only that
+## level's overlay is kept, and a collapsed hallway piece is filled with rubble. (Its lights: _light_room.)
+func _apply_damage(node: Node3D, index: int, layout: FloorLayout) -> void:
+	TileStandards.keep_damage(node, layout.damage_level(index))
+	if layout.collapsed.has(index):
+		_add_collapse(node)
+
+
+## NEW 2026-10-31 (split out of _apply_damage): once its doorways are sealed, a tile's red emergency slits are
+## built, and its lights take the department's colours and flicker (TileLightFlicker) for its damage level.
+func _light_room(node: Node3D, index: int, layout: FloorLayout, department: DepartmentData) -> void:
 	var lighting: LightingStyleData = department.lighting if department != null else null
+	var blockout := node as BlockoutTile
+	if blockout != null:
+		blockout.refresh_emergency_slits(lighting.emergency_color if lighting != null else EmergencySlits.DEFAULT_COLOR)
 	if lighting != null:
 		for child: Node in RoomShape.all_children(node):
 			var light := child as Light3D
@@ -373,9 +383,7 @@ func _apply_damage(node: Node3D, index: int, layout: FloorLayout, department: De
 	var flicker := TileLightFlicker.new()
 	flicker.name = "LightFlicker"
 	node.add_child(flicker)
-	flicker.setup(node, level)
-	if layout.collapsed.has(index):
-		_add_collapse(node)
+	flicker.setup(node, layout.damage_level(index))
 
 
 ## A collapsed hallway piece: a pile of rubble filling it from wall to wall, up to near the ceiling.

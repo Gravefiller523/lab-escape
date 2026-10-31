@@ -8,6 +8,7 @@ extends Node3D
 ## - walls on the edge (wall_thickness thick, centred on it) with a doorway-sized hole for every door
 ##   socket and a frame around it, and no wall at all where a socket is an open_edge (hallway ends),
 ## - ceiling lights (group "tile_light"),
+## - red emergency slits low on the walls (EmergencySlits, NEW 2026-10-31; node "EmergencySlits"),
 ## - placeholder coloured boxes in empty damage overlays (Damage/Light, Damage/Heavy, Damage/Destroyed).
 ## Everything solid uses CSG with collision on the WORLD layer, so players, voices (muffling) and the
 ## enemies' navigation bake all see it. Nothing it builds is saved in the scene: move a socket, then tick
@@ -21,6 +22,12 @@ extends Node3D
 ## A hole in the floor (x, z, width, depth in metres), e.g. where the cargo lift's own floor stands, so
 ## the two floors don't flicker against each other. Zero size = no hole.
 @export var floor_hole: Rect2 = Rect2()
+## NEW 2026-10-31 (Zachary): where its red emergency slits go: "room" (corners, long walls), "hall" (worked out
+## from its open sides) or "none" (the dark hallway filler). See EmergencySlits.
+@export var emergency_slits: StringName = EmergencySlits.STYLE_ROOM
+## NEW 2026-10-31: floor areas (x, z rectangles in metres) the slit rules leave alone, e.g. a room inside this
+## room; light those with "emergency_slit" markers instead.
+@export var emergency_keep_out: Array[Rect2] = []
 ## Editor helper: tick it to build the geometry again.
 @export var rebuild: bool = false:
 	set(value):
@@ -98,6 +105,7 @@ func _build() -> void:
 	if auto_lights:
 		_add_lights(generated, tuning)
 	_fill_overlays(tuning)
+	EmergencySlits.build(self, tuning)
 
 
 ## NEW 2026-10-31 (step 4c fix): a door socket nothing joins becomes plain wall: its hole and frame go, so
@@ -118,6 +126,22 @@ func seal_socket(socket_name: String) -> bool:
 func is_socket_sealed(socket_name: String) -> bool:
 	var shell: Node = get_node_or_null(NodePath("%s/Shell" % GENERATED_NAME))
 	return shell != null and shell.get_node_or_null("Hole_%s" % socket_name) == null
+
+
+## NEW 2026-10-31: builds the red emergency slits again (after doorways were sealed), glowing in `color`.
+func refresh_emergency_slits(color: Color = EmergencySlits.DEFAULT_COLOR) -> void:
+	EmergencySlits.build(self, _tuning(), color)
+
+
+## NEW 2026-10-31: the tile's sockets (RoomDoorway children).
+func get_sockets() -> Array[RoomDoorway]:
+	return _sockets()
+
+
+## NEW 2026-10-31: which edge a socket is on (0 north, 1 south, 2 west, 3 east; -1 = none) and its grid unit
+## along that edge.
+func socket_place(socket: RoomDoorway) -> Vector2i:
+	return _socket_place(socket, _tuning().grid_unit)
 
 
 ## The tile's sockets (RoomDoorway children, not inside the generated nodes).
@@ -241,7 +265,7 @@ func _add_lights(parent: Node3D, tuning: FloorGenTuning) -> void:
 ##   hugging the walls, never in front of a doorway, in a hallway's cart lane or on a machine or spawn spot;
 ## - things you walk over or under (no collision): papers (light), fallen ceiling tiles and hanging cables
 ##   (heavy), scorch marks and ceiling panels (destroyed);
-## - a red emergency light (heavy and destroyed, group "tile_emergency_light").
+## (CHANGED 2026-10-31: the red emergency light is gone from here; see EmergencySlits.)
 ## The same tile always gets the same debris. The rubble is only solid while its overlay is shown
 ## (TileStandards.show_damage / keep_damage).
 func _fill_overlays(tuning: FloorGenTuning) -> void:
@@ -285,15 +309,6 @@ func _fill_overlays(tuning: FloorGenTuning) -> void:
 			_box(rubble, "Chunk%d" % placed, Vector3(spot.x, size.y / 2.0, spot.y), size, &"rubble")
 			placed += 1
 		_add_loose_debris(placeholder, level_index, length, rng, tuning)
-		if level_index >= 2:
-			var emergency := OmniLight3D.new()
-			emergency.name = "EmergencyLight"
-			emergency.light_color = Color(1.0, 0.15, 0.1)
-			emergency.light_energy = 1.2
-			emergency.omni_range = maxf(length.x, length.y) * 0.6
-			emergency.position = Vector3(length.x / 2.0, tuning.ceiling_height - 0.5, length.y / 2.0)
-			emergency.add_to_group(TileStandards.EMERGENCY_LIGHT_GROUP)
-			placeholder.add_child(emergency)
 
 
 ## Things with no collision: papers (light and worse), fallen ceiling tiles and hanging cables (heavy and

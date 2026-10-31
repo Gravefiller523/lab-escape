@@ -77,6 +77,15 @@ func step(delta: float) -> void                  # called every frame; tests cal
 class_name BlockoutTile extends Node3D          # @tool: builds a CSG blockout tile (floor, ceiling, walls, holes, frames, lights)
 func seal_socket(socket_name) -> bool          # NEW 2026-10-31: an unused door socket becomes plain wall (hole and frame go)
 func is_socket_sealed(socket_name) -> bool
+func refresh_emergency_slits(color) -> void    # NEW 2026-10-31: builds its red slits again (Level calls it after sealing)
+func get_sockets() -> Array[RoomDoorway]        # NEW 2026-10-31
+func socket_place(socket) -> Vector2i          # NEW 2026-10-31: (edge 0 N, 1 S, 2 W, 3 E or -1; grid unit along it)
+@export var emergency_slits: StringName        # NEW 2026-10-31: "room", "hall" or "none" (dark filler)
+@export var emergency_keep_out: Array[Rect2]   # NEW 2026-10-31: areas the slit rules leave alone (light them with markers)
+class_name EmergencySlits extends RefCounted    # NEW 2026-10-31 (Zachary): red emergency slits low on a tile's walls
+static func build(tile, tuning, color) -> Node3D        # builds the tile's "EmergencySlits" node
+static func plan(tile, tuning) -> Array[Dictionary]     # where they go, without building (tests)
+static func slit_point(tile, tuning, slit) -> Vector2
 @export var size_units: Vector2i
 @export var auto_lights: bool = true
 @export var floor_hole: Rect2                   # e.g. under the cargo lift's own floor
@@ -261,6 +270,7 @@ enemies' navigation bake see them). Hand-placed pieces (furniture, inner walls) 
 | Keycard spot | `keycard` | none | keycards (step 4c) |
 | Sign spot | `sign` (new) | `text` (optional; otherwise the room type's name) | level_gen (room-name sign) |
 | Security room | `security_map`, `security_monitor` (new) | none | security (step 4e) |
+| Emergency slit | `emergency_slit` (NEW 2026-10-31) | `corner` (bool: an L in an inside corner) | level_gen (EmergencySlits) |
 
 Older kinds keep working: `lift`, `printer`, `cart`, `vendor`, `upgrade_machine`, `charger`, `item_spawn`,
 `player_spawn`, `supply_counter`, `task`, `boss_spawn`, `minion_spawn`, `locked_door`. Placement (Q19):
@@ -280,9 +290,8 @@ the welcome center.
 
 **Damage overlays.** Every tile has a `Damage` node with children `Light`, `Heavy` and `Destroyed` (hidden).
 Pristine is the tile itself. When the floor is built (step 4b) the room's level is shown and the rest
-deleted. `BlockoutTile` fills an overlay you left empty with placeholder boxes (yellow, orange, red; heavy
-and destroyed add a red emergency light). Tile lights are in the group **`tile_light`**, the overlays' red
-emergency lights in **`tile_emergency_light`**; the ceiling is in `tile_ceiling`. `TileStandards.show_damage()`
+deleted. `BlockoutTile` fills an overlay you left empty with placeholder boxes. Tile lights are in the group
+**`tile_light`**, the red emergency slits' lights (see "Emergency slits" below) in **`tile_emergency_light`**; the ceiling is in `tile_ceiling`. `TileStandards.show_damage()`
 switches levels.
 NEW 2026-10-31 (step 4b): overlays left empty get **real blockout debris** (no more coloured boxes): solid
 rubble (material slot `rubble`, WORLD collision, solid only while the overlay is shown) always within 0.5 m
@@ -291,13 +300,38 @@ rubble (material slot `rubble`, WORLD collision, solid only while the overlay is
 `TileStandards.keep_damage(tile, level)` keeps one overlay and deletes the rest.
 **Damage lighting** (NEW 2026-10-30, Zachary; `TileLightFlicker`, numbers in `Config.floor_gen`, "Damage
 lighting"): pristine = steady; light = some lights blink now and then; heavy = some lights dead, the rest dim,
-dark for a few seconds then flickering, red emergency light steady; destroyed = most lights dead, the rest
-dark with a rare faint flicker, red emergency light on and now and then flickering. Looks only (not
+dark for a few seconds then flickering, red emergency slits steady; destroyed = most lights dead, the rest
+dark with a rare faint flicker, a third of the red slits dead and the rest on and now and then flickering
+(pristine and light: the slits are dark grooves). Looks only (not
 networked); each light is seeded by its node path, so every PC shows the same pattern.
 CHANGED 2026-10-31 (Zachary, "way more random"): each light has its own speed (`flicker_light_speed`), a
 flicker is either one quick blink (`flicker_single_blink_chance`) or a burst of random switches
 (`flicker_on_chance`, not strict on-off-on) at a random brightness per flash (`flicker_brightness`), and the
 wait ranges are wider.
+
+**Emergency slits** (NEW 2026-10-31, Zachary; `EmergencySlits`, numbers in `Config.floor_gen`, "Emergency
+slits"). The red emergency lights are small glowing slots low on the walls: 50 cm wide, 5 cm tall, 10 cm above
+the floor, set into the wall, each with one small red light (no shadows, department `emergency_color`). An L
+slit (25 cm along each wall, meeting in an inside corner) counts as one. No collision, nothing networked. Where
+they go depends on the tile's `emergency_slits`:
+- `"room"` (the default; rooms, the elevator, the welcome centers): L slits in the inside corners. Rooms up to
+  9 m both ways light 2 opposite corners (the pair with more free corners), bigger rooms all 4. A corner is
+  skipped when a wall is open there, a door frame is within 2 m along either wall, or furniture or a marker
+  stands within 0.6 m of it. Walls over 12 m also get `round(length / 9) - 1` straight slits, which slide up to
+  2 m out of the way of doors, furniture and other slits (4 m apart) or are left out. A room that ends up with
+  none gets one straight slit. Areas in `emergency_keep_out` (a room inside the room) get none; light them with
+  `emergency_slit` markers (a straight slit on a wall face, +Z out of the wall, or with params
+  `{"corner": true}` an L whose arms run along +X and +Z). The welcome centers' security rooms have two.
+- `"hall"` (every hallway piece): a straight piece lights units 0, 2, 4 with a slit on each side wall, facing
+  each other (side doorways are on units 1 and 3, so they never clash); a corner gets an L in its outside
+  corner; an end gets an L in both corners of its end wall (an arm that would run into the end doorway is
+  left off); T and crossing pieces are dark.
+- `"none"`: the dark fillers (`room_tile_main_filler_dark`, `room_tile_hall_filler_dark`, tag "dark"). The
+  generator puts one between two straight hallway pieces, so the slits come every other unit all along a
+  hallway (corners and ends may break the rhythm), and loops alternate lit and dark fillers.
+Sealed doorways count as plain wall: `Level.build` builds each tile's slits again once its unused doorways are
+sealed. The lights start off (a dark groove); `TileLightFlicker` turns them on in heavy rooms, and in
+destroyed rooms leaves a third dead (seeded by the light's node path, so every PC matches) and flickers the rest.
 
 **Material slots.** Geometry that should take the department's look has the metadata `material_slot` =
 `wall`, `floor`, `trim` or `accent`. `TileStandards.apply_palette(tile, department.palette)` swaps them.
@@ -373,6 +407,10 @@ overlaps; both main hallways; room share of the target; every socket joined or c
 reachable; dictionary round trip and size; loops and branch depth within limits; 500 seeds never crash and
 never need the fallback; only the chosen prop spots are used; runs use the new generator and a seed comes back;
 hallway pieces recognised.
+NEW 2026-10-31: `tests/unit/level_gen/test_emergency_slits.gd`: slits never in a doorway or open edge, no ceiling
+emergency light left, small rooms 2 corners and big rooms 4 (plus long-wall slits 4 m apart), corners next to a
+door or furniture skipped (lit once the door is sealed), every hallway piece's slits, lit units alternate along
+generated main hallways, destroyed slits dead the same way every time, the security room's own slits.
 GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `test_room_count_in_range`,
 `test_no_overlapping_rooms`, `test_all_doorways_connected_or_sealed`, `test_layout_round_trips_dict`,
 `test_markers_sorted_same_order`, `test_every_room_follows_cart_rules` (loads every room scene),
@@ -469,6 +507,22 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   navigation bakes in about 50 ms (about 1,200 polygons), so one whole-floor bake stays (plan section 12).
 - 2026-10-19 (cargo_lift slots): NEW marker kind `charger` (where the lift's battery charger may go), one in
   `room_hall_grey` and one in `room_corridor_grey`.
+- 2026-10-31 (step 4c fix, Zachary's playtest: doors floating at odd angles, the pry door only a black strip):
+  the door leaves were built right but stayed behind when the game moved the floor to line it up with the lift
+  (fixed in `WorldDoor`, see world_io). NEW `BlockoutTile.seal_socket` / `is_socket_sealed`: a tile's unused door
+  socket is now plain wall instead of a frame around a grey plug. Tests `test_door_leaves_sit_shut_on_their_jambs`
+  (a moved heavy-damage floor) and `test_every_door_type_on_every_side_and_turn`.
+- 2026-10-31 (Zachary: emergency slits): the red emergency light is no longer one ceiling light in the heavy
+  and destroyed overlays. NEW `EmergencySlits`: small red slits low on the walls, each with one small light
+  (rooms: L slits in the inside corners, 2 opposite ones in rooms up to 9 m, all 4 in bigger ones, straight
+  slits on walls over 12 m; hallways: a pair every other unit, an L in a corner's outside corner and both
+  corners of an end wall, T and crossing pieces dark). Unlit = a dark groove; heavy = all on; destroyed = a
+  third dead (seeded), the rest flicker. NEW `BlockoutTile.emergency_slits` ("room", "hall", "none"),
+  `emergency_keep_out`, `refresh_emergency_slits`, `get_sockets`, `socket_place`; marker kind `emergency_slit`
+  (the welcome centers' security rooms use two). NEW tiles `room_tile_main_filler_dark` and
+  `room_tile_hall_filler_dark` (tag "dark", piece "straight1_dark"): the generator puts one between two straight
+  hallway pieces, and loops alternate lit and dark fillers. Level.build builds each tile's slits after sealing
+  its doorways (`_light_room`). NEW tuning group "Emergency slits". Tests `test_emergency_slits.gd`.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,
@@ -494,8 +548,3 @@ props at `prop_spawn` markers). Joiners get the layout in net_core's join handsh
 - **enemies:** `enemy_spawn` markers; add navigation regions to rooms.
 - **bosses:** the arena's `boss_spawn` and `minion_spawn` markers; remove the "Defeat the boss" stub.
 - **Content:** Zoology rooms go in `content/rooms/` with `department_ids = [department_zoology]`.
-- 2026-10-31 (step 4c fix, Zachary's playtest: doors floating at odd angles, the pry door only a black strip):
-  the door leaves were built right but stayed behind when the game moved the floor to line it up with the lift
-  (fixed in `WorldDoor`, see world_io). NEW `BlockoutTile.seal_socket` / `is_socket_sealed`: a tile's unused door
-  socket is now plain wall instead of a frame around a grey plug. Tests `test_door_leaves_sit_shut_on_their_jambs`
-  (a moved heavy-damage floor) and `test_every_door_type_on_every_side_and_turn`.

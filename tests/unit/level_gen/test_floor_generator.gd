@@ -196,7 +196,7 @@ func test_runs_use_the_new_generator() -> void:
 	assert_true(FileAccess.file_exists(FloorGenerator.LOG_PATH), "the log is saved")
 	assert_true(Config.floor_gen.use_floor_generator, "on by default")
 	FloorGenerator.set_next_seed(98765)
-	assert_eq(FloorGenerator.generate(_department(), 3, 555).floor_seed, 98765, "F9 / `floorgen <seed>` picks the seed")
+	assert_eq(FloorGenerator.generate(_department(), 3, 555).floor_seed, 98765, "F4 / `floorgen <seed>` picks the seed")
 	assert_ne(FloorGenerator.generate(_department(), 3, 555).floor_seed, 98765, "only for the next floor")
 	assert_eq(FloorGenerator.generate_from_seed(_department(), 3, 98765, Config.floor_gen).to_dict(),
 		FloorGenerator.generate_from_seed(_department(), 3, 98765, Config.floor_gen).to_dict(), "a seed you liked comes back")
@@ -311,3 +311,286 @@ func test_robotics_floors_get_the_palette_and_room_signs() -> void:
 	assert_true(signs.has("ASSEMBLY FLOOR"), "the assembly floor has its sign (%s)" % ", ".join(signs))
 	assert_true(signs.has("SECURITY"), "the welcome center's security room sign")
 	Level.clear()
+
+
+## NEW 2026-10-31 (step 4b): incident and damage.
+func _robotics_floor(floor_seed: int, floor_number: int) -> FloorLayout:
+	return FloorGenerator.generate_from_seed(_robotics(), floor_number, floor_seed, Config.floor_gen)
+
+
+func _links_of(layout: FloorLayout) -> Dictionary[int, Array]:
+	var links: Dictionary[int, Array] = {}
+	for link: Dictionary in LevelGenerator.doorway_links(layout, _unit()):
+		if not link["connected"]:
+			continue
+		var next: Vector2i = (link["cell"] as Vector2i) + (link["dir"] as Vector2i)
+		for other: Dictionary in LevelGenerator.doorway_links(layout, _unit()):
+			if other["cell"] == next and other["dir"] == -(link["dir"] as Vector2i):
+				var a: int = link["placement"]
+				if not links.has(a):
+					links[a] = []
+				links[a].append(other["placement"])
+	return links
+
+
+func test_every_tile_gets_a_damage_level_and_the_start_stays_calm() -> void:
+	var tuning: FloorGenTuning = Config.floor_gen
+	var start_cap: int = TileStandards.DAMAGE_LEVELS.find(tuning.start_area_max_damage)
+	var damaged: int = 0
+	for floor_seed: int in 20:
+		var layout: FloorLayout = _robotics_floor(floor_seed, 1 + floor_seed % 18)
+		assert_eq(layout.damage.size(), layout.placements.size(), "seed %d: a level for every tile" % floor_seed)
+		assert_ne(layout.incident_id, &"", "seed %d: an incident" % floor_seed)
+		assert_true(layout.origin >= 0 and _room(layout.placements[layout.origin]).tile_role == TileStandards.ROLE_ROOM,
+			"seed %d: it starts in a room" % floor_seed)
+		assert_lte(layout.damage[0], start_cap, "seed %d: the elevator is at most %s" % [floor_seed, tuning.start_area_max_damage])
+		assert_lte(layout.damage[1], start_cap, "seed %d: the welcome center and security room too" % floor_seed)
+		for level: int in layout.damage:
+			if level > 0:
+				damaged += 1
+	assert_gt(damaged, 20, "floors do get damaged")
+
+
+func test_damage_is_worst_near_the_origin() -> void:
+	var nearer: int = 0
+	var checks: int = 0
+	for floor_seed: int in 15:
+		var layout: FloorLayout = _robotics_floor(floor_seed, 12)
+		var origin_level: int = layout.damage[layout.origin]
+		var calmest: int = 3
+		for level: int in layout.damage:
+			calmest = mini(calmest, level)
+		checks += 1
+		if origin_level > calmest:
+			nearer += 1
+	assert_gt(float(nearer), float(checks) * 0.8, "the incident's room is more damaged than the calmest tile (%d of %d floors)" % [nearer, checks])
+
+
+func test_robotics_incidents_start_in_their_rooms() -> void:
+	var robotics: DepartmentData = _robotics()
+	var fitting: int = 0
+	for floor_seed: int in 20:
+		var layout: FloorLayout = _robotics_floor(floor_seed, 6)
+		for incident: IncidentData in robotics.incidents:
+			if incident.id == layout.incident_id and incident.origin_room_kinds.has(String(_room(layout.placements[layout.origin]).room_kind)):
+				fitting += 1
+	assert_gt(fitting, 10, "most incidents start in a room they fit (assembly floor, test bay, server room): %d of 20" % fitting)
+
+
+func test_collapses_never_cut_anything_off() -> void:
+	var collapses: int = 0
+	for floor_seed: int in 40:
+		var layout: FloorLayout = _robotics_floor(floor_seed, 18)
+		for index: int in layout.collapsed:
+			collapses += 1
+			assert_eq(_room(layout.placements[index]).tile_role, TileStandards.ROLE_SECONDARY_HALL,
+				"seed %d: only secondary hallways collapse (main hallways never)" % floor_seed)
+			assert_eq(layout.damage[index], 3, "seed %d: only destroyed ones" % floor_seed)
+		var links: Dictionary[int, Array] = _links_of(layout)
+		var reached: Dictionary[int, bool] = {0: true}
+		var queue: Array[int] = [0]
+		while not queue.is_empty():
+			var at: int = queue.pop_back()
+			for next: Variant in links.get(at, []):
+				var index: int = next
+				if not reached.has(index) and not layout.collapsed.has(index):
+					reached[index] = true
+					queue.append(index)
+		assert_eq(reached.size(), layout.placements.size() - layout.collapsed.size(),
+			"seed %d: every tile but the collapsed ones can still be reached (and the security room)" % floor_seed)
+	gut.p("collapsed hallway pieces over 40 floor-18 floors: %d" % collapses)
+
+
+func test_hazards_only_in_badly_damaged_rooms() -> void:
+	var tuning: FloorGenTuning = Config.floor_gen
+	var min_level: int = TileStandards.DAMAGE_LEVELS.find(tuning.hazard_min_damage)
+	var total: int = 0
+	for floor_seed: int in 20:
+		var floor_number: int = 1 + floor_seed % 18
+		var layout: FloorLayout = _robotics_floor(floor_seed, floor_number)
+		var keys: PackedStringArray = layout.active_markers.get(&"hazard", PackedStringArray())
+		total += keys.size()
+		assert_lte(keys.size(), int(FloorGenTuning.grown(float(tuning.hazards_max), tuning.hazards_per_floor,
+			float(tuning.hazards_cap), floor_number)), "seed %d: not more than V12 allows" % floor_seed)
+		for key: String in keys:
+			var placement: int = key.get_slice("/", 0).to_int()
+			assert_gte(layout.damage[placement], min_level, "seed %d: %s is in a %s room" % [floor_seed, key, tuning.hazard_min_damage])
+			assert_true(layout.marker_params.has(key) and layout.marker_params[key].has("hazard_kind"), "%s knows its kind" % key)
+	assert_gt(total, 0, "some floors have hazards")
+
+
+func test_debug_origin_near_and_forced_damage() -> void:
+	FloorGenerator.debug_origin = &"near"
+	FloorGenerator.debug_damage = &"heavy"
+	var layout: FloorLayout = _robotics_floor(99, 3)
+	FloorGenerator.debug_origin = &""
+	FloorGenerator.debug_damage = &""
+	var normal: FloorLayout = _robotics_floor(99, 3)
+	var links: Dictionary[int, Array] = _links_of(layout)
+	assert_ne(layout.origin, normal.origin, "near moves the incident")
+	for index: int in range(2, layout.damage.size()):
+		assert_eq(layout.damage[index], 2, "forced damage on every tile but the start area")
+	assert_lte(layout.damage[1], TileStandards.DAMAGE_LEVELS.find(Config.floor_gen.start_area_max_damage))
+	assert_true(links.has(0), "a sane floor")
+
+
+func test_built_floor_shows_its_damage() -> void:
+	var layout: FloorLayout = _robotics_floor(7, 12)
+	var copy: FloorLayout = FloorLayout.from_dict(layout.to_dict())
+	assert_eq(copy.damage, layout.damage, "damage goes to every PC")
+	assert_eq(copy.marker_params, layout.marker_params)
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	add_child_autofree(viewport)
+	var parent := Node3D.new()
+	viewport.add_child(parent)
+	Level.build(copy, parent)
+	var rooms: Array[Node3D] = Level.get_room_nodes()
+	for index: int in rooms.size():
+		var level: StringName = copy.damage_level(index)
+		for overlay_level: StringName in TileStandards.OVERLAY_NODES:
+			var overlay: Node3D = TileStandards.overlay_of(rooms[index], overlay_level)
+			if overlay_level == level:
+				assert_not_null(overlay, "tile %d keeps its %s overlay" % [index, level])
+				if overlay != null:
+					assert_true(overlay.visible)
+			else:
+				assert_true(overlay == null or overlay.is_queued_for_deletion(), "tile %d drops its %s overlay" % [index, overlay_level])
+		assert_not_null(rooms[index].get_node_or_null("LightFlicker"), "tile %d's lights follow its damage" % index)
+		if copy.collapsed.has(index):
+			assert_not_null(rooms[index].get_node_or_null("CollapseRubble"), "tile %d is filled with rubble" % index)
+	for key: String in copy.marker_params:
+		var found: bool = false
+		for marker: RoomMarker in Level.get_markers(&"prop_spawn") + Level.get_markers(&"hazard"):
+			var params: Dictionary = copy.marker_params[key]
+			if params.has("prop_id") and marker.params.get("prop_id", "") == params["prop_id"]:
+				found = true
+			if params.has("hazard_kind") and marker.params.get("hazard_kind", "") == params["hazard_kind"]:
+				found = true
+		assert_true(found, "%s's settings reached its marker" % key)
+	Level.clear()
+
+
+## NEW 2026-10-31 (Zachary's playtest: F8 stopped the game): the map and new-floor keys are input actions on
+## keys the Godot editor doesn't use while a game runs (it uses F5 to F8).
+func test_debug_keys_avoid_the_editor_run_keys() -> void:
+	var editor_keys: Array[Key] = [KEY_F5, KEY_F6, KEY_F7, KEY_F8]
+	for action: StringName in [InputActions.DEBUG_FLOOR_MAP, InputActions.DEBUG_FLOOR_REGENERATE]:
+		assert_true(InputMap.has_action(action), "%s is an input action" % action)
+		for event: InputEvent in InputMap.action_get_events(action):
+			var key := event as InputEventKey
+			if key != null:
+				assert_false(editor_keys.has(key.physical_keycode), "%s isn't on an editor run key" % action)
+	assert_eq(InputActions.DEFAULT_KEYS[InputActions.DEBUG_FLOOR_MAP], KEY_F3)
+	assert_eq(InputActions.DEFAULT_KEYS[InputActions.DEBUG_FLOOR_REGENERATE], KEY_F4)
+
+
+## NEW 2026-10-31 (Zachary: more damage around the incident, and smaller incidents elsewhere).
+func test_the_main_incident_has_a_damaged_zone_around_it() -> void:
+	var zones: int = 0
+	for floor_seed: int in 20:
+		var layout: FloorLayout = _robotics_floor(floor_seed, 1)
+		assert_gte(layout.damage[layout.origin], 2, "seed %d: the incident's room is at least heavily damaged on floor 1" % floor_seed)
+		var heavy: int = 0
+		for level: int in layout.damage:
+			if level >= 2:
+				heavy += 1
+		if heavy >= 3:
+			zones += 1
+	assert_gte(zones, 16, "on floor 1 most floors have 3 or more heavy or destroyed tiles (%d of 20)" % zones)
+
+
+func test_smaller_incidents_are_spread_out() -> void:
+	var tuning: FloorGenTuning = Config.floor_gen
+	var at_least_min: int = 0
+	var floors: int = 0
+	for floor_number: int in [1, 5, 10, 18]:
+		for floor_seed: int in 10:
+			var layout: FloorLayout = _robotics_floor(floor_seed * 17 + 3, floor_number)
+			floors += 1
+			var count: int = layout.minor_origins.size()
+			assert_eq(layout.minor_incident_ids.size(), count)
+			assert_lte(count, tuning.by_bracket(tuning.minor_incidents_max_by_bracket, floor_number), "floor %d: not too many" % floor_number)
+			if count >= tuning.by_bracket(tuning.minor_incidents_min_by_bracket, floor_number):
+				at_least_min += 1
+			var distances: Dictionary[int, PackedFloat32Array] = {}
+			var from_start: PackedFloat32Array = _walk(layout, 0)
+			var farthest: float = 0.0
+			for distance: float in from_start:
+				if distance < INF:
+					farthest = maxf(farthest, distance)
+			var origins: Array[int] = [layout.origin]
+			for origin: int in layout.minor_origins:
+				assert_gt(origin, 1, "never the elevator or welcome center")
+				assert_eq(_room(layout.placements[origin]).tile_role, TileStandards.ROLE_ROOM, "a smaller incident starts in a room")
+				assert_gte(layout.damage[origin], 2, "floor %d seed %d: heavy at a smaller incident's room" % [floor_number, floor_seed])
+				for other: int in origins:
+					if not distances.has(other):
+						distances[other] = _walk(layout, other)
+					assert_gte(distances[other][origin], farthest * tuning.minor_incident_min_distance_share - 0.01,
+						"floor %d seed %d: spaced from the other incidents" % [floor_number, floor_seed])
+				origins.append(origin)
+	assert_gte(float(at_least_min), float(floors) * 0.8, "most floors get their smaller incidents (%d of %d)" % [at_least_min, floors])
+
+
+## Walking distance (metres, through tile centres, like the generator) from one tile to every tile.
+func _walk(layout: FloorLayout, from: int) -> PackedFloat32Array:
+	var centres: Array[Vector2] = []
+	for placement: RoomPlacement in layout.placements:
+		var size: Vector2i = RoomShape.of(_room(placement), _unit()).rotated_size(placement.rotation_steps)
+		centres.append((Vector2(placement.cell.x, placement.cell.z) + Vector2(size) / 2.0) * _unit())
+	var links: Dictionary[int, Array] = _links_of(layout)
+	var distances := PackedFloat32Array()
+	distances.resize(layout.placements.size())
+	distances.fill(INF)
+	distances[from] = 0.0
+	var done: Dictionary[int, bool] = {}
+	while true:
+		var best: int = -1
+		for index: int in distances.size():
+			if not done.has(index) and distances[index] < INF and (best < 0 or distances[index] < distances[best]):
+				best = index
+		if best < 0:
+			break
+		done[best] = true
+		for next: Variant in links.get(best, []):
+			var to: int = next
+			var length: float = distances[best] + centres[best].distance_to(centres[to])
+			if length < distances[to]:
+				distances[to] = length
+	return distances
+
+
+## NEW 2026-10-31 (Zachary: higher floors are bigger). Prints the average size of floors 1, 6, 12 and 18.
+func test_floors_grow_with_the_floor_number() -> void:
+	var averages: Array[Vector3] = []
+	for floor_number: int in [1, 6, 12, 18]:
+		var rooms: float = 0.0
+		var tiles: float = 0.0
+		var area: float = 0.0
+		var widest := Vector2.ZERO
+		var seeds: int = 10
+		for floor_seed: int in seeds:
+			var layout: FloorLayout = _robotics_floor(floor_seed * 101 + floor_number, floor_number)
+			var low := Vector2(INF, INF)
+			var high := Vector2(-INF, -INF)
+			for placement: RoomPlacement in layout.placements:
+				var room: RoomData = _room(placement)
+				if room.tile_role == TileStandards.ROLE_ROOM:
+					rooms += 1.0
+				var size: Vector2i = RoomShape.of(room, _unit()).rotated_size(placement.rotation_steps)
+				var corner := Vector2(placement.cell.x, placement.cell.z)
+				low = Vector2(minf(low.x, corner.x), minf(low.y, corner.y))
+				high = Vector2(maxf(high.x, corner.x + size.x), maxf(high.y, corner.y + size.y))
+			tiles += float(layout.placements.size())
+			var metres: Vector2 = (high - low) * _unit()
+			area += metres.x * metres.y
+			widest = Vector2(maxf(widest.x, metres.x), maxf(widest.y, metres.y))
+		averages.append(Vector3(rooms, tiles, area) / float(seeds))
+		gut.p("floor %d: %.1f rooms, %.1f tiles, footprint %.0f m2 on average (largest %.0f x %.0f m)" % [floor_number,
+			rooms / float(seeds), tiles / float(seeds), area / float(seeds), widest.x, widest.y])
+	for index: int in range(1, averages.size()):
+		assert_gt(averages[index].x, averages[index - 1].x, "more rooms on each higher floor")
+		assert_gt(averages[index].y, averages[index - 1].y, "more tiles on each higher floor")
+	assert_gt(averages[3].x, averages[0].x * 2.5, "floor 18 has well over twice floor 1's rooms")
+	assert_gt(averages[3].z, averages[0].z * 2.0, "and covers at least twice the area")

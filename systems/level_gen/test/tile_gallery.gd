@@ -270,6 +270,8 @@ func _teleport(xform: Transform3D) -> void:
 func _apply_palette() -> void:
 	var palette: Dictionary = {}
 	for slot: StringName in TileStandards.MATERIAL_SLOTS:
+		if not TEST_PALETTE_COLORS.has(String(slot)):
+			continue
 		if _palette_on:
 			var material := StandardMaterial3D.new()
 			material.albedo_color = TEST_PALETTE_COLORS[String(slot)]

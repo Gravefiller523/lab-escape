@@ -1,9 +1,10 @@
 class_name FloorgenOverlay
 extends CanvasLayer
-## NEW 2026-10-31 (floor generation step 3): the F8 debug view. The floor from above (FloorMapView) with
+## NEW 2026-10-31 (floor generation step 3): the F3 debug view (CHANGED 2026-10-31: was F8, which the Godot
+## editor uses to stop a running game). The floor from above (FloorMapView) with
 ## your position, the seed in the corner ("seed 1837261 / attempt 2 / floor 4 department_robotics"), a seed
 ## box (host: type a seed, press Go, the same floor comes back), and the end of the generation log.
-## Level owns it: F8 shows and hides it, F9 (host) makes a new floor. Esc frees the mouse to click the box.
+## Level owns it: F3 shows and hides it, F4 (host) makes a new floor. Esc frees the mouse to click the box.
 
 ## Asks Level to rebuild this floor with a seed (host only).
 signal seed_entered(floor_seed: int)
@@ -41,7 +42,7 @@ func _ready() -> void:
 	var row := HBoxContainer.new()
 	column.add_child(row)
 	var hint := Label.new()
-	hint.text = "F8 close   F9 new floor (host)   wheel zoom   seed:"
+	hint.text = "F3 close   F4 new floor (host)   wheel zoom   seed:"
 	row.add_child(hint)
 	_seed_box = LineEdit.new()
 	_seed_box.custom_minimum_size = Vector2(140, 0)
@@ -74,9 +75,10 @@ func refresh() -> void:
 		_title.text = "No floor (start a run)."
 		_log.text = ""
 		return
-	_title.text = "seed %d / attempt %d / floor %d %s%s   (%d tiles, %d wings, %d loops)" % [layout.floor_seed,
+	_title.text = "seed %d / attempt %d / floor %d %s%s   (%d tiles, %d wings, %d loops)   %s (star)" % [layout.floor_seed,
 		layout.attempt, layout.floor_number, layout.department_id, "  FALLBACK FLOOR" if layout.is_fallback else "",
-		layout.placements.size(), layout.wings.size(), layout.loops.size()]
+		layout.placements.size(), layout.wings.size(), layout.loops.size(),
+		("%s + %d smaller" % [layout.incident_id, layout.minor_origins.size()]) if layout.incident_id != &"" else "no incident"]
 	var lines: PackedStringArray = layout.log_lines
 	if lines.is_empty():
 		_log.text = "(the generation log is on the host; `floorgen log` in the console)"

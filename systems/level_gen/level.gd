@@ -30,24 +30,25 @@ func use_config(config: GameConfig) -> void:
 func _ready() -> void:
 	if _config == null:
 		_config = Config.game
-	# NEW 2026-10-31 (floor generation step 3): the F8 debug view, F9 and the floorgen console commands.
+	# NEW 2026-10-31 (floor generation step 3): the F3 debug view, F4 and the floorgen console commands.
 	_overlay = FloorgenOverlay.new()
 	_overlay.name = "FloorgenOverlay"
 	_overlay.seed_entered.connect(func(floor_seed: int) -> void: _regenerate(floor_seed))
 	add_child(_overlay)
 	DebugConsole.register_command(&"floorgen", _cmd_floorgen,
-		"floorgen <seed> | floorgen floor <n> | floorgen dept <department_id> | floorgen log | floorgen map")
+		"floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | log | map")
 
 
-## NEW 2026-10-31: F8 shows the floor from above (cheats only), F9 makes a new floor (host, cheats only).
+## NEW 2026-10-31: F3 shows the floor from above (cheats only), F4 makes a new floor (host, cheats only).
+## Input actions InputActions.DEBUG_FLOOR_MAP / DEBUG_FLOOR_REGENERATE (CHANGED 2026-10-31: were F8 and F9,
+## but the Godot editor stops a running game on F8).
 func _unhandled_key_input(event: InputEvent) -> void:
-	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo or not DebugConsole.cheats_allowed():
+	if not DebugConsole.cheats_allowed():
 		return
-	if key.keycode == KEY_F8:
+	if event.is_action_pressed(InputActions.DEBUG_FLOOR_MAP, false):
 		_overlay.toggle()
 		get_viewport().set_input_as_handled()
-	elif key.keycode == KEY_F9:
+	elif event.is_action_pressed(InputActions.DEBUG_FLOOR_REGENERATE, false):
 		var result: String = _regenerate(0)
 		EventBus.toast_requested.emit(result)
 		get_viewport().set_input_as_handled()
@@ -70,9 +71,14 @@ func _regenerate(floor_seed: int) -> String:
 	return "New floor: seed %d. %s" % [new_seed, result]
 
 
+## NEW 2026-10-31: this floor again with the same seed (to see a debug setting).
+func _regenerate_same() -> String:
+	return _regenerate(_layout.floor_seed if _layout != null and _layout.grid == RoomData.GRID_TILE else 0)
+
+
 func _cmd_floorgen(args: PackedStringArray, _player_id: int) -> String:
 	if args.is_empty():
-		return "Usage: floorgen <seed> | floorgen floor <n> | floorgen dept <department_id> | floorgen log | floorgen map"
+		return "Usage: floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | log | map"
 	match args[0]:
 		"log":
 			var layout: FloorLayout = FloorGenerator.last_layout if FloorGenerator.last_layout != null else _layout
@@ -86,6 +92,16 @@ func _cmd_floorgen(args: PackedStringArray, _player_id: int) -> String:
 			if args.size() < 2 or not args[1].is_valid_int():
 				return "Usage: floorgen floor <n>"
 			return GameFlow.debug_go_to_floor(args[1].to_int())
+		"origin":
+			if args.size() < 2 or not ["near", "far", "normal"].has(args[1]):
+				return "Usage: floorgen origin near|far|normal (where the incident starts; stays until changed)"
+			FloorGenerator.debug_origin = &"" if args[1] == "normal" else StringName(args[1])
+			return "Incidents start %s. %s" % [args[1], _regenerate_same()]
+		"damage":
+			if args.size() < 2 or not ["light", "heavy", "destroyed", "pristine", "off"].has(args[1]):
+				return "Usage: floorgen damage light|heavy|destroyed|pristine|off (every tile; stays until off)"
+			FloorGenerator.debug_damage = &"" if args[1] == "off" else StringName(args[1])
+			return "Damage %s. %s" % [args[1], _regenerate_same()]
 		"dept":
 			if args.size() < 2:
 				return "Usage: floorgen dept <department_id>"
@@ -93,7 +109,7 @@ func _cmd_floorgen(args: PackedStringArray, _player_id: int) -> String:
 			return GameFlow.debug_go_to_floor(run.floor_number if run != null else 1, StringName(args[1]))
 	if args[0].is_valid_int() and args[0].to_int() != 0:
 		return _regenerate(args[0].to_int())
-	return "Usage: floorgen <seed> | floorgen floor <n> | floorgen dept <department_id> | floorgen log | floorgen map"
+	return "Usage: floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | log | map"
 
 
 ## Builds the floor: every room in its place, plugs in doorways that lead nowhere. Clears the old
@@ -121,9 +137,15 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 		_room_nodes.append(node)
 		if layout.grid == RoomData.GRID_TILE:
 			_dress_room(node, room, department)
+			_apply_damage(node, index, layout, department)
 		for marker: RoomMarker in _markers_in(node):
+			var key: String = FloorLayout.marker_key(index, String(node.get_path_to(marker)))
+			if layout.marker_params.has(key):
+				var params: Dictionary = marker.params.duplicate()
+				params.merge(layout.marker_params[key], true)
+				marker.params = params
 			_markers.append(marker)
-			_marker_keys.append(FloorLayout.marker_key(index, String(node.get_path_to(marker))))
+			_marker_keys.append(key)
 	for link: Dictionary in LevelGenerator.doorway_links(layout, cell):
 		var connected: bool = link["connected"]
 		if connected:
@@ -322,3 +344,57 @@ static func room_display_name(room: RoomData, department: DepartmentData) -> Str
 			if room_type != null and room_type.room_kind == room.room_kind and not room_type.display_name.is_empty():
 				return room_type.display_name
 	return room.display_name.replace("(blockout)", "").strip_edges()
+
+
+## NEW 2026-10-31 (floor generation step 4b): a tile at its damage level: only that level's overlay is kept,
+## its lights flicker (TileLightFlicker) in the department's light colours, and a collapsed hallway piece is
+## filled with rubble.
+func _apply_damage(node: Node3D, index: int, layout: FloorLayout, department: DepartmentData) -> void:
+	var level: StringName = layout.damage_level(index)
+	TileStandards.keep_damage(node, level)
+	var lighting: LightingStyleData = department.lighting if department != null else null
+	if lighting != null:
+		for child: Node in RoomShape.all_children(node):
+			var light := child as Light3D
+			if light == null:
+				continue
+			if light.is_in_group(TileStandards.LIGHT_GROUP):
+				light.light_color = lighting.light_color
+				light.light_energy *= lighting.light_energy
+			elif light.is_in_group(TileStandards.EMERGENCY_LIGHT_GROUP):
+				light.light_color = lighting.emergency_color
+	var flicker := TileLightFlicker.new()
+	flicker.name = "LightFlicker"
+	node.add_child(flicker)
+	flicker.setup(node, level)
+	if layout.collapsed.has(index):
+		_add_collapse(node)
+
+
+## A collapsed hallway piece: a pile of rubble filling it from wall to wall, up to near the ceiling.
+func _add_collapse(node: Node3D) -> void:
+	var blockout := node as BlockoutTile
+	var tuning: FloorGenTuning = Config.floor_gen
+	var size := Vector2(1, 1) * tuning.grid_unit
+	if blockout != null:
+		size = Vector2(blockout.size_units) * tuning.grid_unit
+	var rubble := CSGCombiner3D.new()
+	rubble.name = "CollapseRubble"
+	rubble.use_collision = true
+	rubble.collision_layer = PhysicsLayers.bit(PhysicsLayers.WORLD)
+	rubble.collision_mask = 0
+	node.add_child(rubble)
+	var material: Material = BlockoutTile.slot_material(&"rubble")
+	# [centre (metres), size (metres), tilt (radians)]: a solid block wall to wall, two slabs leaning on it.
+	var pieces: Array[Array] = [[Vector3(size.x / 2.0, 1.2, size.y / 2.0), Vector3(size.x, 2.4, size.y), 0.0],
+		[Vector3(size.x * 0.35, 2.7, size.y / 2.0), Vector3(size.x * 0.6, 0.25, size.y * 0.8), 0.35],
+		[Vector3(size.x * 0.7, 2.6, size.y * 0.45), Vector3(size.x * 0.5, 0.25, size.y * 0.7), -0.3]]
+	for piece_index: int in pieces.size():
+		var piece: Array = pieces[piece_index]
+		var box := CSGBox3D.new()
+		box.name = "Rubble%d" % piece_index
+		box.position = piece[0]
+		box.size = piece[1]
+		box.rotation.z = piece[2]
+		box.material = material
+		rubble.add_child(box)

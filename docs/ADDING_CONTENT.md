@@ -88,7 +88,8 @@ Items and attacks point to it with `status_id`.
 **Copy:** `prop_crate.tres`. **Fill in:** `scene` (copy an existing prop scene: root is `NetProp`
 with a collision shape and mesh), `mass` (kg; above 40 needs two players, above 120 can't be lifted),
 `is_key_object` (lift parts, keycards), `cart_allowed`, `despawn_after_seconds`, `gem_value` (gems only),
-`grants_upgrade` (glowing gems and robot parts). NEW 2026-10-19: `lift_slot` (a lift part: the slot it fits; a new
+`grants_upgrade` (glowing gems and robot parts). NEW 2026-10-31: loose debris props (tag `debris`, e.g.
+`prop_debris_chunk`) turn up in damaged rooms when listed in `config/floor_gen_tuning.tres` `debris_prop_ids`. NEW 2026-10-19: `lift_slot` (a lift part: the slot it fits; a new
 slot name adds a new slot to the lift), `fragile_break_speed` (above 0: shatters when it hits something this fast,
 m/s), `needs_charge_seconds` (above 0: must sit on the lift charger this long before it fits). NEW 2026-10-30
 (lift parts, for the new floor generator): `part_size` (`small`, `medium`, `large`, `huge`: which `lift_part`
@@ -133,7 +134,10 @@ edge, centred on a 3 m unit's edge, width 2.4, height 2.8; `connection` (`door`,
 `open_edge` for hallway ends. A room needs a socket on every side. **Markers** under a `Markers` node (kinds
 in the spec's marker table). **Damage:** keep the `Damage/Light`, `Damage/Heavy`, `Damage/Destroyed` nodes
 (empty = placeholder boxes). Furniture: CSG boxes with `use_collision` on and the metadata `material_slot`
-(`accent`). **Fill in** as above plus `grid` = `tile_3m`, `tile_role` (`room`, `main_hall`, `secondary_hall`,
+(`accent`). NEW 2026-10-31 (step 4b): put your own debris in `Damage/Light`, `Damage/Heavy`, `Damage/Destroyed`
+(solid rubble in a `CSGCombiner3D` with `use_collision` on, keeping doorways, cart lanes and machine and spawn
+spots clear); an overlay left empty gets generated blockout debris. Hazard spots: `hazard` markers with
+`hazard_kinds` and `min_damage` params. **Fill in** as above plus `grid` = `tile_3m`, `tile_role` (`room`, `main_hall`, `secondary_hall`,
 `template`), `size_category` (rooms: `small` 2x2/2x3/3x3, `medium` 3x4/4x4/4x5, `large` 5x6/6x6/6x8; empty
 otherwise), `damage_levels`, `part_categories` (lift part categories that fit, e.g. `mechanical`),
 `is_combat_room`. **Test:** run `tests/unit/level_gen/test_tile_standards.gd` and look at it in
@@ -143,7 +147,7 @@ rooms (no `department_ids`) on every floor, a department's own tiles on its floo
 code: the generator works out what a piece is from its open edges (2 opposite = straight, 2 next to each
 other = corner, 3 = T, 4 = crossing, 1 = end) and asks for straight pieces 1, 3 or 5 units long. A
 department's own welcome center is a `template` tile with `room_kind` `welcome_center` and the department in
-`department_ids`. **Test:** `systems/level_gen/test/floorgen_viewer.tscn` (F6), or in a run press F8.
+`department_ids`. **Test:** `systems/level_gen/test/floorgen_viewer.tscn` (F6), or in a run press F3.
 
 ## Department
 A department is a bundle. Make its rooms, enemies, boss, loot tables and stock first, then one
@@ -166,7 +170,7 @@ whose `boss_id` is only a stand-in, so its boss floors aren't rolled. Runs roll 
 departments with `in_run_rotation`); `floor_count` is deprecated. Its own rooms: tiles with the department in
 `department_ids` and the room type's `room_kind`; its own welcome center: a template tile with `room_kind`
 `welcome_center`. Example: `content/departments/department_robotics.tres`. **Test:** `floor 1 department_<name>`
-then F8.
+then F3.
 
 ## Floor task
 **Fill in:** `scene` (built from `FloorTask` and `TaskStation` pieces), `min_players`,

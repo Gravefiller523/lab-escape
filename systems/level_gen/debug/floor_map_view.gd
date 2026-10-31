@@ -2,7 +2,7 @@ class_name FloorMapView
 extends Control
 ## NEW 2026-10-31 (floor generation step 3): draws a floor layout from above, from the plan (not a camera):
 ## main hallways dark and thick, secondary hallways lighter, rooms coloured by wing, the elevator yellow,
-## the welcome center teal, loops as magenta lines, wing names, and players as arrows. Used by the F8
+## the welcome center teal, loops as magenta lines, wing names, and players as arrows. Used by the F3
 ## overlay and the floorgen viewer test scene. Mouse wheel (or zoom_by) zooms.
 
 const ELEVATOR_COLOR: Color = Color(0.95, 0.8, 0.2)
@@ -12,6 +12,11 @@ const SECONDARY_HALL_COLOR: Color = Color(0.5, 0.54, 0.62)
 const LOOP_COLOR: Color = Color(1.0, 0.3, 0.85)
 const OUTLINE_COLOR: Color = Color(0.08, 0.08, 0.1)
 const PLAYER_COLOR: Color = Color(1.0, 1.0, 1.0)
+## NEW 2026-10-31 (step 4b): rooms filled by damage level (pristine, light, heavy, destroyed); the incident star.
+const DAMAGE_COLORS: Array[Color] = [Color(0.35, 0.62, 0.4), Color(0.85, 0.8, 0.3), Color(0.92, 0.5, 0.18), Color(0.85, 0.15, 0.12)]
+const ORIGIN_COLOR: Color = Color(1.0, 0.95, 0.4)
+## NEW 2026-10-31: the smaller incidents' stars.
+const MINOR_ORIGIN_COLOR: Color = Color(1.0, 0.65, 0.3)
 
 var layout: FloorLayout:
 	set(value):
@@ -66,6 +71,7 @@ func _draw() -> void:
 		if pair.x < rects.size() and pair.y < rects.size():
 			draw_line(to_screen.call(rects[pair.x].get_center()), to_screen.call(rects[pair.y].get_center()), LOOP_COLOR, 3.0)
 	_draw_wing_names(rects, to_screen)
+	_draw_damage_marks(rects, to_screen, scale_fit)
 	for player: Dictionary in players:
 		var at: Vector3 = player["position"]
 		var facing: Vector3 = player["facing"]
@@ -110,14 +116,18 @@ func _color_of(index: int) -> Color:
 		return Color.MAGENTA
 	if room.room_kind == &"lift":
 		return ELEVATOR_COLOR
+	var damaged: bool = index < layout.damage.size()
+	var damage_color: Color = DAMAGE_COLORS[mini(layout.damage[index], 3)] if damaged else Color.WHITE
 	match room.tile_role:
 		TileStandards.ROLE_TEMPLATE:
-			return WELCOME_COLOR
+			return WELCOME_COLOR.lerp(damage_color, 0.35) if damaged else WELCOME_COLOR
 		TileStandards.ROLE_MAIN_HALL:
-			return MAIN_HALL_COLOR
+			return MAIN_HALL_COLOR.lerp(damage_color, 0.35) if damaged else MAIN_HALL_COLOR
 		TileStandards.ROLE_SECONDARY_HALL:
+			if damaged:
+				return SECONDARY_HALL_COLOR.lerp(damage_color, 0.45)
 			return SECONDARY_HALL_COLOR.lerp(_wing_color(placement.wing), 0.25)
-	return _wing_color(placement.wing)
+	return damage_color if damaged else _wing_color(placement.wing)
 
 
 func _wing_color(wing: int) -> Color:
@@ -143,3 +153,29 @@ func _draw_wing_names(rects: Array[Rect2], to_screen: Callable) -> void:
 		var text: String = layout.wings[wing]
 		draw_string_outline(font, at - Vector2(40, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 4, OUTLINE_COLOR)
 		draw_string(font, at - Vector2(40, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+
+
+## NEW 2026-10-31 (step 4b): a star where the incident started (smaller orange stars for the smaller incidents)
+## and an X over collapsed hallway pieces.
+func _draw_damage_marks(rects: Array[Rect2], to_screen: Callable, scale_fit: float) -> void:
+	for index: int in layout.collapsed:
+		if index < rects.size():
+			var screen := Rect2(to_screen.call(rects[index].position), rects[index].size * scale_fit)
+			draw_line(screen.position, screen.end, OUTLINE_COLOR, 3.0)
+			draw_line(Vector2(screen.end.x, screen.position.y), Vector2(screen.position.x, screen.end.y), OUTLINE_COLOR, 3.0)
+	for index: int in layout.minor_origins:
+		if index < rects.size():
+			_draw_star(to_screen.call(rects[index].get_center()), 9.0, MINOR_ORIGIN_COLOR)
+	if layout.origin >= 0 and layout.origin < rects.size():
+		_draw_star(to_screen.call(rects[layout.origin].get_center()), 14.0, ORIGIN_COLOR)
+
+
+func _draw_star(centre: Vector2, radius: float, color: Color) -> void:
+	var points := PackedVector2Array()
+	for point: int in 10:
+		var reach: float = radius if point % 2 == 0 else radius * 0.43
+		var angle: float = -PI / 2.0 + float(point) * PI / 5.0
+		points.append(centre + Vector2(cos(angle), sin(angle)) * reach)
+	draw_colored_polygon(points, color)
+	points.append(points[0])
+	draw_polyline(points, OUTLINE_COLOR, 1.5)

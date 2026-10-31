@@ -32,9 +32,14 @@ const LOG_PATH: String = "user://floorgen/last_floor.log"
 static var _next_seed_override: int = 0
 ## The last floor this PC generated for a run (for `floorgen log`).
 static var last_layout: FloorLayout
+## NEW 2026-10-31 (step 4b), debug (`floorgen origin` / `floorgen damage`): where the incident starts ("near"
+## = the room nearest the elevator, "far" = the farthest, "" = normal), and a damage level forced on every tile
+## ("" = normal). They stay until changed.
+static var debug_origin: StringName = &""
+static var debug_damage: StringName = &""
 
 
-## Debug (F9, `floorgen <seed>`): the next generated floor uses this seed.
+## Debug (F4, `floorgen <seed>`): the next generated floor uses this seed.
 static func set_next_seed(floor_seed: int) -> void:
 	_next_seed_override = floor_seed
 
@@ -50,7 +55,7 @@ static func generate(department: DepartmentData, floor_number: int, run_seed: in
 	return generate_from_seed(department, floor_number, floor_seed, numbers)
 
 
-## Makes a floor from a floor seed (what F9 and `floorgen <seed>` set), trying again on failure.
+## Makes a floor from a floor seed (what F4 and `floorgen <seed>` set), trying again on failure.
 static func generate_from_seed(department: DepartmentData, floor_number: int, floor_seed: int,
 		numbers: FloorGenTuning) -> FloorLayout:
 	var log_lines := PackedStringArray()
@@ -226,7 +231,9 @@ class _Builder:
 			_grow_main_hall(connector, hall_rng)
 		_grow_branches()
 		_add_loops()
+		_apply_damage()
 		_pick_markers()
+		_pick_hazards()
 		_check()
 		layout.stats["rooms"] = rooms
 		return layout
@@ -427,8 +434,14 @@ class _Builder:
 		if department != null and department.shared_room_weight >= 0.0:
 			share = department.shared_room_weight
 		if department != null and not department.room_types.is_empty() and rng.randf() >= share:
-			var room_type: RoomTypeData = _pick_room_type(rng)
-			if room_type != null:
+			# CHANGED 2026-10-31: if the picked type doesn't fit here, try the department's other types (by weight)
+			# before a shared room, so big floors stay mostly department rooms.
+			var tried: Array[StringName] = []
+			for attempt: int in department.room_types.size():
+				var room_type: RoomTypeData = _pick_room_type(rng, tried)
+				if room_type == null:
+					break
+				tried.append(room_type.room_kind)
 				var tiles: Array[RoomData] = _tiles_of_type(room_type)
 				var index: int = _attach(socket, tiles, 0, wing, rng) if not tiles.is_empty() else -1
 				if index >= 0:
@@ -436,11 +449,11 @@ class _Builder:
 					return index
 		return _attach(socket, shared_rooms, 0, wing, rng)
 
-	func _pick_room_type(rng: RandomNumberGenerator) -> RoomTypeData:
+	func _pick_room_type(rng: RandomNumberGenerator, skip: Array[StringName] = []) -> RoomTypeData:
 		var types: Array[RoomTypeData] = []
 		var weights := PackedFloat32Array()
 		for room_type: RoomTypeData in department.room_types:
-			if room_type == null or room_type.min_floor > floor_number:
+			if room_type == null or room_type.min_floor > floor_number or skip.has(room_type.room_kind):
 				continue
 			if room_type.max_per_floor > 0 and kind_counts.get(room_type.room_kind, 0) >= room_type.max_per_floor:
 				continue
@@ -573,14 +586,304 @@ class _Builder:
 		_log("loops: %d of %d wanted (%d places a loop could go)" % [layout.loops.size(), wanted, candidates.size()])
 
 	## A stand-in for step 10: switch on a share of the prop_spawn markers.
+	## Prop spots (a stand-in for step 10): a share of the "prop_spawn" markers is used, more in damaged rooms.
+	## A used spot without a fixed prop_id gets loose debris (more likely the worse the damage) or a prop
+	## from the department's prop_pool.
 	func _pick_markers() -> void:
 		var rng: RandomNumberGenerator = _rng(&"floorgen_markers")
 		var keys := PackedStringArray()
+		var debris: int = 0
 		for index: int in layout.placements.size():
+			var level: int = layout.damage[index] if index < layout.damage.size() else 0
+			var share: float = tuning.prop_spawn_share_damaged if level >= 2 else tuning.prop_spawn_share
 			for marker: Dictionary in RoomShape.of(_room_of(index), unit).markers:
-				if marker["kind"] == &"prop_spawn" and rng.randf() < tuning.prop_spawn_share:
-					keys.append(FloorLayout.marker_key(index, marker["path"]))
+				if marker["kind"] != &"prop_spawn" or rng.randf() >= share:
+					continue
+				var key: String = FloorLayout.marker_key(index, marker["path"])
+				keys.append(key)
+				if (marker["params"] as Dictionary).has("prop_id"):
+					continue
+				var debris_chance: float = [0.0, tuning.debris_prop_chance_light, tuning.debris_prop_chance_heavy,
+					tuning.debris_prop_chance_destroyed][level]
+				if not tuning.debris_prop_ids.is_empty() and rng.randf() < debris_chance:
+					layout.marker_params[key] = {"prop_id": String(tuning.debris_prop_ids[rng.randi_range(0, tuning.debris_prop_ids.size() - 1)])}
+					debris += 1
+				elif department != null and not department.prop_pool.is_empty():
+					var weights := PackedFloat32Array()
+					for entry: WeightedIdData in department.prop_pool:
+						weights.append(entry.weight if entry != null else 0.0)
+					var picked: int = SeededRng.pick_weighted(rng, weights)
+					if picked >= 0:
+						layout.marker_params[key] = {"prop_id": String(department.prop_pool[picked].content_id)}
 		layout.active_markers[&"prop_spawn"] = keys
+		if debris > 0:
+			_log("props: %d spots used, %d with loose debris" % [keys.size(), debris])
+
+	## NEW 2026-10-31 (step 6 of the plan, built in step 4b): the incident and the damage.
+	## The department's incident (by weight) starts in a room it fits (origin_room_kinds), at least
+	## incident_min_distance_share of the farthest walking distance from the elevator. Each tile's damage
+	## score is intensity (grows with the floor) x how close it is to the origin (fading over
+	## damage_falloff_metres of walking) + a little noise; thresholds turn it into a level. The elevator and
+	## the welcome center (with its security room) never go above start_area_max_damage. Some destroyed
+	## secondary hallway pieces collapse, but only where every other tile can still be reached.
+	func _apply_damage() -> void:
+		var rng: RandomNumberGenerator = _rng(&"floorgen_damage")
+		var count: int = layout.placements.size()
+		layout.damage.resize(count)
+		layout.damage.fill(0)
+		var links: Dictionary[int, Array] = _links()
+		var from_start: PackedFloat32Array = _path_distances(links, 0)
+		var farthest: float = 0.0
+		for distance: float in from_start:
+			if distance < INF:
+				farthest = maxf(farthest, distance)
+		var incident: IncidentData = _pick_incident(rng)
+		layout.incident_id = incident.id if incident != null else &"incident_generic"
+		layout.origin = _pick_origin(incident, from_start, farthest, rng)
+		if layout.origin < 0:
+			_log("incident: no room to start in, no damage")
+			return
+		var intensity: float = FloorGenTuning.grown(tuning.damage_intensity_base, tuning.damage_intensity_per_floor,
+			tuning.damage_intensity_cap, floor_number)
+		var from_origin: PackedFloat32Array = _path_distances(links, layout.origin)
+		var minor_distances: Array[PackedFloat32Array] = _pick_minor_incidents(links, from_start, from_origin, farthest)
+		var start_cap: int = maxi(TileStandards.DAMAGE_LEVELS.find(tuning.start_area_max_damage), 0)
+		var forced: int = TileStandards.DAMAGE_LEVELS.find(FloorGenerator.debug_damage)
+		var counts := PackedInt32Array([0, 0, 0, 0])
+		for index: int in count:
+			# The worst of every incident: the main one, then the smaller ones.
+			var closeness: float = maxf(0.0, 1.0 - from_origin[index] / maxf(tuning.damage_falloff_metres, 0.1))
+			var peak: float = intensity * closeness
+			for distances: PackedFloat32Array in minor_distances:
+				var near: float = maxf(0.0, 1.0 - distances[index] / maxf(tuning.minor_incident_falloff_metres, 0.1))
+				peak = maxf(peak, tuning.minor_incident_intensity * near)
+			var score: float = peak + rng.randf_range(-tuning.damage_noise, tuning.damage_noise)
+			var level: int = 0
+			if score >= tuning.damage_destroyed_threshold:
+				level = 3
+			elif score >= tuning.damage_heavy_threshold:
+				level = 2
+			elif score >= tuning.damage_light_threshold:
+				level = 1
+			if forced >= 0:
+				level = forced
+			if index <= 1:
+				level = mini(level, start_cap)
+			level = mini(level, _highest_level(_room_of(index)))
+			layout.damage[index] = level
+			counts[level] += 1
+		_collapse(links, rng)
+		_log("incident %s in %s (#%d, %.0f m from the elevator): intensity %.2f; %d light, %d heavy, %d destroyed; %d collapsed" % [
+			layout.incident_id, layout.placements[layout.origin].room_id, layout.origin, from_start[layout.origin],
+			intensity, counts[1], counts[2], counts[3], layout.collapsed.size()])
+
+	## NEW 2026-10-31 (Zachary): smaller incidents at other points of the floor (minor_incidents_*_by_bracket).
+	## Each starts in a room (never the elevator or welcome center) at least minor_incident_min_distance_share of
+	## the farthest walking distance away from the main incident and from each other, preferring an incident type
+	## the main one isn't and a room it fits. Returns each one's walking distances to every tile.
+	func _pick_minor_incidents(links: Dictionary[int, Array], from_start: PackedFloat32Array,
+			from_origin: PackedFloat32Array, farthest: float) -> Array[PackedFloat32Array]:
+		var rng: RandomNumberGenerator = _rng(&"floorgen_minor_incidents")
+		var lo: int = tuning.by_bracket(tuning.minor_incidents_min_by_bracket, floor_number)
+		var hi: int = tuning.by_bracket(tuning.minor_incidents_max_by_bracket, floor_number)
+		var wanted: int = rng.randi_range(lo, maxi(hi, lo))
+		var spacing: float = farthest * tuning.minor_incident_min_distance_share
+		var taken: Array[PackedFloat32Array] = [from_origin]
+		var found: Array[PackedFloat32Array] = []
+		for attempt: int in wanted:
+			var incident: IncidentData = _pick_minor_incident_type(rng)
+			var fitting: Array[int] = []
+			var spaced: Array[int] = []
+			for index: int in layout.placements.size():
+				if index <= 1 or _room_of(index).tile_role != TileStandards.ROLE_ROOM or from_start[index] == INF:
+					continue
+				var far_enough: bool = true
+				for distances: PackedFloat32Array in taken:
+					far_enough = far_enough and distances[index] >= spacing
+				if not far_enough:
+					continue
+				spaced.append(index)
+				if incident != null and incident.origin_room_kinds.has(String(_room_of(index).room_kind)):
+					fitting.append(index)
+			var pool: Array[int] = fitting if not fitting.is_empty() else spaced
+			if pool.is_empty():
+				break
+			var origin: int = pool[rng.randi_range(0, pool.size() - 1)]
+			var distances: PackedFloat32Array = _path_distances(links, origin)
+			layout.minor_origins.append(origin)
+			layout.minor_incident_ids.append(String(incident.id) if incident != null else "incident_generic")
+			taken.append(distances)
+			found.append(distances)
+		if not found.is_empty():
+			var where := PackedStringArray()
+			for index: int in layout.minor_origins.size():
+				where.append("%s in %s (#%d)" % [layout.minor_incident_ids[index],
+					layout.placements[layout.minor_origins[index]].room_id, layout.minor_origins[index]])
+			_log("smaller incidents (%d of %d to %d): %s" % [found.size(), lo, hi, ", ".join(where)])
+		return found
+
+	## A smaller incident's type: one of the department's, preferring one the main incident isn't.
+	func _pick_minor_incident_type(rng: RandomNumberGenerator) -> IncidentData:
+		if department == null or department.incidents.is_empty():
+			return null
+		var others: Array[IncidentData] = []
+		for incident: IncidentData in department.incidents:
+			if incident != null and incident.id != layout.incident_id:
+				others.append(incident)
+		if others.is_empty():
+			return _pick_incident(rng)
+		return others[rng.randi_range(0, others.size() - 1)]
+
+	func _pick_incident(rng: RandomNumberGenerator) -> IncidentData:
+		if department == null or department.incidents.is_empty():
+			return null
+		var weights := PackedFloat32Array()
+		for incident: IncidentData in department.incidents:
+			weights.append(incident.weight if incident != null else 0.0)
+		var picked: int = SeededRng.pick_weighted(rng, weights)
+		return department.incidents[picked] if picked >= 0 else null
+
+	## The room the incident starts in: one of its origin_room_kinds far enough away, else any room far enough
+	## away, else the farthest room. Debug "near"/"far" pick the nearest/farthest room.
+	func _pick_origin(incident: IncidentData, from_start: PackedFloat32Array, farthest: float,
+			rng: RandomNumberGenerator) -> int:
+		var rooms_list: Array[int] = []
+		for index: int in layout.placements.size():
+			if _room_of(index).tile_role == TileStandards.ROLE_ROOM and from_start[index] < INF:
+				rooms_list.append(index)
+		if rooms_list.is_empty():
+			return -1
+		rooms_list.sort_custom(func(a: int, b: int) -> bool: return from_start[a] < from_start[b])
+		if FloorGenerator.debug_origin == &"near":
+			return rooms_list[0]
+		if FloorGenerator.debug_origin == &"far":
+			return rooms_list[-1]
+		var far_enough: Array[int] = []
+		var fitting: Array[int] = []
+		for index: int in rooms_list:
+			if from_start[index] < farthest * tuning.incident_min_distance_share:
+				continue
+			far_enough.append(index)
+			if incident != null and incident.origin_room_kinds.has(String(_room_of(index).room_kind)):
+				fitting.append(index)
+		var pool: Array[int] = fitting if not fitting.is_empty() else far_enough
+		if pool.is_empty():
+			return rooms_list[-1]
+		return pool[rng.randi_range(0, pool.size() - 1)]
+
+	## The worst damage level a tile has overlays for.
+	func _highest_level(room: RoomData) -> int:
+		var highest: int = 0
+		for level: String in room.damage_levels:
+			highest = maxi(highest, TileStandards.DAMAGE_LEVELS.find(StringName(level)))
+		return highest
+
+	## Destroyed secondary hallway pieces may collapse (collapse_chance), only if every other tile can still be
+	## reached from the elevator without them. Main hallways never collapse (Q31).
+	func _collapse(links: Dictionary[int, Array], rng: RandomNumberGenerator) -> void:
+		for index: int in layout.placements.size():
+			if layout.damage[index] < 3 or _room_of(index).tile_role != TileStandards.ROLE_SECONDARY_HALL:
+				continue
+			if rng.randf() >= tuning.collapse_chance:
+				continue
+			var blocked := PackedInt32Array(layout.collapsed)
+			blocked.append(index)
+			if _all_reachable(links, blocked):
+				layout.collapsed = blocked
+
+	## Hazards (V12): a rolled number of the "hazard" markers in rooms at least hazard_min_damage are switched
+	## on, each with a kind the marker allows and the department (or the incident) has.
+	func _pick_hazards() -> void:
+		var rng: RandomNumberGenerator = _rng(&"floorgen_hazards")
+		var min_level: int = maxi(TileStandards.DAMAGE_LEVELS.find(tuning.hazard_min_damage), 1)
+		var candidates: Array[Dictionary] = []
+		for index: int in layout.placements.size():
+			if index >= layout.damage.size() or layout.damage[index] < min_level or layout.collapsed.has(index):
+				continue
+			for marker: Dictionary in RoomShape.of(_room_of(index), unit).markers:
+				if marker["kind"] != &"hazard":
+					continue
+				var params: Dictionary = marker["params"]
+				var needed: int = TileStandards.DAMAGE_LEVELS.find(StringName(str(params.get("min_damage", "pristine"))))
+				if layout.damage[index] >= needed:
+					candidates.append({"key": FloorLayout.marker_key(index, marker["path"]), "params": params})
+		var lo: int = int(FloorGenTuning.grown(float(tuning.hazards_min), tuning.hazards_per_floor, float(tuning.hazards_cap), floor_number))
+		var hi: int = int(FloorGenTuning.grown(float(tuning.hazards_max), tuning.hazards_per_floor, float(tuning.hazards_cap), floor_number))
+		var wanted: int = mini(rng.randi_range(lo, maxi(hi, lo)), candidates.size())
+		_shuffle(candidates, rng)
+		var allowed := PackedStringArray()
+		if department != null:
+			allowed.append_array(department.hazard_kinds)
+		if department != null:
+			for incident: IncidentData in department.incidents:
+				if incident != null and (incident.id == layout.incident_id or layout.minor_incident_ids.has(String(incident.id))):
+					allowed.append_array(incident.hazard_kinds)
+		var keys := PackedStringArray()
+		for candidate: Dictionary in candidates.slice(0, wanted):
+			var kinds: Array = (candidate["params"] as Dictionary).get("hazard_kinds", ["sparks"])
+			var fitting: Array = kinds.filter(func(kind: Variant) -> bool: return allowed.is_empty() or allowed.has(str(kind)))
+			var choice: Array = fitting if not fitting.is_empty() else kinds
+			var key: String = candidate["key"]
+			keys.append(key)
+			layout.marker_params[key] = {"hazard_kind": str(choice[rng.randi_range(0, choice.size() - 1)])}
+		layout.active_markers[&"hazard"] = keys
+		if not keys.is_empty():
+			_log("hazards: %d of %d places (%d to %d wanted)" % [keys.size(), candidates.size(), lo, hi])
+
+	## Which tiles are joined to which: placement -> [[other placement, metres between their centres]].
+	func _links() -> Dictionary[int, Array]:
+		var links: Dictionary[int, Array] = {}
+		for key: String in sockets:
+			var socket: Dictionary = sockets[key]
+			if not _is_joined(socket):
+				continue
+			var other: Dictionary = sockets[_edge_key((socket["cell"] as Vector2i) + (socket["dir"] as Vector2i),
+				-(socket["dir"] as Vector2i))]
+			var a: int = socket["placement"]
+			var b: int = other["placement"]
+			if a == b:
+				continue
+			if not links.has(a):
+				links[a] = []
+			links[a].append([b, _centre(a).distance_to(_centre(b))])
+		return links
+
+	func _centre(index: int) -> Vector2:
+		var placement: RoomPlacement = layout.placements[index]
+		return (Vector2(placement.cell.x, placement.cell.z) + Vector2(_size_of(index)) / 2.0) * unit
+
+	## Walking distance (metres, through tile centres) from one tile to every tile (INF = can't get there).
+	func _path_distances(links: Dictionary[int, Array], from: int, blocked: PackedInt32Array = PackedInt32Array()) -> PackedFloat32Array:
+		var count: int = layout.placements.size()
+		var distances := PackedFloat32Array()
+		distances.resize(count)
+		distances.fill(INF)
+		var done: Dictionary[int, bool] = {}
+		distances[from] = 0.0
+		while true:
+			var best: int = -1
+			for index: int in count:
+				if not done.has(index) and distances[index] < INF and (best < 0 or distances[index] < distances[best]):
+					best = index
+			if best < 0:
+				break
+			done[best] = true
+			for link: Variant in links.get(best, []):
+				var pair: Array = link
+				var next: int = pair[0]
+				var length: float = pair[1]
+				if blocked.has(next):
+					continue
+				if distances[best] + length < distances[next]:
+					distances[next] = distances[best] + length
+		return distances
+
+	func _all_reachable(links: Dictionary[int, Array], blocked: PackedInt32Array) -> bool:
+		var distances: PackedFloat32Array = _path_distances(links, 0, blocked)
+		for index: int in distances.size():
+			if not blocked.has(index) and distances[index] == INF:
+				return false
+		return true
 
 	## The checks for this step (step 12 of the plan adds the rest).
 	func _check() -> void:

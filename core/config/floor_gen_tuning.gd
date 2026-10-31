@@ -41,17 +41,20 @@ extends Resource
 @export var large_room_sizes: Array[Vector2i] = [Vector2i(5, 6), Vector2i(6, 6), Vector2i(6, 8)]
 
 @export_group("Floor brackets")
-## The first floor of each bracket, for the "by bracket" lists below: 1, 4, 8 = floors 1-3, 4-7, 8+.
-@export var floor_brackets: PackedInt32Array = PackedInt32Array([1, 4, 8])
+## The first floor of each bracket, for the "by bracket" lists below: 1, 4, 8, 12 = floors 1-3, 4-7, 8-11, 12+.
+## A list with fewer numbers than brackets keeps using its last number. CHANGED 2026-10-31: bracket 12+ added
+## (Zachary: higher floors bigger).
+@export var floor_brackets: PackedInt32Array = PackedInt32Array([1, 4, 8, 12])
 
 @export_group("Main hallways (V3)")
 ## Length of each main hallway in grid units on floor 1: rolled between these.
 @export var main_hall_length_min: int = 10
 @export var main_hall_length_max: int = 14
-## Extra length per floor after the first (0.5 = +1 every 2 floors).
-@export var main_hall_length_per_floor: float = 0.5
-## Never longer than this (grid units).
-@export var main_hall_length_cap: int = 24
+## Extra length per floor after the first. CHANGED 2026-10-31 (Zachary: higher floors bigger): was 0.5, so a
+## main hallway is about 12 units on floor 1, 17 on floor 6, 23 on floor 12 and 29 on floor 18.
+@export var main_hall_length_per_floor: float = 1.0
+## Never longer than this (grid units). CHANGED 2026-10-31: was 24.
+@export var main_hall_length_cap: int = 30
 ## Chance per hallway piece that it turns (0 to 1).
 @export var main_hall_turn_chance: float = 0.1
 ## Most turns in one main hallway.
@@ -72,8 +75,8 @@ extends Resource
 ## Rooms in a cluster (rooms joined by inner doors, one entrance) (Q28).
 @export var cluster_rooms_min: int = 2
 @export var cluster_rooms_max: int = 4
-## How many times secondary hallways may branch again, by floor bracket.
-@export var max_branch_depth_by_bracket: PackedInt32Array = PackedInt32Array([2, 3, 3])
+## How many times secondary hallways may branch again, by floor bracket. CHANGED 2026-10-31: 4 from floor 12.
+@export var max_branch_depth_by_bracket: PackedInt32Array = PackedInt32Array([2, 3, 3, 4])
 ## NEW 2026-10-31 (step 3): length of a secondary hallway (grid units): rolled between these.
 @export var secondary_hall_length_min: int = 3
 @export var secondary_hall_length_max: int = 10
@@ -85,26 +88,30 @@ extends Resource
 @export_group("Floor size (V5)")
 ## Rooms on floor 1 (hallways come on top).
 @export var target_rooms_base: int = 10
-## Extra rooms per floor after the first.
-@export var target_rooms_per_floor: float = 1.0
-## Never more rooms than this.
-@export var target_rooms_cap: int = 28
+## Extra rooms per floor after the first. CHANGED 2026-10-31 (Zachary: higher floors bigger): was 1.0, so a
+## floor has about 10 rooms on floor 1, 18 on floor 6, 28 on floor 12 and 38 on floor 18.
+@export var target_rooms_per_floor: float = 1.65
+## Never more rooms than this. CHANGED 2026-10-31: was 28.
+@export var target_rooms_cap: int = 40
 
 @export_group("Loops (V6)")
-## Extra connections that make a second route, by floor bracket.
-@export var loops_by_bracket: PackedInt32Array = PackedInt32Array([1, 2, 3])
+## Extra connections that make a second route, by floor bracket. CHANGED 2026-10-31: 4 from floor 12.
+@export var loops_by_bracket: PackedInt32Array = PackedInt32Array([1, 2, 3, 4])
 ## Largest gap (grid units) a loop's short hallway may bridge.
 @export var loop_max_gap_units: int = 4
 
 @export_group("Incident and damage (V7)")
-## How far the damage spreads, 0 to 1: base on floor 1, plus per floor, never above the cap.
-@export var damage_intensity_base: float = 0.35
-@export var damage_intensity_per_floor: float = 0.06
-@export var damage_intensity_cap: float = 1.0
-## Damage fades to nothing over this walking distance from the incident's room (metres).
-@export var damage_falloff_metres: float = 45.0
-## Random wobble added to each tile's damage score (plus or minus).
-@export var damage_noise: float = 0.1
+## How bad the main incident is: its room's damage score (see the thresholds below) on floor 1, plus per floor,
+## never above the cap. CHANGED 2026-10-31 (Zachary: more damage around the incident): was 0.35 + 0.06, cap 1.0,
+## so on floor 1 not even the incident's room was heavily damaged. Now its room is destroyed from floor 1 and
+## heavy damage reaches about (1 - 0.5 / intensity) x falloff metres: about 30 m on floor 1, 40 m by floor 12.
+@export var damage_intensity_base: float = 0.9
+@export var damage_intensity_per_floor: float = 0.03
+@export var damage_intensity_cap: float = 1.3
+## Damage fades to nothing over this walking distance from the incident's room (metres). CHANGED 2026-10-31: was 45.
+@export var damage_falloff_metres: float = 70.0
+## Random wobble added to each tile's damage score (plus or minus). CHANGED 2026-10-31: was 0.1.
+@export var damage_noise: float = 0.12
 ## Damage score at which a tile becomes lightly damaged, heavily damaged, destroyed.
 @export var damage_light_threshold: float = 0.2
 @export var damage_heavy_threshold: float = 0.5
@@ -115,6 +122,18 @@ extends Resource
 @export var start_area_max_damage: StringName = &"light"
 ## The incident starts at least this share of the farthest walking distance from the elevator (Q13).
 @export var incident_min_distance_share: float = 0.5
+## NEW 2026-10-31 (Zachary: smaller incidents at other points of the floor): how many, by floor bracket
+## (rolled between min and max). Each starts in a room (never the welcome center), preferring an incident type
+## the main one isn't, and a tile's damage is the worst of all incidents.
+@export var minor_incidents_min_by_bracket: PackedInt32Array = PackedInt32Array([1, 1, 2])
+@export var minor_incidents_max_by_bracket: PackedInt32Array = PackedInt32Array([1, 2, 3])
+## A smaller incident's damage score at its room (0.72: heavy, now and then destroyed with the noise) ...
+@export var minor_incident_intensity: float = 0.72
+## ... fading to nothing over this walking distance (metres).
+@export var minor_incident_falloff_metres: float = 25.0
+## Smaller incidents are at least this share of the farthest walking distance from the elevator away from the
+## main incident and from each other.
+@export var minor_incident_min_distance_share: float = 0.4
 
 @export_group("Damage lighting")
 ## NEW 2026-10-30 (Zachary): what damage does to a tile's ceiling lights (group "tile_light") and red emergency
@@ -202,6 +221,13 @@ extends Resource
 @export var hazards_cap: int = 10
 ## Hazards only in rooms at least this damaged.
 @export var hazard_min_damage: StringName = &"heavy"
+## NEW 2026-10-31 (step 4b, placeholder hazard zones in systems/hazards): damage per second to anyone
+## standing in one, by hazard kind (kinds not listed use "sparks"), and its damage type.
+@export var hazard_damage_per_second: Dictionary[StringName, float] = {&"sparks": 8.0, &"fire": 12.0}
+@export var hazard_damage_types: Dictionary[StringName, StringName] = {&"sparks": &"electric", &"fire": &"fire"}
+## How often a hazard hurts (seconds) and how big its zone is (radius, metres).
+@export var hazard_tick_seconds: float = 0.5
+@export var hazard_radius: float = 1.4
 
 @export_group("Security room (V13)")
 ## Camera feed picture size (pixels) and how often it redraws (times a second).
@@ -237,6 +263,14 @@ extends Resource
 ## NEW 2026-10-31: share of "prop_spawn" markers that get a prop (the rest stay empty), so big floors don't
 ## fill up with crates. Step 10 of the plan replaces this with department prop pools.
 @export var prop_spawn_share: float = 0.35
+## NEW 2026-10-31 (step 4b): share of prop spots used in heavily damaged and destroyed rooms (loose debris).
+@export var prop_spawn_share_damaged: float = 0.8
+## NEW 2026-10-31 (step 4b): chance a used prop spot gets loose debris instead of a normal prop, by damage.
+@export var debris_prop_chance_light: float = 0.2
+@export var debris_prop_chance_heavy: float = 0.6
+@export var debris_prop_chance_destroyed: float = 0.9
+## NEW 2026-10-31 (step 4b): the loose debris props (PropData ids), picked evenly.
+@export var debris_prop_ids: Array[StringName] = [&"prop_debris_chunk", &"prop_debris_panel"]
 
 @export_group("Rooms (V16)")
 ## Share of non-required room slots that get a shared room (office, storage...). A department's

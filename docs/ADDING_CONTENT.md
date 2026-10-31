@@ -138,7 +138,12 @@ in the spec's marker table). **Damage:** keep the `Damage/Light`, `Damage/Heavy`
 otherwise), `damage_levels`, `part_categories` (lift part categories that fit, e.g. `mechanical`),
 `is_combat_room`. **Test:** run `tests/unit/level_gen/test_tile_standards.gd` and look at it in
 `systems/level_gen/test/tile_gallery.tscn` (F6). New tiles don't appear in today's floors (only the new
-generator, from step 3, uses them).
+generator, from step 3, uses them). NEW 2026-10-31: since step 3 the generator uses every enabled tile: shared
+rooms (no `department_ids`) on every floor, a department's own tiles on its floors. Hallway pieces need no
+code: the generator works out what a piece is from its open edges (2 opposite = straight, 2 next to each
+other = corner, 3 = T, 4 = crossing, 1 = end) and asks for straight pieces 1, 3 or 5 units long. A
+department's own welcome center is a `template` tile with `room_kind` `welcome_center` and the department in
+`department_ids`. **Test:** `systems/level_gen/test/floorgen_viewer.tscn` (F6), or in a run press F8.
 
 ## Department
 A department is a bundle. Make its rooms, enemies, boss, loot tables and stock first, then one

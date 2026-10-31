@@ -136,6 +136,9 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-10-31 (level_gen floor generation step 3): `_floor_level` makes regular floors with
+  `FloorGenerator.generate_for_run` (3 m tiles) while `Config.floor_gen.use_floor_generator` is on; boss floors
+  unchanged. F9 and `floorgen` (level_gen) use `debug_go_to_floor`.
 - 2026-10-18: built (Phase 1b). Changes marked above: `run_seed` naming, the scene-change order, the
   stub floor, the placeholder department, console commands, the NEW helper functions. New GameConfig
   numbers: `elevator_ride_seconds`, `run_summary_seconds`, `floor_load_timeout`.

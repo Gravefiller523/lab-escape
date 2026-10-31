@@ -640,6 +640,9 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
   placeholder department files (shared rooms only). Waiting for Zachary to play it.
 - 4a: Robotics department file, its welcome center, its required and other room tiles; step 5 with
   required rooms. *Test: every Robotics floor has the assembly floor, test bay and server room (F8 shows them).*
+- **Built 2026-10-31 (4b):** incidents and damage levels, real blockout debris, collapses only with a detour,
+  placeholder sparks and fire (`systems/hazards`), loose debris props, damage on the F8 map, `floorgen origin` and
+  `floorgen damage` debug commands. Waiting for Zachary to play it.
 - 4b: incident and damage: overlays, lighting, hazards (placeholder sparks and fire). *Test: walk toward
   the origin and see damage grow; the F8 view matches.*
 - 4c: doors: open, broken open, pry doors (crowbar), power doors (breaker box), debris, keycards, collapsed

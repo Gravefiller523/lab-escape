@@ -1,3 +1,4 @@
+| `Hazards` | hazards | NEW 2026-10-31: sparks and fire zones at the hazard spots the floor plan switched on; hurt through damage (host). |
 # Lab Escape architecture
 
 This is the map of the whole game's code. Each box is a **system**: a separate piece of the game

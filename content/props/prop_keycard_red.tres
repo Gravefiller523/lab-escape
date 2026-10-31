@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/props/prop_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/props/keycard_red.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"prop_keycard_red"
+display_name = "Red keycard"
+description = "Opens the red keycard door on this floor (bring it to the door's card reader). Floor generation step 4c."
+tags = PackedStringArray("keycard")
+scene = ExtResource("2_scene")
+mass = 0.2
+is_key_object = true
+surface = &"metal"

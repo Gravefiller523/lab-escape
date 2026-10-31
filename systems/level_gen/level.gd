@@ -35,6 +35,7 @@ func _ready() -> void:
 	_overlay.name = "FloorgenOverlay"
 	_overlay.seed_entered.connect(func(floor_seed: int) -> void: _regenerate(floor_seed))
 	add_child(_overlay)
+	EventBus.floor_ready.connect(_on_floor_ready)
 	DebugConsole.register_command(&"floorgen", _cmd_floorgen,
 		"floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | log | map")
 
@@ -154,6 +155,8 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 			_add_cap(link, cell)
 		else:
 			_add_plug(link, cell)
+	if layout.grid == RoomData.GRID_TILE:
+		_build_doors(layout)
 	if layout.grid == RoomData.GRID_TILE and department != null and not department.palette.is_empty():
 		for node: Node in _rooms_root.get_children():
 			if node.name.begins_with("Cap"):
@@ -398,3 +401,209 @@ func _add_collapse(node: Node3D) -> void:
 		box.rotation.z = piece[2]
 		box.material = material
 		rubble.add_child(box)
+
+
+# --- Doors (NEW 2026-10-31, floor generation step 4c) ------------------------------------------------------
+
+## Every PC: the plan's doors, in their rooms' doorways (node "Door<n>" inside the room, so the networked
+## devices have the same path everywhere). The node sits in the middle of the doorway with +X along the wall
+## and +Z into the room; the approach side (where readers, breakers and pry points go) is -Z.
+func _build_doors(layout: FloorLayout) -> void:
+	var tuning: FloorGenTuning = Config.floor_gen
+	for index: int in layout.doors.size():
+		var door: Array = layout.doors[index]
+		var room_index: int = door[0]
+		if room_index < 0 or room_index >= _room_nodes.size():
+			continue
+		var room_node: Node3D = _room_nodes[room_index]
+		var socket := room_node.get_node_or_null(NodePath(str(door[1]))) as RoomDoorway
+		if socket == null:
+			continue
+		var holder := Node3D.new()
+		holder.name = "Door%d" % index
+		holder.transform = _doorway_frame(room_node, socket)
+		room_node.add_child(holder)
+		var type: int = door[3]
+		var extra: int = door[4]
+		if type == FloorGenerator.DOOR_BROKEN:
+			_add_broken_leaf(holder, socket)
+			continue
+		if type == FloorGenerator.DOOR_DEBRIS:
+			continue
+		var leaves: Array[WorldDoor] = _add_leaves(holder, socket, type != FloorGenerator.DOOR_OPEN)
+		match type:
+			FloorGenerator.DOOR_PRY:
+				var pry := WorldPryPoint.new()
+				pry.name = "PryPoint"
+				pry.tool_item_id = tuning.crowbar_item_id
+				pry.pry_seconds = tuning.pry_seconds
+				pry.transform = Transform3D(Basis(Vector3.UP, PI), Vector3(0, 0, -0.25))
+				holder.add_child(pry)
+				_wire_opener(pry, &"pried", leaves)
+			FloorGenerator.DOOR_POWER:
+				var breaker := WorldBreaker.new()
+				breaker.name = "Breaker"
+				breaker.needs_cell = extra == 1
+				breaker.cell_prop_id = tuning.power_cell_prop_id
+				breaker.transform = Transform3D(Basis(Vector3.UP, PI), Vector3(socket.width / 2.0 + 0.9, 1.2, -0.25))
+				holder.add_child(breaker)
+				_wire_opener(breaker, &"pulled", leaves)
+				_add_cable(holder, socket)
+			FloorGenerator.DOOR_KEYCARD:
+				var colours: Array[StringName] = tuning.keycard_colours.keys()
+				var colour_name: StringName = colours[clampi(extra, 0, colours.size() - 1)]
+				var reader := WorldKeycardReader.new()
+				reader.name = "Reader"
+				reader.keycard_prop_id = StringName("prop_keycard_%s" % colour_name)
+				reader.color = tuning.keycard_colours[colour_name]
+				reader.card_name = "%s keycard" % colour_name
+				reader.transform = Transform3D(Basis(Vector3.UP, PI), Vector3(socket.width / 2.0 + 0.45, 1.3, -0.19))
+				holder.add_child(reader)
+				_wire_opener(reader, &"accepted", leaves)
+
+
+## Where a socket's doorway is, inside its room node: +X along the wall, +Z into the room.
+func _doorway_frame(room_node: Node3D, socket: RoomDoorway) -> Transform3D:
+	var blockout := room_node as BlockoutTile
+	var unit: float = Config.floor_gen.grid_unit
+	var length := Vector2(blockout.size_units) * unit if blockout != null else Vector2.ONE * unit
+	var p: Vector3 = socket.position
+	var yaw: float = 0.0
+	if absf(p.z - length.y) < 0.1:
+		yaw = PI
+	elif absf(p.x) < 0.1:
+		yaw = PI / 2.0
+	elif absf(p.x - length.x) < 0.1:
+		yaw = -PI / 2.0
+	return Transform3D(Basis(Vector3.UP, yaw), Vector3(p.x, 0, p.z))
+
+
+## A double door: two leaves, each half the doorway, hinged at its sides; each follows the other.
+func _add_leaves(holder: Node3D, socket: RoomDoorway, locked: bool) -> Array[WorldDoor]:
+	var leaves: Array[WorldDoor] = []
+	var half: float = socket.width / 2.0
+	for side: int in 2:
+		var leaf := WorldDoor.new()
+		leaf.name = "Left" if side == 0 else "Right"
+		leaf.width = half
+		leaf.height = socket.height - 0.05
+		leaf.locked = locked
+		leaf.color = Color(0.42, 0.45, 0.5)
+		if side == 0:
+			leaf.transform = Transform3D(Basis.IDENTITY, Vector3(-half, 0, 0))
+		else:
+			leaf.transform = Transform3D(Basis(Vector3.UP, PI), Vector3(half, 0, 0))
+		holder.add_child(leaf)
+		leaves.append(leaf)
+	leaves[0].wire(&"opening", leaves[1], &"open")
+	leaves[1].wire(&"opening", leaves[0], &"open")
+	leaves[0].wire(&"closing", leaves[1], &"close")
+	leaves[1].wire(&"closing", leaves[0], &"close")
+	return leaves
+
+
+## What opens a locked door: on `event` both leaves unlock and swing open.
+func _wire_opener(device: WorldDevice, event: StringName, leaves: Array[WorldDoor]) -> void:
+	for leaf: WorldDoor in leaves:
+		device.wire(event, leaf, &"unlock")
+	device.wire(event, leaves[0], &"open", 0.1)
+
+
+## A broken door: one leaf hanging open against the wall (solid but out of the way), the other gone.
+func _add_broken_leaf(holder: Node3D, socket: RoomDoorway) -> void:
+	var half: float = socket.width / 2.0
+	var hinge := Node3D.new()
+	hinge.name = "BrokenLeaf"
+	hinge.position = Vector3(-half, 0, 0)
+	hinge.rotation = Vector3(0.08, -1.45, 0.05)
+	holder.add_child(hinge)
+	var body := StaticBody3D.new()
+	body.collision_layer = PhysicsLayers.bit(PhysicsLayers.WORLD)
+	body.collision_mask = 0
+	body.position = Vector3(half / 2.0, socket.height / 2.0 - 0.1, 0)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(half, socket.height - 0.3, 0.08)
+	shape.shape = box
+	body.add_child(shape)
+	body.add_child(_plain_mesh(box.size, Color(0.35, 0.37, 0.4)))
+	hinge.add_child(body)
+
+
+## A power door's cable from its breaker up the wall and across to above the doorway (follow it), and the
+## door's dead control panel.
+func _add_cable(holder: Node3D, socket: RoomDoorway) -> void:
+	var to_x: float = socket.width / 2.0 + 0.9
+	var top: float = socket.height + 0.3
+	var up := _plain_mesh(Vector3(0.05, top - 1.6, 0.05), Color(0.08, 0.08, 0.08))
+	up.name = "CableUp"
+	up.position = Vector3(to_x, (1.6 + top) / 2.0, -0.2)
+	holder.add_child(up)
+	var across := _plain_mesh(Vector3(to_x, 0.05, 0.05), Color(0.08, 0.08, 0.08))
+	across.name = "CableAcross"
+	across.position = Vector3(to_x / 2.0, top, -0.2)
+	holder.add_child(across)
+	var panel := _plain_mesh(Vector3(0.2, 0.3, 0.06), Color(0.5, 0.08, 0.06))
+	panel.name = "DeadPanel"
+	panel.position = Vector3(-socket.width / 2.0 - 0.3, 1.4, -0.19)
+	holder.add_child(panel)
+
+
+func _plain_mesh(size: Vector3, color: Color) -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	box.material = material
+	mesh.mesh = box
+	return mesh
+
+
+## Host, when the floor is ready: the crowbar, power cells and keycards the plan placed, and the debris that
+## blocks debris doorways.
+func _on_floor_ready(_floor_number: int, _department_id: StringName) -> void:
+	if not is_inside_tree() or not multiplayer.is_server() or _layout == null or _layout.grid != RoomData.GRID_TILE:
+		return
+	spawn_door_items()
+
+
+## Host: spawns what the plan's doors need: the crowbar, power cells and keycards at their markers, and 4 to 8
+## loose debris props (players can move them) in each debris doorway. Returns how many. Public for tests.
+func spawn_door_items() -> int:
+	var tuning: FloorGenTuning = Config.floor_gen
+	var spawned: int = 0
+	for item: Array in _layout.door_items:
+		var marker: RoomMarker = _marker_by_key(str(item[1]))
+		if marker == null:
+			continue
+		var xform := Transform3D(marker.global_basis, marker.global_position + Vector3.UP * 0.2)
+		var kind: String = item[0]
+		if kind == "crowbar":
+			Props.spawn_item(tuning.crowbar_item_id, xform)
+		elif kind == "power_cell":
+			Props.spawn_prop(tuning.power_cell_prop_id, xform)
+		else:
+			Props.spawn_prop(StringName("prop_%s" % kind), xform)
+		spawned += 1
+	var rng: RandomNumberGenerator = SeededRng.make(_layout.floor_seed, &"floorgen_door_debris", _layout.attempt)
+	for index: int in _layout.doors.size():
+		if _layout.doors[index][3] != FloorGenerator.DOOR_DEBRIS or tuning.debris_prop_ids.is_empty():
+			continue
+		var room_index: int = _layout.doors[index][0]
+		if room_index >= _room_nodes.size():
+			continue
+		var holder := _room_nodes[room_index].get_node_or_null("Door%d" % index) as Node3D
+		if holder == null:
+			continue
+		for piece: int in rng.randi_range(tuning.debris_pieces_min, tuning.debris_pieces_max):
+			var local := Vector3(rng.randf_range(-1.0, 1.0), 0.35 + 0.35 * floorf(float(piece) / 3.0), rng.randf_range(-0.6, 0.6))
+			var prop_id: StringName = tuning.debris_prop_ids[rng.randi_range(0, tuning.debris_prop_ids.size() - 1)]
+			Props.spawn_prop(prop_id, Transform3D(holder.global_basis, holder.global_transform * local))
+			spawned += 1
+	return spawned
+
+
+func _marker_by_key(key: String) -> RoomMarker:
+	var index: int = _marker_keys.find(key)
+	return _markers[index] if index >= 0 and is_instance_valid(_markers[index]) else null

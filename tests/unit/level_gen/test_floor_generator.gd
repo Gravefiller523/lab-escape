@@ -594,3 +594,129 @@ func test_floors_grow_with_the_floor_number() -> void:
 		assert_gt(averages[index].y, averages[index - 1].y, "more tiles on each higher floor")
 	assert_gt(averages[3].x, averages[0].x * 2.5, "floor 18 has well over twice floor 1's rooms")
 	assert_gt(averages[3].z, averages[0].z * 2.0, "and covers at least twice the area")
+
+
+## NEW 2026-10-31 (step 4c): doors and locks.
+func _special(type: int) -> bool:
+	return type == FloorGenerator.DOOR_PRY or type == FloorGenerator.DOOR_POWER or type == FloorGenerator.DOOR_KEYCARD
+
+
+## Plays the floor's locks the way players would: what's reachable, the keys found there, the doors they open.
+## Returns how many locked doors could never be opened.
+func _stuck_locks(layout: FloorLayout) -> int:
+	var links: Dictionary[int, Array] = _links_of(layout)
+	var opened: Dictionary[int, bool] = {}
+	var progress: bool = true
+	while progress:
+		progress = false
+		var reached: Dictionary[int, bool] = {0: true}
+		var queue: Array[int] = [0]
+		while not queue.is_empty():
+			var at: int = queue.pop_back()
+			for next: Variant in links.get(at, []):
+				var to: int = next
+				if reached.has(to) or layout.collapsed.has(to):
+					continue
+				var blocked: bool = false
+				for index: int in layout.doors.size():
+					var door: Array = layout.doors[index]
+					if _special(door[3]) and not opened.has(index) and ((door[0] == at and door[2] == to) or (door[0] == to and door[2] == at)):
+						blocked = true
+				if not blocked:
+					reached[to] = true
+					queue.append(to)
+		for index: int in layout.doors.size():
+			var door: Array = layout.doors[index]
+			if opened.has(index) or not _special(door[3]) or not reached.has(door[2]):
+				continue
+			var needs_item: bool = door[3] == FloorGenerator.DOOR_KEYCARD or door[3] == FloorGenerator.DOOR_PRY or door[4] == 1
+			var has_item: bool = not needs_item
+			for item: Array in layout.door_items:
+				var item_room: int = str(item[1]).get_slice("/", 0).to_int()
+				var opens: bool = item[2] == index or (item[0] == "crowbar" and door[3] == FloorGenerator.DOOR_PRY)
+				if opens and reached.has(item_room):
+					has_item = true
+			if has_item:
+				opened[index] = true
+				progress = true
+	var stuck: int = 0
+	for index: int in layout.doors.size():
+		if _special(layout.doors[index][3]) and not opened.has(index):
+			stuck += 1
+	return stuck
+
+
+func test_doors_go_on_rooms_and_every_lock_can_be_opened() -> void:
+	var tuning: FloorGenTuning = Config.floor_gen
+	var types: Dictionary[int, int] = {}
+	for floor_seed: int in 30:
+		var floor_number: int = 1 + floor_seed % 18
+		var layout: FloorLayout = _robotics_floor(floor_seed * 7 + 1, floor_number)
+		assert_gt(layout.doors.size(), 0, "seed %d: the floor has doors" % floor_seed)
+		var colours: Dictionary[int, bool] = {}
+		for door: Array in layout.doors:
+			types[door[3]] = types.get(door[3], 0) + 1
+			assert_eq(_room(layout.placements[door[0]]).tile_role, TileStandards.ROLE_ROOM, "doors sit on rooms (hallway joins are archways)")
+			if door[3] == FloorGenerator.DOOR_KEYCARD:
+				assert_false(colours.has(door[4]), "seed %d: one door per keycard colour" % floor_seed)
+				colours[door[4]] = true
+			if door[3] == FloorGenerator.DOOR_POWER:
+				assert_eq(door[4] == 1, floor_number >= tuning.power_cell_from_floor, "power cells from floor %d" % tuning.power_cell_from_floor)
+		assert_lte(colours.size(), tuning.keycard_colours_max, "at most %d keycard colours" % tuning.keycard_colours_max)
+		assert_eq(_stuck_locks(layout), 0, "seed %d floor %d: every key, crowbar and cell can be reached before its door" % [
+			floor_seed, floor_number])
+	assert_gt(types.get(FloorGenerator.DOOR_OPEN, 0), 0, "plain doors")
+	assert_gt(types.get(FloorGenerator.DOOR_KEYCARD, 0), 0, "keycard doors")
+	assert_gt(types.get(FloorGenerator.DOOR_PRY, 0) + types.get(FloorGenerator.DOOR_POWER, 0), 0, "jammed doors")
+	assert_gt(types.get(FloorGenerator.DOOR_DEBRIS, 0) + types.get(FloorGenerator.DOOR_BROKEN, 0), 0, "broken and blocked doors")
+
+
+func test_damage_jams_and_breaks_doors() -> void:
+	var calm: Vector2 = Vector2.ZERO
+	var wrecked: Vector2 = Vector2.ZERO
+	for floor_seed: int in 30:
+		for damage: StringName in [&"pristine", &"destroyed"]:
+			FloorGenerator.debug_damage = damage
+			var layout: FloorLayout = _robotics_floor(floor_seed, 5)
+			FloorGenerator.debug_damage = &""
+			for door: Array in layout.doors:
+				var bad: float = 0.0 if door[3] == FloorGenerator.DOOR_OPEN or door[3] == FloorGenerator.DOOR_KEYCARD else 1.0
+				if damage == &"pristine":
+					calm += Vector2(bad, 1.0)
+				else:
+					wrecked += Vector2(bad, 1.0)
+	assert_gt(wrecked.x / wrecked.y, calm.x / calm.y + 0.3, "destroyed rooms get far more jammed, broken and blocked doors (%.2f vs %.2f)" % [
+		wrecked.x / wrecked.y, calm.x / calm.y])
+
+
+func test_built_floor_has_its_doors() -> void:
+	var layout: FloorLayout = FloorLayout.from_dict(_robotics_floor(31, 9).to_dict())
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	add_child_autofree(viewport)
+	var parent := Node3D.new()
+	viewport.add_child(parent)
+	Level.build(layout, parent)
+	var rooms: Array[Node3D] = Level.get_room_nodes()
+	for index: int in layout.doors.size():
+		var door: Array = layout.doors[index]
+		var holder: Node = rooms[door[0]].get_node_or_null("Door%d" % index)
+		assert_not_null(holder, "door %d is built" % index)
+		if holder == null:
+			continue
+		var type: int = door[3]
+		var left := holder.get_node_or_null("Left") as WorldDoor
+		if type == FloorGenerator.DOOR_BROKEN or type == FloorGenerator.DOOR_DEBRIS:
+			assert_null(left, "door %d (%s) has no working leaves" % [index, FloorGenerator.DOOR_NAMES[type]])
+			continue
+		assert_not_null(left, "door %d has leaves" % index)
+		if left != null:
+			assert_eq(left.is_locked(), type != FloorGenerator.DOOR_OPEN, "door %d is locked when it should be" % index)
+		match type:
+			FloorGenerator.DOOR_PRY:
+				assert_not_null(holder.get_node_or_null("PryPoint"), "a pry point")
+			FloorGenerator.DOOR_POWER:
+				assert_not_null(holder.get_node_or_null("Breaker"), "a breaker box")
+			FloorGenerator.DOOR_KEYCARD:
+				assert_not_null(holder.get_node_or_null("Reader"), "a card reader")
+	Level.clear()

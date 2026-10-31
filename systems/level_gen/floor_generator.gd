@@ -27,6 +27,15 @@ const PIECE_END: StringName = &"end"
 const DIRECTION_NAMES: Dictionary[Vector2i, String] = {Vector2i(-1, 0): "West", Vector2i(1, 0): "East",
 	Vector2i(0, -1): "North", Vector2i(0, 1): "South"}
 const LOG_PATH: String = "user://floorgen/last_floor.log"
+## NEW 2026-10-31 (step 4c): door types (FloorLayout.doors). Joins with no entry in doors are open archways.
+const DOOR_OPEN: int = 1
+const DOOR_BROKEN: int = 2
+const DOOR_PRY: int = 3
+const DOOR_POWER: int = 4
+const DOOR_DEBRIS: int = 5
+const DOOR_KEYCARD: int = 6
+const DOOR_NAMES: Dictionary[int, String] = {DOOR_OPEN: "open", DOOR_BROKEN: "broken", DOOR_PRY: "pry", DOOR_POWER: "power",
+	DOOR_DEBRIS: "debris", DOOR_KEYCARD: "keycard"}
 
 ## Host, debug: the next floor generated uses this floor seed instead of the run's (0 = none).
 static var _next_seed_override: int = 0
@@ -234,6 +243,7 @@ class _Builder:
 		_apply_damage()
 		_pick_markers()
 		_pick_hazards()
+		_place_doors()
 		_check()
 		layout.stats["rooms"] = rooms
 		return layout
@@ -884,6 +894,197 @@ class _Builder:
 			if not blocked.has(index) and distances[index] == INF:
 				return false
 		return true
+
+	## NEW 2026-10-31 (step 7 of the plan, built in step 4c): doors and locks.
+	## Every doorway into a room gets a door (joins between hallways stay open archways, Q6). Its type is rolled
+	## from the damage of the two sides (V8: open / broken open / jammed / debris); a jammed door needs power
+	## (power_door_share, per department) or a crowbar. A few open room doors become keycard doors (V9, one
+	## colour each). Then, in order, each lock gets what opens it somewhere reachable without it: one crowbar
+	## for all pry doors (F5), a power cell for power doors from power_cell_from_floor (F6), the matching card
+	## for each keycard door. A lock whose key can't be placed reachably becomes a plain door (logged).
+	func _place_doors() -> void:
+		var rng: RandomNumberGenerator = _rng(&"floorgen_doors")
+		var links: Dictionary[int, Array] = _links()
+		var from_start: PackedFloat32Array = _path_distances(links, 0)
+		var power_share: float = tuning.power_door_share
+		if department != null and tuning.power_door_share_by_department.has(department.id):
+			power_share = tuning.power_door_share_by_department[department.id]
+		var keys: Array[String] = sockets.keys()
+		keys.sort()
+		var seen: Dictionary[String, bool] = {}
+		for key: String in keys:
+			var socket: Dictionary = sockets[key]
+			if not _is_joined(socket):
+				continue
+			var other: Dictionary = sockets[_edge_key((socket["cell"] as Vector2i) + (socket["dir"] as Vector2i), -(socket["dir"] as Vector2i))]
+			var a: int = socket["placement"]
+			var b: int = other["placement"]
+			var other_key: String = _edge_key(other["cell"], other["dir"])
+			var pair: String = key if key < other_key else other_key
+			if seen.has(pair):
+				continue
+			seen[pair] = true
+			if socket["open"] and other["open"]:
+				continue
+			var room_side: Dictionary = _door_side(socket, other, from_start)
+			if room_side.is_empty() or layout.collapsed.has(a) or layout.collapsed.has(b):
+				continue
+			var level: int = maxi(layout.damage[a] if a < layout.damage.size() else 0, layout.damage[b] if b < layout.damage.size() else 0)
+			var type: int = _roll_door_type(level, power_share, rng)
+			var room: int = room_side["placement"]
+			var outside: int = b if room == a else a
+			var extra: int = 1 if type == FloorGenerator.DOOR_POWER and floor_number >= tuning.power_cell_from_floor else 0
+			layout.doors.append([room, String(room_side["name"]), outside, type, extra])
+		_add_keycard_doors(rng)
+		_place_door_items(links, rng)
+		var counts: Dictionary[int, int] = {}
+		for door: Array in layout.doors:
+			counts[door[3]] = counts.get(door[3], 0) + 1
+		var parts := PackedStringArray()
+		for type: int in FloorGenerator.DOOR_NAMES:
+			if counts.has(type):
+				parts.append("%d %s" % [counts[type], FloorGenerator.DOOR_NAMES[type]])
+		_log("doors: %s; items: %d" % [", ".join(parts), layout.door_items.size()])
+
+	## Which side of a doorway gets the door: a room (the one farther from the elevator if both are rooms), on its
+	## doorway socket. Empty: no room here, so it stays an archway.
+	func _door_side(a: Dictionary, b: Dictionary, from_start: PackedFloat32Array) -> Dictionary:
+		var a_room: bool = _room_of(a["placement"]).tile_role == TileStandards.ROLE_ROOM and not a["open"]
+		var b_room: bool = _room_of(b["placement"]).tile_role == TileStandards.ROLE_ROOM and not b["open"]
+		if a_room and b_room:
+			return a if from_start[a["placement"]] >= from_start[b["placement"]] else b
+		if a_room:
+			return a
+		if b_room:
+			return b
+		return {}
+
+	func _roll_door_type(level: int, power_share: float, rng: RandomNumberGenerator) -> int:
+		var weights: PackedFloat32Array = [tuning.door_weights_pristine, tuning.door_weights_light,
+			tuning.door_weights_heavy, tuning.door_weights_destroyed][clampi(level, 0, 3)]
+		var picked: int = SeededRng.pick_weighted(rng, weights)
+		match picked:
+			1:
+				return FloorGenerator.DOOR_BROKEN
+			2:
+				return FloorGenerator.DOOR_POWER if rng.randf() < power_share else FloorGenerator.DOOR_PRY
+			3:
+				return FloorGenerator.DOOR_DEBRIS
+		return FloorGenerator.DOOR_OPEN
+
+	## V9: a few open room doors (farther from the elevator first) become keycard doors, one colour each.
+	func _add_keycard_doors(rng: RandomNumberGenerator) -> void:
+		var lo: int = tuning.by_bracket(tuning.keycard_doors_min_by_bracket, floor_number)
+		var hi: int = tuning.by_bracket(tuning.keycard_doors_max_by_bracket, floor_number)
+		var wanted: int = mini(rng.randi_range(lo, maxi(hi, lo)), mini(tuning.keycard_colours_max, tuning.keycard_colours.size()))
+		var candidates: Array[int] = []
+		for index: int in layout.doors.size():
+			if layout.doors[index][3] == FloorGenerator.DOOR_OPEN:
+				candidates.append(index)
+		_shuffle(candidates, rng)
+		for colour: int in mini(wanted, candidates.size()):
+			layout.doors[candidates[colour]][3] = FloorGenerator.DOOR_KEYCARD
+			layout.doors[candidates[colour]][4] = colour
+
+	## Puts each lock's key where it can be reached without it, lock by lock (see _place_doors).
+	func _place_door_items(links: Dictionary[int, Array], rng: RandomNumberGenerator) -> void:
+		var opened: Dictionary[int, bool] = {}
+		var used: Dictionary[String, bool] = {}
+		var pry: Array[int] = _doors_of(FloorGenerator.DOOR_PRY)
+		if not pry.is_empty():
+			var spot: String = _free_spot(_reachable(links, opened), [&"item_spawn", &"keycard", &"prop_spawn"], used, rng)
+			if spot.is_empty():
+				_downgrade(pry, "no reachable spot for the crowbar")
+			else:
+				layout.door_items.append(["crowbar", spot, pry[0]])
+			for door: int in pry:
+				opened[door] = true
+		var pending: Array[int] = _doors_of(FloorGenerator.DOOR_POWER)
+		pending.append_array(_doors_of(FloorGenerator.DOOR_KEYCARD))
+		var progress: bool = true
+		while progress and not pending.is_empty():
+			progress = false
+			for door: int in pending.duplicate():
+				var reach: Dictionary[int, bool] = _reachable(links, opened)
+				if not reach.has(layout.doors[door][2]):
+					continue
+				var type: int = layout.doors[door][3]
+				if type == FloorGenerator.DOOR_KEYCARD or layout.doors[door][4] == 1:
+					var kinds: Array[StringName] = [&"prop_spawn", &"item_spawn", &"keycard"]
+					if type == FloorGenerator.DOOR_KEYCARD:
+						kinds = [&"keycard", &"item_spawn", &"prop_spawn"]
+					var spot: String = _free_spot(reach, kinds, used, rng)
+					if spot.is_empty():
+						continue
+					var kind: String = "power_cell" if type == FloorGenerator.DOOR_POWER \
+						else "keycard_%s" % String(tuning.keycard_colours.keys()[layout.doors[door][4]])
+					layout.door_items.append([kind, spot, door])
+				opened[door] = true
+				pending.erase(door)
+				progress = true
+		_downgrade(pending, "its key couldn't be placed where it can be reached first")
+
+	## Door indexes of one type.
+	func _doors_of(type: int) -> Array[int]:
+		var found: Array[int] = []
+		for index: int in layout.doors.size():
+			if layout.doors[index][3] == type:
+				found.append(index)
+		return found
+
+	func _downgrade(doors: Array[int], why: String) -> void:
+		for door: int in doors:
+			layout.doors[door][3] = FloorGenerator.DOOR_OPEN
+			layout.doors[door][4] = 0
+		if not doors.is_empty():
+			_log("%d locked doors made plain: %s" % [doors.size(), why])
+
+	## Tiles reachable from the elevator without collapsed pieces or locked doors not yet opened.
+	func _reachable(links: Dictionary[int, Array], opened: Dictionary[int, bool]) -> Dictionary[int, bool]:
+		var locked: Dictionary[String, bool] = {}
+		for index: int in layout.doors.size():
+			var door: Array = layout.doors[index]
+			var type: int = door[3]
+			if (type == FloorGenerator.DOOR_PRY or type == FloorGenerator.DOOR_POWER or type == FloorGenerator.DOOR_KEYCARD) \
+					and not opened.has(index):
+				locked["%d,%d" % [mini(door[0], door[2]), maxi(door[0], door[2])]] = true
+		var reached: Dictionary[int, bool] = {0: true}
+		var queue: Array[int] = [0]
+		while not queue.is_empty():
+			var at: int = queue.pop_back()
+			for link: Variant in links.get(at, []):
+				var next: int = (link as Array)[0]
+				if reached.has(next) or layout.collapsed.has(next) or locked.has("%d,%d" % [mini(at, next), maxi(at, next)]):
+					continue
+				reached[next] = true
+				queue.append(next)
+		return reached
+
+	## A random unused marker of the first kind that has one in the reachable tiles (never the start area).
+	func _free_spot(reach: Dictionary[int, bool], kinds: Array[StringName], used: Dictionary[String, bool],
+			rng: RandomNumberGenerator) -> String:
+		for kind: StringName in kinds:
+			var spots: Array[String] = []
+			for index: int in reach:
+				if index <= 1 and kind != &"prop_spawn":
+					continue
+				for marker: Dictionary in RoomShape.of(_room_of(index), unit).markers:
+					var key: String = FloorLayout.marker_key(index, marker["path"])
+					if marker["kind"] == kind and not used.has(key):
+						spots.append(key)
+			if spots.is_empty():
+				continue
+			spots.sort()
+			var spot: String = spots[rng.randi_range(0, spots.size() - 1)]
+			used[spot] = true
+			# Nothing else spawns there.
+			var props: PackedStringArray = layout.active_markers.get(&"prop_spawn", PackedStringArray())
+			var at: int = props.find(spot)
+			if at >= 0:
+				props.remove_at(at)
+				layout.active_markers[&"prop_spawn"] = props
+			return spot
+		return ""
 
 	## The checks for this step (step 12 of the plan adds the rest).
 	func _check() -> void:

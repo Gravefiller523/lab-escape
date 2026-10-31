@@ -188,6 +188,14 @@ extends Resource
 @export var parts_behind_keycards_max_by_bracket: PackedInt32Array = PackedInt32Array([1, 2, 3])
 ## Most keycard colours on one floor (Q9).
 @export var keycard_colours_max: int = 3
+## NEW 2026-10-31 (step 4c): the keycard colours, in the order they are used; each has a prop
+## "prop_keycard_<colour>" (content/props) and is drawn in this colour on the map and the card reader.
+@export var keycard_colours: Dictionary[StringName, Color] = {&"red": Color(0.9, 0.15, 0.12),
+	&"blue": Color(0.15, 0.4, 0.95), &"yellow": Color(0.95, 0.8, 0.1)}
+## NEW 2026-10-31 (step 4c): what jammed and powerless doors need: the crowbar (ItemData id) and the power cell
+## (PropData id).
+@export var crowbar_item_id: StringName = &"item_crowbar"
+@export var power_cell_prop_id: StringName = &"prop_power_cell"
 
 @export_group("Lift parts (V10)")
 ## Broken lift parts per floor, by floor bracket: rolled between min and max (Zachary's brackets).

@@ -37,7 +37,7 @@ height = 2.8
 [node name="Markers" type="Node3D" parent="."]
 
 [node name="LiftPart0" type="Marker3D" parent="Markers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0.1, 6.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0.4, 6.5)
 script = ExtResource("3_marker")
 kind = &"lift_part"
 params = {"max_size": "medium", "visible_from_entrance": true}

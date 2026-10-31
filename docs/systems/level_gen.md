@@ -79,7 +79,42 @@ class_name BlockoutTile extends Node3D          # @tool: builds a CSG blockout t
 @export var auto_lights: bool = true
 @export var floor_hole: Rect2                   # e.g. under the cargo lift's own floor
 static func slot_material(slot: StringName) -> Material
+
+# NEW 2026-10-31 (floor generation step 3: the generator; regular floors in runs use it)
+class_name FloorGenerator extends RefCounted    # pure, host only
+static func generate(department: DepartmentData, floor_number: int, run_seed: int, player_count: int = 1, tuning: FloorGenTuning = null) -> FloorLayout
+static func generate_from_seed(department: DepartmentData, floor_number: int, floor_seed: int, numbers: FloorGenTuning) -> FloorLayout
+static func generate_for_run(department: DepartmentData, floor_number: int, run_seed: int, player_count: int) -> FloorLayout  # + report()
+static func report(layout: FloorLayout) -> void  # prints "[floorgen] ..." lines, saves user://floorgen/last_floor.log
+static func set_next_seed(floor_seed: int) -> void   # debug: the next floor uses this seed (F9, `floorgen <seed>`)
+static func tile_pool(department: DepartmentData) -> Array[RoomData]
+static func piece_kind(room: RoomData) -> StringName # straight / corner / t / cross / end, from its open sides
+static var last_layout: FloorLayout
+const LOG_PATH: String
+class_name FloorLayout                          # NEW fields (sent with to_dict, old floors unchanged):
+var grid: StringName                            # RoomData.GRID_LEGACY or GRID_TILE
+var attempt: int; var is_fallback: bool
+var wings: PackedStringArray                    # "West wing A"...; RoomPlacement.wing indexes it
+var main_halls: Array[PackedInt32Array]         # placement indexes of each main hallway, from the welcome center
+var loops: Array[Vector2i]                      # [placement a, placement b] joined by a loop hallway
+var active_markers: Dictionary[StringName, PackedStringArray]   # kinds the plan picked markers for
+var log_lines: PackedStringArray; var stats: Dictionary[String, int]   # host only (not sent)
+func cell_size() -> float
+static func marker_key(placement_index: int, path_in_room: String) -> String
+class_name RoomPlacement
+var wing: int = -1                              # NEW; RoomPlacement.make(id, at, steps, wing_index = -1)
+class_name RoomShape
+var markers: Array[Dictionary]                  # NEW: {"kind", "path"} read from the room scene
+# Autoload Level
+func get_floor_transform() -> Transform3D      # NEW: where the (moved, turned) floor is
+func get_markers(kind)                          # CHANGED: only the markers the plan switched on, if it chose for that kind
+# Level.build CHANGED: 3 m tile floors; an open hallway end nothing joins gets a "Cap..." wall (grid unit wide,
+# ceiling high, wall material), a doorway gets a "Plug..." as before. Keys F8 (map) and F9 (new floor, host).
+class_name FloorMapView extends Control         # draws a FloorLayout from above (layout, players, zoom)
+class_name FloorgenOverlay extends CanvasLayer  # the F8 view: map, seed, seed box, log (owned by Level)
 ```
+**Console (NEW 2026-10-31):** `floorgen <seed>` (this floor again with that seed), `floorgen floor <n>`,
+`floorgen dept <department_id>`, `floorgen log`, `floorgen map`. Host and cheats only, like `floor`.
 NEW 2026-10-18, grid rules: a room scene's origin is the corner of its footprint with the smallest x and z,
 at floor height; the footprint covers `size_cells` cells along +x and +z. Doorways sit on the edge, in the
 middle of a cell's edge. `RoomPlacement.cell` is the turned footprint's smallest corner.
@@ -97,6 +132,29 @@ CHANGED 2026-10-18 (Zachary: every floor starts in the elevator): the lift room 
 free doorways; then the rolled special rooms; then any other required kinds at the free doorway
 farthest from the lift (`required_room_kinds` default is now `["lift"]`; "start" counts as "lift"). Unused doorways get wall plugs when the floor is built (not in the layout). A boss
 floor is the lift room with a `boss_arena` joined to it. `player_count` isn't used yet.
+NEW 2026-10-31 (step 3): **regular floors in runs use `FloorGenerator`** (3 m tiles) while
+`Config.floor_gen.use_floor_generator` is on (the default); boss floors keep the old generator above. Floor
+seed = `hash("run_seed|floor_number")` (or the debug seed); each step has its own stream
+`SeededRng.make(floor_seed, &"floorgen_<step>", attempt)` (`start`, `main_halls`, `branches`, `loops`,
+`markers`, `fallback`). What it does (plan section 5):
+1. Elevator at cell (0, 0) (open side -z), the welcome center joined to its whole open side (the
+   department's own template if it has one, else the generic one).
+2. A main hallway out of each welcome center connector: walled straight pieces (5-long with
+   `main_hall_long_piece_share`, else 3-long, 1-long fillers for the rest), a corner now and then
+   (`main_hall_turn_chance`, at most `main_hall_max_turns`, never back toward the welcome center), an end piece.
+   Length rolled from V3, growing with the floor.
+3. Branches at every side doorway (shuffled): room / cluster (2 to 4 rooms joined by their doorways) /
+   secondary hallway / nothing (V4 weights). Secondary hallways (length `secondary_hall_length_min..max`,
+   turns `secondary_turn_chance`, T splits `secondary_split_chance`) branch again up to
+   `max_branch_depth_by_bracket`; their end doorway always gets a room. Each branch off a main hallway is a
+   wing. Stops at the target room count (V5).
+4. Loops (`loops_by_bracket`): free doorways of different wings facing each other across up to
+   `loop_max_gap_units` empty cells are joined by 1-unit hallway fillers.
+5. Simple: every room is a shared room tile, picked by weight when placed (department rooms come in step 4a).
+Then a share of `prop_spawn` markers is switched on (`prop_spawn_share`). Checks: two main hallways of at
+least `min_main_hall_units`, rooms at least `min_rooms_share` of the target; a failed attempt tries again,
+after `max_attempts` the safe fallback floor (two short hallways with a room each) is built and logged loudly.
+Hallway pieces are recognised by their open sides (`piece_kind`), so new pieces need no code.
 
 ## Tile standards (NEW 2026-10-30, floor generation step 2)
 The new floor generator (docs/design/floor-generation-plan.md) builds floors from **tiles**: hand-made
@@ -162,6 +220,15 @@ Older kinds keep working: `lift`, `printer`, `cart`, `vendor`, `upgrade_machine`
 `player_spawn`, `supply_counter`, `task`, `boss_spawn`, `minion_spawn`, `locked_door`. Placement (Q19):
 printer and cart in the welcome center; vendors in break rooms and offices; upgrade machine in medium rooms.
 Any marker may carry `min_damage` / `max_damage` params so it only exists in rooms that damaged.
+NEW 2026-10-31 (Zachary's playtest), checked by tests:
+- **Machines** (`vendor`, `printer`, `upgrade_machine`, `charger`) stand with their back to a wall and their
+  **+Z axis pointing into the room** (the side those machines open to), at least 1 m clear of every doorway,
+  never in a hallway.
+- **Spawn spots** (`lift_part`, `prop_spawn`, `item_spawn`, `keycard`) sit high enough that the biggest thing
+  they hold starts in free space with something to land on within 1 m (floor spots about 0.4-0.5 m up,
+  desk and counter spots about 0.4 m above the top). The tiles' CSG walls and furniture are thin shells, so a
+  part that starts inside a desk stays trapped there (that is how a fuse went missing).
+- Every floor has a `charger` spot (the welcome center has one) and more `lift_part` spots than broken parts.
 The elevator's `lift` marker faces so the cargo lift's gate (its -z side) looks out of the open side, toward
 the welcome center.
 
@@ -214,7 +281,9 @@ the generator must treat a kind specially. A new department reuses everything.
 
 ## Multiplayer
 Only the host runs `generate`. It sends `layout.to_dict()` (a few hundred bytes) to every client;
-everyone runs `build`. Static geometry is not networked. Dynamic things are spawned by their systems
+everyone runs `build`. NEW 2026-10-31: a tile floor's dictionary is a few kilobytes (rooms, wings,
+main hallways, loops, active markers); the generation log stays on the host. F9 and `floorgen` go through
+game_flow's normal floor change, so every PC follows. Static geometry is not networked. Dynamic things are spawned by their systems
 on the host. Reconnecting players receive the current layout on join.
 
 ## Dependencies and stubs
@@ -241,6 +310,14 @@ GUT `tests/unit/level_gen/test_tile_standards.gd`: footprints match data, socket
 size, a socket on every side of every room, size categories, damage overlays, known marker kinds, every tile
 in all 4 turns, the lift faces the welcome center, the old generator never uses tiles, tiles are solid
 WORLD geometry with a 2.8 m doorway and 3.6 m ceiling, overlays switch, palettes fill slots, tuning helpers.
+NEW 2026-10-31: `systems/level_gen/test/floorgen_viewer.tscn` (F6): seed box, floor number, Generate, Next
+seed, Bake navigation (shows the time), Tab between the map and the 3D floor (fly camera). Launch option
+`benchmark` builds and bakes three floor-18 floors and prints the times. GUT
+`tests/unit/level_gen/test_floor_generator.gd`: same seed same floor; elevator and welcome center first; no
+overlaps; both main hallways; room share of the target; every socket joined or capped and every tile
+reachable; dictionary round trip and size; loops and branch depth within limits; 500 seeds never crash and
+never need the fallback; only the chosen prop spots are used; runs use the new generator and a seed comes back;
+hallway pieces recognised.
 GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `test_room_count_in_range`,
 `test_no_overlapping_rooms`, `test_all_doorways_connected_or_sealed`, `test_layout_round_trips_dict`,
 `test_markers_sorted_same_order`, `test_every_room_follows_cart_rules` (loads every room scene),
@@ -261,6 +338,12 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-30 (step 2): walls are centred on the footprint edge, so where two tiles meet both build the same
   wall in the same place. Fine with one grey material; when art tiles come, decide whether art tiles build
   half walls or the generator skips one side.
+- 2026-10-31 (step 3): rolling a department every floor (F1, F2) and the run length numbers (F3) are
+  game_flow work, left for the next step (runs still go department by department, using the generic tiles).
+- 2026-10-31 (step 3): main hallway T pieces aren't used yet (main hallways don't split); secondary T
+  pieces are. `DepartmentData.welcome_center_scene` isn't read: the generator picks a welcome center tile
+  (RoomData, `room_kind` "welcome_center") that lists the department, else the generic one.
+- 2026-10-31 (step 3): loops are straight runs of 1-unit fillers only (no L-shaped loops yet).
 - 2026-10-30 TODO (F3, game_flow, later step): `run_floor_count` 18 and `boss_every_floors` 6 go into
   GameConfig and replace `departments_per_run` / `floors_per_department` when game_flow rolls a department
   every floor. Not changed in step 2.
@@ -295,6 +378,15 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-31 (Zachary): flickering much more random: per-light speed, single blinks or stuttering bursts,
   random on/off switches and random brightness per flash, wider timing ranges. NEW FloorGenTuning
   `flicker_light_speed`, `flicker_on_chance`, `flicker_brightness`, `flicker_single_blink_chance`.
+- 2026-10-31 (floor generation step 3, branch `system/level_gen-floorgen-step3`): NEW `FloorGenerator`,
+  `FloorMapView`, `FloorgenOverlay` (F8 map, F9 new floor, `floorgen` commands), the floorgen viewer. NEW
+  FloorLayout fields (grid, attempt, is_fallback, wings, main_halls, loops, active_markers; log_lines and
+  stats host only), `RoomPlacement.wing`, `RoomShape.markers`, `Level.get_floor_transform()`. CHANGED
+  `Level.build` (tile floors, caps), `Level.get_markers` (only markers the plan switched on). game_flow:
+  regular floors use FloorGenerator. NEW tuning: use_floor_generator, min_rooms_share, min_main_hall_units,
+  secondary hallway length, turn and split chances, prop_spawn_share. `charger` markers in the storage rooms
+  and break room. Measured: floor 18 (68-87 tiles) plans in about 9 ms, builds in about 55 ms, and its
+  navigation bakes in about 50 ms (about 1,200 polygons), so one whole-floor bake stays (plan section 12).
 - 2026-10-19 (cargo_lift slots): NEW marker kind `charger` (where the lift's battery charger may go), one in
   `room_hall_grey` and one in `room_corridor_grey`.
 

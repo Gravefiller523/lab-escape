@@ -307,6 +307,9 @@ func _floor_level() -> Dictionary:
 	var layout: FloorLayout
 	if _run.is_boss_floor:
 		layout = LevelGenerator.generate_boss_floor(department, _run.floor_number, _run.run_seed, _config)
+	elif Config.floor_gen.use_floor_generator:
+		# NEW 2026-10-31 (level_gen floor generation step 3): regular floors from the 3 m tiles.
+		layout = FloorGenerator.generate_for_run(department, _run.floor_number, _run.run_seed, _net.get_player_count())
 	else:
 		layout = LevelGenerator.generate(department, _run.floor_in_department, _run.floor_number, _run.run_seed,
 			_net.get_player_count(), _config)

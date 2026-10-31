@@ -490,3 +490,108 @@ func test_flicker_is_irregular() -> void:
 	assert_gt(dark_runs.size(), 10, "lights do come on now and then")
 	if dark_runs.size() > 10:
 		assert_gt(dark_runs[-1], dark_runs[0] * 10, "some dark spells are much longer than others")
+
+
+## NEW 2026-10-31 (Zachary's playtest): machines stand with their back to a wall and their front (+Z, the side
+## the vendor, printer and mutation machine open to) facing into the room, at least 1 m clear of every doorway.
+## Sizes (width, depth) of what each kind puts there.
+const DEVICE_SIZES: Dictionary[StringName, Vector2] = {&"vendor": Vector2(1.2, 0.8), &"printer": Vector2(1.4, 1.2),
+	&"upgrade_machine": Vector2(2.0, 2.0), &"charger": Vector2(1.2, 1.2)}
+const DOORWAY_CLEARANCE: float = 1.0
+const DOORWAY_ZONE_DEPTH: float = 1.5
+
+
+func test_machines_face_into_the_room_against_a_wall() -> void:
+	var checked: int = 0
+	for room: RoomData in _tiles():
+		var length := Vector2(_footprint(room)) * _unit()
+		var root: Node = room.scene.instantiate()
+		var zones: Array[Rect2] = _doorway_zones(root, length)
+		for node: Node in RoomShape.all_children(root):
+			var marker := node as RoomMarker
+			if marker == null or not DEVICE_SIZES.has(marker.kind):
+				continue
+			checked += 1
+			var label: String = "%s/%s" % [room.id, marker.name]
+			assert_ne(room.tile_role, TileStandards.ROLE_MAIN_HALL, "%s: no machines in main hallways" % label)
+			assert_ne(room.tile_role, TileStandards.ROLE_SECONDARY_HALL, "%s: no machines in hallways" % label)
+			var p := Vector2(marker.position.x, marker.position.z)
+			var gaps: Dictionary[Vector2, float] = {Vector2.RIGHT: p.x, Vector2.LEFT: length.x - p.x,
+				Vector2.DOWN: p.y, Vector2.UP: length.y - p.y}
+			var inward: Vector2 = Vector2.RIGHT
+			for normal: Vector2 in gaps:
+				if gaps[normal] < gaps[inward]:
+					inward = normal
+			var forward := Vector2(marker.basis.z.x, marker.basis.z.z).normalized()
+			assert_gt(forward.dot(inward), 0.99, "%s faces away from the wall it stands at" % label)
+			var size: Vector2 = DEVICE_SIZES[marker.kind]
+			assert_lte(gaps[inward], 0.15 + size.y / 2.0 + 0.3, "%s stands against the wall (%.2f m)" % [label, gaps[inward]])
+			var half: Vector2 = Vector2(size.y, size.x) / 2.0 if absf(forward.x) > 0.5 else Vector2(size.x, size.y) / 2.0
+			var footprint := Rect2(p - half, half * 2.0)
+			for zone: Rect2 in zones:
+				assert_false(footprint.intersects(zone), "%s is at least %.0f m clear of every doorway" % [label, DOORWAY_CLEARANCE])
+		root.free()
+	assert_gt(checked, 10, "the tiles have machine spots")
+
+
+## In front of each socket: the doorway's width plus DOORWAY_CLEARANCE on each side, DOORWAY_ZONE_DEPTH deep.
+func _doorway_zones(root: Node, length: Vector2) -> Array[Rect2]:
+	var zones: Array[Rect2] = []
+	for socket: RoomDoorway in _sockets(root):
+		var p := Vector2(socket.position.x, socket.position.z)
+		var reach: float = socket.width / 2.0 + DOORWAY_CLEARANCE
+		if absf(p.y) < CLOSE or absf(p.y - length.y) < CLOSE:
+			var top: float = 0.0 if absf(p.y) < CLOSE else length.y - DOORWAY_ZONE_DEPTH
+			zones.append(Rect2(p.x - reach, top, reach * 2.0, DOORWAY_ZONE_DEPTH))
+		else:
+			var left: float = 0.0 if absf(p.x) < CLOSE else length.x - DOORWAY_ZONE_DEPTH
+			zones.append(Rect2(left, p.y - reach, DOORWAY_ZONE_DEPTH, reach * 2.0))
+	return zones
+
+
+## NEW 2026-10-31 (Zachary's playtest: a fuse never turned up): things spawned at these markers start in free
+## space with something to land on, never inside a desk, counter, shelf or the floor (the CSG walls are thin
+## shells, so a part that starts inside one stays trapped there). Sizes of the biggest thing each may hold.
+func test_spawn_spots_are_clear_of_furniture() -> void:
+	var sizes: Dictionary[StringName, Vector3] = {&"prop_spawn": Vector3(0.6, 0.6, 0.6), &"item_spawn": Vector3(0.4, 0.3, 0.4),
+		&"keycard": Vector3(0.3, 0.2, 0.3)}
+	var part_sizes: Dictionary[String, Vector3] = {"small": Vector3(0.3, 0.45, 0.3), "medium": Vector3(0.45, 0.45, 0.45),
+		"large": Vector3(0.8, 0.8, 0.8), "huge": Vector3(0.8, 0.8, 0.8)}
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	add_child_autofree(viewport)
+	var tiles: Array[Node3D] = []
+	for index: int in _tiles().size():
+		var tile := _tiles()[index].scene.instantiate() as Node3D
+		tile.position = Vector3(float(index) * 40.0, 0, 0)
+		viewport.add_child(tile)
+		tiles.append(tile)
+	await wait_process_frames(2)
+	await wait_physics_frames(3)
+	var space: PhysicsDirectSpaceState3D = viewport.find_world_3d().direct_space_state
+	var mask: int = PhysicsLayers.bit(PhysicsLayers.WORLD)
+	var checked: int = 0
+	for tile: Node3D in tiles:
+		for node: Node in RoomShape.all_children(tile):
+			var marker := node as RoomMarker
+			if marker == null:
+				continue
+			var size := Vector3.ZERO
+			if marker.kind == &"lift_part":
+				size = part_sizes.get(str(marker.params.get("max_size", "small")), Vector3(0.8, 0.8, 0.8))
+			elif sizes.has(marker.kind):
+				size = sizes[marker.kind]
+			else:
+				continue
+			checked += 1
+			var label: String = "%s/%s" % [tile.name, marker.name]
+			var box := BoxShape3D.new()
+			box.size = size
+			var query := PhysicsShapeQueryParameters3D.new()
+			query.shape = box
+			query.transform = Transform3D(Basis.IDENTITY, marker.global_position)
+			query.collision_mask = mask
+			assert_eq(space.intersect_shape(query, 4).size(), 0, "%s: a %s thing there starts in free space" % [label, size])
+			var down := PhysicsRayQueryParameters3D.create(marker.global_position, marker.global_position - Vector3(0, 1.0, 0), mask)
+			assert_false(space.intersect_ray(down).is_empty(), "%s: something to land on within 1 m below" % label)
+	assert_gt(checked, 30, "spawn spots were checked")

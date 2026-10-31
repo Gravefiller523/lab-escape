@@ -543,6 +543,7 @@ This is a change inside `systems/cargo_lift/`, which needs your OK per the proje
 ## 12. Navigation: my recommendation
 
 **Use the existing whole-floor bake on a background thread**, not pre-baked regions per tile.
+**Measured 2026-10-31 (step 3):** about 50 ms for the biggest floors, so this stays.
 
 - It already exists and works (`Enemies.bake_navigation`), including re-baking when a door opens, locks
   or breaks, and leaving out doors enemies can push open.
@@ -628,6 +629,10 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
   branch depth within the limit; loops within the limit; 500 seeds never crash.
 - **How to test:** start a run, ride to floor 1, press F8 to see the map, walk both main hallways, press
   F9 a few times, type a seed you liked and get the same floor back. Then 2 game copies: both see the same floor.
+- **Built 2026-10-31.** Measured on floor 18 (68-87 tiles, 27 rooms): planning about 9 ms, building about
+  55 ms, the whole-floor navigation bake about 50 ms (about 1,200 polygons), so section 12's whole-floor bake
+  stays. 500 seeds over floors 1-18 needed no fallback floor. Department per floor (F1-F3) is left to the
+  next step (game_flow). Main hallways don't use T pieces yet; loops are straight 1-unit filler runs.
 
 ### Step 4: Robotics end to end (split into small steps, each played before the next)
 - 4a: Robotics department file, its welcome center, its required and other room tiles; step 5 with

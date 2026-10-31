@@ -18,6 +18,9 @@ var size: Vector2i = Vector2i.ONE
 var doorways: Array[Dictionary] = []
 ## Doorways that aren't on an edge (mistakes in the scene), by node name.
 var bad_doorways: PackedStringArray = []
+## NEW 2026-10-31 (floor generation step 3): the room's markers: {"kind": StringName, "path": String (from
+## the room root, the same path Level finds them by)}, sorted by path.
+var markers: Array[Dictionary] = []
 
 ## Keyed by room id and cell size (CHANGED 2026-10-30: the new 3 m tiles and old 12 m rooms differ).
 static var _cache: Dictionary[String, RoomShape] = {}
@@ -33,6 +36,7 @@ static func of(room: RoomData, cell_size: float) -> RoomShape:
 	if room.scene != null:
 		var root: Node = room.scene.instantiate()
 		shape._read_doorways(root, cell_size)
+		shape._read_markers(root)
 		root.free()
 	_cache[key] = shape
 	return shape
@@ -119,6 +123,14 @@ func _read_doorways(root: Node, cell_size: float) -> void:
 			bad_doorways.append(String(doorway.name))
 			continue
 		doorways.append(entry)
+
+
+func _read_markers(root: Node) -> void:
+	for node: Node in all_children(root):
+		var marker := node as RoomMarker
+		if marker != null:
+			markers.append({"kind": marker.kind, "path": String(root.get_path_to(marker))})
+	markers.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return String(a["path"]) < String(b["path"]))
 
 
 ## Every node under root (children, grandchildren, ...).

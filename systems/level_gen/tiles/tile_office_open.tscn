@@ -37,38 +37,38 @@ height = 2.8
 [node name="Markers" type="Node3D" parent="."]
 
 [node name="Vendor0" type="Marker3D" parent="Markers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0, 13.5)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.65, 0, 13.0)
 script = ExtResource("3_marker")
 kind = &"vendor"
 
 [node name="UpgradeMachine0" type="Marker3D" parent="Markers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.3, 0, 1)
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10.75, 0, 1.6)
 script = ExtResource("3_marker")
 kind = &"upgrade_machine"
 
 [node name="LiftPart0" type="Marker3D" parent="Markers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.85, 11)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1.15, 11)
 script = ExtResource("3_marker")
 kind = &"lift_part"
 params = {"max_size": "medium", "visible_from_entrance": true}
 
 [node name="PropSpawn0" type="Marker3D" parent="Markers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.85, 4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1.15, 4)
 script = ExtResource("3_marker")
 kind = &"prop_spawn"
 
 [node name="PropSpawn1" type="Marker3D" parent="Markers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.85, 4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1.15, 4)
 script = ExtResource("3_marker")
 kind = &"prop_spawn"
 
 [node name="PropSpawn2" type="Marker3D" parent="Markers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.85, 11)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1.15, 11)
 script = ExtResource("3_marker")
 kind = &"prop_spawn"
 
 [node name="Keycard0" type="Marker3D" parent="Markers"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.6, 0.85, 11)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.6, 1.15, 11)
 script = ExtResource("3_marker")
 kind = &"keycard"
 

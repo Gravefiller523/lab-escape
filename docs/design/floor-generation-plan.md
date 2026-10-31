@@ -498,6 +498,13 @@ Enemy types per department stay placeholders, as you asked.
 - **Blocked paths:** collapsed hallways only where a detour exists; jammed and debris doors anywhere,
   because players can always open them. Main hallways never fully collapse (Q31).
 - **Scaling:** intensity = base + per floor, capped (V7), so higher floors have bigger damaged areas.
+- **Zachary 2026-10-31:** more damage around the incident, and smaller incidents elsewhere. Main incident:
+  intensity 0.9 + 0.03 per floor (cap 1.3) fading over 70 m of walking (was 0.35 + 0.06, cap 1.0, over 45 m),
+  noise 0.12: its room is heavy or destroyed from floor 1, heavy damage reaches about 30 m (40 m by floor 12).
+  Smaller incidents: 1 on floors 1-3, 1-2 on 4-7, 2-3 on 8+, each in a room at least 40% of the farthest
+  walking distance from the main incident and each other, never the welcome center, preferring another incident
+  type; peak 0.72 (heavy, now and then destroyed) fading over 25 m. A tile's damage is the worst of all
+  incidents. Smaller incidents add their hazard kinds too. All in `config/floor_gen_tuning.tres`.
 
 ---
 

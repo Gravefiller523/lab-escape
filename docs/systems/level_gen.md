@@ -414,6 +414,10 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-31 (Zachary): flickering much more random: per-light speed, single blinks or stuttering bursts,
   random on/off switches and random brightness per flash, wider timing ranges. NEW FloorGenTuning
   `flicker_light_speed`, `flicker_on_chance`, `flicker_brightness`, `flicker_single_blink_chance`.
+- 2026-10-31 (Zachary): wider damage around the main incident (intensity 0.9 + 0.03 per floor, cap 1.3, over
+  70 m, noise 0.12) and smaller incidents elsewhere (`minor_incidents_*_by_bracket` 1 / 1-2 / 2-3, peak 0.72 over
+  25 m, spaced 40% of the farthest distance apart); a tile's damage is the worst of all incidents. NEW FloorLayout
+  `minor_origins`, `minor_incident_ids` (sent). The F3 map shows them as smaller orange stars.
 - 2026-10-31 (Zachary's playtest): the debug keys are now **F3** (map) and **F4** (new floor, host), input actions
   `InputActions.DEBUG_FLOOR_MAP` / `DEBUG_FLOOR_REGENERATE` (rebindable). F8 stopped the game: the Godot editor
   uses F5 to F8 while a game runs.

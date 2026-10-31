@@ -97,14 +97,17 @@ extends Resource
 @export var loop_max_gap_units: int = 4
 
 @export_group("Incident and damage (V7)")
-## How far the damage spreads, 0 to 1: base on floor 1, plus per floor, never above the cap.
-@export var damage_intensity_base: float = 0.35
-@export var damage_intensity_per_floor: float = 0.06
-@export var damage_intensity_cap: float = 1.0
-## Damage fades to nothing over this walking distance from the incident's room (metres).
-@export var damage_falloff_metres: float = 45.0
-## Random wobble added to each tile's damage score (plus or minus).
-@export var damage_noise: float = 0.1
+## How bad the main incident is: its room's damage score (see the thresholds below) on floor 1, plus per floor,
+## never above the cap. CHANGED 2026-10-31 (Zachary: more damage around the incident): was 0.35 + 0.06, cap 1.0,
+## so on floor 1 not even the incident's room was heavily damaged. Now its room is destroyed from floor 1 and
+## heavy damage reaches about (1 - 0.5 / intensity) x falloff metres: about 30 m on floor 1, 40 m by floor 12.
+@export var damage_intensity_base: float = 0.9
+@export var damage_intensity_per_floor: float = 0.03
+@export var damage_intensity_cap: float = 1.3
+## Damage fades to nothing over this walking distance from the incident's room (metres). CHANGED 2026-10-31: was 45.
+@export var damage_falloff_metres: float = 70.0
+## Random wobble added to each tile's damage score (plus or minus). CHANGED 2026-10-31: was 0.1.
+@export var damage_noise: float = 0.12
 ## Damage score at which a tile becomes lightly damaged, heavily damaged, destroyed.
 @export var damage_light_threshold: float = 0.2
 @export var damage_heavy_threshold: float = 0.5
@@ -115,6 +118,18 @@ extends Resource
 @export var start_area_max_damage: StringName = &"light"
 ## The incident starts at least this share of the farthest walking distance from the elevator (Q13).
 @export var incident_min_distance_share: float = 0.5
+## NEW 2026-10-31 (Zachary: smaller incidents at other points of the floor): how many, by floor bracket
+## (rolled between min and max). Each starts in a room (never the welcome center), preferring an incident type
+## the main one isn't, and a tile's damage is the worst of all incidents.
+@export var minor_incidents_min_by_bracket: PackedInt32Array = PackedInt32Array([1, 1, 2])
+@export var minor_incidents_max_by_bracket: PackedInt32Array = PackedInt32Array([1, 2, 3])
+## A smaller incident's damage score at its room (0.72: heavy, now and then destroyed with the noise) ...
+@export var minor_incident_intensity: float = 0.72
+## ... fading to nothing over this walking distance (metres).
+@export var minor_incident_falloff_metres: float = 25.0
+## Smaller incidents are at least this share of the farthest walking distance from the elevator away from the
+## main incident and from each other.
+@export var minor_incident_min_distance_share: float = 0.4
 
 @export_group("Damage lighting")
 ## NEW 2026-10-30 (Zachary): what damage does to a tile's ceiling lights (group "tile_light") and red emergency

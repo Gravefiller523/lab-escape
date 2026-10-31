@@ -78,7 +78,7 @@ func refresh() -> void:
 	_title.text = "seed %d / attempt %d / floor %d %s%s   (%d tiles, %d wings, %d loops)   %s (star)" % [layout.floor_seed,
 		layout.attempt, layout.floor_number, layout.department_id, "  FALLBACK FLOOR" if layout.is_fallback else "",
 		layout.placements.size(), layout.wings.size(), layout.loops.size(),
-		layout.incident_id if layout.incident_id != &"" else "no incident"]
+		("%s + %d smaller" % [layout.incident_id, layout.minor_origins.size()]) if layout.incident_id != &"" else "no incident"]
 	var lines: PackedStringArray = layout.log_lines
 	if lines.is_empty():
 		_log.text = "(the generation log is on the host; `floorgen log` in the console)"

@@ -32,6 +32,9 @@ var damage: PackedByteArray = PackedByteArray()
 ## The floor's incident (IncidentData.id, or &"incident_generic") and the placement it started in (-1 = none).
 var incident_id: StringName = &""
 var origin: int = -1
+## NEW 2026-10-31 (Zachary): smaller incidents elsewhere on the floor: their rooms and incident ids (same order).
+var minor_origins: PackedInt32Array = PackedInt32Array()
+var minor_incident_ids: PackedStringArray = PackedStringArray()
 ## Placements of hallway pieces that collapsed (impassable, only where a loop gives a way round).
 var collapsed: PackedInt32Array = PackedInt32Array()
 ## Extra settings for markers, by marker key: e.g. {"prop_id": "prop_debris_chunk"} or {"hazard_kind": "fire"}.
@@ -78,6 +81,8 @@ func to_dict() -> Dictionary:
 		data["damage"] = damage
 		data["incident_id"] = String(incident_id)
 		data["origin"] = origin
+		data["minor_origins"] = minor_origins
+		data["minor_incident_ids"] = minor_incident_ids
 		data["collapsed"] = collapsed
 		var params: Dictionary = {}
 		for key: String in marker_params:
@@ -119,6 +124,8 @@ static func from_dict(data: Dictionary) -> FloorLayout:
 	layout.damage = PackedByteArray(data.get("damage", PackedByteArray()))
 	layout.incident_id = StringName(str(data.get("incident_id", "")))
 	layout.origin = data.get("origin", -1)
+	layout.minor_origins = PackedInt32Array(data.get("minor_origins", PackedInt32Array()))
+	layout.minor_incident_ids = PackedStringArray(data.get("minor_incident_ids", PackedStringArray()))
 	layout.collapsed = PackedInt32Array(data.get("collapsed", PackedInt32Array()))
 	var params: Dictionary = data.get("marker_params", {})
 	for key: Variant in params:

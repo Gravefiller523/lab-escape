@@ -640,12 +640,18 @@ class _Builder:
 		var intensity: float = FloorGenTuning.grown(tuning.damage_intensity_base, tuning.damage_intensity_per_floor,
 			tuning.damage_intensity_cap, floor_number)
 		var from_origin: PackedFloat32Array = _path_distances(links, layout.origin)
+		var minor_distances: Array[PackedFloat32Array] = _pick_minor_incidents(links, from_start, from_origin, farthest)
 		var start_cap: int = maxi(TileStandards.DAMAGE_LEVELS.find(tuning.start_area_max_damage), 0)
 		var forced: int = TileStandards.DAMAGE_LEVELS.find(FloorGenerator.debug_damage)
 		var counts := PackedInt32Array([0, 0, 0, 0])
 		for index: int in count:
+			# The worst of every incident: the main one, then the smaller ones.
 			var closeness: float = maxf(0.0, 1.0 - from_origin[index] / maxf(tuning.damage_falloff_metres, 0.1))
-			var score: float = intensity * closeness + rng.randf_range(-tuning.damage_noise, tuning.damage_noise)
+			var peak: float = intensity * closeness
+			for distances: PackedFloat32Array in minor_distances:
+				var near: float = maxf(0.0, 1.0 - distances[index] / maxf(tuning.minor_incident_falloff_metres, 0.1))
+				peak = maxf(peak, tuning.minor_incident_intensity * near)
+			var score: float = peak + rng.randf_range(-tuning.damage_noise, tuning.damage_noise)
 			var level: int = 0
 			if score >= tuning.damage_destroyed_threshold:
 				level = 3
@@ -664,6 +670,63 @@ class _Builder:
 		_log("incident %s in %s (#%d, %.0f m from the elevator): intensity %.2f; %d light, %d heavy, %d destroyed; %d collapsed" % [
 			layout.incident_id, layout.placements[layout.origin].room_id, layout.origin, from_start[layout.origin],
 			intensity, counts[1], counts[2], counts[3], layout.collapsed.size()])
+
+	## NEW 2026-10-31 (Zachary): smaller incidents at other points of the floor (minor_incidents_*_by_bracket).
+	## Each starts in a room (never the elevator or welcome center) at least minor_incident_min_distance_share of
+	## the farthest walking distance away from the main incident and from each other, preferring an incident type
+	## the main one isn't and a room it fits. Returns each one's walking distances to every tile.
+	func _pick_minor_incidents(links: Dictionary[int, Array], from_start: PackedFloat32Array,
+			from_origin: PackedFloat32Array, farthest: float) -> Array[PackedFloat32Array]:
+		var rng: RandomNumberGenerator = _rng(&"floorgen_minor_incidents")
+		var lo: int = tuning.by_bracket(tuning.minor_incidents_min_by_bracket, floor_number)
+		var hi: int = tuning.by_bracket(tuning.minor_incidents_max_by_bracket, floor_number)
+		var wanted: int = rng.randi_range(lo, maxi(hi, lo))
+		var spacing: float = farthest * tuning.minor_incident_min_distance_share
+		var taken: Array[PackedFloat32Array] = [from_origin]
+		var found: Array[PackedFloat32Array] = []
+		for attempt: int in wanted:
+			var incident: IncidentData = _pick_minor_incident_type(rng)
+			var fitting: Array[int] = []
+			var spaced: Array[int] = []
+			for index: int in layout.placements.size():
+				if index <= 1 or _room_of(index).tile_role != TileStandards.ROLE_ROOM or from_start[index] == INF:
+					continue
+				var far_enough: bool = true
+				for distances: PackedFloat32Array in taken:
+					far_enough = far_enough and distances[index] >= spacing
+				if not far_enough:
+					continue
+				spaced.append(index)
+				if incident != null and incident.origin_room_kinds.has(String(_room_of(index).room_kind)):
+					fitting.append(index)
+			var pool: Array[int] = fitting if not fitting.is_empty() else spaced
+			if pool.is_empty():
+				break
+			var origin: int = pool[rng.randi_range(0, pool.size() - 1)]
+			var distances: PackedFloat32Array = _path_distances(links, origin)
+			layout.minor_origins.append(origin)
+			layout.minor_incident_ids.append(String(incident.id) if incident != null else "incident_generic")
+			taken.append(distances)
+			found.append(distances)
+		if not found.is_empty():
+			var where := PackedStringArray()
+			for index: int in layout.minor_origins.size():
+				where.append("%s in %s (#%d)" % [layout.minor_incident_ids[index],
+					layout.placements[layout.minor_origins[index]].room_id, layout.minor_origins[index]])
+			_log("smaller incidents (%d of %d to %d): %s" % [found.size(), lo, hi, ", ".join(where)])
+		return found
+
+	## A smaller incident's type: one of the department's, preferring one the main incident isn't.
+	func _pick_minor_incident_type(rng: RandomNumberGenerator) -> IncidentData:
+		if department == null or department.incidents.is_empty():
+			return null
+		var others: Array[IncidentData] = []
+		for incident: IncidentData in department.incidents:
+			if incident != null and incident.id != layout.incident_id:
+				others.append(incident)
+		if others.is_empty():
+			return _pick_incident(rng)
+		return others[rng.randi_range(0, others.size() - 1)]
 
 	func _pick_incident(rng: RandomNumberGenerator) -> IncidentData:
 		if department == null or department.incidents.is_empty():
@@ -747,7 +810,7 @@ class _Builder:
 			allowed.append_array(department.hazard_kinds)
 		if department != null:
 			for incident: IncidentData in department.incidents:
-				if incident != null and incident.id == layout.incident_id:
+				if incident != null and (incident.id == layout.incident_id or layout.minor_incident_ids.has(String(incident.id))):
 					allowed.append_array(incident.hazard_kinds)
 		var keys := PackedStringArray()
 		for candidate: Dictionary in candidates.slice(0, wanted):

@@ -483,3 +483,79 @@ func test_debug_keys_avoid_the_editor_run_keys() -> void:
 				assert_false(editor_keys.has(key.physical_keycode), "%s isn't on an editor run key" % action)
 	assert_eq(InputActions.DEFAULT_KEYS[InputActions.DEBUG_FLOOR_MAP], KEY_F3)
 	assert_eq(InputActions.DEFAULT_KEYS[InputActions.DEBUG_FLOOR_REGENERATE], KEY_F4)
+
+
+## NEW 2026-10-31 (Zachary: more damage around the incident, and smaller incidents elsewhere).
+func test_the_main_incident_has_a_damaged_zone_around_it() -> void:
+	var zones: int = 0
+	for floor_seed: int in 20:
+		var layout: FloorLayout = _robotics_floor(floor_seed, 1)
+		assert_gte(layout.damage[layout.origin], 2, "seed %d: the incident's room is at least heavily damaged on floor 1" % floor_seed)
+		var heavy: int = 0
+		for level: int in layout.damage:
+			if level >= 2:
+				heavy += 1
+		if heavy >= 3:
+			zones += 1
+	assert_gte(zones, 16, "on floor 1 most floors have 3 or more heavy or destroyed tiles (%d of 20)" % zones)
+
+
+func test_smaller_incidents_are_spread_out() -> void:
+	var tuning: FloorGenTuning = Config.floor_gen
+	var at_least_min: int = 0
+	var floors: int = 0
+	for floor_number: int in [1, 5, 10, 18]:
+		for floor_seed: int in 10:
+			var layout: FloorLayout = _robotics_floor(floor_seed * 17 + 3, floor_number)
+			floors += 1
+			var count: int = layout.minor_origins.size()
+			assert_eq(layout.minor_incident_ids.size(), count)
+			assert_lte(count, tuning.by_bracket(tuning.minor_incidents_max_by_bracket, floor_number), "floor %d: not too many" % floor_number)
+			if count >= tuning.by_bracket(tuning.minor_incidents_min_by_bracket, floor_number):
+				at_least_min += 1
+			var distances: Dictionary[int, PackedFloat32Array] = {}
+			var from_start: PackedFloat32Array = _walk(layout, 0)
+			var farthest: float = 0.0
+			for distance: float in from_start:
+				if distance < INF:
+					farthest = maxf(farthest, distance)
+			var origins: Array[int] = [layout.origin]
+			for origin: int in layout.minor_origins:
+				assert_gt(origin, 1, "never the elevator or welcome center")
+				assert_eq(_room(layout.placements[origin]).tile_role, TileStandards.ROLE_ROOM, "a smaller incident starts in a room")
+				assert_gte(layout.damage[origin], 2, "floor %d seed %d: heavy at a smaller incident's room" % [floor_number, floor_seed])
+				for other: int in origins:
+					if not distances.has(other):
+						distances[other] = _walk(layout, other)
+					assert_gte(distances[other][origin], farthest * tuning.minor_incident_min_distance_share - 0.01,
+						"floor %d seed %d: spaced from the other incidents" % [floor_number, floor_seed])
+				origins.append(origin)
+	assert_gte(float(at_least_min), float(floors) * 0.8, "most floors get their smaller incidents (%d of %d)" % [at_least_min, floors])
+
+
+## Walking distance (metres, through tile centres, like the generator) from one tile to every tile.
+func _walk(layout: FloorLayout, from: int) -> PackedFloat32Array:
+	var centres: Array[Vector2] = []
+	for placement: RoomPlacement in layout.placements:
+		var size: Vector2i = RoomShape.of(_room(placement), _unit()).rotated_size(placement.rotation_steps)
+		centres.append((Vector2(placement.cell.x, placement.cell.z) + Vector2(size) / 2.0) * _unit())
+	var links: Dictionary[int, Array] = _links_of(layout)
+	var distances := PackedFloat32Array()
+	distances.resize(layout.placements.size())
+	distances.fill(INF)
+	distances[from] = 0.0
+	var done: Dictionary[int, bool] = {}
+	while true:
+		var best: int = -1
+		for index: int in distances.size():
+			if not done.has(index) and distances[index] < INF and (best < 0 or distances[index] < distances[best]):
+				best = index
+		if best < 0:
+			break
+		done[best] = true
+		for next: Variant in links.get(best, []):
+			var to: int = next
+			var length: float = distances[best] + centres[best].distance_to(centres[to])
+			if length < distances[to]:
+				distances[to] = length
+	return distances

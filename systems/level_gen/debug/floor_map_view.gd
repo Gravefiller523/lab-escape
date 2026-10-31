@@ -15,6 +15,8 @@ const PLAYER_COLOR: Color = Color(1.0, 1.0, 1.0)
 ## NEW 2026-10-31 (step 4b): rooms filled by damage level (pristine, light, heavy, destroyed); the incident star.
 const DAMAGE_COLORS: Array[Color] = [Color(0.35, 0.62, 0.4), Color(0.85, 0.8, 0.3), Color(0.92, 0.5, 0.18), Color(0.85, 0.15, 0.12)]
 const ORIGIN_COLOR: Color = Color(1.0, 0.95, 0.4)
+## NEW 2026-10-31: the smaller incidents' stars.
+const MINOR_ORIGIN_COLOR: Color = Color(1.0, 0.65, 0.3)
 
 var layout: FloorLayout:
 	set(value):
@@ -153,21 +155,27 @@ func _draw_wing_names(rects: Array[Rect2], to_screen: Callable) -> void:
 		draw_string(font, at - Vector2(40, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 
 
-## NEW 2026-10-31 (step 4b): a star where the incident started and an X over collapsed hallway pieces.
+## NEW 2026-10-31 (step 4b): a star where the incident started (smaller orange stars for the smaller incidents)
+## and an X over collapsed hallway pieces.
 func _draw_damage_marks(rects: Array[Rect2], to_screen: Callable, scale_fit: float) -> void:
 	for index: int in layout.collapsed:
 		if index < rects.size():
 			var screen := Rect2(to_screen.call(rects[index].position), rects[index].size * scale_fit)
 			draw_line(screen.position, screen.end, OUTLINE_COLOR, 3.0)
 			draw_line(Vector2(screen.end.x, screen.position.y), Vector2(screen.position.x, screen.end.y), OUTLINE_COLOR, 3.0)
-	if layout.origin < 0 or layout.origin >= rects.size():
-		return
-	var centre: Vector2 = to_screen.call(rects[layout.origin].get_center())
+	for index: int in layout.minor_origins:
+		if index < rects.size():
+			_draw_star(to_screen.call(rects[index].get_center()), 9.0, MINOR_ORIGIN_COLOR)
+	if layout.origin >= 0 and layout.origin < rects.size():
+		_draw_star(to_screen.call(rects[layout.origin].get_center()), 14.0, ORIGIN_COLOR)
+
+
+func _draw_star(centre: Vector2, radius: float, color: Color) -> void:
 	var points := PackedVector2Array()
 	for point: int in 10:
-		var radius: float = 14.0 if point % 2 == 0 else 6.0
+		var reach: float = radius if point % 2 == 0 else radius * 0.43
 		var angle: float = -PI / 2.0 + float(point) * PI / 5.0
-		points.append(centre + Vector2(cos(angle), sin(angle)) * radius)
-	draw_colored_polygon(points, ORIGIN_COLOR)
+		points.append(centre + Vector2(cos(angle), sin(angle)) * reach)
+	draw_colored_polygon(points, color)
 	points.append(points[0])
 	draw_polyline(points, OUTLINE_COLOR, 1.5)

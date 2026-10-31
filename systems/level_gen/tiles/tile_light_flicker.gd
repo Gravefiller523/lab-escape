@@ -7,8 +7,12 @@ extends Node
 ## - heavy: some lights are dead; the rest are dim, stay dark for a while, then flicker. Emergency light steady.
 ## - destroyed: most lights are dead; the rest flicker faintly once in a long while. The red emergency light
 ##   stays on and now and then flickers.
+## CHANGED 2026-10-31 (Zachary: "way more random"): each light has its own speed, a flicker is either one
+## quick blink or a stuttering burst, switches don't strictly alternate, and every flash has its own brightness.
 ## Looks only: never sent over the network. Each light's pattern is seeded by its node path and the damage
 ## level, so every PC shows the same pattern (each on its own clock).
+
+const BASE_ENERGY_META: StringName = &"base_energy"
 
 var _flickers: Array[_Flicker] = []
 var _tuning: FloorGenTuning
@@ -31,100 +35,132 @@ func setup(tile: Node, level: StringName, tuning: FloorGenTuning = null) -> void
 ## Moves every light's pattern on by delta seconds (called every frame; tests call it directly).
 func step(delta: float) -> void:
 	for flicker: _Flicker in _flickers:
-		flicker.step(delta, _tuning.flicker_toggle_seconds)
+		flicker.step(delta)
 
 
 func _process(delta: float) -> void:
 	step(delta)
 
 
-func _ceiling_light(light: Light3D, level: StringName) -> _Flicker:
+func _new_flicker(light: Light3D, level: StringName) -> _Flicker:
+	if not light.has_meta(BASE_ENERGY_META):
+		light.set_meta(BASE_ENERGY_META, light.light_energy)
 	var rng: RandomNumberGenerator = SeededRng.make(hash(str(light.get_path())), &"tile_light_flicker", hash(level))
-	var flicker := _Flicker.new(light, rng)
-	if not light.has_meta(&"base_energy"):
-		light.set_meta(&"base_energy", light.light_energy)
-	var base: float = light.get_meta(&"base_energy")
+	return _Flicker.new(light, rng, _tuning)
+
+
+func _ceiling_light(light: Light3D, level: StringName) -> _Flicker:
+	var flicker: _Flicker = _new_flicker(light, level)
+	var base: float = light.get_meta(BASE_ENERGY_META)
 	match level:
 		&"light":
-			light.light_energy = base
-			if rng.randf() < _tuning.light_flicker_share:
-				flicker.flickering(true, _tuning.light_on_seconds, _tuning.light_flicker_seconds)
+			if flicker.rng.randf() < _tuning.light_flicker_share:
+				flicker.flickering(true, base, _tuning.light_on_seconds, _tuning.light_flicker_seconds)
 			else:
-				flicker.steady(true)
+				flicker.steady(true, base)
 		&"heavy":
-			light.light_energy = base * _tuning.heavy_energy
-			if rng.randf() < _tuning.heavy_dead_share:
-				flicker.steady(false)
+			if flicker.rng.randf() < _tuning.heavy_dead_share:
+				flicker.steady(false, base)
 			else:
-				flicker.flickering(false, _tuning.heavy_dark_seconds, _tuning.heavy_flicker_seconds)
+				flicker.flickering(false, base * _tuning.heavy_energy, _tuning.heavy_dark_seconds,
+					_tuning.heavy_flicker_seconds)
 		&"destroyed":
-			light.light_energy = base * _tuning.destroyed_energy
-			if rng.randf() < _tuning.destroyed_dead_share:
-				flicker.steady(false)
+			if flicker.rng.randf() < _tuning.destroyed_dead_share:
+				flicker.steady(false, base)
 			else:
-				flicker.flickering(false, _tuning.destroyed_dark_seconds, _tuning.destroyed_flicker_seconds)
+				flicker.flickering(false, base * _tuning.destroyed_energy, _tuning.destroyed_dark_seconds,
+					_tuning.destroyed_flicker_seconds)
 		_:
-			light.light_energy = base
-			flicker.steady(true)
+			flicker.steady(true, base)
 	return flicker
 
 
 func _emergency_light(light: Light3D, level: StringName) -> _Flicker:
-	var rng: RandomNumberGenerator = SeededRng.make(hash(str(light.get_path())), &"tile_light_flicker", hash(level))
-	var flicker := _Flicker.new(light, rng)
+	var flicker: _Flicker = _new_flicker(light, level)
+	var base: float = light.get_meta(BASE_ENERGY_META)
 	if level == &"destroyed":
-		flicker.flickering(true, _tuning.emergency_on_seconds, _tuning.emergency_flicker_seconds)
+		flicker.flickering(true, base, _tuning.emergency_on_seconds, _tuning.emergency_flicker_seconds)
 	else:
-		flicker.steady(true)
+		flicker.steady(true, base)
 	return flicker
 
 
 ## One light: either steady (on or off), or resting (on or off) for a while, then flickering for a while.
+## A flicker is one quick blink, or a burst of random switches at random brightness.
 class _Flicker:
 	extends RefCounted
 
 	var light: Light3D
 	var rng: RandomNumberGenerator
+	var tuning: FloorGenTuning
 	var animated: bool = false
+	var energy: float = 1.0
+	## This light's own speed: every wait is multiplied by it.
+	var speed: float = 1.0
 	var rest_on: bool = true
 	var rest_seconds: Vector2 = Vector2.ONE
 	var flicker_seconds: Vector2 = Vector2.ONE
 	var in_flicker: bool = false
+	var single_blink: bool = false
 	var phase_left: float = 0.0
 	var toggle_left: float = 0.0
 
-	func _init(for_light: Light3D, seeded: RandomNumberGenerator) -> void:
+	func _init(for_light: Light3D, seeded: RandomNumberGenerator, numbers: FloorGenTuning) -> void:
 		light = for_light
 		rng = seeded
+		tuning = numbers
 
-	func steady(on: bool) -> void:
+	func steady(on: bool, brightness: float) -> void:
 		animated = false
-		light.visible = on
+		energy = brightness
+		_show(on, true)
 
-	func flickering(resting_on: bool, rest: Vector2, flicker: Vector2) -> void:
+	func flickering(resting_on: bool, brightness: float, rest: Vector2, flicker: Vector2) -> void:
 		animated = true
+		energy = brightness
 		rest_on = resting_on
 		rest_seconds = rest
 		flicker_seconds = flicker
+		speed = rng.randf_range(tuning.flicker_light_speed.x, tuning.flicker_light_speed.y)
 		in_flicker = false
-		light.visible = rest_on
+		_show(rest_on, true)
 		# Start part way through a rest, so the lights don't all flicker at the same moment.
-		phase_left = rng.randf_range(0.0, rest.y)
+		phase_left = rng.randf_range(0.0, rest.y) * speed
 
-	func step(delta: float, toggle_seconds: Vector2) -> void:
+	func step(delta: float) -> void:
 		if not animated or not is_instance_valid(light):
 			return
 		phase_left -= delta
 		if phase_left <= 0.0:
 			in_flicker = not in_flicker
 			if in_flicker:
-				phase_left = rng.randf_range(flicker_seconds.x, flicker_seconds.y)
-				toggle_left = 0.0
+				_start_flicker()
 			else:
-				phase_left = rng.randf_range(rest_seconds.x, rest_seconds.y)
-				light.visible = rest_on
-		if in_flicker:
+				phase_left = rng.randf_range(rest_seconds.x, rest_seconds.y) * speed
+				_show(rest_on, true)
+		elif in_flicker and not single_blink:
 			toggle_left -= delta
 			if toggle_left <= 0.0:
-				toggle_left = rng.randf_range(toggle_seconds.x, toggle_seconds.y)
-				light.visible = not light.visible
+				toggle_left = _toggle_wait()
+				_show(rng.randf() < tuning.flicker_on_chance, false)
+
+	func _start_flicker() -> void:
+		single_blink = rng.randf() < tuning.flicker_single_blink_chance
+		if single_blink:
+			# One quick blink the other way, then back to resting.
+			phase_left = _toggle_wait()
+			_show(not rest_on, false)
+		else:
+			phase_left = rng.randf_range(flicker_seconds.x, flicker_seconds.y) * speed
+			toggle_left = _toggle_wait()
+			_show(not light.visible, false)
+
+	func _toggle_wait() -> float:
+		return rng.randf_range(tuning.flicker_toggle_seconds.x, tuning.flicker_toggle_seconds.y) * speed
+
+	## full: the light's brightness for its level; otherwise a random share of it (a flash).
+	func _show(on: bool, full: bool) -> void:
+		light.visible = on
+		if on:
+			var share: float = 1.0 if full else rng.randf_range(tuning.flicker_brightness.x, tuning.flicker_brightness.y)
+			light.light_energy = energy * share

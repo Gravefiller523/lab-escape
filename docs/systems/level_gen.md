@@ -176,6 +176,10 @@ lighting"): pristine = steady; light = some lights blink now and then; heavy = s
 dark for a few seconds then flickering, red emergency light steady; destroyed = most lights dead, the rest
 dark with a rare faint flicker, red emergency light on and now and then flickering. Looks only (not
 networked); each light is seeded by its node path, so every PC shows the same pattern.
+CHANGED 2026-10-31 (Zachary, "way more random"): each light has its own speed (`flicker_light_speed`), a
+flicker is either one quick blink (`flicker_single_blink_chance`) or a burst of random switches
+(`flicker_on_chance`, not strict on-off-on) at a random brightness per flash (`flicker_brightness`), and the
+wait ranges are wider.
 
 **Material slots.** Geometry that should take the department's look has the metadata `material_slot` =
 `wall`, `floor`, `trim` or `accent`. `TileStandards.apply_palette(tile, department.palette)` swaps them.
@@ -288,6 +292,9 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   `TileLightFlicker` and "Damage lighting" numbers in FloorGenTuning (heavy: darker with longer gaps;
   destroyed: nearly dark, red emergency light). FloorGenTuning `branch_interval_min/max` replaced by
   `main_hall_long_piece_share` (branches grow from side doorways). LightingStyleData keeps colours only.
+- 2026-10-31 (Zachary): flickering much more random: per-light speed, single blinks or stuttering bursts,
+  random on/off switches and random brightness per flash, wider timing ranges. NEW FloorGenTuning
+  `flicker_light_speed`, `flicker_on_chance`, `flicker_brightness`, `flicker_single_blink_chance`.
 - 2026-10-19 (cargo_lift slots): NEW marker kind `charger` (where the lift's battery charger may go), one in
   `room_hall_grey` and one in `room_corridor_grey`.
 

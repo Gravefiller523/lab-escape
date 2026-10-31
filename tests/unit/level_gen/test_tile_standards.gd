@@ -454,3 +454,39 @@ func _average_lit_share(flicker: TileLightFlicker, lights: Array[Light3D], secon
 		flicker.step(0.05)
 		total += _lit_share(lights)
 	return total / float(frames)
+
+
+## NEW 2026-10-31 (Zachary: "way more random"): lights in one room don't share a rhythm, flashes vary in
+## brightness, and the gaps between flickers vary a lot.
+func test_flicker_is_irregular() -> void:
+	var tile := (ContentRegistry.get_content(&"room_tile_cafeteria") as RoomData).scene.instantiate() as Node3D
+	_add_in_own_world(tile)
+	var flicker := TileLightFlicker.new()
+	tile.add_child(flicker)
+	var tuning := FloorGenTuning.new()
+	tuning.heavy_dead_share = 0.0
+	flicker.setup(tile, &"heavy", tuning)
+	var lights: Array[Light3D] = _lights_in(tile, TileStandards.LIGHT_GROUP)
+	var patterns: Dictionary[String, bool] = {}
+	var brightness: Dictionary[float, bool] = {}
+	var dark_runs: Array[int] = []
+	for light: Light3D in lights:
+		var pattern: String = ""
+		var run: int = 0
+		for frame: int in 1200:
+			flicker.step(0.05)
+			pattern += "1" if light.visible else "0"
+			if light.visible:
+				brightness[snappedf(light.light_energy, 0.01)] = true
+				if run > 0:
+					dark_runs.append(run)
+				run = 0
+			else:
+				run += 1
+		patterns[pattern] = true
+	assert_eq(patterns.size(), lights.size(), "every light has its own pattern")
+	assert_gt(brightness.size(), 5, "flashes come in many brightnesses")
+	dark_runs.sort()
+	assert_gt(dark_runs.size(), 10, "lights do come on now and then")
+	if dark_runs.size() > 10:
+		assert_gt(dark_runs[-1], dark_runs[0] * 10, "some dark spells are much longer than others")

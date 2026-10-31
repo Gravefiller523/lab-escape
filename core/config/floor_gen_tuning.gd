@@ -104,29 +104,39 @@ extends Resource
 ## NEW 2026-10-30 (Zachary): what damage does to a tile's ceiling lights (group "tile_light") and red emergency
 ## lights (group "tile_emergency_light"). Ranges are seconds, rolled between x and y each time. Flickering is
 ## looks only (not sent over the network) and seeded by each light's node path, so every PC looks alike.
-## While a light flickers it switches on and off this often.
-@export var flicker_toggle_seconds: Vector2 = Vector2(0.03, 0.1)
+## While a light flickers it switches this often (each light's own speed changes it too).
+## CHANGED 2026-10-31 (Zachary: "way more random"): wider ranges and the randomness settings below.
+@export var flicker_toggle_seconds: Vector2 = Vector2(0.02, 0.2)
+## Each light gets its own speed: all its waits are multiplied by a number rolled between these, so lights
+## in the same room never keep the same rhythm.
+@export var flicker_light_speed: Vector2 = Vector2(0.5, 2.0)
+## While flickering, the chance each switch turns the light on (otherwise off). Not a strict on-off-on rhythm.
+@export var flicker_on_chance: float = 0.55
+## Brightness of each flash, as a share of the light's brightness for its damage level (rolled every flash).
+@export var flicker_brightness: Vector2 = Vector2(0.2, 1.0)
+## Chance a flicker is just one quick blink instead of a stuttering burst.
+@export var flicker_single_blink_chance: float = 0.35
 ## Lightly damaged: share of lights that flicker now and then; the rest stay on.
 @export var light_flicker_share: float = 0.3
 ## Lightly damaged: on this long between flickers, then flickers for this long.
-@export var light_on_seconds: Vector2 = Vector2(2.0, 6.0)
-@export var light_flicker_seconds: Vector2 = Vector2(0.05, 0.3)
+@export var light_on_seconds: Vector2 = Vector2(1.0, 12.0)
+@export var light_flicker_seconds: Vector2 = Vector2(0.05, 0.6)
 ## Heavily damaged: share of lights that are dead; the rest flicker more and stay dark longer.
 @export var heavy_dead_share: float = 0.3
 ## Heavily damaged: brightness of the lights that still work (1 = normal).
 @export var heavy_energy: float = 0.6
 ## Heavily damaged: dark this long between flickers, then flickers for this long.
-@export var heavy_dark_seconds: Vector2 = Vector2(1.5, 4.0)
-@export var heavy_flicker_seconds: Vector2 = Vector2(0.4, 1.2)
+@export var heavy_dark_seconds: Vector2 = Vector2(0.5, 6.0)
+@export var heavy_flicker_seconds: Vector2 = Vector2(0.1, 2.0)
 ## Destroyed: share of lights that are dead; the rest only flicker faintly once in a while.
 @export var destroyed_dead_share: float = 0.7
 @export var destroyed_energy: float = 0.35
-@export var destroyed_dark_seconds: Vector2 = Vector2(6.0, 15.0)
-@export var destroyed_flicker_seconds: Vector2 = Vector2(0.05, 0.2)
+@export var destroyed_dark_seconds: Vector2 = Vector2(4.0, 25.0)
+@export var destroyed_flicker_seconds: Vector2 = Vector2(0.03, 0.4)
 ## Destroyed: the red emergency light stays on this long, then flickers for this long.
 ## (Heavily damaged rooms keep their emergency light steady.)
-@export var emergency_on_seconds: Vector2 = Vector2(3.0, 8.0)
-@export var emergency_flicker_seconds: Vector2 = Vector2(0.1, 0.4)
+@export var emergency_on_seconds: Vector2 = Vector2(2.0, 12.0)
+@export var emergency_flicker_seconds: Vector2 = Vector2(0.05, 0.6)
 
 @export_group("Doors (V8)")
 ## Door type weights by damage level, in this order: open, broken open, jammed, debris.

@@ -161,6 +161,22 @@ Then a share of `prop_spawn` markers is switched on (`prop_spawn_share`). Checks
 least `min_main_hall_units`, rooms at least `min_rooms_share` of the target; a failed attempt tries again,
 after `max_attempts` the safe fallback floor (two short hallways with a room each) is built and logged loudly.
 Hallway pieces are recognised by their open sides (`piece_kind`), so new pieces need no code.
+NEW 2026-10-31 (step 4b): **incident and damage** (plan step 6). The department's incident (`incidents`, by
+weight; `incident_generic` if none) starts in a room it fits (`origin_room_kinds`) at least
+`incident_min_distance_share` of the farthest walking distance from the elevator. Every tile's damage score =
+intensity (V7, grows with the floor) x closeness to the origin by walking distance (fading over
+`damage_falloff_metres`) + noise; thresholds give pristine / light / heavy / destroyed (capped at the tile's
+`damage_levels`). The elevator and welcome center (with the security room) are at most `start_area_max_damage`.
+Destroyed secondary hallway pieces collapse (`collapse_chance`) only where every other tile stays reachable;
+main hallways never do. Then hazards (V12, heavy/destroyed rooms only, kinds from the marker, department and
+incident) and prop spots (more used in damaged rooms, many get loose debris `prop_debris_chunk` /
+`prop_debris_panel`). Streams `floorgen_damage`, `floorgen_hazards`. The plan carries `damage`, `incident_id`,
+`origin`, `collapsed`, `marker_params` (copied into the markers' params by `Level.build`: `prop_id`,
+`hazard_kind`). `Level.build` keeps only each tile's damage overlay, adds `TileLightFlicker` in the
+department's `lighting` colours, and fills collapsed pieces with rubble. Debug: `floorgen origin
+near|far|normal`, `floorgen damage light|heavy|destroyed|pristine|off` (both stay until changed). The F8 map
+fills rooms by damage colour, stars the origin and crosses out collapsed pieces.
+
 NEW 2026-10-31 (step 4a): `Level.build` dresses tile floors for their department: the department's `palette`
 on every tile (and the caps), and a room-name sign at every `sign` marker (the marker's `text` param, else the
 room type's `display_name`, else the tile's name; the department's `signage_style` scene if set, else a
@@ -248,6 +264,11 @@ deleted. `BlockoutTile` fills an overlay you left empty with placeholder boxes (
 and destroyed add a red emergency light). Tile lights are in the group **`tile_light`**, the overlays' red
 emergency lights in **`tile_emergency_light`**; the ceiling is in `tile_ceiling`. `TileStandards.show_damage()`
 switches levels.
+NEW 2026-10-31 (step 4b): overlays left empty get **real blockout debris** (no more coloured boxes): solid
+rubble (material slot `rubble`, WORLD collision, solid only while the overlay is shown) always within 0.5 m
+(hallways) or 1 m (rooms) of a wall, never in front of a doorway, in a cart lane, or on a machine or spawn spot
+(`BlockoutTile.KEEP_CLEAR_MARKERS`); plus papers, ceiling tiles, cables and scorch marks with no collision.
+`TileStandards.keep_damage(tile, level)` keeps one overlay and deletes the rest.
 **Damage lighting** (NEW 2026-10-30, Zachary; `TileLightFlicker`, numbers in `Config.floor_gen`, "Damage
 lighting"): pristine = steady; light = some lights blink now and then; heavy = some lights dead, the rest dim,
 dark for a few seconds then flickering, red emergency light steady; destroyed = most lights dead, the rest
@@ -393,6 +414,11 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-31 (Zachary): flickering much more random: per-light speed, single blinks or stuttering bursts,
   random on/off switches and random brightness per flash, wider timing ranges. NEW FloorGenTuning
   `flicker_light_speed`, `flicker_on_chance`, `flicker_brightness`, `flicker_single_blink_chance`.
+- 2026-10-31 (floor generation step 4b, branch `system/level_gen-floorgen-step4b`): incidents, damage levels,
+  collapses, hazards (new system `hazards`), loose debris props, real blockout debris in overlays, damage on
+  the F8 map, `floorgen origin` / `floorgen damage`. NEW FloorLayout `damage`, `incident_id`, `origin`,
+  `collapsed`, `marker_params`, `damage_level()`; `TileStandards.keep_damage`, slot `rubble`,
+  `RoomShape.markers` carry `params`. CHANGED `TileStandards.show_damage` (debris solid only when shown).
 - 2026-10-31 (floor generation step 4a, branch `system/level_gen-floorgen-step4a`): generator step 5 (required
   rooms, department room types, shared share), Robotics tiles and department, Botany and Zoology placeholders,
   palettes and room-name signs in `Level.build`, room names on the F8 map. FloorLayout unchanged.

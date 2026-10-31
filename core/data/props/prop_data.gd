@@ -37,6 +37,12 @@ extends ContentData
 @export var break_pieces: int = 6
 ## NEW 2026-10-29: optional scene of pieces (RigidBody3D children) to show when it breaks.
 @export var break_scene: PackedScene
+## NEW 2026-10-30 (floor generation): lift parts only: "small", "medium", "large" or "huge". Decides which
+## "lift_part" markers it fits (their max_size) and how likely it is on higher floors.
+@export var part_size: StringName = &""
+## NEW 2026-10-30 (floor generation): lift parts only: "mechanical", "electrical", "electronic", "power",
+## "structural"... Matched against the rooms' part_categories, so parts turn up where they make sense.
+@export var part_category: StringName = &""
 
 
 func get_type_key() -> StringName:

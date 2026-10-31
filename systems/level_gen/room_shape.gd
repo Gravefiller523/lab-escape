@@ -13,26 +13,37 @@ const EDGE_TOLERANCE: float = 0.25
 ## Footprint in cells (x, z).
 var size: Vector2i = Vector2i.ONE
 ## Each doorway: {"cell": Vector2i (the cell inside the room), "dir": Vector2i (which way it faces),
-## "width": float, "height": float, "name": String}. In the room's own (unturned) frame.
+## "width": float, "height": float, "name": String, NEW 2026-10-30: "connection": StringName,
+## "open_edge": bool}. In the room's own (unturned) frame.
 var doorways: Array[Dictionary] = []
 ## Doorways that aren't on an edge (mistakes in the scene), by node name.
 var bad_doorways: PackedStringArray = []
 
-static var _cache: Dictionary[StringName, RoomShape] = {}
+## Keyed by room id and cell size (CHANGED 2026-10-30: the new 3 m tiles and old 12 m rooms differ).
+static var _cache: Dictionary[String, RoomShape] = {}
 
 
-## The shape of a room (from its scene). Cached by room id.
+## The shape of a room (from its scene). Cached by room id and cell size.
 static func of(room: RoomData, cell_size: float) -> RoomShape:
-	if _cache.has(room.id):
-		return _cache[room.id]
+	var key: String = "%s@%s" % [room.id, cell_size]
+	if _cache.has(key):
+		return _cache[key]
 	var shape := RoomShape.new()
 	shape.size = Vector2i(maxi(room.size_cells.x, 1), maxi(room.size_cells.z, 1))
 	if room.scene != null:
 		var root: Node = room.scene.instantiate()
 		shape._read_doorways(root, cell_size)
 		root.free()
-	_cache[room.id] = shape
+	_cache[key] = shape
 	return shape
+
+
+## NEW 2026-10-30: the size of one grid cell for this room, in metres: Config.floor_gen.grid_unit (3 m) for
+## the new tiles (grid "tile_3m"), Config.game.room_cell_size (12 m) for the old grey-box rooms.
+static func cell_size_for(room: RoomData) -> float:
+	if room.grid == RoomData.GRID_TILE:
+		return Config.floor_gen.grid_unit
+	return Config.game.room_cell_size
 
 
 ## For tests that add rooms: forget remembered shapes.
@@ -90,7 +101,8 @@ func _read_doorways(root: Node, cell_size: float) -> void:
 			continue
 		var u: float = doorway.position.x / cell_size
 		var w: float = doorway.position.z / cell_size
-		var entry: Dictionary = {"width": doorway.width, "height": doorway.height, "name": String(doorway.name)}
+		var entry: Dictionary = {"width": doorway.width, "height": doorway.height, "name": String(doorway.name),
+			"connection": doorway.connection, "open_edge": doorway.open_edge}
 		if absf(u) < EDGE_TOLERANCE:
 			entry["dir"] = Vector2i(-1, 0)
 			entry["cell"] = Vector2i(0, clampi(floori(w), 0, size.y - 1))

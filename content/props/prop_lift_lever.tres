@@ -13,4 +13,6 @@ scene = ExtResource("2_scene")
 mass = 2.0
 is_key_object = true
 lift_slot = &"lever"
+part_size = &"medium"
+part_category = &"mechanical"
 surface = &"metal"

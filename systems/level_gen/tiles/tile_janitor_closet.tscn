@@ -1,0 +1,91 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/level_gen/tiles/blockout_tile.gd" id="1_tile"]
+[ext_resource type="Script" path="res://systems/level_gen/room_doorway.gd" id="2_door"]
+[ext_resource type="Script" path="res://systems/level_gen/room_marker.gd" id="3_marker"]
+[ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_accent.tres" id="4_accent"]
+[ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_wall.tres" id="5_wall"]
+
+[node name="TileJanitorCloset" type="Node3D"]
+script = ExtResource("1_tile")
+size_units = Vector2i(2, 2)
+
+[node name="SocketN1" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0, 0)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="SocketS0" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 6)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="SocketW1" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4.5)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="SocketE0" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 1.5)
+script = ExtResource("2_door")
+width = 2.4
+height = 2.8
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="ItemSpawn0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1.0, 0.5)
+script = ExtResource("3_marker")
+kind = &"item_spawn"
+
+[node name="LiftPart0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.1, 3)
+script = ExtResource("3_marker")
+kind = &"lift_part"
+params = {"max_size": "small", "visible_from_entrance": false}
+
+[node name="PropSpawn0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0.4, 3.6)
+script = ExtResource("3_marker")
+kind = &"prop_spawn"
+
+[node name="Hazard0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 4.2)
+script = ExtResource("3_marker")
+kind = &"hazard"
+params = {"hazard_kinds": ["toxic_gas", "water"], "min_damage": "heavy"}
+
+[node name="Sign0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 3.1, 0.3)
+script = ExtResource("3_marker")
+kind = &"sign"
+
+[node name="Furniture" type="CSGCombiner3D" parent="."]
+use_collision = true
+collision_mask = 0
+
+[node name="Shelf" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.9, 0.5)
+size = Vector3(2.4, 1.8, 0.6)
+material = ExtResource("4_accent")
+metadata/material_slot = &"accent"
+
+[node name="MopSink" type="CSGBox3D" parent="Furniture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.3, 0.4, 4.6)
+size = Vector3(0.8, 0.8, 1.0)
+material = ExtResource("4_accent")
+metadata/material_slot = &"accent"
+
+[node name="Damage" type="Node3D" parent="."]
+
+[node name="Light" type="Node3D" parent="Damage"]
+visible = false
+
+[node name="Heavy" type="Node3D" parent="Damage"]
+visible = false
+
+[node name="Destroyed" type="Node3D" parent="Damage"]
+visible = false

@@ -1,14 +1,18 @@
 extends Node
 ## Autoload "Config". Holds the live GameConfig (tuning numbers).
 ## Use: Config.game.max_players
+## NEW 2026-10-30: and the live FloorGenTuning (floor generation numbers): Config.floor_gen.grid_unit
 ## NEW 2026-10-29: also holds the live FeelTuning ("how it feels" numbers): Config.feel.props.throw_force
 ## Also registers the default input actions so every system can use them.
 
 const CONFIG_PATH: String = "res://config/game_config.tres"
 const FEEL_PATH: String = "res://config/feel_tuning.tres"
+const FLOOR_GEN_PATH: String = "res://config/floor_gen_tuning.tres"
 
 var game: GameConfig
 var feel: FeelTuning
+## NEW 2026-10-30: floor generation numbers (FloorGenTuning). Not used by gameplay yet.
+var floor_gen: FloorGenTuning
 
 
 func _enter_tree() -> void:
@@ -20,6 +24,7 @@ func _enter_tree() -> void:
 		push_error("Config: could not load %s, using defaults." % CONFIG_PATH)
 		game = GameConfig.new()
 	_load_feel()
+	_load_floor_gen()
 	InputActions.ensure_registered()
 
 
@@ -36,3 +41,11 @@ func _load_feel() -> void:
 		feel.props = PropTuning.new()
 	if feel.ai == null:
 		feel.ai = AiTuning.new()
+
+
+func _load_floor_gen() -> void:
+	if ResourceLoader.exists(FLOOR_GEN_PATH):
+		floor_gen = load(FLOOR_GEN_PATH) as FloorGenTuning
+	if floor_gen == null:
+		push_error("Config: could not load %s, using defaults." % FLOOR_GEN_PATH)
+		floor_gen = FloorGenTuning.new()

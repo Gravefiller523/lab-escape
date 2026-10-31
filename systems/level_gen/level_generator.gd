@@ -21,11 +21,15 @@ const FILLER_KINDS: Array[StringName] = [&"normal", &"corridor"]
 
 ## The rooms a department can use on a floor: its room_ids plus every shared room (no department_ids),
 ## or rooms that list it, without disabled ones or ones whose min_floor is later. Sorted by id.
+## CHANGED 2026-10-30: only rooms on the old 12 m grid (RoomData.grid "legacy_12m").
 static func room_pool(department: DepartmentData, floor_in_department: int) -> Array[RoomData]:
 	var pool: Array[RoomData] = []
 	for content: ContentData in ContentRegistry.get_all(&"room"):
 		var room := content as RoomData
 		if room == null or room.scene == null or room.min_floor > floor_in_department:
+			continue
+		# NEW 2026-10-30: only the old 12 m rooms. The new 3 m tiles are for the new FloorGenerator.
+		if room.grid != RoomData.GRID_LEGACY:
 			continue
 		var allowed: bool = room.department_ids.is_empty() or room.department_ids.has(department.id) \
 			or department.room_ids.has(room.id)

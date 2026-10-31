@@ -979,7 +979,13 @@ func test_thrown_crate_kills_a_light_enemy_and_the_thrower_gets_the_credit() -> 
 	var credit: Array[int] = []
 	health.died.connect(func(info: DamageInfo) -> void: credit.append(info.source_player_id))
 	await wait_physics_frames(5)
+	# CHANGED 2026-10-31 (level_gen step 2 merge): a throw adds random spin (NetProp uses the global randf), and
+	# some spins make the crate hit edge-on and not kill (seen as a test that failed now and then). This test
+	# is about weight, damage and kill credit, so it throws without spin; the spin is put back after.
+	var spin: float = Config.feel.props.throw_spin
+	Config.feel.props.throw_spin = 0.0
 	PropsService.grab_of(body).throw()
+	Config.feel.props.throw_spin = spin
 	await wait_until(func() -> bool: return health.is_dead(), 2.0)
 	assert_true(health.is_dead(), "a 10 kg crate thrown at a 5 kg enemy kills it")
 	assert_eq(credit, [body.player_id] as Array[int], "the thrower gets the kill")

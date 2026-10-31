@@ -1,0 +1,23 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+
+[sub_resource type="BoxShape3D" id="Shape_debris"]
+size = Vector3(0.5, 0.3, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="Mat_debris"]
+albedo_color = Color(0.46, 0.43, 0.39, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="Mesh_debris"]
+material = SubResource("Mat_debris")
+size = Vector3(0.5, 0.3, 0.4)
+
+[node name="DebrisChunk" type="RigidBody3D"]
+script = ExtResource("1_prop")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_debris")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_debris")

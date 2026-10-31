@@ -31,7 +31,7 @@ const CEILING_GROUP: StringName = &"tile_ceiling"
 ## Named material slots: a node with the metadata "material_slot" set to one of these gets the
 ## department's material for it (DepartmentData.palette) when the floor is built.
 const MATERIAL_SLOT_META: StringName = &"material_slot"
-const MATERIAL_SLOTS: Array[StringName] = [&"wall", &"floor", &"trim", &"accent"]
+const MATERIAL_SLOTS: Array[StringName] = [&"wall", &"floor", &"trim", &"accent", &"rubble"]
 
 ## Marker kinds tiles may use (RoomMarker.kind). New kinds need no code, but add them here and to the
 ## spec so the tile test knows them. The first group is from the floor generation plan (section 3.4).
@@ -56,11 +56,27 @@ static func overlay_of(tile: Node, level: StringName) -> Node3D:
 
 
 ## Shows one damage level's overlay inside a tile and hides the others ("pristine" hides them all).
+## CHANGED 2026-10-31: solid debris in a hidden overlay stops being solid too.
 static func show_damage(tile: Node, level: StringName) -> void:
 	for overlay_level: StringName in OVERLAY_NODES:
 		var overlay: Node3D = overlay_of(tile, overlay_level)
 		if overlay != null:
 			overlay.visible = overlay_level == level
+			for node: Node in RoomShape.all_children(overlay):
+				var solid := node as CSGShape3D
+				if solid != null and solid.is_root_shape():
+					solid.use_collision = overlay.visible
+
+
+## NEW 2026-10-31 (step 4b): the tile at one damage level for good: that overlay shown, the others deleted
+## (what Level.build does on a floor).
+static func keep_damage(tile: Node, level: StringName) -> void:
+	show_damage(tile, level)
+	for overlay_level: StringName in OVERLAY_NODES:
+		var overlay: Node3D = overlay_of(tile, overlay_level)
+		if overlay != null and overlay_level != level:
+			overlay.get_parent().remove_child(overlay)
+			overlay.queue_free()
 
 
 ## Puts a palette's materials ("wall", "floor", "trim", "accent" -> Material) on every node under root

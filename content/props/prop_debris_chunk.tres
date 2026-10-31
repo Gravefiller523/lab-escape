@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/props/prop_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/debris/debris_chunk.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"prop_debris_chunk"
+display_name = "Chunk of rubble"
+description = "Loose rubble in damaged rooms (floor generation step 4b). Light enough to move alone."
+tags = PackedStringArray("debris")
+scene = ExtResource("2_scene")
+mass = 8.0
+surface = &"concrete"

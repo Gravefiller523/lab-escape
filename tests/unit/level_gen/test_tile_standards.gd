@@ -595,3 +595,89 @@ func test_spawn_spots_are_clear_of_furniture() -> void:
 			var down := PhysicsRayQueryParameters3D.create(marker.global_position, marker.global_position - Vector3(0, 1.0, 0), mask)
 			assert_false(space.intersect_ray(down).is_empty(), "%s: something to land on within 1 m below" % label)
 	assert_gt(checked, 30, "spawn spots were checked")
+
+
+## NEW 2026-10-31 (step 4b): at every damage level, solid debris never blocks a doorway, a hallway's cart lane,
+## or a machine or spawn spot.
+func test_damage_debris_never_blocks_the_way() -> void:
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	add_child_autofree(viewport)
+	var tiles: Array[Node3D] = []
+	var rooms: Array[RoomData] = _tiles()
+	for index: int in rooms.size():
+		var tile := rooms[index].scene.instantiate() as Node3D
+		tile.position = Vector3(float(index) * 40.0, 0, 0)
+		viewport.add_child(tile)
+		tiles.append(tile)
+	var cart_lane: float = Config.game.cart_width + 0.4
+	for level: StringName in TileStandards.DAMAGE_LEVELS:
+		for tile: Node3D in tiles:
+			TileStandards.show_damage(tile, level)
+		await wait_process_frames(2)
+		await wait_physics_frames(3)
+		var space: PhysicsDirectSpaceState3D = viewport.find_world_3d().direct_space_state
+		for index: int in tiles.size():
+			var tile: Node3D = tiles[index]
+			var room: RoomData = rooms[index]
+			var length := Vector2(_footprint(room)) * _unit()
+			var label: String = "%s at %s" % [room.id, level]
+			for socket: RoomDoorway in _sockets(tile):
+				var p := Vector2(socket.position.x, socket.position.z)
+				var inward := Vector2.ZERO
+				if absf(p.y) < CLOSE:
+					inward = Vector2.DOWN
+				elif absf(p.y - length.y) < CLOSE:
+					inward = Vector2.UP
+				elif absf(p.x) < CLOSE:
+					inward = Vector2.RIGHT
+				else:
+					inward = Vector2.LEFT
+				var centre: Vector2 = p + inward * 0.95
+				var across: float = socket.width - 0.4
+				var size := Vector3(across, 2.0, 1.3) if absf(inward.y) > 0.5 else Vector3(1.3, 2.0, across)
+				assert_true(_is_clear(space, tile.position + Vector3(centre.x, 1.3, centre.y), size),
+					"%s: nothing solid in front of %s" % [label, socket.name])
+			if room.tile_role == TileStandards.ROLE_MAIN_HALL or room.tile_role == TileStandards.ROLE_SECONDARY_HALL:
+				# A cart lane from each open side to the middle of the piece.
+				var middle: Vector2 = length / 2.0
+				for end: Vector2 in _open_ends(tile, length):
+					var from: Vector2 = end + (middle - end).normalized() * 0.3
+					var centre: Vector2 = (from + middle) / 2.0
+					var run: float = from.distance_to(middle) + cart_lane / 2.0
+					var lane := Vector3(run, 2.0, cart_lane) if absf(middle.x - end.x) > 0.01 else Vector3(cart_lane, 2.0, run)
+					assert_true(_is_clear(space, tile.position + Vector3(centre.x, 1.3, centre.y), lane),
+						"%s: a cart gets from the open side at %s to the middle" % [label, end])
+			for node: Node in RoomShape.all_children(tile):
+				var marker := node as RoomMarker
+				if marker == null or not [&"lift_part", &"prop_spawn", &"item_spawn", &"keycard", &"charger"].has(marker.kind):
+					continue
+				assert_true(_is_clear(space, marker.global_position + Vector3(0, 0.15, 0), Vector3(0.3, 0.3, 0.3)),
+					"%s: %s stays clear" % [label, marker.name])
+
+
+func _is_clear(space: PhysicsDirectSpaceState3D, centre: Vector3, size: Vector3) -> bool:
+	var box := BoxShape3D.new()
+	box.size = size
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = box
+	query.transform = Transform3D(Basis.IDENTITY, centre)
+	query.collision_mask = PhysicsLayers.bit(PhysicsLayers.WORLD)
+	return space.intersect_shape(query, 1).is_empty()
+
+
+## The middle of each open side of a hallway piece (its open sockets grouped by the side they are on).
+func _open_ends(tile: Node, length: Vector2) -> Array[Vector2]:
+	var sums: Dictionary[String, Vector2] = {}
+	var counts: Dictionary[String, int] = {}
+	for socket: RoomDoorway in _sockets(tile):
+		if not socket.open_edge:
+			continue
+		var p := Vector2(socket.position.x, socket.position.z)
+		var side: String = "N" if absf(p.y) < CLOSE else ("S" if absf(p.y - length.y) < CLOSE else ("W" if absf(p.x) < CLOSE else "E"))
+		sums[side] = sums.get(side, Vector2.ZERO) + p
+		counts[side] = counts.get(side, 0) + 1
+	var ends: Array[Vector2] = []
+	for side: String in sums:
+		ends.append(sums[side] / float(counts[side]))
+	return ends

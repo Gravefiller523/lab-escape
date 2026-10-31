@@ -26,6 +26,17 @@ var loops: Array[Vector2i] = []
 ## Markers the generator switched on, by kind: "placement/path inside the room" keys. A kind that isn't
 ## listed here has every marker on (Level.get_markers).
 var active_markers: Dictionary[StringName, PackedStringArray] = {}
+# NEW 2026-10-31 (floor generation step 4b: incident and damage) ----------------------------------------
+## Each placement's damage level: 0 pristine, 1 light, 2 heavy, 3 destroyed (TileStandards.DAMAGE_LEVELS).
+var damage: PackedByteArray = PackedByteArray()
+## The floor's incident (IncidentData.id, or &"incident_generic") and the placement it started in (-1 = none).
+var incident_id: StringName = &""
+var origin: int = -1
+## Placements of hallway pieces that collapsed (impassable, only where a loop gives a way round).
+var collapsed: PackedInt32Array = PackedInt32Array()
+## Extra settings for markers, by marker key: e.g. {"prop_id": "prop_debris_chunk"} or {"hazard_kind": "fire"}.
+## Level.build copies them into the markers' params.
+var marker_params: Dictionary[String, Dictionary] = {}
 ## The generation log (host only: not sent to other PCs).
 var log_lines: PackedStringArray = PackedStringArray()
 ## Numbers about how the floor grew, for tests and the log (host only, not sent): "rooms", "max_depth".
@@ -64,6 +75,14 @@ func to_dict() -> Dictionary:
 		data["main_halls"] = halls
 		data["loops"] = loop_pairs
 		data["active_markers"] = markers
+		data["damage"] = damage
+		data["incident_id"] = String(incident_id)
+		data["origin"] = origin
+		data["collapsed"] = collapsed
+		var params: Dictionary = {}
+		for key: String in marker_params:
+			params[key] = marker_params[key]
+		data["marker_params"] = params
 	return data
 
 
@@ -97,6 +116,13 @@ static func from_dict(data: Dictionary) -> FloorLayout:
 	var markers: Dictionary = data.get("active_markers", {})
 	for kind: Variant in markers:
 		layout.active_markers[StringName(str(kind))] = PackedStringArray(markers[kind])
+	layout.damage = PackedByteArray(data.get("damage", PackedByteArray()))
+	layout.incident_id = StringName(str(data.get("incident_id", "")))
+	layout.origin = data.get("origin", -1)
+	layout.collapsed = PackedInt32Array(data.get("collapsed", PackedInt32Array()))
+	var params: Dictionary = data.get("marker_params", {})
+	for key: Variant in params:
+		layout.marker_params[str(key)] = params[key] as Dictionary
 	return layout
 
 
@@ -108,3 +134,10 @@ func cell_size() -> float:
 ## NEW 2026-10-31: the key active_markers uses for a marker (placement index and its path in the room).
 static func marker_key(placement_index: int, path_in_room: String) -> String:
 	return "%d/%s" % [placement_index, path_in_room]
+
+
+## NEW 2026-10-31: a placement's damage level name ("pristine" if the floor has no damage).
+func damage_level(index: int) -> StringName:
+	if index < 0 or index >= damage.size():
+		return &"pristine"
+	return TileStandards.DAMAGE_LEVELS[mini(damage[index], TileStandards.DAMAGE_LEVELS.size() - 1)]

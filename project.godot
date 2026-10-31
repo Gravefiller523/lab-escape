@@ -44,6 +44,7 @@ Death="*res://systems/death_respawn/death.gd"
 Upgrades="*res://systems/upgrades/upgrades.gd"
 Carts="*res://systems/carts/carts.gd"
 Level="*res://systems/level_gen/level.gd"
+Hazards="*res://systems/hazards/hazards.gd"
 GameFlow="*res://systems/game_flow/game_flow.gd"
 Settings="*res://systems/settings_input/settings.gd"
 

@@ -12,6 +12,9 @@ const SECONDARY_HALL_COLOR: Color = Color(0.5, 0.54, 0.62)
 const LOOP_COLOR: Color = Color(1.0, 0.3, 0.85)
 const OUTLINE_COLOR: Color = Color(0.08, 0.08, 0.1)
 const PLAYER_COLOR: Color = Color(1.0, 1.0, 1.0)
+## NEW 2026-10-31 (step 4b): rooms filled by damage level (pristine, light, heavy, destroyed); the incident star.
+const DAMAGE_COLORS: Array[Color] = [Color(0.35, 0.62, 0.4), Color(0.85, 0.8, 0.3), Color(0.92, 0.5, 0.18), Color(0.85, 0.15, 0.12)]
+const ORIGIN_COLOR: Color = Color(1.0, 0.95, 0.4)
 
 var layout: FloorLayout:
 	set(value):
@@ -66,6 +69,7 @@ func _draw() -> void:
 		if pair.x < rects.size() and pair.y < rects.size():
 			draw_line(to_screen.call(rects[pair.x].get_center()), to_screen.call(rects[pair.y].get_center()), LOOP_COLOR, 3.0)
 	_draw_wing_names(rects, to_screen)
+	_draw_damage_marks(rects, to_screen, scale_fit)
 	for player: Dictionary in players:
 		var at: Vector3 = player["position"]
 		var facing: Vector3 = player["facing"]
@@ -110,14 +114,18 @@ func _color_of(index: int) -> Color:
 		return Color.MAGENTA
 	if room.room_kind == &"lift":
 		return ELEVATOR_COLOR
+	var damaged: bool = index < layout.damage.size()
+	var damage_color: Color = DAMAGE_COLORS[mini(layout.damage[index], 3)] if damaged else Color.WHITE
 	match room.tile_role:
 		TileStandards.ROLE_TEMPLATE:
-			return WELCOME_COLOR
+			return WELCOME_COLOR.lerp(damage_color, 0.35) if damaged else WELCOME_COLOR
 		TileStandards.ROLE_MAIN_HALL:
-			return MAIN_HALL_COLOR
+			return MAIN_HALL_COLOR.lerp(damage_color, 0.35) if damaged else MAIN_HALL_COLOR
 		TileStandards.ROLE_SECONDARY_HALL:
+			if damaged:
+				return SECONDARY_HALL_COLOR.lerp(damage_color, 0.45)
 			return SECONDARY_HALL_COLOR.lerp(_wing_color(placement.wing), 0.25)
-	return _wing_color(placement.wing)
+	return damage_color if damaged else _wing_color(placement.wing)
 
 
 func _wing_color(wing: int) -> Color:
@@ -143,3 +151,23 @@ func _draw_wing_names(rects: Array[Rect2], to_screen: Callable) -> void:
 		var text: String = layout.wings[wing]
 		draw_string_outline(font, at - Vector2(40, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 4, OUTLINE_COLOR)
 		draw_string(font, at - Vector2(40, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+
+
+## NEW 2026-10-31 (step 4b): a star where the incident started and an X over collapsed hallway pieces.
+func _draw_damage_marks(rects: Array[Rect2], to_screen: Callable, scale_fit: float) -> void:
+	for index: int in layout.collapsed:
+		if index < rects.size():
+			var screen := Rect2(to_screen.call(rects[index].position), rects[index].size * scale_fit)
+			draw_line(screen.position, screen.end, OUTLINE_COLOR, 3.0)
+			draw_line(Vector2(screen.end.x, screen.position.y), Vector2(screen.position.x, screen.end.y), OUTLINE_COLOR, 3.0)
+	if layout.origin < 0 or layout.origin >= rects.size():
+		return
+	var centre: Vector2 = to_screen.call(rects[layout.origin].get_center())
+	var points := PackedVector2Array()
+	for point: int in 10:
+		var radius: float = 14.0 if point % 2 == 0 else 6.0
+		var angle: float = -PI / 2.0 + float(point) * PI / 5.0
+		points.append(centre + Vector2(cos(angle), sin(angle)) * radius)
+	draw_colored_polygon(points, ORIGIN_COLOR)
+	points.append(points[0])
+	draw_polyline(points, OUTLINE_COLOR, 1.5)

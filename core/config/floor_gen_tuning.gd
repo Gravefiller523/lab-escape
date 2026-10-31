@@ -202,6 +202,13 @@ extends Resource
 @export var hazards_cap: int = 10
 ## Hazards only in rooms at least this damaged.
 @export var hazard_min_damage: StringName = &"heavy"
+## NEW 2026-10-31 (step 4b, placeholder hazard zones in systems/hazards): damage per second to anyone
+## standing in one, by hazard kind (kinds not listed use "sparks"), and its damage type.
+@export var hazard_damage_per_second: Dictionary[StringName, float] = {&"sparks": 8.0, &"fire": 12.0}
+@export var hazard_damage_types: Dictionary[StringName, StringName] = {&"sparks": &"electric", &"fire": &"fire"}
+## How often a hazard hurts (seconds) and how big its zone is (radius, metres).
+@export var hazard_tick_seconds: float = 0.5
+@export var hazard_radius: float = 1.4
 
 @export_group("Security room (V13)")
 ## Camera feed picture size (pixels) and how often it redraws (times a second).
@@ -237,6 +244,14 @@ extends Resource
 ## NEW 2026-10-31: share of "prop_spawn" markers that get a prop (the rest stay empty), so big floors don't
 ## fill up with crates. Step 10 of the plan replaces this with department prop pools.
 @export var prop_spawn_share: float = 0.35
+## NEW 2026-10-31 (step 4b): share of prop spots used in heavily damaged and destroyed rooms (loose debris).
+@export var prop_spawn_share_damaged: float = 0.8
+## NEW 2026-10-31 (step 4b): chance a used prop spot gets loose debris instead of a normal prop, by damage.
+@export var debris_prop_chance_light: float = 0.2
+@export var debris_prop_chance_heavy: float = 0.6
+@export var debris_prop_chance_destroyed: float = 0.9
+## NEW 2026-10-31 (step 4b): the loose debris props (PropData ids), picked evenly.
+@export var debris_prop_ids: Array[StringName] = [&"prop_debris_chunk", &"prop_debris_panel"]
 
 @export_group("Rooms (V16)")
 ## Share of non-required room slots that get a shared room (office, storage...). A department's

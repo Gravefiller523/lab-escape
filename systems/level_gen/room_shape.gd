@@ -19,7 +19,7 @@ var doorways: Array[Dictionary] = []
 ## Doorways that aren't on an edge (mistakes in the scene), by node name.
 var bad_doorways: PackedStringArray = []
 ## NEW 2026-10-31 (floor generation step 3): the room's markers: {"kind": StringName, "path": String (from
-## the room root, the same path Level finds them by)}, sorted by path.
+## the room root, the same path Level finds them by), "params": Dictionary (a copy)}, sorted by path.
 var markers: Array[Dictionary] = []
 
 ## Keyed by room id and cell size (CHANGED 2026-10-30: the new 3 m tiles and old 12 m rooms differ).
@@ -129,7 +129,7 @@ func _read_markers(root: Node) -> void:
 	for node: Node in all_children(root):
 		var marker := node as RoomMarker
 		if marker != null:
-			markers.append({"kind": marker.kind, "path": String(root.get_path_to(marker))})
+			markers.append({"kind": marker.kind, "path": String(root.get_path_to(marker)), "params": marker.params.duplicate()})
 	markers.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return String(a["path"]) < String(b["path"]))
 
 

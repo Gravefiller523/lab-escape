@@ -134,7 +134,7 @@ func start_run(run_seed: int = 0) -> void:
 	run.run_seed = run_seed
 	if run.run_seed == 0:
 		run.run_seed = _config.debug_run_seed if _config.debug_run_seed != 0 else randi_range(1, 2147483646)
-	run.department_ids = department_order(run.run_seed)
+	run.department_ids = floor_departments(run.run_seed)
 	place_on_floor(run, 1)
 	_run_started_rpc.rpc(run.to_dict())
 	_state_rpc.rpc(State.ELEVATOR_RIDE)
@@ -173,9 +173,9 @@ func return_to_main_menu() -> void:
 	_load_scene.call(MAIN_MENU_SCENE)
 
 
-## Host, cheats only: jump to a floor (everyone is brought into the lift and it rides there). Without
-## a department, floor_number counts across the whole run; with one, it is the floor inside that
-## department (floor_count + 1 = its boss floor).
+## Host, cheats only: jump to a floor of the run (everyone is brought into the lift and it rides there).
+## CHANGED 2026-10-31: floor_number always counts across the whole run; a department makes that floor this
+## department (a department is rolled every floor).
 func debug_go_to_floor(floor_number: int, department_id: StringName = &"") -> String:
 	if not _net.is_host():
 		return "Only the host can change floors."
@@ -187,18 +187,13 @@ func debug_go_to_floor(floor_number: int, department_id: StringName = &"") -> St
 	if run == null:
 		run = RunState.new()
 		run.run_seed = _config.debug_run_seed if _config.debug_run_seed != 0 else randi_range(1, 2147483646)
-		run.department_ids = department_order(run.run_seed)
-	if department_id != &"":
-		if get_department(department_id) == null:
-			return "No department called '%s'." % department_id
-		if not run.department_ids.has(department_id):
-			run.department_ids.insert(mini(run.department_index, run.department_ids.size()), department_id)
-		run.department_index = run.department_ids.find(department_id)
-		run.floor_in_department = clampi(floor_number, 1, floors_in(get_department(department_id)) + 1)
-		run.floor_number = _first_floor_of(run, run.department_index) + run.floor_in_department - 1
-	elif not place_on_floor(run, floor_number):
+		run.department_ids = floor_departments(run.run_seed)
+	if department_id != &"" and get_department(department_id) == null:
+		return "No department called '%s'." % department_id
+	if not place_on_floor(run, floor_number):
 		return "This run has only %d floors." % total_floors(run)
-	run.is_boss_floor = run.floor_in_department > floors_in(get_department(run.get_department_id()))
+	if department_id != &"":
+		run.department_ids[floor_number - 1] = department_id
 	if _run == null:
 		_run_started_rpc.rpc(run.to_dict())
 	else:
@@ -211,6 +206,7 @@ func debug_go_to_floor(floor_number: int, department_id: StringName = &"") -> St
 		"boss floor" if run.is_boss_floor else "floor %d" % run.floor_in_department]
 
 
+## @deprecated use floor_departments instead (2026-10-31: a department is rolled every floor).
 ## The departments a run with this seed visits, in order: every DepartmentData in the rotation,
 ## sorted by order_hint (ties shuffled by the seed), at most Config.game.departments_per_run.
 func department_order(run_seed: int) -> Array[StringName]:
@@ -245,6 +241,8 @@ func get_department(department_id: StringName) -> DepartmentData:
 	return ContentRegistry.get_content(department_id) as DepartmentData
 
 
+## @deprecated runs roll a department every floor (2026-10-31); boss floors come every
+## Config.game.boss_every_floors floors.
 ## Regular floors before a department's boss floor: its floor_count, or Config.game's
 ## floors_per_department if the department doesn't set one.
 func floors_in(department: DepartmentData) -> int:
@@ -253,33 +251,67 @@ func floors_in(department: DepartmentData) -> int:
 	return department.floor_count if department.floor_count > 0 else _config.floors_per_department
 
 
-## Every floor in the run, boss floors included.
+## Every floor in the run, boss floors included. CHANGED 2026-10-31: one department per floor.
 func total_floors(run: RunState) -> int:
-	var total: int = 0
-	for id: StringName in run.department_ids:
-		total += floors_in(get_department(id)) + 1
-	return total
+	return run.department_ids.size()
+
+
+## NEW 2026-10-31 (Zachary, Q1 / F1-F3): the department of every floor of a run with this seed, rolled one
+## floor at a time with SeededRng(run_seed, "floor_department", floor): Config.game.run_floor_count floors,
+## never the same department two floors in a row (when there is more than one). Every
+## Config.game.boss_every_floors-th floor is a boss floor, rolled among departments with boss_floors on and
+## a boss that exists (any department if none has one).
+func floor_departments(run_seed: int) -> Array[StringName]:
+	var regular: Array[StringName] = []
+	var with_boss: Array[StringName] = []
+	for content: ContentData in ContentRegistry.get_all(&"department"):
+		var department := content as DepartmentData
+		if department == null or not department.in_run_rotation:
+			continue
+		regular.append(department.id)
+		if department.boss_floors and ContentRegistry.has_content(department.boss_id):
+			with_boss.append(department.id)
+	if regular.is_empty():
+		regular.append(PLACEHOLDER_DEPARTMENT_ID)
+	if with_boss.is_empty():
+		with_boss = regular.duplicate()
+	regular.sort()
+	with_boss.sort()
+	var ids: Array[StringName] = []
+	for floor_number: int in range(1, maxi(_config.run_floor_count, 1) + 1):
+		var pool: Array[StringName] = (with_boss if _is_boss_floor_number(floor_number) else regular).duplicate()
+		if pool.size() > 1 and not ids.is_empty():
+			pool.erase(ids[-1])
+		# The floor before a boss floor that only one department can have mustn't be that department either.
+		if pool.size() > 1 and with_boss.size() == 1 and _is_boss_floor_number(floor_number + 1):
+			pool.erase(with_boss[0])
+		var rng: RandomNumberGenerator = SeededRng.make(run_seed, &"floor_department", floor_number)
+		ids.append(pool[rng.randi_range(0, pool.size() - 1)])
+	return ids
 
 
 ## Moves a run to the given floor of the whole run. False if the run has fewer floors.
+## CHANGED 2026-10-31: department_index is floor_number - 1 (a department per floor); floor_in_department is
+## the floor's place in its block of boss_every_floors floors (the boss floor is the last of the block).
 func place_on_floor(run: RunState, floor_number: int) -> bool:
-	var left: int = floor_number
-	for index: int in run.department_ids.size():
-		var floors: int = floors_in(get_department(run.department_ids[index])) + 1
-		if left <= floors:
-			run.floor_number = floor_number
-			run.department_index = index
-			run.floor_in_department = left
-			run.is_boss_floor = left == floors
-			return true
-		left -= floors
-	return false
+	if floor_number < 1 or floor_number > total_floors(run):
+		return false
+	run.floor_number = floor_number
+	run.department_index = floor_number - 1
+	var block: int = _config.boss_every_floors
+	run.floor_in_department = (floor_number - 1) % block + 1 if block > 0 else floor_number
+	run.is_boss_floor = _is_boss_floor_number(floor_number)
+	return true
+
+
+func _is_boss_floor_number(floor_number: int) -> bool:
+	return _config.boss_every_floors > 0 and floor_number % _config.boss_every_floors == 0
 
 
 # --- Host: moving through the run ---------------------------------------------------------------
 
-## Host: the lift left: start the run (Break Room), the next floor, or, after a boss, the next
-## department (or the run is won).
+## Host: the lift left: start the run (Break Room), the next floor, or, after a boss, the next floor (or the
+## run is won after the last floor).
 func _on_lift_departed(_floor_number: int) -> void:
 	# Ignore a second press while everyone is already on the way (two players pressing at once).
 	if not _net.is_host() or _moving:
@@ -294,7 +326,7 @@ func _on_lift_departed(_floor_number: int) -> void:
 		State.BOSS_FIGHT:
 			if _run == null:
 				return
-			if _run.department_index + 1 >= _run.department_ids.size():
+			if _run.floor_number >= total_floors(_run):
 				end_run(RESULT_ESCAPED)
 			else:
 				place_on_floor(_run, _run.floor_number + 1)
@@ -633,12 +665,6 @@ static func _sorted_hints(departments: Array[DepartmentData]) -> Array[int]:
 	hints.sort()
 	return hints
 
-
-func _first_floor_of(run: RunState, department_index: int) -> int:
-	var floor_number: int = 1
-	for index: int in department_index:
-		floor_number += floors_in(get_department(run.department_ids[index])) + 1
-	return floor_number
 
 
 func _process(_delta: float) -> void:

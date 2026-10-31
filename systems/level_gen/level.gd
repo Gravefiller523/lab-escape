@@ -90,7 +90,7 @@ func _cmd_floorgen(args: PackedStringArray, _player_id: int) -> String:
 			if args.size() < 2:
 				return "Usage: floorgen dept <department_id>"
 			var run: RunState = GameFlow.get_run()
-			return GameFlow.debug_go_to_floor(run.floor_in_department if run != null else 1, StringName(args[1]))
+			return GameFlow.debug_go_to_floor(run.floor_number if run != null else 1, StringName(args[1]))
 	if args[0].is_valid_int() and args[0].to_int() != 0:
 		return _regenerate(args[0].to_int())
 	return "Usage: floorgen <seed> | floorgen floor <n> | floorgen dept <department_id> | floorgen log | floorgen map"
@@ -107,6 +107,7 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 	_rooms_root.name = ROOMS_NODE
 	parent.add_child(_rooms_root)
 	var cell: float = _cell_size(layout)
+	var department := ContentRegistry.get_content(layout.department_id) as DepartmentData
 	for index: int in layout.placements.size():
 		var placement: RoomPlacement = layout.placements[index]
 		var room := ContentRegistry.get_content(placement.room_id) as RoomData
@@ -118,6 +119,8 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 		node.transform = RoomShape.of(room, cell).placement_transform(placement, cell)
 		_rooms_root.add_child(node)
 		_room_nodes.append(node)
+		if layout.grid == RoomData.GRID_TILE:
+			_dress_room(node, room, department)
 		for marker: RoomMarker in _markers_in(node):
 			_markers.append(marker)
 			_marker_keys.append(FloorLayout.marker_key(index, String(node.get_path_to(marker))))
@@ -129,6 +132,10 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 			_add_cap(link, cell)
 		else:
 			_add_plug(link, cell)
+	if layout.grid == RoomData.GRID_TILE and department != null and not department.palette.is_empty():
+		for node: Node in _rooms_root.get_children():
+			if node.name.begins_with("Cap"):
+				TileStandards.apply_palette(node, department.palette)
 	if _overlay != null and _overlay.visible:
 		_overlay.refresh()
 	floor_built.emit()
@@ -279,3 +286,39 @@ func _add_cap(link: Dictionary, cell_size: float) -> void:
 	mesh.set_meta(TileStandards.MATERIAL_SLOT_META, &"wall")
 	body.add_child(mesh)
 	_rooms_root.add_child(body)
+
+
+## NEW 2026-10-31 (floor generation step 4a): a tile on a department's floor gets the department's look (its
+## palette fills the tile's material slots) and a room-name sign at each "sign" marker.
+func _dress_room(node: Node3D, room: RoomData, department: DepartmentData) -> void:
+	if department != null and not department.palette.is_empty():
+		TileStandards.apply_palette(node, department.palette)
+	for marker: RoomMarker in _markers_in(node):
+		if marker.kind != &"sign":
+			continue
+		var text: String = str(marker.params.get("text", room_display_name(room, department)))
+		if department != null and department.signage_style != null:
+			var sign_scene: Node = department.signage_style.instantiate()
+			if &"text" in sign_scene:
+				sign_scene.set(&"text", text)
+			marker.add_child(sign_scene)
+			continue
+		var label := Label3D.new()
+		label.name = "Sign"
+		label.text = text.to_upper()
+		label.font_size = 40
+		label.pixel_size = 0.005
+		label.outline_size = 10
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.modulate = department.accent_color if department != null else Color.WHITE
+		marker.add_child(label)
+
+
+## NEW 2026-10-31: what a room is called on signs and the map: its room type's name in the department
+## (RoomTypeData.display_name), else the tile's name without "(blockout)".
+static func room_display_name(room: RoomData, department: DepartmentData) -> String:
+	if department != null:
+		for room_type: RoomTypeData in department.room_types:
+			if room_type != null and room_type.room_kind == room.room_kind and not room_type.display_name.is_empty():
+				return room_type.display_name
+	return room.display_name.replace("(blockout)", "").strip_edges()

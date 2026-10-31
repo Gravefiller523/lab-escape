@@ -18,10 +18,16 @@ extends Resource
 @export var player_max_health: float = 100.0
 
 @export_group("Run")
+## @deprecated use boss_every_floors instead (2026-10-31: a department is rolled every floor).
 ## Floors per department, before its boss floor.
 @export var floors_per_department: int = 5
+## @deprecated use run_floor_count instead (2026-10-31: a department is rolled every floor).
 ## Departments in one run.
 @export var departments_per_run: int = 3
+## NEW 2026-10-31 (Zachary, F3): floors in a run, boss floors included.
+@export var run_floor_count: int = 18
+## NEW 2026-10-31 (Zachary, F1): every this many floors is a boss floor (6 = floors 6, 12, 18). 0 = none.
+@export var boss_every_floors: int = 6
 ## Non-zero forces every run to use this seed (for testing).
 @export var debug_run_seed: int = 0
 ## Seconds the elevator rides down from the Break Room before the first floor loads.

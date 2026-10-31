@@ -157,6 +157,10 @@ class _Builder:
 	var main_pieces: Dictionary[StringName, Array] = {}
 	var hall_pieces: Dictionary[StringName, Array] = {}
 	var shared_rooms: Array[RoomData] = []
+	## NEW 2026-10-31 (step 5): this department's own room tiles, by room_kind.
+	var department_rooms: Dictionary[StringName, Array] = {}
+	## How many rooms of each room_kind are on the floor (for RoomTypeData.max_per_floor).
+	var kind_counts: Dictionary[StringName, int] = {}
 	var wing_counts: Dictionary[int, int] = {}
 
 	func _init(for_department: DepartmentData, number: int, seed_value: int, attempt_index: int,
@@ -193,7 +197,12 @@ class _Builder:
 				TileStandards.ROLE_SECONDARY_HALL:
 					_add_piece(hall_pieces, room)
 				TileStandards.ROLE_ROOM:
-					shared_rooms.append(room)
+					if room.department_ids.is_empty():
+						shared_rooms.append(room)
+					else:
+						if not department_rooms.has(room.room_kind):
+							department_rooms[room.room_kind] = []
+						department_rooms[room.room_kind].append(room)
 
 	func _add_piece(pieces: Dictionary[StringName, Array], room: RoomData) -> void:
 		var kind: StringName = FloorGenerator.piece_kind(room)
@@ -331,6 +340,9 @@ class _Builder:
 				for socket: Dictionary in _door_sockets_of(piece):
 					queue.append({"socket": socket, "depth": 0, "wing": -1, "hall": hall_dir, "must_room": false,
 						"exit": false})
+		_place_required(queue)
+		if not problem.is_empty():
+			return
 		_shuffle(queue, rng)
 		var max_depth: int = tuning.by_bracket(tuning.max_branch_depth_by_bracket, floor_number)
 		var index: int = 0
@@ -356,7 +368,7 @@ class _Builder:
 			var placed: bool = false
 			match choice:
 				&"room":
-					placed = _attach(socket, shared_rooms, 0, wing, rng) >= 0
+					placed = _attach_room(socket, wing, rng) >= 0
 					if placed:
 						rooms += 1
 				&"cluster":
@@ -369,6 +381,87 @@ class _Builder:
 				wing_counts[_main_hall_index(String(item["hall"]))] -= 1
 		_log("branches: %d rooms (target %d), %d wings" % [rooms, target_rooms, layout.wings.size()])
 
+	## Step 5, first part: the department's required rooms (required_room_kinds, not "lift"/"start"), each at
+	## the free main hallway doorway farthest from the elevator where one of its tiles fits. A required room
+	## that fits nowhere fails the attempt.
+	func _place_required(queue: Array[Dictionary]) -> void:
+		if department == null:
+			return
+		var rng: RandomNumberGenerator = _rng(&"floorgen_required")
+		var by_distance: Array[Dictionary] = queue.duplicate()
+		by_distance.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return _distance(a["socket"]) > _distance(b["socket"]))
+		var placed_kinds := PackedStringArray()
+		for kind_text: String in department.required_room_kinds:
+			var kind := StringName(kind_text)
+			if kind == &"lift" or kind == &"start":
+				continue
+			var tiles: Array[RoomData] = _typed(department_rooms.get(kind, []))
+			if tiles.is_empty():
+				_log("required room %s has no tiles: skipped" % kind)
+				continue
+			var placed: bool = false
+			for item: Dictionary in by_distance:
+				var socket: Dictionary = item["socket"]
+				if _is_joined(socket) or occupied.has((socket["cell"] as Vector2i) + (socket["dir"] as Vector2i)):
+					continue
+				var wing: int = _new_wing(String(item["hall"]))
+				if _attach(socket, tiles, 0, wing, rng) >= 0:
+					rooms += 1
+					kind_counts[kind] = kind_counts.get(kind, 0) + 1
+					placed = true
+					break
+				layout.wings.resize(layout.wings.size() - 1)
+				wing_counts[_main_hall_index(String(item["hall"]))] -= 1
+			if not placed:
+				problem = "required room %s didn't fit at any main hallway doorway" % kind
+				return
+			placed_kinds.append(kind)
+		if not placed_kinds.is_empty():
+			_log("required rooms: %s" % ", ".join(placed_kinds))
+
+	## Step 5, the rest: a room for this doorway. A department room (a room type picked by weight, within its
+	## max_per_floor and min_floor) or, with the shared room share (or if none fits), a shared room.
+	func _attach_room(socket: Dictionary, wing: int, rng: RandomNumberGenerator) -> int:
+		var share: float = tuning.shared_room_share
+		if department != null and department.shared_room_weight >= 0.0:
+			share = department.shared_room_weight
+		if department != null and not department.room_types.is_empty() and rng.randf() >= share:
+			var room_type: RoomTypeData = _pick_room_type(rng)
+			if room_type != null:
+				var tiles: Array[RoomData] = _tiles_of_type(room_type)
+				var index: int = _attach(socket, tiles, 0, wing, rng) if not tiles.is_empty() else -1
+				if index >= 0:
+					kind_counts[room_type.room_kind] = kind_counts.get(room_type.room_kind, 0) + 1
+					return index
+		return _attach(socket, shared_rooms, 0, wing, rng)
+
+	func _pick_room_type(rng: RandomNumberGenerator) -> RoomTypeData:
+		var types: Array[RoomTypeData] = []
+		var weights := PackedFloat32Array()
+		for room_type: RoomTypeData in department.room_types:
+			if room_type == null or room_type.min_floor > floor_number:
+				continue
+			if room_type.max_per_floor > 0 and kind_counts.get(room_type.room_kind, 0) >= room_type.max_per_floor:
+				continue
+			types.append(room_type)
+			weights.append(room_type.weight)
+		var picked: int = SeededRng.pick_weighted(rng, weights)
+		return types[picked] if picked >= 0 else null
+
+	## The department's tiles of a room type, in the sizes the type allows.
+	func _tiles_of_type(room_type: RoomTypeData) -> Array[RoomData]:
+		var tiles: Array[RoomData] = []
+		for room: RoomData in _typed(department_rooms.get(room_type.room_kind, [])):
+			if room_type.size_categories.is_empty() or room_type.size_categories.has(String(room.size_category)):
+				tiles.append(room)
+		return tiles
+
+	## Grid steps from the elevator to the cell a socket faces.
+	func _distance(socket: Dictionary) -> int:
+		var cell: Vector2i = (socket["cell"] as Vector2i) + (socket["dir"] as Vector2i)
+		return absi(cell.x - 1) + absi(cell.y - 1)
+
 	func _roll_branch(rng: RandomNumberGenerator, hall_allowed: bool, must_room: bool) -> StringName:
 		var weights := PackedFloat32Array([tuning.branch_room_weight, tuning.branch_cluster_weight,
 			tuning.branch_hall_weight if hall_allowed and not must_room else 0.0,
@@ -378,7 +471,7 @@ class _Builder:
 		return names[maxi(picked, 0)]
 
 	func _place_cluster(socket: Dictionary, wing: int, rng: RandomNumberGenerator) -> bool:
-		var first: int = _attach(socket, shared_rooms, 0, wing, rng)
+		var first: int = _attach_room(socket, wing, rng)
 		if first < 0:
 			return false
 		rooms += 1
@@ -393,7 +486,7 @@ class _Builder:
 			_shuffle(doors, rng)
 			var added: int = -1
 			for door: Dictionary in doors:
-				added = _attach(door, shared_rooms, 0, wing, rng)
+				added = _attach_room(door, wing, rng)
 				if added >= 0:
 					break
 			if added < 0:

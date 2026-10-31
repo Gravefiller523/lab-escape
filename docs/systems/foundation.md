@@ -123,5 +123,8 @@ None. Everything else depends on this.
 ## Changelog
 - 2026-10-07: created.
 - 2026-10-29 (feel step 0): NEW `Config.feel` (`FeelTuning`, `core/config/feel_tuning.gd`): every "how it feels" number in one file, `config/feel_tuning.tres`, with sections `player` (PlayerTuning), `props` (PropTuning) and `ai` (AiTuning). Loaded in `Config._enter_tree` after `Config.game`; an empty section falls back to its script defaults. GameConfig keeps game rules and network rates.
+- 2026-10-31 (floor generation step 4a): GameConfig NEW `run_floor_count` (18), `boss_every_floors` (6);
+  `floors_per_department` and `departments_per_run` deprecated (kept). DepartmentData NEW `boss_floors`;
+  `floor_count` deprecated. FloorGenTuning step 3 additions (generator, secondary hallways, markers). Additions only.
 - 2026-10-30 (floor generation step 2): NEW `Config.floor_gen` (`FloorGenTuning`, `core/config/floor_gen_tuning.gd`, live copy `config/floor_gen_tuning.tres`): every floor generation number (plan section 17, V1-V16), grouped. Loaded after `Config.feel`. NEW data classes `RoomTypeData`, `IncidentData`, `LightingStyleData` (`core/data/levels/`); new fields on RoomData, DepartmentData and PropData (see docs/systems/level_gen.md changelog). Additions only.
 - 2026-10-29 (HL2 feel step 2): NEW `PhysicsLayers.DEBRIS` (10): broken prop pieces, which only hit the world. NEW `MovementEffectData.can_sprint` (default true), `PropData.surface`, `health`, `break_pieces`, `break_scene`, `EnemyData.impact_mass`, `BossData.impact_mass`.

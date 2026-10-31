@@ -1,0 +1,161 @@
+[gd_resource type="Resource" script_class="DepartmentData" load_steps=30 format=3]
+
+[ext_resource type="Script" path="res://core/data/levels/department_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/shared/weighted_id_data.gd" id="2_weighted"]
+[ext_resource type="Script" path="res://core/data/levels/room_type_data.gd" id="3_room_type"]
+[ext_resource type="Script" path="res://core/data/levels/incident_data.gd" id="4_incident"]
+[ext_resource type="Script" path="res://core/data/levels/lighting_style_data.gd" id="5_lighting"]
+[ext_resource type="Material" path="res://assets/materials/robotics/robotics_wall.tres" id="6_wall"]
+[ext_resource type="Material" path="res://assets/materials/robotics/robotics_floor.tres" id="7_floor"]
+[ext_resource type="Material" path="res://assets/materials/robotics/robotics_trim.tres" id="8_trim"]
+[ext_resource type="Material" path="res://assets/materials/robotics/robotics_accent.tres" id="9_accent"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_robotics_welcome_center.tscn" id="10_welcome"]
+
+[sub_resource type="Resource" id="Enemy_rat"]
+script = ExtResource("2_weighted")
+content_id = &"enemy_rat"
+weight = 3.0
+
+[sub_resource type="Resource" id="Enemy_bat"]
+script = ExtResource("2_weighted")
+content_id = &"enemy_bat"
+weight = 1.0
+
+[sub_resource type="Resource" id="Prop_crate"]
+script = ExtResource("2_weighted")
+content_id = &"prop_crate"
+weight = 3.0
+
+[sub_resource type="Resource" id="Prop_crate_heavy"]
+script = ExtResource("2_weighted")
+content_id = &"prop_crate_heavy"
+weight = 1.0
+
+[sub_resource type="Resource" id="Type_assembly_floor"]
+script = ExtResource("3_room_type")
+id = &"room_type_assembly_floor"
+room_kind = &"assembly_floor"
+display_name = "Assembly Floor"
+max_per_floor = 1
+size_categories = PackedStringArray("large")
+part_categories = PackedStringArray("mechanical", "structural")
+
+[sub_resource type="Resource" id="Type_robot_test_bay"]
+script = ExtResource("3_room_type")
+id = &"room_type_robot_test_bay"
+room_kind = &"robot_test_bay"
+display_name = "Robot Test Bay"
+max_per_floor = 1
+size_categories = PackedStringArray("large")
+part_categories = PackedStringArray("mechanical", "electronic")
+
+[sub_resource type="Resource" id="Type_server_room"]
+script = ExtResource("3_room_type")
+id = &"room_type_server_room"
+room_kind = &"server_room"
+display_name = "Server Room"
+max_per_floor = 1
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("electronic", "electrical")
+
+[sub_resource type="Resource" id="Type_machine_shop"]
+script = ExtResource("3_room_type")
+id = &"room_type_machine_shop"
+room_kind = &"machine_shop"
+display_name = "Machine Shop"
+weight = 1.5
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("mechanical")
+
+[sub_resource type="Resource" id="Type_parts_storage"]
+script = ExtResource("3_room_type")
+id = &"room_type_parts_storage"
+room_kind = &"parts_storage"
+display_name = "Parts Storage"
+weight = 1.5
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("mechanical", "electrical", "structural")
+
+[sub_resource type="Resource" id="Type_charging_bay"]
+script = ExtResource("3_room_type")
+id = &"room_type_charging_bay"
+room_kind = &"charging_bay"
+display_name = "Charging Bay"
+max_per_floor = 2
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("power", "electrical")
+
+[sub_resource type="Resource" id="Type_electronics_lab"]
+script = ExtResource("3_room_type")
+id = &"room_type_electronics_lab"
+room_kind = &"electronics_lab"
+display_name = "Electronics Lab"
+weight = 1.5
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("electronic", "electrical")
+
+[sub_resource type="Resource" id="Lighting"]
+script = ExtResource("5_lighting")
+light_color = Color(0.86, 0.93, 1, 1)
+light_energy = 1.0
+emergency_color = Color(1, 0.12, 0.08, 1)
+
+[sub_resource type="Resource" id="Incident_fire_lighting"]
+script = ExtResource("5_lighting")
+light_color = Color(1, 0.75, 0.5, 1)
+light_energy = 0.8
+emergency_color = Color(1, 0.3, 0.05, 1)
+
+[sub_resource type="Resource" id="Incident_fabrication_fire"]
+script = ExtResource("4_incident")
+id = &"incident_fabrication_fire"
+display_name = "Fabrication fire"
+origin_room_kinds = PackedStringArray("assembly_floor")
+overlay_flavour = &"scorch"
+hazard_kinds = PackedStringArray("fire", "sparks")
+lighting = SubResource("Incident_fire_lighting")
+
+[sub_resource type="Resource" id="Incident_test_bay_malfunction"]
+script = ExtResource("4_incident")
+id = &"incident_test_bay_malfunction"
+display_name = "Test bay malfunction"
+origin_room_kinds = PackedStringArray("robot_test_bay")
+overlay_flavour = &"wreckage"
+hazard_kinds = PackedStringArray("malfunction", "sparks")
+
+[sub_resource type="Resource" id="Incident_server_overload"]
+script = ExtResource("4_incident")
+id = &"incident_server_overload"
+display_name = "Server room overload"
+origin_room_kinds = PackedStringArray("server_room")
+overlay_flavour = &"scorch"
+hazard_kinds = PackedStringArray("sparks")
+
+[resource]
+script = ExtResource("1_data")
+id = &"department_robotics"
+display_name = "Robotics"
+description = "Industrial grey, safety yellow, cold strip lights. Robot assembly, test bays and server rooms. Built first (floor generation step 4a). Its enemies, loot, vendor stock and boss are stand-ins until Robotics gets its own."
+tags = PackedStringArray("robotics")
+room_ids = Array[StringName]([&"room_tile_robotics_welcome_center", &"room_tile_robotics_assembly_floor", &"room_tile_robotics_test_bay", &"room_tile_robotics_server_room", &"room_tile_robotics_machine_shop", &"room_tile_robotics_parts_storage", &"room_tile_robotics_charging_bay", &"room_tile_robotics_electronics_lab"])
+enemy_spawns = Array[ExtResource("2_weighted")]([SubResource("Enemy_rat"), SubResource("Enemy_bat")])
+boss_id = &"boss_giant_rat"
+loot_id = &"loot_zoology_small"
+stock_id = &"stock_zoology_vending"
+upgrade_type = &"cybernetic"
+required_room_kinds = PackedStringArray("lift", "assembly_floor", "robot_test_bay", "server_room")
+ambient_color = Color(0.55, 0.58, 0.62, 1)
+accent_color = Color(0.95, 0.78, 0.12, 1)
+boss_floors = false
+welcome_center_scene = ExtResource("10_welcome")
+room_types = Array[ExtResource("3_room_type")]([SubResource("Type_assembly_floor"), SubResource("Type_robot_test_bay"), SubResource("Type_server_room"), SubResource("Type_machine_shop"), SubResource("Type_parts_storage"), SubResource("Type_charging_bay"), SubResource("Type_electronics_lab")])
+palette = {
+"accent": ExtResource("9_accent"),
+"floor": ExtResource("7_floor"),
+"trim": ExtResource("8_trim"),
+"wall": ExtResource("6_wall")
+}
+lighting = SubResource("Lighting")
+prop_pool = Array[ExtResource("2_weighted")]([SubResource("Prop_crate"), SubResource("Prop_crate_heavy")])
+hazard_kinds = PackedStringArray("sparks", "fire", "malfunction")
+incidents = Array[ExtResource("4_incident")]([SubResource("Incident_fabrication_fire"), SubResource("Incident_test_bay_malfunction"), SubResource("Incident_server_overload")])

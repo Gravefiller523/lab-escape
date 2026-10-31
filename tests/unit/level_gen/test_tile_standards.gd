@@ -48,7 +48,7 @@ func test_the_step_2_tiles_exist() -> void:
 		if room.tile_role == TileStandards.ROLE_ROOM:
 			sizes[room.size_category] = sizes.get(room.size_category, 0) + 1
 	assert_gte(_tiles().size(), 23, "about 20 blockout tiles")
-	assert_eq(roles.get(TileStandards.ROLE_TEMPLATE, 0), 2, "the elevator and the welcome center")
+	assert_gte(roles.get(TileStandards.ROLE_TEMPLATE, 0), 2, "the elevator and the welcome centers")
 	assert_eq(roles.get(TileStandards.ROLE_MAIN_HALL, 0), 6, "main hallway: straight, long, filler, corner, T, end")
 	assert_eq(roles.get(TileStandards.ROLE_SECONDARY_HALL, 0), 7, "secondary hallway: straight, long, filler, corner, T, cross, end")
 	for category: StringName in TileStandards.SIZE_CATEGORIES:

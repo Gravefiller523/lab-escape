@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="RoomData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/levels/room_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_robotics_welcome_center.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"room_tile_robotics_welcome_center"
+display_name = "Robotics welcome center (blockout)"
+description = "Robotics welcome center: safety-yellow stripes to both main hallways, a robot arm on show, the security room behind the desk."
+tags = PackedStringArray("blockout")
+scene = ExtResource("2_scene")
+size_cells = Vector3i(8, 1, 6)
+room_kind = &"welcome_center"
+grid = &"tile_3m"
+tile_role = &"template"
+size_category = &""
+max_per_floor = 1
+department_ids = Array[StringName]([&"department_robotics"])

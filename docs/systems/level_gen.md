@@ -151,10 +151,20 @@ seed = `hash("run_seed|floor_number")` (or the debug seed); each step has its ow
 4. Loops (`loops_by_bracket`): free doorways of different wings facing each other across up to
    `loop_max_gap_units` empty cells are joined by 1-unit hallway fillers.
 5. Simple: every room is a shared room tile, picked by weight when placed (department rooms come in step 4a).
+   CHANGED 2026-10-31 (step 4a): **step 5 for real.** First each of the department's `required_room_kinds`
+   (not "lift") goes at the free main hallway doorway farthest from the elevator where one of its tiles fits
+   (an attempt fails if one fits nowhere). Then every other room: with `shared_room_weight` (or the tuning
+   file's `shared_room_share`) a shared room, otherwise one of the department's `room_types` picked by weight
+   (within `max_per_floor`, `min_floor` = run floor, `size_categories`), then a tile of that `room_kind`
+   (shared room if none fits). The department's own welcome center tile is used if it has one.
 Then a share of `prop_spawn` markers is switched on (`prop_spawn_share`). Checks: two main hallways of at
 least `min_main_hall_units`, rooms at least `min_rooms_share` of the target; a failed attempt tries again,
 after `max_attempts` the safe fallback floor (two short hallways with a room each) is built and logged loudly.
 Hallway pieces are recognised by their open sides (`piece_kind`), so new pieces need no code.
+NEW 2026-10-31 (step 4a): `Level.build` dresses tile floors for their department: the department's `palette`
+on every tile (and the caps), and a room-name sign at every `sign` marker (the marker's `text` param, else the
+room type's `display_name`, else the tile's name; the department's `signage_style` scene if set, else a
+label in its `accent_color`). The F8 map writes each room's name. `LevelService.room_display_name()`.
 
 ## Tile standards (NEW 2026-10-30, floor generation step 2)
 The new floor generator (docs/design/floor-generation-plan.md) builds floors from **tiles**: hand-made
@@ -259,6 +269,10 @@ main hallway `room_tile_main_straight` (2x3), `_main_straight_long` (2x5), `_mai
 `_main_t` (2x2), `_main_end` (2x1); secondary hallway `room_tile_hall_straight` (1x3), `_hall_straight_long`
 (1x5), `_hall_filler`, `_hall_corner`, `_hall_t`, `_hall_cross`, `_hall_end` (1x1); shared rooms `room_tile_janitor_closet` (2x2), `_bathroom` (2x3), `_storage_small` (3x3),
 `_office` (3x4), `_break_room` (4x4), `_office_open` (4x5), `_storage_large` (5x6), `_cafeteria` (6x6).
+NEW 2026-10-31 (step 4a), Robotics (`department_ids` = Robotics): `room_tile_robotics_welcome_center` (8x6),
+`_robotics_assembly_floor` (6x8, required), `_robotics_test_bay` (6x6, required), `_robotics_server_room` (3x4,
+required), `_robotics_machine_shop` (4x4), `_robotics_parts_storage` (4x5), `_robotics_charging_bay` (3x4, two
+chargers), `_robotics_electronics_lab` (4x4). Palette materials in `assets/materials/robotics/`.
 
 **Cart rules every room must follow** (checked by a GUT test over every room scene):
 - every `RoomDoorway.width` ≥ `Config.game.cart_width` + 0.4 m;
@@ -338,8 +352,9 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-30 (step 2): walls are centred on the footprint edge, so where two tiles meet both build the same
   wall in the same place. Fine with one grey material; when art tiles come, decide whether art tiles build
   half walls or the generator skips one side.
-- 2026-10-31 (step 3): rolling a department every floor (F1, F2) and the run length numbers (F3) are
-  game_flow work, left for the next step (runs still go department by department, using the generic tiles).
+- DONE 2026-10-31 (step 4a): a department every floor (game_flow).
+- 2026-10-31 (step 4a): Botany and Zoology are placeholder departments (shared rooms only, stand-in enemies;
+  Botany's boss floors off) until their own rooms come (plan step 5).
 - 2026-10-31 (step 3): main hallway T pieces aren't used yet (main hallways don't split); secondary T
   pieces are. `DepartmentData.welcome_center_scene` isn't read: the generator picks a welcome center tile
   (RoomData, `room_kind` "welcome_center") that lists the department, else the generic one.
@@ -378,6 +393,9 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-31 (Zachary): flickering much more random: per-light speed, single blinks or stuttering bursts,
   random on/off switches and random brightness per flash, wider timing ranges. NEW FloorGenTuning
   `flicker_light_speed`, `flicker_on_chance`, `flicker_brightness`, `flicker_single_blink_chance`.
+- 2026-10-31 (floor generation step 4a, branch `system/level_gen-floorgen-step4a`): generator step 5 (required
+  rooms, department room types, shared share), Robotics tiles and department, Botany and Zoology placeholders,
+  palettes and room-name signs in `Level.build`, room names on the F8 map. FloorLayout unchanged.
 - 2026-10-31 (floor generation step 3, branch `system/level_gen-floorgen-step3`): NEW `FloorGenerator`,
   `FloorMapView`, `FloorgenOverlay` (F8 map, F9 new floor, `floorgen` commands), the floorgen viewer. NEW
   FloorLayout fields (grid, attempt, is_fallback, wings, main_halls, loops, active_markers; log_lines and

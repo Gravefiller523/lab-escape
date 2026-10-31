@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="DepartmentData" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://core/data/levels/department_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/shared/weighted_id_data.gd" id="2_weighted"]
+[ext_resource type="Script" path="res://core/data/levels/lighting_style_data.gd" id="3_lighting"]
+
+[sub_resource type="Resource" id="Enemy_rat"]
+script = ExtResource("2_weighted")
+content_id = &"enemy_rat"
+weight = 3.0
+
+[sub_resource type="Resource" id="Enemy_bat"]
+script = ExtResource("2_weighted")
+content_id = &"enemy_bat"
+weight = 1.5
+
+[sub_resource type="Resource" id="Enemy_fly"]
+script = ExtResource("2_weighted")
+content_id = &"enemy_fly"
+weight = 1.5
+
+[sub_resource type="Resource" id="Enemy_kangaroo"]
+script = ExtResource("2_weighted")
+content_id = &"enemy_kangaroo"
+weight = 0.5
+
+[sub_resource type="Resource" id="Lighting"]
+script = ExtResource("3_lighting")
+light_color = Color(1, 0.9, 0.75, 1)
+
+[resource]
+script = ExtResource("1_data")
+id = &"department_zoology"
+display_name = "Zoology"
+description = "Animal holding, vet surgery, tanks. PLACEHOLDER (floor generation step 4a): uses only the shared rooms until its own rooms are built (plan step 5). Its boss is the giant rat."
+tags = PackedStringArray("zoology", "placeholder")
+room_ids = Array[StringName]([&"room_tile_office"])
+enemy_spawns = Array[ExtResource("2_weighted")]([SubResource("Enemy_rat"), SubResource("Enemy_bat"), SubResource("Enemy_fly"), SubResource("Enemy_kangaroo")])
+boss_id = &"boss_giant_rat"
+loot_id = &"loot_zoology_small"
+stock_id = &"stock_zoology_vending"
+upgrade_type = &"mutation"
+ambient_color = Color(0.65, 0.6, 0.5, 1)
+accent_color = Color(0.45, 0.6, 0.3, 1)
+boss_floors = true
+lighting = SubResource("Lighting")
+hazard_kinds = PackedStringArray("broken_enclosure", "water")

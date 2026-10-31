@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://systems/level_gen/room_marker.gd" id="3_marker"]
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_accent.tres" id="4_accent"]
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_wall.tres" id="5_wall"]
+[ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_trim.tres" id="6_trim"]
 
 [node name="TileMainStraight" type="Node3D"]
 script = ExtResource("1_tile")

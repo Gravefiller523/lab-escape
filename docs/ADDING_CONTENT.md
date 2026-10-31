@@ -159,7 +159,14 @@ group: `welcome_center_scene` (empty = the generic one), `room_types` (each a Ro
 (a LightingStyleData: light colour and energy, emergency light colour; how damage makes lights flicker and die is in `config/floor_gen_tuning.tres`),
 `prop_pool` (prop ids with weights), `hazard_kinds` (e.g. `sparks`, `fire`), `incidents` (each an
 IncidentData: `id` like `incident_fabrication_fire`, `display_name`, `weight`, `origin_room_kinds`,
-`overlay_flavour`, `hazard_kinds`, `lighting`).
+`overlay_flavour`, `hazard_kinds`, `lighting`). NEW 2026-10-31 (step 4a): the generator uses `room_types` (department rooms
+by weight), `required_room_kinds` (each one placed on every floor, far from the elevator), `shared_room_weight`,
+`palette` and the room types' `display_name` for signs. NEW `boss_floors` (default on): off for a department
+whose `boss_id` is only a stand-in, so its boss floors aren't rolled. Runs roll a department every floor (all
+departments with `in_run_rotation`); `floor_count` is deprecated. Its own rooms: tiles with the department in
+`department_ids` and the room type's `room_kind`; its own welcome center: a template tile with `room_kind`
+`welcome_center`. Example: `content/departments/department_robotics.tres`. **Test:** `floor 1 department_<name>`
+then F8.
 
 ## Floor task
 **Fill in:** `scene` (built from `FloorTask` and `TaskStation` pieces), `min_players`,

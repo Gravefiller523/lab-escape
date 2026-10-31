@@ -41,17 +41,20 @@ extends Resource
 @export var large_room_sizes: Array[Vector2i] = [Vector2i(5, 6), Vector2i(6, 6), Vector2i(6, 8)]
 
 @export_group("Floor brackets")
-## The first floor of each bracket, for the "by bracket" lists below: 1, 4, 8 = floors 1-3, 4-7, 8+.
-@export var floor_brackets: PackedInt32Array = PackedInt32Array([1, 4, 8])
+## The first floor of each bracket, for the "by bracket" lists below: 1, 4, 8, 12 = floors 1-3, 4-7, 8-11, 12+.
+## A list with fewer numbers than brackets keeps using its last number. CHANGED 2026-10-31: bracket 12+ added
+## (Zachary: higher floors bigger).
+@export var floor_brackets: PackedInt32Array = PackedInt32Array([1, 4, 8, 12])
 
 @export_group("Main hallways (V3)")
 ## Length of each main hallway in grid units on floor 1: rolled between these.
 @export var main_hall_length_min: int = 10
 @export var main_hall_length_max: int = 14
-## Extra length per floor after the first (0.5 = +1 every 2 floors).
-@export var main_hall_length_per_floor: float = 0.5
-## Never longer than this (grid units).
-@export var main_hall_length_cap: int = 24
+## Extra length per floor after the first. CHANGED 2026-10-31 (Zachary: higher floors bigger): was 0.5, so a
+## main hallway is about 12 units on floor 1, 17 on floor 6, 23 on floor 12 and 29 on floor 18.
+@export var main_hall_length_per_floor: float = 1.0
+## Never longer than this (grid units). CHANGED 2026-10-31: was 24.
+@export var main_hall_length_cap: int = 30
 ## Chance per hallway piece that it turns (0 to 1).
 @export var main_hall_turn_chance: float = 0.1
 ## Most turns in one main hallway.
@@ -72,8 +75,8 @@ extends Resource
 ## Rooms in a cluster (rooms joined by inner doors, one entrance) (Q28).
 @export var cluster_rooms_min: int = 2
 @export var cluster_rooms_max: int = 4
-## How many times secondary hallways may branch again, by floor bracket.
-@export var max_branch_depth_by_bracket: PackedInt32Array = PackedInt32Array([2, 3, 3])
+## How many times secondary hallways may branch again, by floor bracket. CHANGED 2026-10-31: 4 from floor 12.
+@export var max_branch_depth_by_bracket: PackedInt32Array = PackedInt32Array([2, 3, 3, 4])
 ## NEW 2026-10-31 (step 3): length of a secondary hallway (grid units): rolled between these.
 @export var secondary_hall_length_min: int = 3
 @export var secondary_hall_length_max: int = 10
@@ -85,14 +88,15 @@ extends Resource
 @export_group("Floor size (V5)")
 ## Rooms on floor 1 (hallways come on top).
 @export var target_rooms_base: int = 10
-## Extra rooms per floor after the first.
-@export var target_rooms_per_floor: float = 1.0
-## Never more rooms than this.
-@export var target_rooms_cap: int = 28
+## Extra rooms per floor after the first. CHANGED 2026-10-31 (Zachary: higher floors bigger): was 1.0, so a
+## floor has about 10 rooms on floor 1, 18 on floor 6, 28 on floor 12 and 38 on floor 18.
+@export var target_rooms_per_floor: float = 1.65
+## Never more rooms than this. CHANGED 2026-10-31: was 28.
+@export var target_rooms_cap: int = 40
 
 @export_group("Loops (V6)")
-## Extra connections that make a second route, by floor bracket.
-@export var loops_by_bracket: PackedInt32Array = PackedInt32Array([1, 2, 3])
+## Extra connections that make a second route, by floor bracket. CHANGED 2026-10-31: 4 from floor 12.
+@export var loops_by_bracket: PackedInt32Array = PackedInt32Array([1, 2, 3, 4])
 ## Largest gap (grid units) a loop's short hallway may bridge.
 @export var loop_max_gap_units: int = 4
 

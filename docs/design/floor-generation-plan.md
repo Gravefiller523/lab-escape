@@ -1,4 +1,4 @@
-# Floor generation: design and implementation plan
+~~10 + 1 per floor, max 28~~ **Zachary 2026-10-31: 10 + 1.65 per floor, max 40** (about 10 / 18 / 28 / 38 rooms on floors 1 / 6 / 12 / 18; main hallways +1 unit per floor up to 30; side-hallway depth 4 and 4 loops from floor 12) # Floor generation: design and implementation plan
 
 Status: **All questions answered (Zachary, 2026-10-30), including the follow-ups in section 16b.
 Waiting for the go to start step 2.** Nothing else in the project changes until then.

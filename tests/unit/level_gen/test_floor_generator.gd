@@ -559,3 +559,38 @@ func _walk(layout: FloorLayout, from: int) -> PackedFloat32Array:
 			if length < distances[to]:
 				distances[to] = length
 	return distances
+
+
+## NEW 2026-10-31 (Zachary: higher floors are bigger). Prints the average size of floors 1, 6, 12 and 18.
+func test_floors_grow_with_the_floor_number() -> void:
+	var averages: Array[Vector3] = []
+	for floor_number: int in [1, 6, 12, 18]:
+		var rooms: float = 0.0
+		var tiles: float = 0.0
+		var area: float = 0.0
+		var widest := Vector2.ZERO
+		var seeds: int = 10
+		for floor_seed: int in seeds:
+			var layout: FloorLayout = _robotics_floor(floor_seed * 101 + floor_number, floor_number)
+			var low := Vector2(INF, INF)
+			var high := Vector2(-INF, -INF)
+			for placement: RoomPlacement in layout.placements:
+				var room: RoomData = _room(placement)
+				if room.tile_role == TileStandards.ROLE_ROOM:
+					rooms += 1.0
+				var size: Vector2i = RoomShape.of(room, _unit()).rotated_size(placement.rotation_steps)
+				var corner := Vector2(placement.cell.x, placement.cell.z)
+				low = Vector2(minf(low.x, corner.x), minf(low.y, corner.y))
+				high = Vector2(maxf(high.x, corner.x + size.x), maxf(high.y, corner.y + size.y))
+			tiles += float(layout.placements.size())
+			var metres: Vector2 = (high - low) * _unit()
+			area += metres.x * metres.y
+			widest = Vector2(maxf(widest.x, metres.x), maxf(widest.y, metres.y))
+		averages.append(Vector3(rooms, tiles, area) / float(seeds))
+		gut.p("floor %d: %.1f rooms, %.1f tiles, footprint %.0f m2 on average (largest %.0f x %.0f m)" % [floor_number,
+			rooms / float(seeds), tiles / float(seeds), area / float(seeds), widest.x, widest.y])
+	for index: int in range(1, averages.size()):
+		assert_gt(averages[index].x, averages[index - 1].x, "more rooms on each higher floor")
+		assert_gt(averages[index].y, averages[index - 1].y, "more tiles on each higher floor")
+	assert_gt(averages[3].x, averages[0].x * 2.5, "floor 18 has well over twice floor 1's rooms")
+	assert_gt(averages[3].z, averages[0].z * 2.0, "and covers at least twice the area")

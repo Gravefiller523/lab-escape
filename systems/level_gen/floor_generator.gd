@@ -434,8 +434,14 @@ class _Builder:
 		if department != null and department.shared_room_weight >= 0.0:
 			share = department.shared_room_weight
 		if department != null and not department.room_types.is_empty() and rng.randf() >= share:
-			var room_type: RoomTypeData = _pick_room_type(rng)
-			if room_type != null:
+			# CHANGED 2026-10-31: if the picked type doesn't fit here, try the department's other types (by weight)
+			# before a shared room, so big floors stay mostly department rooms.
+			var tried: Array[StringName] = []
+			for attempt: int in department.room_types.size():
+				var room_type: RoomTypeData = _pick_room_type(rng, tried)
+				if room_type == null:
+					break
+				tried.append(room_type.room_kind)
 				var tiles: Array[RoomData] = _tiles_of_type(room_type)
 				var index: int = _attach(socket, tiles, 0, wing, rng) if not tiles.is_empty() else -1
 				if index >= 0:
@@ -443,11 +449,11 @@ class _Builder:
 					return index
 		return _attach(socket, shared_rooms, 0, wing, rng)
 
-	func _pick_room_type(rng: RandomNumberGenerator) -> RoomTypeData:
+	func _pick_room_type(rng: RandomNumberGenerator, skip: Array[StringName] = []) -> RoomTypeData:
 		var types: Array[RoomTypeData] = []
 		var weights := PackedFloat32Array()
 		for room_type: RoomTypeData in department.room_types:
-			if room_type == null or room_type.min_floor > floor_number:
+			if room_type == null or room_type.min_floor > floor_number or skip.has(room_type.room_kind):
 				continue
 			if room_type.max_per_floor > 0 and kind_counts.get(room_type.room_kind, 0) >= room_type.max_per_floor:
 				continue

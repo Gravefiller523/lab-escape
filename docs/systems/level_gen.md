@@ -414,6 +414,11 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-31 (Zachary): flickering much more random: per-light speed, single blinks or stuttering bursts,
   random on/off switches and random brightness per flash, wider timing ranges. NEW FloorGenTuning
   `flicker_light_speed`, `flicker_on_chance`, `flicker_brightness`, `flicker_single_blink_chance`.
+- 2026-10-31 (Zachary: higher floors bigger): rooms 10 + 1.65 per floor (cap 40), main hallways +1 unit per floor
+  (cap 30), a fourth floor bracket from floor 12 (side-hallway depth 4, 4 loops). Measured averages: floor 1 10 rooms
+  / 32 tiles, floor 6 18 / 50, floor 12 28 / 79, floor 18 38 / 97 (largest about 234 x 135 m); floor 18 plans in
+  15-19 ms, builds in 110-130 ms, bakes navigation in 56-69 ms. A department room that doesn't fit now tries the
+  department's other room types before a shared room.
 - 2026-10-31 (Zachary): wider damage around the main incident (intensity 0.9 + 0.03 per floor, cap 1.3, over
   70 m, noise 0.12) and smaller incidents elsewhere (`minor_incidents_*_by_bracket` 1 / 1-2 / 2-3, peak 0.72 over
   25 m, spaced 40% of the farthest distance apart); a tile's damage is the worst of all incidents. NEW FloorLayout

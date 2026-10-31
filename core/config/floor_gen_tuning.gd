@@ -11,6 +11,15 @@ extends Resource
 ## - "By floor bracket": a list with one number per bracket of floors. floor_brackets says where each
 ##   bracket starts (1, 4, 8 = floors 1-3, 4-7, 8 and up). See bracket_index() and by_bracket().
 
+@export_group("Generator")
+## NEW 2026-10-31 (step 3): regular floors in a run use the new FloorGenerator (3 m tiles). Off = the old
+## grey-box generator (12 m rooms). Boss floors always use the old arena floor for now.
+@export var use_floor_generator: bool = true
+## A floor attempt is thrown away (and the next attempt tried) when it has fewer rooms than this share of
+## its target, or a main hallway shorter than min_main_hall_units.
+@export var min_rooms_share: float = 0.5
+@export var min_main_hall_units: int = 3
+
 @export_group("Tile standards (V1, V2)")
 ## Size of one grid square in metres. Every tile's footprint is a whole number of these.
 ## Changing it means rebuilding every tile, so it is here to read, not to tune.
@@ -65,6 +74,13 @@ extends Resource
 @export var cluster_rooms_max: int = 4
 ## How many times secondary hallways may branch again, by floor bracket.
 @export var max_branch_depth_by_bracket: PackedInt32Array = PackedInt32Array([2, 3, 3])
+## NEW 2026-10-31 (step 3): length of a secondary hallway (grid units): rolled between these.
+@export var secondary_hall_length_min: int = 3
+@export var secondary_hall_length_max: int = 10
+## NEW 2026-10-31: chance a secondary hallway splits in two at a T junction (each piece it adds).
+@export var secondary_split_chance: float = 0.15
+## NEW 2026-10-31: chance per piece that a secondary hallway turns a corner.
+@export var secondary_turn_chance: float = 0.15
 
 @export_group("Floor size (V5)")
 ## Rooms on floor 1 (hallways come on top).
@@ -216,6 +232,11 @@ extends Resource
 @export var power_cell_from_floor: int = 4
 ## Every floor with a pry door on a needed route gets its own crowbar, even if a player has one (F5).
 @export var crowbar_on_every_pry_floor: bool = true
+
+@export_group("Markers (step 3 stand-in for step 10)")
+## NEW 2026-10-31: share of "prop_spawn" markers that get a prop (the rest stay empty), so big floors don't
+## fill up with crates. Step 10 of the plan replaces this with department prop pools.
+@export var prop_spawn_share: float = 0.35
 
 @export_group("Rooms (V16)")
 ## Share of non-required room slots that get a shared room (office, storage...). A department's

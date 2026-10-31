@@ -88,7 +88,9 @@ Items and attacks point to it with `status_id`.
 **Copy:** `prop_crate.tres`. **Fill in:** `scene` (copy an existing prop scene: root is `NetProp`
 with a collision shape and mesh), `mass` (kg; above 40 needs two players, above 120 can't be lifted),
 `is_key_object` (lift parts, keycards), `cart_allowed`, `despawn_after_seconds`, `gem_value` (gems only),
-`grants_upgrade` (glowing gems and robot parts). NEW 2026-10-31: loose debris props (tag `debris`, e.g.
+`grants_upgrade` (glowing gems and robot parts). NEW 2026-10-31: NEW 2026-10-31: keycards (`prop_keycard_<colour>`, tag `keycard`, one per colour in
+`config/floor_gen_tuning.tres` `keycard_colours`) and the power cell (`prop_power_cell`) are placed by the floor
+generator for locked doors. loose debris props (tag `debris`, e.g.
 `prop_debris_chunk`) turn up in damaged rooms when listed in `config/floor_gen_tuning.tres` `debris_prop_ids`. NEW 2026-10-19: `lift_slot` (a lift part: the slot it fits; a new
 slot name adds a new slot to the lift), `fragile_break_speed` (above 0: shatters when it hits something this fast,
 m/s), `needs_charge_seconds` (above 0: must sit on the lift charger this long before it fits). NEW 2026-10-30

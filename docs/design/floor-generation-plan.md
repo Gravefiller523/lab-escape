@@ -652,6 +652,10 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
   `floorgen damage` debug commands. Waiting for Zachary to play it.
 - 4b: incident and damage: overlays, lighting, hazards (placeholder sparks and fire). *Test: walk toward
   the origin and see damage grow; the F3 view matches.*
+- **Built 2026-10-31 (4c):** door types by damage, keycard doors with colour-matched cards, pry doors with a
+  guaranteed crowbar, power doors with breaker boxes (power cell from floor 4), debris doorways, every key
+  reachable before its lock, locks on the F3 map. Breakers stand beside their door on the approach side for now
+  (the cable is short); the power cell is the part you search for. Waiting for Zachary to play it.
 - 4c: doors: open, broken open, pry doors (crowbar), power doors (breaker box), debris, keycards, collapsed
   hallways. *Test: find a keycard, open its door; find the crowbar and pry a door; follow a cable to a breaker
   and power a door; clear debris; find the detour around a collapse.*

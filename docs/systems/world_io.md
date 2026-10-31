@@ -1,3 +1,6 @@
+| `WorldPryPoint` (NEW 2026-10-31) | the gap of a jammed door; hold E with the crowbar (`tool_item_id`) selected for `pry_seconds`; no crowbar = "can't use" buzz; progress falls back if you stop | pried | reset |
+| `WorldKeycardReader` (NEW 2026-10-31) | a card reader with a light in its colour; bring the matching keycard prop (`keycard_prop_id`) to its slot: the host takes it, the light turns green | accepted | none |
+| `WorldBreaker` (NEW 2026-10-31) | a breaker box with a lever (E); with `needs_cell` its power cell (`cell_prop_id`) must be brought to its slot first | cell_inserted, pulled | none |
 # world_io
 
 Folder: `res://systems/world_io/` · Size: M · NEW 2026-10-30 (HL2 feel step 4.2)
@@ -105,6 +108,9 @@ GUT (`tests/unit/world_io/test_world_io.gd`): `test_a_wire_waits_its_delay_and_o
 - level_gen doesn't place devices yet; objectives' keycard doors should be built on `WorldDoor`.
 
 ## Changelog
+- 2026-10-31 (level_gen floor generation step 4c, approved in the plan's Q10): NEW `WorldPryPoint`, `WorldKeycardReader`,
+  `WorldBreaker` for jammed, keycard and powerless doors. Level.build wires them to a double door's two leaves
+  (unlock, open). Tests `tests/unit/world_io/test_lock_devices.gd`.
 - 2026-10-30 (HL2 feel step 4.2): created. `IOConnection`, `WorldDevice`, `WorldButton`, `WorldTrigger`,
   `WorldDoor`, `WorldRelay`, `WorldCounter`, `WorldCrank`, and 10 GUT tests.
 - 2026-10-30 (Zachary: let enemies walk through and open doors): NEW `WorldDoor.enemies_can_open`,

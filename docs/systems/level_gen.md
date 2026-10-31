@@ -161,6 +161,23 @@ Then a share of `prop_spawn` markers is switched on (`prop_spawn_share`). Checks
 least `min_main_hall_units`, rooms at least `min_rooms_share` of the target; a failed attempt tries again,
 after `max_attempts` the safe fallback floor (two short hallways with a room each) is built and logged loudly.
 Hallway pieces are recognised by their open sides (`piece_kind`), so new pieces need no code.
+NEW 2026-10-31 (step 4c): **doors and locks** (plan step 7). Every doorway into a room gets a door on the room's
+socket (the deeper room if both are rooms); joins between hallways are open archways (Q6). Type from the worse
+damage of the two sides (V8 `door_weights_*`): open (a double `WorldDoor`, E), broken open (one leaf hanging,
+nothing to open), jammed (power with `power_door_share` / `power_door_share_by_department`, else pry), debris
+(4-8 loose debris props in the doorway, moved by hand). Then `keycard_doors_*_by_bracket` open doors become
+keycard doors, one colour each (`keycard_colours`, at most `keycard_colours_max`). Locks get their keys in
+order, each somewhere reachable without it: one crowbar (`crowbar_item_id`) for all pry doors (F5), a power
+cell (`power_cell_prop_id`) for power doors from `power_cell_from_floor` (F6), the matching keycard
+(`prop_keycard_<colour>`) for each keycard door; spots: `keycard`, `item_spawn`, `prop_spawn` markers. A lock
+whose key can't be placed reachably becomes a plain door (logged). The plan carries `doors` ([room, socket,
+other side, type `FloorGenerator.DOOR_*`, extra]) and `door_items` ([kind, marker key, door]). `Level.build`
+builds node `Door<n>` in the room (+X along the wall, +Z into the room) with the leaves and, on the approach
+side (-Z), a `WorldPryPoint`, a `WorldBreaker` (with a cable and a dead panel) or a `WorldKeycardReader`, wired
+to unlock and open both leaves. On `floor_ready` the host spawns the items and the doorway debris
+(`Level.spawn_door_items()`). Locked doors are walls for enemies until opened (world_io). The F3 map draws
+locked and blocked doors as coloured squares with lines to what opens them.
+
 NEW 2026-10-31 (step 4b): **incident and damage** (plan step 6). The department's incident (`incidents`, by
 weight; `incident_generic` if none) starts in a room it fits (`origin_room_kinds`) at least
 `incident_min_distance_share` of the farthest walking distance from the elevator. Every tile's damage score =
@@ -414,6 +431,10 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-31 (Zachary): flickering much more random: per-light speed, single blinks or stuttering bursts,
   random on/off switches and random brightness per flash, wider timing ranges. NEW FloorGenTuning
   `flicker_light_speed`, `flicker_on_chance`, `flicker_brightness`, `flicker_single_blink_chance`.
+- 2026-10-31 (floor generation step 4c, branch `system/level_gen-floorgen-step4c`): doors and locks (see above).
+  NEW FloorLayout `doors`, `door_items`; `FloorGenerator.DOOR_*`; `Level.spawn_door_items()`; world_io devices
+  `WorldPryPoint`, `WorldKeycardReader`, `WorldBreaker`; props `prop_keycard_red/blue/yellow`,
+  `prop_power_cell`; FloorGenTuning `keycard_colours`, `crowbar_item_id`, `power_cell_prop_id`.
 - 2026-10-31 (Zachary: higher floors bigger): rooms 10 + 1.65 per floor (cap 40), main hallways +1 unit per floor
   (cap 30), a fourth floor bracket from floor 12 (side-hallway depth 4, 4 loops). Measured averages: floor 1 10 rooms
   / 32 tiles, floor 6 18 / 50, floor 12 28 / 79, floor 18 38 / 97 (largest about 234 x 135 m); floor 18 plans in

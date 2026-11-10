@@ -139,7 +139,10 @@ in the spec's marker table). **Damage:** keep the `Damage/Light`, `Damage/Heavy`
 (`accent`). NEW 2026-10-31 (step 4b): put your own debris in `Damage/Light`, `Damage/Heavy`, `Damage/Destroyed`
 (solid rubble in a `CSGCombiner3D` with `use_collision` on, keeping doorways, cart lanes and machine and spawn
 spots clear); an overlay left empty gets generated blockout debris. Hazard spots: `hazard` markers with
-`hazard_kinds` and `min_damage` params. **Fill in** as above plus `grid` = `tile_3m`, `tile_role` (`room`, `main_hall`, `secondary_hall`,
+`hazard_kinds` and `min_damage` params. NEW 2026-10-31: **Emergency slits** come by themselves: on a hallway
+piece set `emergency_slits` = `hall` on the tile root (a 1-unit hallway filler with no slits: `none` and the
+tag `dark`); rooms use the default `room`. A room inside the room: list its floor area in `emergency_keep_out`
+and put `emergency_slit` markers in it (params `{"corner": true}` for a corner). **Fill in** as above plus `grid` = `tile_3m`, `tile_role` (`room`, `main_hall`, `secondary_hall`,
 `template`), `size_category` (rooms: `small` 2x2/2x3/3x3, `medium` 3x4/4x4/4x5, `large` 5x6/6x6/6x8; empty
 otherwise), `damage_levels`, `part_categories` (lift part categories that fit, e.g. `mechanical`),
 `is_combat_room`. **Test:** run `tests/unit/level_gen/test_tile_standards.gd` and look at it in

@@ -173,6 +173,45 @@ extends Resource
 @export var emergency_on_seconds: Vector2 = Vector2(2.0, 12.0)
 @export var emergency_flicker_seconds: Vector2 = Vector2(0.05, 0.6)
 
+@export_group("Emergency slits")
+## NEW 2026-10-31 (Zachary): the red emergency lights are small glowing slits low on the walls (EmergencySlits).
+## A straight slit's size (width along the wall, height) and how high its bottom is above the floor (metres).
+@export var emergency_slit_size: Vector2 = Vector2(0.5, 0.05)
+@export var emergency_slit_height: float = 0.1
+## How deep the slit is set into the wall face (metres).
+@export var emergency_slit_recess: float = 0.03
+## A corner slit is an L: this long along each of the two walls (metres).
+@export var emergency_slit_corner_arm: float = 0.25
+## Each slit's red light: how high (x) and how far out from the wall (y) it sits, its range and brightness.
+@export var emergency_slit_light_offset: Vector2 = Vector2(0.3, 0.3)
+@export var emergency_slit_light_range: float = 2.0
+@export var emergency_slit_light_energy: float = 1.2
+## How brightly the slit itself glows.
+@export var emergency_slit_glow: float = 3.0
+## True: an unlit slit (pristine and lightly damaged rooms, dead slits) shows as a dark groove; false: nothing.
+@export var emergency_slit_groove: bool = true
+## Destroyed rooms: this share of the slits is dead; the rest flicker (emergency_on/flicker_seconds).
+@export var emergency_slit_dead_share: float = 0.33
+## Rooms no bigger than this both ways (metres) light 2 opposite corners; bigger rooms all 4.
+@export var emergency_small_room: float = 9.0
+## Walls longer than this (metres) also get straight slits: round(length / spacing) - 1 of them.
+@export var emergency_long_wall: float = 12.0
+@export var emergency_room_spacing: float = 9.0
+## Straight slits keep at least this far (metres) from other slits.
+@export var emergency_slit_min_gap: float = 4.0
+## A straight slit may slide this far (metres) along its wall to get out of the way.
+@export var emergency_slit_slide: float = 2.0
+## Clearances (metres): a corner is skipped when a door frame is this close along either wall; a straight
+## slit keeps this far from a door frame; furniture or a marker this close in from a corner (or in front
+## of a straight slit) blocks it.
+@export var emergency_door_corner_clearance: float = 2.0
+@export var emergency_door_clearance: float = 0.5
+@export var emergency_furniture_clearance: float = 0.6
+## Straight hallway pieces light every this many units (units 0, 2, 4...).
+@export var emergency_hall_lit_every: int = 2
+## Most slits (and so lights) in one tile.
+@export var emergency_max_lights_per_tile: int = 8
+
 @export_group("Doors (V8)")
 ## Door type weights by damage level, in this order: open, broken open, jammed, debris.
 @export var door_weights_pristine: PackedFloat32Array = PackedFloat32Array([95.0, 5.0, 0.0, 0.0])

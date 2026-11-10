@@ -221,8 +221,9 @@ class _Builder:
 	func _add_piece(pieces: Dictionary[StringName, Array], room: RoomData) -> void:
 		var kind: StringName = FloorGenerator.piece_kind(room)
 		if kind == FloorGenerator.PIECE_STRAIGHT:
-			# Straight pieces by length: "straight1" (filler), "straight3", "straight5"...
-			kind = StringName("straight%d" % room.size_cells.z)
+			# Straight pieces by length: "straight1" (filler), "straight3", "straight5"... CHANGED 2026-10-31: a piece
+			# tagged "dark" (no emergency slits) is "straight1_dark".
+			kind = StringName("straight%d%s" % [room.size_cells.z, "_dark" if room.tags.has("dark") else ""])
 		if not pieces.has(kind):
 			pieces[kind] = []
 		pieces[kind].append(room)
@@ -304,6 +305,9 @@ class _Builder:
 		var splits: Array = []
 		var done: int = 0
 		var turns: int = 0
+		# NEW 2026-10-31 (emergency slits): straight pieces light every other unit from their first one, so two
+		# straight pieces in a row get a dark filler between them.
+		var after_lit_straight: bool = false
 		while done < length and not frontier.is_empty():
 			var left: int = length - done
 			var kinds: Array[StringName] = []
@@ -311,11 +315,14 @@ class _Builder:
 				kinds.append(FloorGenerator.PIECE_CORNER)
 			if done > 0 and rng.randf() < split_chance:
 				kinds.append(FloorGenerator.PIECE_T)
-			if left >= 5 and rng.randf() < tuning.main_hall_long_piece_share:
-				kinds.append(&"straight5")
-			if left >= 3:
-				kinds.append(&"straight3")
-			kinds.append(&"straight1")
+			if after_lit_straight and pieces.has(&"straight1_dark"):
+				kinds.append(&"straight1_dark")
+			else:
+				if left >= 5 and rng.randf() < tuning.main_hall_long_piece_share:
+					kinds.append(&"straight5")
+				if left >= 3:
+					kinds.append(&"straight3")
+				kinds.append(&"straight1")
 			var index: int = -1
 			var kind_used: StringName = &""
 			for kind: StringName in kinds:
@@ -329,6 +336,7 @@ class _Builder:
 				break
 			placed.append(index)
 			var size: Vector2i = _size_of(index)
+			after_lit_straight = String(kind_used).begins_with("straight") and not String(kind_used).ends_with("_dark")
 			done += maxi(size.x, size.y) if kind_used == FloorGenerator.PIECE_CORNER else maxi(1, _length_of(index))
 			if kind_used == FloorGenerator.PIECE_CORNER:
 				turns += 1
@@ -590,8 +598,11 @@ class _Builder:
 				continue
 			var steps: int = 0 if dir.x == 0 else 1
 			var wing: int = layout.placements[a["placement"]].wing
-			for cell: Vector2i in cells:
-				_place(_pick(_typed(fillers), rng), cell, steps, wing)
+			# CHANGED 2026-10-31 (emergency slits): lit and dark fillers take turns, so the slits come every other unit.
+			var dark: Array = hall_pieces.get(&"straight1_dark", [])
+			for cell_index: int in cells.size():
+				var use_dark: bool = cell_index % 2 == 1 and not dark.is_empty()
+				_place(_pick(_typed(dark if use_dark else fillers), rng), cells[cell_index], steps, wing)
 			layout.loops.append(Vector2i(a["placement"], b["placement"]))
 		_log("loops: %d of %d wanted (%d places a loop could go)" % [layout.loops.size(), wanted, candidates.size()])
 

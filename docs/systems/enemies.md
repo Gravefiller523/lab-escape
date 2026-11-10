@@ -205,6 +205,12 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
   that worked. Bigger enemies slide along walls at corners. Tests: `test_enemies_path_through_doors_they_can_open_but_not_locked_ones`,
   `test_an_enemy_walking_into_a_door_pushes_it_open`, `test_enemies_dont_open_locked_doors_or_doors_they_only_stand_by`.
 
+- 2026-11-10 (level_gen floor generation step 4f, Q20 approved in the plan): in a run the host now bakes the floor's
+  navigation on `Level.floor_built` (deferred, after game_flow lines the floor up with the lift); `_on_floor_ready`
+  only bakes if that didn't happen (floors built outside a run, tests). The background bake's callback holds the
+  region's id, so clearing a floor mid-bake no longer prints "Lambda capture was freed". The floor plan now
+  switches on only some `enemy_spawn` markers (`Level.get_markers` returns those).
+
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and
 `SwoopBehaviour`, `Perception`, `EnemySpawner`, the `Enemies` autoload (floor spawning on `floor_ready`, navmesh baking,

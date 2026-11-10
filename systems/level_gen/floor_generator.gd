@@ -49,6 +49,9 @@ static var last_layout: FloorLayout
 ## ("" = normal). They stay until changed.
 static var debug_origin: StringName = &""
 static var debug_damage: StringName = &""
+## NEW 2026-11-10 (step 4f), debug (`floorgen fallback on|off`): skip the attempts and build the safe fallback
+## floor every time.
+static var debug_force_fallback: bool = false
 
 
 ## Debug (F4, `floorgen <seed>`): the next generated floor uses this seed.
@@ -56,24 +59,28 @@ static func set_next_seed(floor_seed: int) -> void:
 	_next_seed_override = floor_seed
 
 
-## Makes a floor. floor_number counts across the run (1 = the first floor). player_count isn't used yet.
-static func generate(department: DepartmentData, floor_number: int, run_seed: int, _player_count: int = 1,
+## Makes a floor. floor_number counts across the run (1 = the first floor). CHANGED 2026-11-10: player_count sets
+## the enemy budget (how many enemy spawn spots are switched on).
+static func generate(department: DepartmentData, floor_number: int, run_seed: int, player_count: int = 1,
 		tuning: FloorGenTuning = null) -> FloorLayout:
 	var numbers: FloorGenTuning = tuning if tuning != null else Config.floor_gen
 	var floor_seed: int = hash("%d|%d" % [run_seed, floor_number])
 	if _next_seed_override != 0:
 		floor_seed = _next_seed_override
 		_next_seed_override = 0
-	return generate_from_seed(department, floor_number, floor_seed, numbers)
+	return generate_from_seed(department, floor_number, floor_seed, numbers, player_count)
 
 
 ## Makes a floor from a floor seed (what F4 and `floorgen <seed>` set), trying again on failure.
+## CHANGED 2026-11-10: player_count (the enemy budget grows with it).
 static func generate_from_seed(department: DepartmentData, floor_number: int, floor_seed: int,
-		numbers: FloorGenTuning) -> FloorLayout:
+		numbers: FloorGenTuning, player_count: int = 1) -> FloorLayout:
 	var log_lines := PackedStringArray()
 	var department_id: StringName = department.id if department != null else &""
-	for attempt: int in maxi(numbers.max_attempts, 1):
+	var attempts: int = 0 if debug_force_fallback else maxi(numbers.max_attempts, 1)
+	for attempt: int in attempts:
 		var builder := _Builder.new(department, floor_number, floor_seed, attempt, numbers)
+		builder.player_count = player_count
 		var layout: FloorLayout = builder.build()
 		log_lines.append_array(builder.log_lines)
 		if builder.problem.is_empty():
@@ -84,6 +91,7 @@ static func generate_from_seed(department: DepartmentData, floor_number: int, fl
 			return layout
 		log_lines.append("floor %d seed %d attempt %d failed: %s" % [floor_number, floor_seed, attempt, builder.problem])
 	var fallback := _Builder.new(department, floor_number, floor_seed, numbers.max_attempts, numbers)
+	fallback.player_count = player_count
 	var safe: FloorLayout = fallback.build_fallback()
 	log_lines.append_array(fallback.log_lines)
 	log_lines.append("FALLBACK: floor %d seed %d: every attempt failed, built the safe fallback floor." % [
@@ -183,6 +191,8 @@ class _Builder:
 	var floor_number: int
 	var floor_seed: int
 	var attempt: int
+	## NEW 2026-11-10: how many players (the enemy budget grows with it).
+	var player_count: int = 1
 	var tuning: FloorGenTuning
 	var unit: float
 	var layout := FloorLayout.new()
@@ -278,6 +288,7 @@ class _Builder:
 		_place_doors()
 		_place_parts()
 		_place_cameras()
+		_pick_enemy_spawns()
 		_check()
 		layout.stats["rooms"] = rooms
 		return layout
@@ -1498,6 +1509,159 @@ class _Builder:
 		keys.sort()
 		layout.charger_marker = keys[rng.randi_range(0, keys.size() - 1)]
 
+	# --- Step 10: enemy spawn spots (NEW 2026-11-10, built in step 4f) -------------------------------------
+
+	## NEW 2026-11-10 (step 10 of the plan): which enemy_spawn markers are switched on (FloorLayout.active_markers;
+	## the enemies system spawns its enemies at them, as before). How many: enemy_spot_share of the floor's enemy
+	## budget (RunDifficulty: grows with the floor and the players), at least enemy_spots_min. Never in the
+	## elevator or welcome center, nor within enemy_spot_min_distance of the elevator; and never in every lift
+	## part's room (Q15: some part is in a calm room).
+	func _pick_enemy_spawns() -> void:
+		var rng: RandomNumberGenerator = _rng(&"floorgen_enemies")
+		var links: Dictionary[int, Array] = _links()
+		var from_start: PackedFloat32Array = _path_distances(links, 0, layout.collapsed)
+		var spots: Array[String] = []
+		for index: int in layout.placements.size():
+			if _room_of(index).tile_role == TileStandards.ROLE_TEMPLATE or layout.collapsed.has(index):
+				continue
+			if from_start[index] == INF or from_start[index] < tuning.enemy_spot_min_distance:
+				continue
+			for marker: Dictionary in RoomShape.of(_room_of(index), unit).markers:
+				if marker["kind"] == &"enemy_spawn":
+					spots.append(FloorLayout.marker_key(index, marker["path"]))
+		# Q15: keep one lift part's room free of enemies (the first part in a calm room, else the first part).
+		var quiet: int = -1
+		for part: Array in layout.lift_parts:
+			var room: int = part[2]
+			if quiet < 0:
+				quiet = room
+			if not _room_of(room).is_combat_room:
+				quiet = room
+				break
+		if quiet >= 0:
+			var kept: Array[String] = []
+			for key: String in spots:
+				if key.get_slice("/", 0).to_int() != quiet:
+					kept.append(key)
+			spots = kept
+		var budget: int = RunDifficulty.enemy_budget(floor_number, player_count)
+		var wanted: int = mini(maxi(ceili(float(budget) * tuning.enemy_spot_share), tuning.enemy_spots_min), spots.size())
+		spots.sort()
+		_shuffle(spots, rng)
+		var keys := PackedStringArray(spots.slice(0, wanted))
+		keys.sort()
+		layout.active_markers[&"enemy_spawn"] = keys
+		_log("enemies: %d of %d spawn spots on (budget %d)" % [keys.size(), spots.size(), budget])
+
+	# --- Step 12: validation (NEW 2026-11-10, built in step 4f) --------------------------------------------
+
+	## NEW 2026-11-10 (section 13 of the plan): the rules every attempt must keep (rules 1 and 8, carry paths and
+	## a part in a calm room, are checked in _check). Returns why it failed, or "".
+	func _validate() -> String:
+		var links: Dictionary[int, Array] = _links()
+		# 2. Every lock can be opened, in some order, with keys found without it.
+		var opened: Dictionary[int, bool] = {}
+		var locks: Array[int] = []
+		for door: int in layout.doors.size():
+			var type: int = layout.doors[door][3]
+			if type == FloorGenerator.DOOR_PRY or type == FloorGenerator.DOOR_POWER or type == FloorGenerator.DOOR_KEYCARD:
+				locks.append(door)
+		var progress: bool = true
+		while progress:
+			progress = false
+			var reach: Dictionary[int, bool] = _reachable(links, opened)
+			for door: int in locks:
+				if not opened.has(door) and _can_open(door, reach):
+					opened[door] = true
+					progress = true
+		for door: int in locks:
+			if not opened.has(door):
+				return "the %s door of %s can't be opened (its key is behind it or another lock)" % [
+					FloorGenerator.DOOR_NAMES[layout.doors[door][3]], _room_of(layout.doors[door][0]).id]
+		# 3. Every required room is there.
+		if department != null:
+			for kind_text: String in department.required_room_kinds:
+				var kind := StringName(kind_text)
+				if kind == &"lift" or kind == &"start" or (department_rooms.get(kind, []) as Array).is_empty():
+					continue
+				var found: bool = false
+				for index: int in layout.placements.size():
+					found = found or _room_of(index).room_kind == kind
+				if not found:
+					return "the required %s room is missing" % kind
+		# 4. No two tiles on one grid cell.
+		var cells: Dictionary[Vector2i, int] = {}
+		for index: int in layout.placements.size():
+			var placement: RoomPlacement = layout.placements[index]
+			var size: Vector2i = _size_of(index)
+			for x: int in size.x:
+				for z: int in size.y:
+					var cell := Vector2i(placement.cell.x + x, placement.cell.z + z)
+					if cells.has(cell):
+						return "tiles %d and %d overlap at %s" % [cells[cell], index, cell]
+					cells[cell] = index
+		# 5. Every join is two sockets of different tiles, face to face, of the same kind.
+		for key: String in sockets:
+			var socket: Dictionary = sockets[key]
+			if not _is_joined(socket):
+				continue
+			var other: Dictionary = sockets[_edge_key((socket["cell"] as Vector2i) + (socket["dir"] as Vector2i),
+				-(socket["dir"] as Vector2i))]
+			if other["placement"] == socket["placement"]:
+				return "a socket of tile %d meets itself" % socket["placement"]
+			if socket.get("connection", RoomDoorway.CONNECTION_DOOR) != other.get("connection", RoomDoorway.CONNECTION_DOOR):
+				return "a %s socket meets a %s socket" % [socket.get("connection"), other.get("connection")]
+		# 6. With every lock open, the elevator, the welcome center (and its security room), every part and every
+		# key can be reached.
+		var reach: Dictionary[int, bool] = _reachable(links, opened)
+		var needed: Dictionary[int, String] = {0: "the elevator", 1: "the welcome center"}
+		for part: Array in layout.lift_parts:
+			needed[int(part[2])] = "the %s" % str(part[0])
+		for item: Array in layout.door_items:
+			needed[str(item[1]).get_slice("/", 0).to_int()] = "the %s" % str(item[0])
+		for index: int in needed:
+			if index < layout.placements.size() and not reach.has(index):
+				return "%s can't be reached" % needed[index]
+		# 7. Part rules that are never relaxed: in a room, and not too many behind keycard doors.
+		var no_keycards: Dictionary[int, bool] = opened.duplicate()
+		for door: int in _doors_of(FloorGenerator.DOOR_KEYCARD):
+			no_keycards.erase(door)
+		var outside: Dictionary[int, bool] = _reachable(links, no_keycards)
+		var behind: int = 0
+		for part: Array in layout.lift_parts:
+			var room: int = part[2]
+			if _room_of(room).tile_role != TileStandards.ROLE_ROOM:
+				return "the %s is not in a room" % str(part[0])
+			if not outside.has(room):
+				behind += 1
+		if behind > tuning.by_bracket(tuning.parts_behind_keycards_max_by_bracket, floor_number):
+			return "%d parts are behind keycard doors" % behind
+		return ""
+
+	## Can this lock be opened by a team that can reach these tiles? Pry doors: the crowbar is reachable. Power
+	## doors: their approach side is (the breaker), and their power cell if they need one. Keycard doors: their card.
+	func _can_open(door: int, reach: Dictionary[int, bool]) -> bool:
+		var entry: Array = layout.doors[door]
+		if not reach.has(int(entry[2])) and not reach.has(int(entry[0])):
+			return false
+		var type: int = entry[3]
+		var wanted: String = ""
+		match type:
+			FloorGenerator.DOOR_PRY:
+				wanted = "crowbar"
+			FloorGenerator.DOOR_POWER:
+				if int(entry[4]) != 1:
+					return reach.has(int(entry[2]))
+				wanted = "power_cell"
+			FloorGenerator.DOOR_KEYCARD:
+				wanted = "keycard_"
+		for item: Array in layout.door_items:
+			var kind: String = item[0]
+			var for_this: bool = kind == "crowbar" if type == FloorGenerator.DOOR_PRY else int(item[2]) == door
+			if for_this and kind.begins_with(wanted) and reach.has(str(item[1]).get_slice("/", 0).to_int()):
+				return true
+		return false
+
 	## The checks for this step (step 12 of the plan adds the rest).
 	func _check() -> void:
 		if not problem.is_empty():
@@ -1531,15 +1695,21 @@ class _Builder:
 			calm = calm or (not _room_of(placement).is_combat_room and not hazard_rooms.has(str(placement)))
 		if not calm:
 			problem = "every lift part is in a combat or hazard room"
+			return
+		# NEW 2026-11-10 (step 4f): the rest of the plan's checks (section 13).
+		problem = _validate()
 
-	## The safe fallback floor: the elevator, the welcome center, a short straight main hallway each way
-	## with a room at each end. No randomness that can fail.
+	## The safe fallback floor: the elevator, the welcome center, a short straight main hallway each way, the
+	## department's required rooms at the hallways' doorways (ends first), a room at each end, the lift parts in
+	## those rooms. No damage, locks or collapses. No randomness that can fail.
+	## CHANGED 2026-11-10 (step 4f): required rooms first, and parts, cameras and enemy spots as on any floor.
 	func build_fallback() -> FloorLayout:
 		layout.is_fallback = true
 		var connectors: Array[Array] = _place_start()
 		if not problem.is_empty():
 			return layout
 		var rng: RandomNumberGenerator = _rng(&"floorgen_fallback")
+		var doors: Array[Array] = []
 		for connector: Array in connectors:
 			var frontier: Array[Dictionary] = _typed_sockets(connector)
 			var grown: Dictionary = _grow_hall(frontier, main_pieces, 3, 0.0, 0, 0.0, -1, Vector2i.ZERO, rng)
@@ -1548,12 +1718,34 @@ class _Builder:
 			if pieces.is_empty():
 				continue
 			var wing: int = _new_wing(_main_hall_name(layout.main_halls.size() - 1))
-			for door: Dictionary in _door_sockets_of(pieces[pieces.size() - 1]):
-				if _attach(door, shared_rooms, 0, wing, rng) >= 0:
-					rooms += 1
-					break
+			# The end's doorway first, then the side doorways.
+			for piece_index: int in range(pieces.size() - 1, -1, -1):
+				for door: Dictionary in _door_sockets_of(pieces[piece_index]):
+					doors.append([door, wing])
+		if department != null:
+			for kind_text: String in department.required_room_kinds:
+				var tiles: Array[RoomData] = _typed(department_rooms.get(StringName(kind_text), []))
+				if tiles.is_empty():
+					continue
+				for entry: Array in doors:
+					var door: Dictionary = entry[0]
+					if not _is_joined(door) and _attach(door, tiles, 0, entry[1], rng) >= 0:
+						rooms += 1
+						break
+		# A room at each hallway's end, if a required room isn't there already.
+		var ends: Dictionary[int, bool] = {}
+		for entry: Array in doors:
+			var wing: int = entry[1]
+			if ends.has(wing):
+				continue
+			ends[wing] = true
+			var door: Dictionary = entry[0]
+			if not _is_joined(door) and _attach(door, shared_rooms, 0, wing, rng) >= 0:
+				rooms += 1
 		_pick_markers()
 		_place_parts()
+		_place_cameras()
+		_pick_enemy_spawns()
 		return layout
 
 	# --- Grid bookkeeping --------------------------------------------------------------------------------

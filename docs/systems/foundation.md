@@ -123,6 +123,8 @@ None. Everything else depends on this.
 ## Changelog
 - 2026-10-07: created.
 - 2026-10-29 (feel step 0): NEW `Config.feel` (`FeelTuning`, `core/config/feel_tuning.gd`): every "how it feels" number in one file, `config/feel_tuning.tres`, with sections `player` (PlayerTuning), `props` (PropTuning) and `ai` (AiTuning). Loaded in `Config._enter_tree` after `Config.game`; an empty section falls back to its script defaults. GameConfig keeps game rules and network rates.
+- 2026-11-10 (floor generation step 4f): FloorGenTuning NEW `enemy_spot_share`, `enemy_spots_min`,
+  `enemy_spot_min_distance`. Additions only.
 - 2026-11-10 (floor generation step 4e): FloorGenTuning NEW `map_resolution`, `map_blink_seconds`, `map_scan_seconds`,
   `map_player_colors`, `map_lean_seconds`, `map_lean_height`. project.godot: NEW autoload `Security` (after
   `Hazards`). Additions only.

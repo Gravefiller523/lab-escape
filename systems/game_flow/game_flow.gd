@@ -370,7 +370,10 @@ func _ride_to(level: Dictionary) -> void:
 			return
 		waited += get_process_delta_time()
 		var ride_done: bool = waited >= _config.lift_ride_seconds
-		if ride_done and (_all_built() or waited >= _config.lift_ride_seconds + _config.floor_load_timeout):
+		# CHANGED 2026-11-10 (floor generation step 4f, Q20): also wait for the host's navigation bake, so floor_ready
+		# (props, parts and enemies spawning) comes after it.
+		var loaded: bool = _all_built() and not Enemies.is_baking_navigation()
+		if ride_done and (loaded or waited >= _config.lift_ride_seconds + _config.floor_load_timeout):
 			break
 		if not told and ride_done and waited > _config.lift_ride_seconds + SLOW_LOAD_NOTICE_SECONDS:
 			told = true

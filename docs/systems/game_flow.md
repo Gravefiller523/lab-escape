@@ -182,6 +182,10 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
   `SeededRng(run_seed, &"lift_break_count", floor)` between the department's `lift_breaks_min` and `lift_breaks_max`)
   and passes it to `CargoLift.arrive`. REMOVED the private `PLACEHOLDER_LIFT_PART_ID` const.
 
+- 2026-11-10 (level_gen floor generation step 4f, Q20 approved in the plan): the ride to a floor also waits for the
+  host's navigation bake (`Enemies.is_baking_navigation()`) before arriving, so `floor_ready` (props, parts and
+  enemies spawning) comes after it; the same timeout as for slow PCs.
+
 ## HANDOFF
 **Built (2026-10-18):** autoload `GameFlow` (`GameFlowService`, `systems/game_flow/game_flow.gd`),
 `RunState`, `RunDifficulty`, a loading screen, the stub floor and the test scene. Breaks a run into

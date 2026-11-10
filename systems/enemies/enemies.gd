@@ -54,6 +54,9 @@ func _ready() -> void:
 	_spawner.name = "Spawner"
 	add_child(_spawner)
 	EventBus.floor_ready.connect(_on_floor_ready)
+	# NEW 2026-11-10 (floor generation step 4f, Q20): the host bakes the navigation as soon as the floor is built;
+	# game_flow waits for that bake before floor_ready, so enemies, props and parts spawn on a ready navmesh.
+	Level.floor_built.connect(_on_floor_built)
 	EventBus.floor_loading.connect(func(_floor_number: int, _department_id: StringName) -> void: _clear_floor())
 	EventBus.run_ended.connect(func(_result: StringName) -> void: _clear_floor())
 	EventBus.noise_made.connect(func(at: Vector3, radius: float, _source_player_id: int) -> void:
@@ -174,8 +177,11 @@ func _bake(root: Node3D, wait: bool) -> NavigationRegion3D:
 		_on_navigation_baked(mesh, region, _bake_number)
 	else:
 		var number: int = _bake_number
+		# CHANGED 2026-11-10: the callback holds the region's id, not the region, so a floor cleared before its bake
+		# finishes is simply skipped (it used to print "Lambda capture was freed").
+		var region_id: int = region.get_instance_id()
 		NavigationServer3D.bake_from_source_geometry_data_async(mesh, source,
-			func() -> void: _on_navigation_baked.call_deferred(mesh, region, number))
+			func() -> void: _on_navigation_baked_by_id.call_deferred(mesh, region_id, number))
 	return region
 
 
@@ -248,7 +254,8 @@ func _on_floor_ready(floor_number: int, _department_id: StringName) -> void:
 	if rooms.is_empty():
 		return
 	var root := rooms[0].get_parent() as Node3D
-	if root != null:
+	# CHANGED 2026-11-10: already baked when the floor was built (unless something else baked since).
+	if root != null and root != _nav_root:
 		bake_navigation(root)
 	var floor_in_department: int = run.floor_in_department if run != null else floor_number
 	spawn_floor(floor_in_department, GameFlow.get_current_department(), _run_seed(), Level.get_markers(&"enemy_spawn"))
@@ -340,3 +347,31 @@ func _cmd_killall(_args: PackedStringArray, _player_id: int) -> String:
 		enemy.get_health().apply_damage(info)
 		count += 1
 	return "Killed %d enemies." % count
+
+
+## NEW 2026-11-10 (floor generation step 4f, Q20): host: a floor was built. Bake its navigation on a background
+## thread at the end of this frame (game_flow lines the floor up with the lift right after building it).
+func _on_floor_built() -> void:
+	if not multiplayer.is_server():
+		return
+	var run: RunState = GameFlow.get_run()
+	# Only in a run (game_flow is waiting for it); floors built without one (tests, viewers) bake on floor_ready.
+	if run == null or run.is_boss_floor:
+		return
+	_bake_built_floor.call_deferred()
+
+
+func _bake_built_floor() -> void:
+	var rooms: Array[Node3D] = Level.get_room_nodes()
+	if rooms.is_empty() or not is_instance_valid(rooms[0]) or not rooms[0].is_inside_tree():
+		return
+	var root := rooms[0].get_parent() as Node3D
+	if root != null and root != _nav_root:
+		bake_navigation(root)
+
+
+## NEW 2026-11-10: a background bake finished: hand it on if its region still exists.
+func _on_navigation_baked_by_id(mesh: NavigationMesh, region_id: int, number: int) -> void:
+	var region := instance_from_id(region_id) as NavigationRegion3D
+	if region != null:
+		_on_navigation_baked(mesh, region, number)

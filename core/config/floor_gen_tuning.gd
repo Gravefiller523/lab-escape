@@ -337,6 +337,12 @@ extends Resource
 @export var debris_prop_chance_destroyed: float = 0.9
 ## NEW 2026-10-31 (step 4b): the loose debris props (PropData ids), picked evenly.
 @export var debris_prop_ids: Array[StringName] = [&"prop_debris_chunk", &"prop_debris_panel"]
+## NEW 2026-11-10 (step 4f, plan step 10): how many enemy_spawn spots are switched on: this share of the floor's
+## enemy budget (RunDifficulty.enemy_budget: grows with the floor and the players), at least the minimum, never
+## closer to the elevator than this walking distance (metres), so the start stays calm.
+@export var enemy_spot_share: float = 0.6
+@export var enemy_spots_min: int = 2
+@export var enemy_spot_min_distance: float = 20.0
 
 @export_group("Rooms (V16)")
 ## Share of non-required room slots that get a shared room (office, storage...). A department's

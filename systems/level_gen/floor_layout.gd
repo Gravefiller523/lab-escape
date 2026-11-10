@@ -57,6 +57,9 @@ var lift_part_paths: Array[PackedInt32Array] = []
 var lift_part_backups: Array[PackedStringArray] = []
 ## The battery charger's marker key ("" = no part needs charging, or no charger spot).
 var charger_marker: String = ""
+# NEW 2026-11-10 (floor generation step 4e: security cameras) ---------------------------------------------
+## The working security cameras the monitors can show: [camera marker key, label ("CAM 04 EAST WING B"), broken].
+var cameras: Array[Array] = []
 ## The generation log (host only: not sent to other PCs).
 var log_lines: PackedStringArray = PackedStringArray()
 ## Numbers about how the floor grew, for tests and the log (host only, not sent): "rooms", "max_depth".
@@ -111,6 +114,7 @@ func to_dict() -> Dictionary:
 		data["lift_part_paths"] = lift_part_paths
 		data["lift_part_backups"] = lift_part_backups
 		data["charger_marker"] = charger_marker
+		data["cameras"] = cameras
 	return data
 
 
@@ -161,6 +165,8 @@ static func from_dict(data: Dictionary) -> FloorLayout:
 	for backups: Variant in data.get("lift_part_backups", []):
 		layout.lift_part_backups.append(PackedStringArray(backups))
 	layout.charger_marker = str(data.get("charger_marker", ""))
+	for camera: Variant in data.get("cameras", []):
+		layout.cameras.append(camera as Array)
 	var params: Dictionary = data.get("marker_params", {})
 	for key: Variant in params:
 		layout.marker_params[str(key)] = params[key] as Dictionary

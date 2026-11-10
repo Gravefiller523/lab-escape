@@ -666,6 +666,10 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
   Zachary to play it.
 - 4d: parts: counts, picks, placement rules, carry paths, cargo_lift reading the plan. *Test: find every
   part, carry it back, fix the lift, ride up. Check parts make sense where they are.*
+- **Built 2026-11-10 (4e):** cameras picked by the generator (step 9) with labels and broken ones, the new
+  `systems/security`: the map table (floor plan, player dots, blinking part wings that follow a moved part, locked
+  doors, lean over it with E) and 4 monitors with Prev/Next buttons (security footage, static for broken cameras),
+  drawing only while someone is near. Cameras on the F3 map. Waiting for Zachary to play it.
 - 4e: cameras and the security room: map table and monitors. *Test: stand at the map, see the part wings
   and your dot move; cycle monitors with the buttons; broken cameras show static; frame rate stays steady.*
 - 4f: props, NPC and hazard markers, navigation order, validation and fallback floor. *Test: enemies path

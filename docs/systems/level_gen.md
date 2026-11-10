@@ -75,6 +75,8 @@ class_name TileLightFlicker extends Node        # NEW 2026-10-30 (Zachary): dama
 func setup(tile: Node, level: StringName, tuning: FloorGenTuning = null) -> void
 func step(delta: float) -> void                  # called every frame; tests call it directly
 class_name BlockoutTile extends Node3D          # @tool: builds a CSG blockout tile (floor, ceiling, walls, holes, frames, lights)
+func seal_socket(socket_name) -> bool          # NEW 2026-10-31: an unused door socket becomes plain wall (hole and frame go)
+func is_socket_sealed(socket_name) -> bool
 @export var size_units: Vector2i
 @export var auto_lights: bool = true
 @export var floor_hole: Rect2                   # e.g. under the cargo lift's own floor
@@ -109,7 +111,8 @@ var markers: Array[Dictionary]                  # NEW: {"kind", "path"} read fro
 func get_floor_transform() -> Transform3D      # NEW: where the (moved, turned) floor is
 func get_markers(kind)                          # CHANGED: only the markers the plan switched on, if it chose for that kind
 # Level.build CHANGED: 3 m tile floors; an open hallway end nothing joins gets a "Cap..." wall (grid unit wide,
-# ceiling high, wall material), a doorway gets a "Plug..." as before. Keys F3 (map) and F4 (new floor, host).
+# ceiling high, wall material); an unused door socket on a tile is sealed (BlockoutTile.seal_socket: plain wall,
+# no frame; CHANGED 2026-10-31), other rooms' doorways get a "Plug..." as before. Keys F3 (map) and F4 (new floor, host).
 class_name FloorMapView extends Control         # draws a FloorLayout from above (layout, players, zoom)
 class_name FloorgenOverlay extends CanvasLayer  # the F3 view: map, seed, seed box, log (owned by Level)
 ```
@@ -161,6 +164,23 @@ Then a share of `prop_spawn` markers is switched on (`prop_spawn_share`). Checks
 least `min_main_hall_units`, rooms at least `min_rooms_share` of the target; a failed attempt tries again,
 after `max_attempts` the safe fallback floor (two short hallways with a room each) is built and logged loudly.
 Hallway pieces are recognised by their open sides (`piece_kind`), so new pieces need no code.
+NEW 2026-10-31 (step 4c): **doors and locks** (plan step 7). Every doorway into a room gets a door on the room's
+socket (the deeper room if both are rooms); joins between hallways are open archways (Q6). Type from the worse
+damage of the two sides (V8 `door_weights_*`): open (a double `WorldDoor`, E), broken open (one leaf hanging,
+nothing to open), jammed (power with `power_door_share` / `power_door_share_by_department`, else pry), debris
+(4-8 loose debris props in the doorway, moved by hand). Then `keycard_doors_*_by_bracket` open doors become
+keycard doors, one colour each (`keycard_colours`, at most `keycard_colours_max`). Locks get their keys in
+order, each somewhere reachable without it: one crowbar (`crowbar_item_id`) for all pry doors (F5), a power
+cell (`power_cell_prop_id`) for power doors from `power_cell_from_floor` (F6), the matching keycard
+(`prop_keycard_<colour>`) for each keycard door; spots: `keycard`, `item_spawn`, `prop_spawn` markers. A lock
+whose key can't be placed reachably becomes a plain door (logged). The plan carries `doors` ([room, socket,
+other side, type `FloorGenerator.DOOR_*`, extra]) and `door_items` ([kind, marker key, door]). `Level.build`
+builds node `Door<n>` in the room (+X along the wall, +Z into the room) with the leaves and, on the approach
+side (-Z), a `WorldPryPoint`, a `WorldBreaker` (with a cable and a dead panel) or a `WorldKeycardReader`, wired
+to unlock and open both leaves. On `floor_ready` the host spawns the items and the doorway debris
+(`Level.spawn_door_items()`). Locked doors are walls for enemies until opened (world_io). The F3 map draws
+locked and blocked doors as coloured squares with lines to what opens them.
+
 NEW 2026-10-31 (step 4b): **incident and damage** (plan step 6). The department's incident (`incidents`, by
 weight; `incident_generic` if none) starts in a room it fits (`origin_room_kinds`) at least
 `incident_min_distance_share` of the farthest walking distance from the elevator. Every tile's damage score =
@@ -414,6 +434,10 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-10-31 (Zachary): flickering much more random: per-light speed, single blinks or stuttering bursts,
   random on/off switches and random brightness per flash, wider timing ranges. NEW FloorGenTuning
   `flicker_light_speed`, `flicker_on_chance`, `flicker_brightness`, `flicker_single_blink_chance`.
+- 2026-10-31 (floor generation step 4c, branch `system/level_gen-floorgen-step4c`): doors and locks (see above).
+  NEW FloorLayout `doors`, `door_items`; `FloorGenerator.DOOR_*`; `Level.spawn_door_items()`; world_io devices
+  `WorldPryPoint`, `WorldKeycardReader`, `WorldBreaker`; props `prop_keycard_red/blue/yellow`,
+  `prop_power_cell`; FloorGenTuning `keycard_colours`, `crowbar_item_id`, `power_cell_prop_id`.
 - 2026-10-31 (Zachary: higher floors bigger): rooms 10 + 1.65 per floor (cap 40), main hallways +1 unit per floor
   (cap 30), a fourth floor bracket from floor 12 (side-hallway depth 4, 4 loops). Measured averages: floor 1 10 rooms
   / 32 tiles, floor 6 18 / 50, floor 12 28 / 79, floor 18 38 / 97 (largest about 234 x 135 m); floor 18 plans in
@@ -470,3 +494,8 @@ props at `prop_spawn` markers). Joiners get the layout in net_core's join handsh
 - **enemies:** `enemy_spawn` markers; add navigation regions to rooms.
 - **bosses:** the arena's `boss_spawn` and `minion_spawn` markers; remove the "Defeat the boss" stub.
 - **Content:** Zoology rooms go in `content/rooms/` with `department_ids = [department_zoology]`.
+- 2026-10-31 (step 4c fix, Zachary's playtest: doors floating at odd angles, the pry door only a black strip):
+  the door leaves were built right but stayed behind when the game moved the floor to line it up with the lift
+  (fixed in `WorldDoor`, see world_io). NEW `BlockoutTile.seal_socket` / `is_socket_sealed`: a tile's unused door
+  socket is now plain wall instead of a frame around a grey plug. Tests `test_door_leaves_sit_shut_on_their_jambs`
+  (a moved heavy-damage floor) and `test_every_door_type_on_every_side_and_turn`.

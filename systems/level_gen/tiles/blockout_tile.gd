@@ -100,6 +100,26 @@ func _build() -> void:
 	_fill_overlays(tuning)
 
 
+## NEW 2026-10-31 (step 4c fix): a door socket nothing joins becomes plain wall: its hole and frame go, so
+## it looks like the rest of the wall (no frame around a grey plug). Returns false if it has no such hole.
+func seal_socket(socket_name: String) -> bool:
+	var shell: Node = get_node_or_null(NodePath("%s/Shell" % GENERATED_NAME))
+	if shell == null or shell.get_node_or_null("Hole_%s" % socket_name) == null:
+		return false
+	for part: String in ["Hole_%s", "Frame_%s_-1", "Frame_%s_1", "Frame_%s_top"]:
+		var node: Node = shell.get_node_or_null(part % socket_name)
+		if node != null:
+			shell.remove_child(node)
+			node.queue_free()
+	return true
+
+
+## NEW 2026-10-31: was this socket's doorway filled with wall (seal_socket)?
+func is_socket_sealed(socket_name: String) -> bool:
+	var shell: Node = get_node_or_null(NodePath("%s/Shell" % GENERATED_NAME))
+	return shell != null and shell.get_node_or_null("Hole_%s" % socket_name) == null
+
+
 ## The tile's sockets (RoomDoorway children, not inside the generated nodes).
 func _sockets() -> Array[RoomDoorway]:
 	var found: Array[RoomDoorway] = []

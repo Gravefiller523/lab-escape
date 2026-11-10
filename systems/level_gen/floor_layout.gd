@@ -40,6 +40,12 @@ var collapsed: PackedInt32Array = PackedInt32Array()
 ## Extra settings for markers, by marker key: e.g. {"prop_id": "prop_debris_chunk"} or {"hazard_kind": "fire"}.
 ## Level.build copies them into the markers' params.
 var marker_params: Dictionary[String, Dictionary] = {}
+# NEW 2026-10-31 (floor generation step 4c: doors) -------------------------------------------------------
+## Every door: [room placement, the room's socket name, the placement on the other side, type (FloorGenerator.DOOR_*),
+## extra (keycard: colour index; power: 1 = its breaker needs a power cell)]. Joins with no entry are archways.
+var doors: Array[Array] = []
+## Things the host spawns for the doors: [kind ("crowbar", "power_cell", "keycard_<colour>"), marker key, door index].
+var door_items: Array[Array] = []
 ## The generation log (host only: not sent to other PCs).
 var log_lines: PackedStringArray = PackedStringArray()
 ## Numbers about how the floor grew, for tests and the log (host only, not sent): "rooms", "max_depth".
@@ -88,6 +94,8 @@ func to_dict() -> Dictionary:
 		for key: String in marker_params:
 			params[key] = marker_params[key]
 		data["marker_params"] = params
+		data["doors"] = doors
+		data["door_items"] = door_items
 	return data
 
 
@@ -127,6 +135,10 @@ static func from_dict(data: Dictionary) -> FloorLayout:
 	layout.minor_origins = PackedInt32Array(data.get("minor_origins", PackedInt32Array()))
 	layout.minor_incident_ids = PackedStringArray(data.get("minor_incident_ids", PackedStringArray()))
 	layout.collapsed = PackedInt32Array(data.get("collapsed", PackedInt32Array()))
+	for door: Variant in data.get("doors", []):
+		layout.doors.append(door as Array)
+	for item: Variant in data.get("door_items", []):
+		layout.door_items.append(item as Array)
 	var params: Dictionary = data.get("marker_params", {})
 	for key: Variant in params:
 		layout.marker_params[str(key)] = params[key] as Dictionary

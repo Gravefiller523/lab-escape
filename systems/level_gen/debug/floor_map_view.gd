@@ -72,6 +72,7 @@ func _draw() -> void:
 			draw_line(to_screen.call(rects[pair.x].get_center()), to_screen.call(rects[pair.y].get_center()), LOOP_COLOR, 3.0)
 	_draw_wing_names(rects, to_screen)
 	_draw_damage_marks(rects, to_screen, scale_fit)
+	_draw_doors(rects, to_screen, unit)
 	for player: Dictionary in players:
 		var at: Vector3 = player["position"]
 		var facing: Vector3 = player["facing"]
@@ -179,3 +180,53 @@ func _draw_star(centre: Vector2, radius: float, color: Color) -> void:
 	draw_colored_polygon(points, color)
 	points.append(points[0])
 	draw_polyline(points, OUTLINE_COLOR, 1.5)
+
+
+## NEW 2026-10-31 (step 4c): locked and blocked doors as small squares (keycard doors in their card's colour,
+## grey = pry with a crowbar, cyan = power, brown = debris), each with a line to what opens it.
+func _draw_doors(rects: Array[Rect2], to_screen: Callable, unit: float) -> void:
+	var tuning: FloorGenTuning = Config.floor_gen
+	var colours: Array[StringName] = tuning.keycard_colours.keys()
+	var spots: Array[Vector2] = []
+	for index: int in layout.doors.size():
+		var door: Array = layout.doors[index]
+		var at: Vector2 = _door_cells(door, unit)
+		spots.append(at)
+		var type: int = door[3]
+		var color := Color.TRANSPARENT
+		match type:
+			FloorGenerator.DOOR_KEYCARD:
+				color = tuning.keycard_colours[colours[clampi(door[4], 0, colours.size() - 1)]]
+			FloorGenerator.DOOR_PRY:
+				color = Color(0.7, 0.7, 0.72)
+			FloorGenerator.DOOR_POWER:
+				color = Color(0.3, 0.85, 1.0)
+			FloorGenerator.DOOR_DEBRIS:
+				color = Color(0.55, 0.4, 0.25)
+		if color.a == 0.0:
+			continue
+		var screen: Vector2 = to_screen.call(at)
+		draw_rect(Rect2(screen - Vector2(5, 5), Vector2(10, 10)), color)
+		draw_rect(Rect2(screen - Vector2(5, 5), Vector2(10, 10)), OUTLINE_COLOR, false, 1.0)
+	for item: Array in layout.door_items:
+		var door_index: int = item[2]
+		var room: int = str(item[1]).get_slice("/", 0).to_int()
+		if door_index >= spots.size() or room >= rects.size():
+			continue
+		var line_color := Color(0.85, 0.85, 0.85, 0.8)
+		if str(item[0]).begins_with("keycard_"):
+			line_color = tuning.keycard_colours.get(StringName(str(item[0]).trim_prefix("keycard_")), line_color)
+		draw_line(to_screen.call(rects[room].get_center()), to_screen.call(spots[door_index]), line_color, 2.0)
+		draw_circle(to_screen.call(rects[room].get_center()), 4.0, line_color)
+
+
+## Where a door is, in grid cells (the middle of its doorway).
+func _door_cells(door: Array, unit: float) -> Vector2:
+	var placement: RoomPlacement = layout.placements[door[0]]
+	var room := ContentRegistry.get_content(placement.room_id) as RoomData
+	for doorway: Dictionary in RoomShape.of(room, unit).rotated_doorways(placement.rotation_steps):
+		if doorway["name"] == str(door[1]):
+			var cell: Vector2i = doorway["cell"]
+			var dir: Vector2i = doorway["dir"]
+			return Vector2(placement.cell.x, placement.cell.z) + Vector2(cell) + Vector2(0.5, 0.5) + Vector2(dir) * 0.5
+	return Vector2(placement.cell.x, placement.cell.z)

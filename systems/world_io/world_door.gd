@@ -87,6 +87,7 @@ func _build() -> void:
 			fire_output(&"locked_use", player_id))
 	_panel.add_child(_interactable)
 	add_child(_panel)
+	set_notify_transform(true)
 	_sound_door = SoundDoor.new()
 	_sound_door.name = "SoundDoor"
 	_sound_door.add_child(_box_shape(Vector3(width, height, 0.4), _shape_offset))
@@ -96,6 +97,15 @@ func _build() -> void:
 	_inner_query = _make_query(Vector3(maxf(width - 0.1, 0.05), maxf(height - 0.1, 0.05), maxf(thickness - 0.06, 0.01)))
 	_refresh_prompt()
 	_refresh_navigation()
+
+
+## FIXED 2026-10-31: when the door itself is moved (the game lines a whole floor up with the lift after
+## building it), the panel's body is moved too. A panel that syncs to physics only follows its own
+## changes, so it used to stay floating where the floor was first built.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSFORM_CHANGED and _panel != null and _panel.is_inside_tree():
+		PhysicsServer3D.body_set_state(_panel.get_rid(), PhysicsServer3D.BODY_STATE_TRANSFORM,
+			global_transform * Transform3D(Basis(Vector3.UP, deg_to_rad(_angle)), Vector3.ZERO))
 
 
 func get_inputs() -> PackedStringArray:

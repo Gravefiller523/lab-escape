@@ -269,3 +269,26 @@ func _pc_door(pc: Node, door_name: String) -> WorldDoor:
 	door.name = door_name
 	pc.get_node("Level").add_child(door)
 	return door
+
+
+## NEW 2026-10-31 (Zachary's playtest: generated doors floated where the floor was first built): moving
+## whatever a door sits in (the game lines each floor up with the lift) takes its panel along, shut or open.
+func test_a_door_moves_with_what_it_sits_in() -> void:
+	var holder := Node3D.new()
+	_world.add_child(holder)
+	var door := WorldDoor.new()
+	holder.add_child(door)
+	await wait_physics_frames(3)
+	holder.transform = Transform3D(Basis(Vector3.UP, 1.1), Vector3(8, 1, -5))
+	await wait_physics_frames(5)
+	var panel := door.get_node("Panel") as Node3D
+	assert_almost_eq(panel.global_position.distance_to(door.global_position), 0.0, 0.01, "the shut panel moved along")
+	assert_almost_eq(panel.global_basis.x.dot(door.global_basis.x), 1.0, 0.01, "and turned along")
+	door.open()
+	await _wait_until_still(door)
+	assert_almost_eq(panel.global_position.distance_to(door.global_position), 0.0, 0.01, "it swings on its new hinge")
+	holder.position += Vector3(0, 0, 3)
+	await wait_physics_frames(5)
+	assert_almost_eq(panel.global_position.distance_to(door.global_position), 0.0, 0.01, "an open panel moves along too")
+	var turned: float = panel.global_basis.x.signed_angle_to(door.global_basis.x, Vector3.UP)
+	assert_almost_eq(absf(rad_to_deg(turned)), door.swing_degrees, 1.0, "and stays open")

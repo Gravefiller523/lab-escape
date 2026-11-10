@@ -1,0 +1,25 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+
+[sub_resource type="BoxShape3D" id="Shape_prop"]
+size = Vector3(0.22, 0.03, 0.14)
+
+[sub_resource type="StandardMaterial3D" id="Mat_prop"]
+albedo_color = Color(0.95, 0.8, 0.1, 1)
+emission_enabled = true
+emission = Color(0.95, 0.8, 0.1, 1)
+emission_energy_multiplier = 0.6
+
+[sub_resource type="BoxMesh" id="Mesh_prop"]
+material = SubResource("Mat_prop")
+size = Vector3(0.22, 0.03, 0.14)
+
+[node name="KeycardYellow" type="RigidBody3D"]
+script = ExtResource("1_prop")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_prop")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_prop")

@@ -7,8 +7,10 @@ extends Node3D
 ## The back wall has a slot for every kind of lift part (gear, fuse, light, button, counterweight,
 ## vacuum tube, cable spool, battery, lever: every PropData with a lift_slot, so a new part is just a
 ## new file). Each floor the lift arrives with 1 to 3 slots broken (picked with the run's seed). Broken
-## slots spark; their parts are somewhere on the floor, as far from the lift as possible. Players carry
-## each part back and drop it into its slot (a battery must be charged on a charger first; a vacuum tube
+## slots spark; their parts are somewhere on the floor, as far from the lift as possible.
+## CHANGED 2026-11-09 (floor generation step 4d): on a generated floor the plan (FloorLayout.lift_parts) says
+## which slots are broken and where their parts are, where a lost part comes back, and where the charger goes.
+## Players carry each part back and drop it into its slot (a battery must be charged on a charger first; a vacuum tube
 ## shatters if thrown). Then everyone gets in and someone presses Go; it refuses with the missing names.
 ## In the Break Room nothing is broken: Go starts the run, and after afk_force_start_after seconds the
 ## host gets "Start anyway". On a boss floor, beating the boss fixes it.
@@ -239,7 +241,10 @@ func arrive(break_count: int, in_break_room: bool, waiting_for_boss: bool = fals
 		return
 	_occupied_since_msec = -1
 	_charge_time.clear()
+	# CHANGED 2026-11-09 (floor generation step 4d): a generated floor's plan says which parts are broken.
 	var broken: Array[StringName] = _pick_broken_slots(break_count)
+	if break_count > 0 and not _planned_parts().is_empty():
+		broken = _planned_slots()
 	_state_rpc.rpc(_names(broken), [] as Array[String], in_break_room, waiting_for_boss, true, false)
 
 
@@ -290,6 +295,45 @@ func _pick_broken_slots(break_count: int) -> Array[StringName]:
 		picked.append(candidates[choice])
 		candidates.remove_at(choice)
 	return picked
+
+
+## NEW 2026-11-09 (floor generation step 4d): the floor plan's broken parts ([part prop id, marker key, room]),
+## or empty on floors without them (the old generator, the Break Room): then the lift picks its own as before.
+func _planned_parts() -> Array[Array]:
+	var layout: FloorLayout = Level.get_layout()
+	if layout == null:
+		return [] as Array[Array]
+	return layout.lift_parts
+
+
+## NEW 2026-11-09: the slots of the plan's parts, in the plan's order.
+func _planned_slots() -> Array[StringName]:
+	var slots: Array[StringName] = []
+	for part: Array in _planned_parts():
+		var slot: StringName = _slot_of(StringName(str(part[0])))
+		if slot != &"" and not slots.has(slot):
+			slots.append(slot)
+	return slots
+
+
+## NEW 2026-11-09: the slot a part prop fits, or "".
+func _slot_of(part_id: StringName) -> StringName:
+	var data := ContentRegistry.get_content(part_id) as PropData
+	return data.lift_slot if data != null else &""
+
+
+## NEW 2026-11-09: where a lost part comes back: the first of its planned backup spots that exists, else
+## `fallback` (the farthest lift_part marker, as before).
+func _backup_spot(part_id: StringName, planned: Array[Array], backups: Array[PackedStringArray],
+		fallback: RoomMarker) -> RoomMarker:
+	for index: int in mini(planned.size(), backups.size()):
+		if StringName(str(planned[index][0])) != part_id:
+			continue
+		for key: String in backups[index]:
+			var marker: RoomMarker = Level.get_marker_by_key(key)
+			if marker != null:
+				return marker
+	return fallback
 
 
 func _try_depart(player_id: int) -> void:
@@ -355,6 +399,14 @@ func _on_floor_ready(floor_number: int, _department_id: StringName) -> void:
 	_build_charger(floor_number)
 	if not multiplayer.is_server():
 		return
+	var planned: Array[Array] = _planned_parts()
+	if not planned.is_empty():
+		for part: Array in planned:
+			var marker: RoomMarker = Level.get_marker_by_key(str(part[1]))
+			if marker != null and get_broken_slots().has(_slot_of(StringName(str(part[0])))):
+				Props.spawn_prop(StringName(str(part[0])), marker.global_transform)
+		_part_check_left = PART_CHECK_SECONDS
+		return
 	var spots: Array[RoomMarker] = _part_spots()
 	for index: int in get_broken_slots().size():
 		var part: PropData = _slot_parts.get(get_broken_slots()[index])
@@ -374,13 +426,17 @@ func _part_spots() -> Array[RoomMarker]:
 ## Host: a broken slot whose part no longer exists (it shattered, or was lost) gets a new one far away,
 ## so a floor can never become impossible.
 func _replace_missing_parts() -> void:
+	var planned: Array[Array] = _planned_parts()
+	var backups: Array[PackedStringArray] = []
+	if not planned.is_empty():
+		backups = Level.get_layout().lift_part_backups
 	var spots: Array[RoomMarker] = _part_spots()
 	if spots.is_empty():
 		return
 	for slot: StringName in get_broken_slots():
 		var part: PropData = _slot_parts.get(slot)
 		if part != null and Props.get_props(part.id).is_empty():
-			Props.spawn_prop(part.id, spots[0].global_transform)
+			Props.spawn_prop(part.id, _backup_spot(part.id, planned, backups, spots[0]).global_transform)
 
 
 ## Host: batteries on the charger charge up; when full they glow (on every PC) and fit their slot.
@@ -605,6 +661,10 @@ func _build_charger(floor_number: int) -> void:
 	var run: RunState = GameFlow.get_run()
 	var rng: RandomNumberGenerator = SeededRng.make(run.run_seed if run != null else 0, &"lift_charger", floor_number)
 	var spot: RoomMarker = spots[rng.randi_range(0, spots.size() - 1)]
+	# CHANGED 2026-11-09 (floor generation step 4d): a generated floor's plan picks the charger spot.
+	var layout: FloorLayout = Level.get_layout()
+	if layout != null and not layout.charger_marker.is_empty() and Level.get_marker_by_key(layout.charger_marker) != null:
+		spot = Level.get_marker_by_key(layout.charger_marker)
 	_charger = Area3D.new()
 	_charger.name = "ChargerPad"
 	_charger.collision_layer = PhysicsLayers.bit(PhysicsLayers.TRIGGERS)

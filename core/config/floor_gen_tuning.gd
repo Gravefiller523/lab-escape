@@ -248,6 +248,14 @@ extends Resource
 @export var part_near_incident_from_floor: int = 4
 ## "Near the incident" = in a heavy or destroyed room, or within this walking distance of it (metres).
 @export var part_near_incident_metres: float = 15.0
+## NEW 2026-11-09 (step 4d): how many backup spots each part gets (where a lost one comes back).
+@export var part_backup_spots: int = 3
+## A room at the end of a branch (one way in) is this many times likelier to hold a part.
+@export var part_branch_end_weight: float = 2.5
+## A part on a marker that is not visible_from_entrance gets a cue: a small glowing light of this colour
+## and range (metres) next to it, while the part is there.
+@export var part_cue_color: Color = Color(1.0, 0.75, 0.3)
+@export var part_cue_range: float = 2.5
 
 @export_group("Security cameras (V11)")
 @export var cameras_per_main_hall: int = 2

@@ -113,7 +113,7 @@ func test_there_is_a_slot_for_every_kind_of_part() -> void:
 	var pc := _make_pc()
 	var slots: Array[StringName] = _lift(pc).get_slot_names()
 	for slot: StringName in [&"gear", &"fuse", &"light", &"button", &"counterweight", &"vacuum_tube",
-			&"cable_spool", &"battery", &"lever"]:
+			&"cable_spool", &"battery", &"lever", &"motor", &"control_board", &"brake_assembly"]:
 		assert_true(slots.has(slot), "the lift has a %s slot" % slot)
 	assert_eq(_lift(pc).get_slot_part(&"gear").id, &"prop_lift_gear")
 
@@ -122,7 +122,8 @@ func test_part_in_its_slot_counts() -> void:
 	var pc := _make_pc()
 	await wait_until(func() -> bool: return _my_body(pc) != null, WAIT)
 	var lift: CargoLift = _lift(pc)
-	lift.arrive(9, false)
+	# CHANGED 2026-11-10: every slot breaks (there are more than 9 part kinds now).
+	lift.arrive(lift.get_slot_names().size(), false)
 	assert_true(lift.get_broken_slots().has(&"gear"), "everything broke")
 	assert_string_contains(lift.depart_blocker(), "gear")
 	watch_signals(EventBus)
@@ -138,7 +139,8 @@ func test_part_in_its_slot_counts() -> void:
 func test_wrong_part_or_crate_doesnt_fit() -> void:
 	var pc := _make_pc()
 	var lift: CargoLift = _lift(pc)
-	lift.arrive(9, false)
+	# CHANGED 2026-11-10: every slot breaks (there are more than 9 part kinds now).
+	lift.arrive(lift.get_slot_names().size(), false)
 	_props(pc).spawn_prop(&"prop_lift_gear", Transform3D(Basis.IDENTITY, _slot_drop_point(pc, &"fuse")))
 	_props(pc).spawn_prop(&"prop_crate", Transform3D(Basis.IDENTITY, _slot_drop_point(pc, &"lever")))
 	await wait_physics_frames(30)
@@ -149,7 +151,8 @@ func test_wrong_part_or_crate_doesnt_fit() -> void:
 func test_flat_battery_doesnt_fit() -> void:
 	var pc := _make_pc()
 	var lift: CargoLift = _lift(pc)
-	lift.arrive(9, false)
+	# CHANGED 2026-11-10: every slot breaks (there are more than 9 part kinds now).
+	lift.arrive(lift.get_slot_names().size(), false)
 	_props(pc).spawn_prop(&"prop_lift_battery", Transform3D(Basis.IDENTITY, _slot_drop_point(pc, &"battery")))
 	await wait_physics_frames(30)
 	assert_true(lift.get_broken_slots().has(&"battery"), "it must be charged first")

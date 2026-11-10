@@ -31,7 +31,8 @@ func after_each() -> void:
 
 func test_parts_spawn_far_away_and_the_battery_charges() -> void:
 	assert_gt(Level.get_markers(&"charger").size(), 0, "this floor has chargers")
-	_lift.arrive(9, false)
+	# CHANGED 2026-11-10: every slot breaks (there are more than 9 part kinds now).
+	_lift.arrive(_lift.get_slot_names().size(), false)
 	EventBus.floor_ready.emit(1, GameFlowService.PLACEHOLDER_DEPARTMENT_ID)
 	await wait_physics_frames(3)
 	for slot: StringName in _lift.get_slot_names():
@@ -54,7 +55,8 @@ func test_parts_spawn_far_away_and_the_battery_charges() -> void:
 
 
 func test_a_lost_part_comes_back() -> void:
-	_lift.arrive(9, false)
+	# CHANGED 2026-11-10: every slot breaks (there are more than 9 part kinds now).
+	_lift.arrive(_lift.get_slot_names().size(), false)
 	EventBus.floor_ready.emit(1, GameFlowService.PLACEHOLDER_DEPARTMENT_ID)
 	await wait_physics_frames(3)
 	_props.despawn(_props.get_props(&"prop_lift_vacuum_tube")[0])

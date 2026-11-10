@@ -659,6 +659,11 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
 - 4c: doors: open, broken open, pry doors (crowbar), power doors (breaker box), debris, keycards, collapsed
   hallways. *Test: find a keycard, open its door; find the crowbar and pry a door; follow a cable to a breaker
   and power a door; clear debris; find the detour around a collapse.*
+- **Built 2026-11-10 (4d):** parts picked and placed by the generator (counts by bracket, size-weighted picks,
+  every placement rule with logged relaxations, carry paths, keycard limit, near-the-incident from floor 4, never
+  all in combat or hazard rooms), backup spots and the charger spot in the plan, the cargo lift reading the plan,
+  motor, control board and brake assembly added (Q3), cues by hidden parts, parts on the F3 map. Waiting for
+  Zachary to play it.
 - 4d: parts: counts, picks, placement rules, carry paths, cargo_lift reading the plan. *Test: find every
   part, carry it back, fix the lift, ride up. Check parts make sense where they are.*
 - 4e: cameras and the security room: map table and monitors. *Test: stand at the map, see the part wings

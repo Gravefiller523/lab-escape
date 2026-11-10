@@ -2,7 +2,8 @@ class_name FloorMapView
 extends Control
 ## NEW 2026-10-31 (floor generation step 3): draws a floor layout from above, from the plan (not a camera):
 ## main hallways dark and thick, secondary hallways lighter, rooms coloured by wing, the elevator yellow,
-## the welcome center teal, loops as magenta lines, wing names, and players as arrows. Used by the F3
+## the welcome center teal, loops as magenta lines, wing names, and players as arrows. NEW 2026-11-09: broken
+## lift parts as numbered orange diamonds with their carry paths back to the elevator. Used by the F3
 ## overlay and the floorgen viewer test scene. Mouse wheel (or zoom_by) zooms.
 
 const ELEVATOR_COLOR: Color = Color(0.95, 0.8, 0.2)
@@ -17,6 +18,9 @@ const DAMAGE_COLORS: Array[Color] = [Color(0.35, 0.62, 0.4), Color(0.85, 0.8, 0.
 const ORIGIN_COLOR: Color = Color(1.0, 0.95, 0.4)
 ## NEW 2026-10-31: the smaller incidents' stars.
 const MINOR_ORIGIN_COLOR: Color = Color(1.0, 0.65, 0.3)
+## NEW 2026-11-09 (step 4d): broken lift parts (numbered diamonds) and their carry paths.
+const PART_COLOR: Color = Color(1.0, 0.55, 0.1)
+const PART_PATH_COLOR: Color = Color(1.0, 0.6, 0.2, 0.7)
 
 var layout: FloorLayout:
 	set(value):
@@ -73,6 +77,7 @@ func _draw() -> void:
 	_draw_wing_names(rects, to_screen)
 	_draw_damage_marks(rects, to_screen, scale_fit)
 	_draw_doors(rects, to_screen, unit)
+	_draw_parts(rects, to_screen)
 	for player: Dictionary in players:
 		var at: Vector3 = player["position"]
 		var facing: Vector3 = player["facing"]
@@ -230,3 +235,25 @@ func _door_cells(door: Array, unit: float) -> Vector2:
 			var dir: Vector2i = doorway["dir"]
 			return Vector2(placement.cell.x, placement.cell.z) + Vector2(cell) + Vector2(0.5, 0.5) + Vector2(dir) * 0.5
 	return Vector2(placement.cell.x, placement.cell.z)
+
+
+## NEW 2026-11-09 (step 4d): the broken lift parts as numbered diamonds in their rooms, each with its carry
+## path back to the elevator.
+func _draw_parts(rects: Array[Rect2], to_screen: Callable) -> void:
+	for index: int in layout.lift_parts.size():
+		var room: int = layout.lift_parts[index][2]
+		if room >= rects.size():
+			continue
+		if index < layout.lift_part_paths.size():
+			var points := PackedVector2Array()
+			for step: int in layout.lift_part_paths[index]:
+				if step < rects.size():
+					points.append(to_screen.call(rects[step].get_center()))
+			if points.size() >= 2:
+				draw_polyline(points, PART_PATH_COLOR, 2.0)
+		var at: Vector2 = to_screen.call(rects[room].get_center())
+		var diamond := PackedVector2Array([at + Vector2(0, -9), at + Vector2(9, 0), at + Vector2(0, 9), at + Vector2(-9, 0)])
+		draw_colored_polygon(diamond, PART_COLOR)
+		draw_polyline(diamond + PackedVector2Array([diamond[0]]), OUTLINE_COLOR, 1.5)
+		draw_string(ThemeDB.fallback_font, at + Vector2(-4, 5), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
+			OUTLINE_COLOR)

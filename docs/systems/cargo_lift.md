@@ -41,6 +41,10 @@ func depart_blocker() -> String               # NEW, host: why Go won't work now
 func get_zone() -> ElevatorZone
 func get_spawn_points() -> Array[Node3D]      # NEW: 8 spots inside (players arrive here on floors)
 func arrive(break_count: int, in_break_room: bool, waiting_for_boss: bool = false) -> void  # NEW, host (game_flow); CHANGED (slots): how many slots break
+# CHANGED 2026-11-10 (floor generation step 4d, Q4): on a floor whose plan has lift parts (FloorLayout.lift_parts), the
+# plan says which slots break (break_count > 0 only switches it on), floor_ready spawns each part at its planned marker,
+# a lost part comes back at its first planned backup spot, and the charger goes on the plan's charger_marker. Floors
+# without a plan (the old generator) keep the lift's own pick and farthest-marker spots.
 func depart_now() -> void                     # NEW, host (game_flow): ride without Go (back after a run)
 func gather_players() -> void                 # NEW, host: bring everyone outside into the lift
 func can_force_start() -> bool                # NEW, host: Break Room "Start anyway" allowed
@@ -138,6 +142,12 @@ Not yet: dead players (needs death_respawn), carts (needs carts).
   `lift_parts_per_floor`, `lift_part_prop_id`. `prop_lift_part_zoology` lost the `lift_part` tag (it has no slot).
 
 - 2026-10-23 (death_respawn branch): `ElevatorZone.get_missing_players` skips dead players (ghosts): Go doesn't wait for them.
+
+- 2026-11-10 (level_gen floor generation step 4d, Q3 and Q4, approved in the plan): the lift reads the floor plan
+  for its broken slots, part spots, backup spots and charger spot (old behaviour kept for floors without a plan).
+  NEW parts (content files, grey placeholders): `prop_lift_motor` (large, mechanical), `prop_lift_control_board`
+  (small, electronic), `prop_lift_brake_assembly` (large, mechanical); the slot wall grows a fourth row. Tests that
+  meant "every slot breaks" now break every slot (`get_slot_names().size()` instead of 9).
 
 ## HANDOFF
 **Built (2026-10-19):** `CargoLift` (`cargo_lift.gd`, scene `cargo_lift.tscn`, geometry made in code with fixed

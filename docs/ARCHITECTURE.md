@@ -1,4 +1,3 @@
-| `Hazards` | hazards | NEW 2026-10-31: sparks and fire zones at the hazard spots the floor plan switched on; hurt through damage (host). |
 # Lab Escape architecture
 
 This is the map of the whole game's code. Each box is a **system**: a separate piece of the game
@@ -266,6 +265,8 @@ Things that look like dependencies but are **not**, because they go through Even
 | `Net` | net_core | |
 | `GameFlow` | game_flow | |
 | `Level` | level_gen | The current floor and its markers. |
+| `Hazards` | hazards | NEW 2026-10-31: sparks and fire zones at the hazard spots the floor plan switched on; hurt through damage (host). |
+| `Security` | security | NEW 2026-11-10: the security room: the map table (floor plan, player dots, blinking part wings, lean with E) and camera monitors (the plan's cameras, Prev/Next buttons). |
 | `Props` | physics_props | Spawning and syncing props. |
 | `Upgrades` | upgrades | |
 | `Death` | death_respawn | |

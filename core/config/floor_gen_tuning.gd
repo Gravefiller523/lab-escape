@@ -292,6 +292,17 @@ extends Resource
 @export var feed_active_radius: float = 12.0
 ## How often the map table moves its dots (times a second).
 @export var map_updates_per_second: float = 5.0
+## NEW 2026-11-10 (step 4e): the map table's picture size (pixels), how fast part wings blink (seconds on, then
+## off), how long the scan line takes to cross (seconds), the players' dot colours (by join order), and leaning
+## over the table: how long the camera takes to get there (seconds) and how high above the map it stops (metres).
+@export var map_resolution: Vector2i = Vector2i(1024, 600)
+@export var map_blink_seconds: float = 0.5
+@export var map_scan_seconds: float = 4.0
+@export var map_player_colors: PackedColorArray = PackedColorArray([Color(0.4, 1.0, 0.5), Color(1.0, 0.6, 0.2),
+	Color(0.35, 0.65, 1.0), Color(1.0, 0.4, 0.75), Color(1.0, 0.95, 0.35), Color(0.4, 1.0, 1.0), Color(0.7, 0.5, 1.0),
+	Color(1.0, 1.0, 1.0)])
+@export var map_lean_seconds: float = 0.35
+@export var map_lean_height: float = 1.15
 
 @export_group("Validation (V14)")
 ## Tries before giving up and building the safe fallback floor (Q24).

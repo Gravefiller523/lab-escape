@@ -120,10 +120,15 @@ var markers: Array[Dictionary]                  # NEW: {"kind", "path"} read fro
 func get_floor_transform() -> Transform3D      # NEW: where the (moved, turned) floor is
 func get_markers(kind)                          # CHANGED: only the markers the plan switched on, if it chose for that kind
 func get_marker_by_key(key: String) -> RoomMarker   # NEW 2026-11-10 (step 4d): a marker by its FloorLayout.marker_key
+func get_room_index_for_position(point: Vector3) -> int   # NEW 2026-11-10 (step 4e): the placement a point is in, or -1
 # Level.build CHANGED: 3 m tile floors; an open hallway end nothing joins gets a "Cap..." wall (grid unit wide,
 # ceiling high, wall material); an unused door socket on a tile is sealed (BlockoutTile.seal_socket: plain wall,
 # no frame; CHANGED 2026-10-31), other rooms' doorways get a "Plug..." as before. Keys F3 (map) and F4 (new floor, host).
 class_name FloorMapView extends Control         # draws a FloorLayout from above (layout, players, zoom)
+var style: StringName                          # NEW 2026-11-10: "debug" (F3) or "security" (the security map table)
+var accent_color: Color / var cameras: Array[Dictionary]   # NEW 2026-11-10
+func cells_to_screen(cells: Vector2) -> Vector2 # NEW 2026-11-10: where a floor point (grid cells) is drawn
+func room_screen_rect(index: int) -> Rect2      # NEW 2026-11-10: where a placement is drawn
 class_name FloorgenOverlay extends CanvasLayer  # the F3 view: map, seed, seed box, log (owned by Level)
 ```
 **Console (NEW 2026-10-31):** `floorgen <seed>` (this floor again with that seed), `floorgen floor <n>`,
@@ -553,6 +558,13 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   `visible_from_entrance`; parts and carry paths on the F3 map; validation checks carry paths and Q15. NEW
   tuning `part_backup_spots`, `part_branch_end_weight`, `part_cue_color`, `part_cue_range`. Generator socket
   entries carry their `connection`; `_links(doors_only)`. Tests `test_lift_parts_plan.gd`.
+- 2026-11-10 (floor generation step 4e: security room, plan step 9, Q11, Q12, V11, V13): NEW generator step 9
+  (`_place_cameras`): `cameras_per_main_hall` cameras spread along each main hallway, `cameras_per_part_room` in
+  or next to each lift part's room, `cameras_random` more; labels "CAM 04 EAST WING B"; broken by damage
+  (`camera_broken_chance_heavy`/`_destroyed`). NEW FloorLayout `cameras` ([marker key, label, broken]); NEW
+  `Level.get_room_index_for_position`; NEW `FloorMapView.style` ("debug"/"security"), `accent_color`, `cameras`,
+  `cells_to_screen`, `room_screen_rect` (the security system's map table draws with it); cameras on the F3 map.
+  The new `systems/security` builds the table and monitors (docs/systems/security.md).
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

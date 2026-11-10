@@ -14,7 +14,8 @@ extends RefCounted
 ## 4. Loops: a few short hallways between free doorways of different wings that face each other.
 ## 5. (simple, for now) every room is a shared room (offices, storage...) picked when it is placed.
 ## Later steps (built in steps 4b to 4d): damage and the incident, doors and locks, and (NEW 2026-11-10) the
-## broken lift parts with their carry paths (_place_parts).
+## broken lift parts with their carry paths (_place_parts), and (NEW 2026-11-10) the security cameras
+## (_place_cameras).
 ## Sockets nothing joined get a cap when the floor is built (Level.build). Markers: a share of the
 ## "prop_spawn" markers is switched on (FloorLayout.active_markers).
 ## If an attempt fails the checks, the next attempt (a new seed from the same floor seed) is tried; after
@@ -276,6 +277,7 @@ class _Builder:
 		_pick_hazards()
 		_place_doors()
 		_place_parts()
+		_place_cameras()
 		_check()
 		layout.stats["rooms"] = rooms
 		return layout
@@ -1132,6 +1134,98 @@ class _Builder:
 				layout.active_markers[&"prop_spawn"] = props
 			return spot
 		return ""
+
+	# --- Step 9: security cameras (NEW 2026-11-10, built in step 4e) -----------------------------------------
+
+	## NEW 2026-11-10 (step 9 of the plan): which `camera` markers have a working security camera for the
+	## security room's monitors (V11): cameras_per_main_hall in each main hallway (spread along it),
+	## cameras_per_part_room in or next to each lift part's room, then cameras_random more. Each gets a label
+	## like "CAM 04 EAST WING B"; in heavily damaged and destroyed tiles some are broken (they show static).
+	func _place_cameras() -> void:
+		var rng: RandomNumberGenerator = _rng(&"floorgen_cameras")
+		var by_room: Dictionary[int, Array] = {}
+		var all_keys: Array[String] = []
+		for index: int in layout.placements.size():
+			if layout.collapsed.has(index):
+				continue
+			for marker: Dictionary in RoomShape.of(_room_of(index), unit).markers:
+				if marker["kind"] != &"camera":
+					continue
+				var key: String = FloorLayout.marker_key(index, marker["path"])
+				if not by_room.has(index):
+					by_room[index] = []
+				by_room[index].append([key, str((marker["params"] as Dictionary).get("label", ""))])
+				all_keys.append(key)
+		var picked: Array[Array] = []
+		var used: Dictionary[String, bool] = {}
+		# Main hallways: spread along each one.
+		for hall: int in layout.main_halls.size():
+			var along: Array[Array] = []
+			for piece: int in layout.main_halls[hall]:
+				along.append_array(by_room.get(piece, []))
+			var count: int = mini(tuning.cameras_per_main_hall, along.size())
+			for pick: int in count:
+				var at: int = roundi(float(pick) * float(along.size() - 1) / float(maxi(count - 1, 1))) if count > 1 else floori(along.size() / 2.0)
+				_take_camera(along[at], picked, used)
+		# Lift part rooms, or a tile next to them.
+		var links: Dictionary[int, Array] = _links()
+		for part: Array in layout.lift_parts:
+			var room: int = part[2]
+			var near: Array[Array] = []
+			near.append_array(by_room.get(room, []))
+			if near.is_empty():
+				for link: Variant in links.get(room, []):
+					near.append_array(by_room.get(int((link as Array)[0]), []))
+			var taken: int = 0
+			for camera: Array in near:
+				if taken >= tuning.cameras_per_part_room:
+					break
+				if not used.has(str(camera[0])):
+					_take_camera(camera, picked, used)
+					taken += 1
+		# A few more anywhere.
+		var rest: Array[Array] = []
+		var rooms: Array[int] = by_room.keys()
+		rooms.sort()
+		for room: int in rooms:
+			for camera: Variant in by_room[room]:
+				if not used.has(str((camera as Array)[0])):
+					rest.append(camera as Array)
+		_shuffle(rest, rng)
+		for camera: Array in rest.slice(0, tuning.cameras_random):
+			_take_camera(camera, picked, used)
+		for number: int in picked.size():
+			var key: String = picked[number][0]
+			var room: int = key.get_slice("/", 0).to_int()
+			var level: int = layout.damage[room] if room < layout.damage.size() else 0
+			var chance: float = tuning.camera_broken_chance_destroyed if level >= 3 \
+				else (tuning.camera_broken_chance_heavy if level == 2 else 0.0)
+			var broken: bool = rng.randf() < chance
+			layout.cameras.append([key, "CAM %02d %s" % [number + 1, _camera_area(room, str(picked[number][1]))], broken])
+		var broken_count: int = 0
+		for camera: Array in layout.cameras:
+			if camera[2]:
+				broken_count += 1
+		_log("cameras: %d of %d spots (%d broken)" % [layout.cameras.size(), all_keys.size(), broken_count])
+
+	func _take_camera(camera: Array, picked: Array[Array], used: Dictionary[String, bool]) -> void:
+		if used.has(str(camera[0])):
+			return
+		used[str(camera[0])] = true
+		picked.append(camera)
+
+	## What a camera's label calls the place it watches: the marker's own label, the main hallway, the wing,
+	## or the room's name.
+	func _camera_area(room: int, own_label: String) -> String:
+		if not own_label.is_empty():
+			return own_label.to_upper()
+		for hall: int in layout.main_halls.size():
+			if layout.main_halls[hall].has(room):
+				return ("%s main hall" % _main_hall_name(hall)).to_upper()
+		var wing: int = layout.placements[room].wing
+		if wing >= 0 and wing < layout.wings.size():
+			return layout.wings[wing].to_upper()
+		return _room_of(room).display_name.trim_suffix(" (blockout)").to_upper()
 
 	# --- Step 8: broken lift parts (NEW 2026-11-09, built in step 4d) ----------------------------------------
 

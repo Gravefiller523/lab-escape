@@ -86,6 +86,7 @@ func refresh() -> void:
 		var start: int = maxi(lines.size() - LOG_LINES_SHOWN, 0)
 		_log.text = "\n".join(lines.slice(start))
 	_map.players = _player_arrows()
+	_map.cameras = _camera_spots(layout)
 
 
 func _process(delta: float) -> void:
@@ -128,3 +129,14 @@ func _player_arrows() -> Array[Dictionary]:
 		arrows.append({"position": to_floor * body.global_position, "facing": facing,
 			"color": Color(0.4, 1.0, 0.5) if body.is_local() else Color.WHITE})
 	return arrows
+
+
+## NEW 2026-11-10 (step 4e): the plan's security cameras, in the floor's own space.
+func _camera_spots(layout: FloorLayout) -> Array[Dictionary]:
+	var spots: Array[Dictionary] = []
+	var to_floor: Transform3D = Level.get_floor_transform().affine_inverse()
+	for camera: Array in layout.cameras:
+		var marker: RoomMarker = Level.get_marker_by_key(str(camera[0]))
+		if marker != null and marker.is_inside_tree():
+			spots.append({"position": to_floor * marker.global_position, "broken": bool(camera[2])})
+	return spots

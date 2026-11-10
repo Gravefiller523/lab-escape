@@ -21,6 +21,12 @@ const MINOR_ORIGIN_COLOR: Color = Color(1.0, 0.65, 0.3)
 ## NEW 2026-11-09 (step 4d): broken lift parts (numbered diamonds) and their carry paths.
 const PART_COLOR: Color = Color(1.0, 0.55, 0.1)
 const PART_PATH_COLOR: Color = Color(1.0, 0.6, 0.2, 0.7)
+## NEW 2026-11-10 (step 4e): the map styles, the security style's colours, and camera icons.
+const STYLE_DEBUG: StringName = &"debug"
+const STYLE_SECURITY: StringName = &"security"
+const SECURITY_BACKGROUND: Color = Color(0.02, 0.04, 0.05)
+const SECURITY_ROOM_FILL: Color = Color(0.04, 0.08, 0.09)
+const CAMERA_COLOR: Color = Color(0.85, 0.9, 1.0)
 
 var layout: FloorLayout:
 	set(value):
@@ -30,6 +36,23 @@ var layout: FloorLayout:
 var players: Array[Dictionary] = []:
 	set(value):
 		players = value
+		queue_redraw()
+## NEW 2026-11-10 (step 4e): "debug" (the F3 view) or "security" (the security room's map table: a dark screen,
+## rooms outlined in accent_color, small room names, the elevator, locked and blocked doors; no damage, parts,
+## key spots or players: the security system draws its own dots and blinking wings on top).
+var style: StringName = STYLE_DEBUG:
+	set(value):
+		style = value
+		queue_redraw()
+var accent_color: Color = Color(0.3, 0.9, 0.75):
+	set(value):
+		accent_color = value
+		queue_redraw()
+## NEW 2026-11-10 (step 4e): security cameras to draw (F3 view): {"position": Vector3 in the floor's own space
+## (metres), "broken": bool}.
+var cameras: Array[Dictionary] = []:
+	set(value):
+		cameras = value
 		queue_redraw()
 var zoom: float = 1.0:
 	set(value):
@@ -58,14 +81,15 @@ func _draw() -> void:
 		return
 	var unit: float = layout.cell_size()
 	var rects: Array[Rect2] = []
-	var bounds := Rect2()
 	for index: int in layout.placements.size():
-		var rect: Rect2 = _cell_rect(index, unit)
-		rects.append(rect)
-		bounds = rect if index == 0 else bounds.merge(rect)
-	var scale_fit: float = minf(size.x / maxf(bounds.size.x, 1.0), size.y / maxf(bounds.size.y, 1.0)) * 0.9 * zoom
-	var offset: Vector2 = size / 2.0 - (bounds.position + bounds.size / 2.0) * scale_fit
+		rects.append(_cell_rect(index, unit))
+	var fit: Array = _fit()
+	var scale_fit: float = fit[0]
+	var offset: Vector2 = fit[1]
 	var to_screen := func(cells: Vector2) -> Vector2: return offset + cells * scale_fit
+	if style == STYLE_SECURITY:
+		_draw_security(rects, to_screen, scale_fit, unit)
+		return
 	for index: int in rects.size():
 		var screen := Rect2(to_screen.call(rects[index].position), rects[index].size * scale_fit)
 		draw_rect(screen, _color_of(index))
@@ -78,6 +102,7 @@ func _draw() -> void:
 	_draw_damage_marks(rects, to_screen, scale_fit)
 	_draw_doors(rects, to_screen, unit)
 	_draw_parts(rects, to_screen)
+	_draw_cameras(to_screen, unit)
 	for player: Dictionary in players:
 		var at: Vector3 = player["position"]
 		var facing: Vector3 = player["facing"]
@@ -189,7 +214,8 @@ func _draw_star(centre: Vector2, radius: float, color: Color) -> void:
 
 ## NEW 2026-10-31 (step 4c): locked and blocked doors as small squares (keycard doors in their card's colour,
 ## grey = pry with a crowbar, cyan = power, brown = debris), each with a line to what opens it.
-func _draw_doors(rects: Array[Rect2], to_screen: Callable, unit: float) -> void:
+## CHANGED 2026-11-10: show_items false (the security map) leaves out the lines to where keys and tools are.
+func _draw_doors(rects: Array[Rect2], to_screen: Callable, unit: float, show_items: bool = true) -> void:
 	var tuning: FloorGenTuning = Config.floor_gen
 	var colours: Array[StringName] = tuning.keycard_colours.keys()
 	var spots: Array[Vector2] = []
@@ -213,6 +239,8 @@ func _draw_doors(rects: Array[Rect2], to_screen: Callable, unit: float) -> void:
 		var screen: Vector2 = to_screen.call(at)
 		draw_rect(Rect2(screen - Vector2(5, 5), Vector2(10, 10)), color)
 		draw_rect(Rect2(screen - Vector2(5, 5), Vector2(10, 10)), OUTLINE_COLOR, false, 1.0)
+	if not show_items:
+		return
 	for item: Array in layout.door_items:
 		var door_index: int = item[2]
 		var room: int = str(item[1]).get_slice("/", 0).to_int()
@@ -257,3 +285,68 @@ func _draw_parts(rects: Array[Rect2], to_screen: Callable) -> void:
 		draw_polyline(diamond + PackedVector2Array([diamond[0]]), OUTLINE_COLOR, 1.5)
 		draw_string(ThemeDB.fallback_font, at + Vector2(-4, 5), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
 			OUTLINE_COLOR)
+
+
+## NEW 2026-11-10 (step 4e): where a point of the floor (in grid cells) is drawn on this control.
+func cells_to_screen(cells: Vector2) -> Vector2:
+	var fit: Array = _fit()
+	return (fit[1] as Vector2) + cells * float(fit[0])
+
+
+## NEW 2026-11-10 (step 4e): where a placement (FloorLayout.placements index) is drawn on this control.
+func room_screen_rect(index: int) -> Rect2:
+	if layout == null or index < 0 or index >= layout.placements.size():
+		return Rect2()
+	var rect: Rect2 = _cell_rect(index, layout.cell_size())
+	var fit: Array = _fit()
+	return Rect2(cells_to_screen(rect.position), rect.size * float(fit[0]))
+
+
+## [scale (pixels per cell), offset (pixels)] that fit the whole floor in the control (with zoom).
+func _fit() -> Array:
+	var unit: float = layout.cell_size()
+	var bounds := Rect2()
+	for index: int in layout.placements.size():
+		var rect: Rect2 = _cell_rect(index, unit)
+		bounds = rect if index == 0 else bounds.merge(rect)
+	var scale_fit: float = minf(size.x / maxf(bounds.size.x, 1.0), size.y / maxf(bounds.size.y, 1.0)) * 0.9 * zoom
+	return [scale_fit, size / 2.0 - (bounds.position + bounds.size / 2.0) * scale_fit]
+
+
+## NEW 2026-11-10 (step 4e): the security room's map: a dark screen, rooms outlined in the accent colour
+## (hallways filled a little), the elevator, small room names and the locked and blocked doors.
+func _draw_security(rects: Array[Rect2], to_screen: Callable, scale_fit: float, unit: float) -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), SECURITY_BACKGROUND)
+	for index: int in rects.size():
+		var screen := Rect2(to_screen.call(rects[index].position), rects[index].size * scale_fit)
+		var room := ContentRegistry.get_content(layout.placements[index].room_id) as RoomData
+		var fill: Color = SECURITY_ROOM_FILL
+		if room != null and room.room_kind == &"lift":
+			fill = ELEVATOR_COLOR.darkened(0.3)
+		elif room != null and room.tile_role != TileStandards.ROLE_ROOM:
+			fill = SECURITY_ROOM_FILL.lerp(accent_color, 0.12)
+		draw_rect(screen.grow(-1.0), fill)
+		draw_rect(screen.grow(-1.0), accent_color.darkened(0.2), false, 1.5)
+	var department := ContentRegistry.get_content(layout.department_id) as DepartmentData
+	var font: Font = ThemeDB.fallback_font
+	for index: int in rects.size():
+		var room := ContentRegistry.get_content(layout.placements[index].room_id) as RoomData
+		if room == null or room.tile_role != TileStandards.ROLE_ROOM or rects[index].size.x * scale_fit < 40.0:
+			continue
+		var width: float = rects[index].size.x * scale_fit - 6.0
+		var at: Vector2 = to_screen.call(rects[index].get_center()) - Vector2(width / 2.0, -4.0)
+		draw_string(font, at, LevelService.room_display_name(room, department).to_upper(), HORIZONTAL_ALIGNMENT_CENTER,
+			width, 10, accent_color.lightened(0.3))
+	_draw_doors(rects, to_screen, unit, false)
+
+
+## NEW 2026-11-10 (step 4e): security cameras as small squares with a lens (red cross when broken).
+func _draw_cameras(to_screen: Callable, unit: float) -> void:
+	for camera: Dictionary in cameras:
+		var at3: Vector3 = camera["position"]
+		var at: Vector2 = to_screen.call(Vector2(at3.x, at3.z) / unit)
+		draw_rect(Rect2(at - Vector2(5, 4), Vector2(10, 8)), CAMERA_COLOR)
+		draw_circle(at + Vector2(6, 0), 2.5, CAMERA_COLOR)
+		if camera.get("broken", false):
+			draw_line(at - Vector2(6, 6), at + Vector2(6, 6), Color(1, 0.2, 0.15), 2.0)
+			draw_line(at + Vector2(-6, 6), at + Vector2(6, -6), Color(1, 0.2, 0.15), 2.0)

@@ -217,23 +217,30 @@ func get_markers(kind: StringName) -> Array[RoomMarker]:
 
 ## The room a point is in, or null.
 func get_room_for_position(point: Vector3) -> RoomData:
+	var index: int = get_room_index_for_position(point)
+	return ContentRegistry.get_content(_layout.placements[index].room_id) as RoomData if index >= 0 else null
+
+
+## NEW 2026-11-10 (floor generation step 4e): which placement (FloorLayout.placements index) a point is in, or -1.
+func get_room_index_for_position(point: Vector3) -> int:
 	if _layout == null:
-		return null
+		return -1
 	var cell_size: float = _cell_size(_layout)
 	# The floor may be moved and turned (game_flow lines its lift room up with the cargo lift).
 	var local: Vector3 = point
 	if _rooms_root != null and is_instance_valid(_rooms_root) and _rooms_root.is_inside_tree():
 		local = _rooms_root.global_transform.affine_inverse() * point
 	var cell := Vector2i(floori(local.x / cell_size), floori(local.z / cell_size))
-	for placement: RoomPlacement in _layout.placements:
+	for index: int in _layout.placements.size():
+		var placement: RoomPlacement = _layout.placements[index]
 		var room := ContentRegistry.get_content(placement.room_id) as RoomData
 		if room == null:
 			continue
 		var size: Vector2i = RoomShape.of(room, cell_size).rotated_size(placement.rotation_steps)
 		var corner := Vector2i(placement.cell.x, placement.cell.z)
 		if cell.x >= corner.x and cell.x < corner.x + size.x and cell.y >= corner.y and cell.y < corner.y + size.y:
-			return room
-	return null
+			return index
+	return -1
 
 
 ## The room nodes in placement order (for test scenes and debug drawing).

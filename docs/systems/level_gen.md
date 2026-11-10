@@ -565,6 +565,18 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   `Level.get_room_index_for_position`; NEW `FloorMapView.style` ("debug"/"security"), `accent_color`, `cameras`,
   `cells_to_screen`, `room_screen_rect` (the security system's map table draws with it); cameras on the F3 map.
   The new `systems/security` builds the table and monitors (docs/systems/security.md).
+- 2026-11-10 (floor generation step 4f: plan steps 10 to 12, Q15, Q19, Q20, Q21, Q24, V12, V14): NEW generator
+  step 10 (`_pick_enemy_spawns`): `enemy_spot_share` of the enemy budget (RunDifficulty, so it grows with the floor
+  and the players; `generate_from_seed` NEW `player_count`) in `enemy_spawn` spots switched on, never in the
+  elevator or welcome center or within `enemy_spot_min_distance`, and never in one lift part's room (Q15). NEW
+  `_validate` (section 13): locks open in some order, required rooms, no overlaps, joins face to face, the start,
+  parts and keys reachable, part rules; failures are logged and retried. The fallback floor (Q24) now has the
+  required rooms at its hallways' doorways, a room at each end, parts, cameras and enemy spots, and no damage,
+  locks or collapses; NEW `FloorGenerator.debug_force_fallback` and console `floorgen fallback on|off`. Q19:
+  `upgrade_machine` spots in the charging bay, server room and parts storage. Load order (Q20): enemies bake on
+  `floor_built`, game_flow waits for it. Tests `test_floor_step_4f.gd`, `test_floor_rules_bulk.gd` (30 seeds per
+  department) and the slow group `tests_slow/level_gen/test_floor_rules_bulk_500.gd` (500 per department, about
+  a minute: `-gdir=res://tests_slow`).
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

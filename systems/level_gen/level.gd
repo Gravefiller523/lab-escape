@@ -43,7 +43,7 @@ func _ready() -> void:
 	add_child(_overlay)
 	EventBus.floor_ready.connect(_on_floor_ready)
 	DebugConsole.register_command(&"floorgen", _cmd_floorgen,
-		"floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | log | map")
+		"floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | fallback on|off | log | map")
 
 
 ## NEW 2026-10-31: F3 shows the floor from above (cheats only), F4 makes a new floor (host, cheats only).
@@ -85,7 +85,7 @@ func _regenerate_same() -> String:
 
 func _cmd_floorgen(args: PackedStringArray, _player_id: int) -> String:
 	if args.is_empty():
-		return "Usage: floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | log | map"
+		return "Usage: floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | fallback on|off | log | map"
 	match args[0]:
 		"log":
 			var layout: FloorLayout = FloorGenerator.last_layout if FloorGenerator.last_layout != null else _layout
@@ -109,6 +109,11 @@ func _cmd_floorgen(args: PackedStringArray, _player_id: int) -> String:
 				return "Usage: floorgen damage light|heavy|destroyed|pristine|off (every tile; stays until off)"
 			FloorGenerator.debug_damage = &"" if args[1] == "off" else StringName(args[1])
 			return "Damage %s. %s" % [args[1], _regenerate_same()]
+		"fallback":
+			if args.size() < 2 or not ["on", "off"].has(args[1]):
+				return "Usage: floorgen fallback on|off (always build the safe fallback floor; stays until off)"
+			FloorGenerator.debug_force_fallback = args[1] == "on"
+			return "Fallback floor %s. %s" % [args[1], _regenerate_same()]
 		"dept":
 			if args.size() < 2:
 				return "Usage: floorgen dept <department_id>"
@@ -116,7 +121,7 @@ func _cmd_floorgen(args: PackedStringArray, _player_id: int) -> String:
 			return GameFlow.debug_go_to_floor(run.floor_number if run != null else 1, StringName(args[1]))
 	if args[0].is_valid_int() and args[0].to_int() != 0:
 		return _regenerate(args[0].to_int())
-	return "Usage: floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | log | map"
+	return "Usage: floorgen <seed> | floor <n> | dept <id> | origin near|far|normal | damage light|heavy|destroyed|off | fallback on|off | log | map"
 
 
 ## Builds the floor: every room in its place, plugs in doorways that lead nowhere. Clears the old

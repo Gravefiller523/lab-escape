@@ -672,6 +672,11 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
   drawing only while someone is near. Cameras on the F3 map. Waiting for Zachary to play it.
 - 4e: cameras and the security room: map table and monitors. *Test: stand at the map, see the part wings
   and your dot move; cycle monitors with the buttons; broken cameras show static; frame rate stays steady.*
+- **Built 2026-11-10 (4f):** enemy spawn spots from the enemy budget (none in the start area, a part room kept
+  calm), the Q19 machine spots, the load order (host bakes on floor_built, floor_ready after the bake), the 8
+  validation rules after every attempt, the safe fallback floor (required rooms, parts, no locks or damage) and
+  `floorgen fallback on|off`, the bulk test (500 seeds x 3 departments, floors 1-15: all rules held, no
+  fallback, in tests_slow). Waiting for Zachary to play it.
 - 4f: props, NPC and hazard markers, navigation order, validation and fallback floor. *Test: enemies path
   through doors; props appear after the floor is ready; the bulk GUT test passes 500 seeds.*
 

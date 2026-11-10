@@ -37,6 +37,11 @@ height = 2.8
 
 [node name="Markers" type="Node3D" parent="."]
 
+[node name="UpgradeMachine0" type="Marker3D" parent="Markers"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0, 1.15)
+script = ExtResource("3_marker")
+kind = &"upgrade_machine"
+
 [node name="Charger0" type="Marker3D" parent="Markers"]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.85, 0, 2.5)
 script = ExtResource("3_marker")

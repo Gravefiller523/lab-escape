@@ -13,6 +13,8 @@ extends RefCounted
 ##    main hallway is a wing ("West wing B"). Growth stops at the floor's target room count.
 ## 4. Loops: a few short hallways between free doorways of different wings that face each other.
 ## 5. (simple, for now) every room is a shared room (offices, storage...) picked when it is placed.
+## Later steps (built in steps 4b to 4d): damage and the incident, doors and locks, and (NEW 2026-11-10) the
+## broken lift parts with their carry paths (_place_parts).
 ## Sockets nothing joined get a cap when the floor is built (Level.build). Markers: a share of the
 ## "prop_spawn" markers is switched on (FloorLayout.active_markers).
 ## If an attempt fails the checks, the next attempt (a new seed from the same floor seed) is tried; after
@@ -144,6 +146,34 @@ static func piece_kind(room: RoomData) -> StringName:
 	return &""
 
 
+## NEW 2026-11-09 (step 4d): what the lift parts placed so far have used up (see _Builder._place_parts).
+class _PartState:
+	extends RefCounted
+
+	var keys: Dictionary[String, bool] = {}
+	var rooms: Dictionary[int, bool] = {}
+	var sides: Dictionary[String, bool] = {}
+	var wings: Dictionary[int, bool] = {}
+	var behind_keycards: int = 0
+	var keycard_limit: int = 1
+	## Still looking for a part near the incident (floor 4 and up).
+	var need_near: bool = false
+	## Some part is in a calm room (not a combat or hazard room).
+	var calm: bool = false
+
+	func take(spot: Dictionary) -> void:
+		keys[str(spot["key"])] = true
+		rooms[int(spot["placement"])] = true
+		sides[str(spot["side"])] = true
+		wings[int(spot["wing"])] = true
+		if spot["behind_keycard"]:
+			behind_keycards += 1
+		if spot["near"]:
+			need_near = false
+		if spot["calm"]:
+			calm = true
+
+
 ## A floor being put together: which cells are taken, every socket, wings and the log.
 class _Builder:
 	extends RefCounted
@@ -245,6 +275,7 @@ class _Builder:
 		_pick_markers()
 		_pick_hazards()
 		_place_doors()
+		_place_parts()
 		_check()
 		layout.stats["rooms"] = rooms
 		return layout
@@ -852,7 +883,9 @@ class _Builder:
 			_log("hazards: %d of %d places (%d to %d wanted)" % [keys.size(), candidates.size(), lo, hi])
 
 	## Which tiles are joined to which: placement -> [[other placement, metres between their centres]].
-	func _links() -> Dictionary[int, Array]:
+	## CHANGED 2026-11-09: doors_only = only joins you can carry a lift part through ("door" connections, not
+	## vents, crawlspaces or jump gaps).
+	func _links(doors_only: bool = false) -> Dictionary[int, Array]:
 		var links: Dictionary[int, Array] = {}
 		for key: String in sockets:
 			var socket: Dictionary = sockets[key]
@@ -860,6 +893,9 @@ class _Builder:
 				continue
 			var other: Dictionary = sockets[_edge_key((socket["cell"] as Vector2i) + (socket["dir"] as Vector2i),
 				-(socket["dir"] as Vector2i))]
+			if doors_only and (socket.get("connection", RoomDoorway.CONNECTION_DOOR) != RoomDoorway.CONNECTION_DOOR
+					or other.get("connection", RoomDoorway.CONNECTION_DOOR) != RoomDoorway.CONNECTION_DOOR):
+				continue
 			var a: int = socket["placement"]
 			var b: int = other["placement"]
 			if a == b:
@@ -1097,6 +1133,277 @@ class _Builder:
 			return spot
 		return ""
 
+	# --- Step 8: broken lift parts (NEW 2026-11-09, built in step 4d) ----------------------------------------
+
+	## NEW 2026-11-09 (step 8 of the plan): the broken lift parts. How many comes from the floor bracket (V10);
+	## which kinds is a draw weighted by size, bigger ones likelier higher up; where follows the plan's rules:
+	## only in rooms (never the welcome center, the security room or a hallway), on a lift_part marker the part
+	## fits, far enough from the elevator, spread over the main hallways' sides and then their wings, in a room
+	## of the right kind, at the end of a branch when possible, with a carry path back through doors only, at
+	## most so many behind keycard doors (V9), one near the incident from floor 4 (Q14), and never every part in
+	## a combat or hazard room (Q15). Rules that can't be kept are relaxed in this order: department fit, then
+	## minimum distance (logged; spreading is only ever a preference). A part that fits nowhere is swapped for
+	## another kind; if no part fits at all, the attempt fails. Each part also gets backup spots, and the
+	## battery charger a spot if a part needs charging.
+	func _place_parts() -> void:
+		var rng: RandomNumberGenerator = _rng(&"floorgen_parts")
+		var links: Dictionary[int, Array] = _links(true)
+		var opened: Dictionary[int, bool] = {}
+		for door: int in layout.doors.size():
+			opened[door] = true
+		var reach: Dictionary[int, bool] = _reachable(links, opened)
+		for door: int in _doors_of(FloorGenerator.DOOR_KEYCARD):
+			opened.erase(door)
+		var without_keycards: Dictionary[int, bool] = _reachable(links, opened)
+		var from_start: PackedFloat32Array = _path_distances(links, 0, layout.collapsed)
+		var farthest: float = 0.0
+		for index: int in from_start.size():
+			if from_start[index] < INF and _room_of(index).tile_role == TileStandards.ROLE_ROOM:
+				farthest = maxf(farthest, from_start[index])
+		var from_origin := PackedFloat32Array()
+		if layout.origin >= 0:
+			from_origin = _path_distances(links, layout.origin, layout.collapsed)
+		var spots: Array[Dictionary] = _part_spots(reach, without_keycards, links, from_start, from_origin)
+		var lo: int = tuning.by_bracket(tuning.parts_min_by_bracket, floor_number)
+		var hi: int = maxi(tuning.by_bracket(tuning.parts_max_by_bracket, floor_number), lo)
+		var wanted: int = rng.randi_range(lo, hi)
+		var kinds: Array[PropData] = _part_kinds()
+		var taken := FloorGenerator._PartState.new()
+		taken.keycard_limit = tuning.by_bracket(tuning.parts_behind_keycards_max_by_bracket, floor_number)
+		taken.need_near = floor_number >= tuning.part_near_incident_from_floor and layout.origin >= 0
+		var notes := PackedStringArray()
+		while layout.lift_parts.size() < wanted and not kinds.is_empty():
+			var part: PropData = _draw_part(kinds, rng)
+			kinds.erase(part)
+			var left: int = wanted - layout.lift_parts.size()
+			var spot: Dictionary = _pick_part_spot(part, spots, taken, left, farthest, rng, notes)
+			if spot.is_empty():
+				notes.append("no spot fits the %s (swapped for another part)" % part.display_name.to_lower())
+				continue
+			taken.take(spot)
+			layout.lift_parts.append([String(part.id), String(spot["key"]), int(spot["placement"])])
+			layout.lift_part_paths.append(_carry_path(links, spot["placement"]))
+		if taken.need_near and not layout.lift_parts.is_empty():
+			notes.append("no part could go near the incident")
+		if layout.lift_parts.size() < wanted:
+			notes.append("only %d of %d parts placed" % [layout.lift_parts.size(), wanted])
+		if layout.lift_parts.is_empty() and not layout.is_fallback:
+			problem = "no lift part could be placed"
+			return
+		_pick_part_backups(spots)
+		_pick_charger(reach, rng)
+		layout.stats["part_relaxations"] = notes.size()
+		var names := PackedStringArray()
+		for part: Array in layout.lift_parts:
+			var placement: int = part[2]
+			var wing: int = layout.placements[placement].wing
+			names.append("%s in %s%s" % [str(part[0]).trim_prefix("prop_lift_"), _room_of(placement).display_name,
+				" (%s)" % layout.wings[wing] if wing >= 0 and wing < layout.wings.size() else ""])
+		_log("lift parts: %d of %d wanted: %s%s" % [layout.lift_parts.size(), wanted, ", ".join(names),
+			"; relaxed: %s" % "; ".join(notes) if not notes.is_empty() else ""])
+
+	## Every lift_part marker a part could go on: in a room the team can reach (locks included), with what
+	## the rules need to know about it.
+	func _part_spots(reach: Dictionary[int, bool], without_keycards: Dictionary[int, bool],
+			links: Dictionary[int, Array], from_start: PackedFloat32Array, from_origin: PackedFloat32Array) -> Array[Dictionary]:
+		var hazard_rooms: Dictionary[int, bool] = {}
+		for key: String in layout.active_markers.get(&"hazard", PackedStringArray()):
+			hazard_rooms[key.get_slice("/", 0).to_int()] = true
+		var used: Dictionary[String, bool] = {}
+		for item: Array in layout.door_items:
+			used[str(item[1])] = true
+		var spots: Array[Dictionary] = []
+		var indexes: Array[int] = reach.keys()
+		indexes.sort()
+		for index: int in indexes:
+			var room: RoomData = _room_of(index)
+			if room.tile_role != TileStandards.ROLE_ROOM or layout.collapsed.has(index) or from_start[index] == INF:
+				continue
+			var level: int = layout.damage[index] if index < layout.damage.size() else 0
+			var near: bool = level >= 2 or (not from_origin.is_empty() and from_origin[index] <= tuning.part_near_incident_metres)
+			var wing: int = layout.placements[index].wing
+			var wing_name: String = layout.wings[wing] if wing >= 0 and wing < layout.wings.size() else ""
+			for marker: Dictionary in RoomShape.of(room, unit).markers:
+				if marker["kind"] != &"lift_part":
+					continue
+				var key: String = FloorLayout.marker_key(index, marker["path"])
+				if used.has(key):
+					continue
+				var params: Dictionary = marker["params"]
+				spots.append({"key": key, "placement": index, "distance": from_start[index],
+					"size": maxi(TileStandards.PART_SIZES.find(StringName(str(params.get("max_size", "medium")))), 0),
+					"categories": room.part_categories, "end": (links.get(index, []) as Array).size() <= 1,
+					"behind_keycard": not without_keycards.has(index), "near": near,
+					"calm": not room.is_combat_room and not hazard_rooms.has(index),
+					"side": wing_name.get_slice(" wing ", 0) if wing_name.contains(" wing ") else wing_name, "wing": wing})
+		return spots
+
+	## Every kind of lift part the department uses: one prop per lift slot (the heaviest, then by id, like
+	## the lift itself).
+	func _part_kinds() -> Array[PropData]:
+		var parts: Array[PropData] = []
+		for content: ContentData in ContentRegistry.get_all(&"prop"):
+			var prop := content as PropData
+			if prop == null or prop.lift_slot == &"":
+				continue
+			if department != null and not department.lift_part_ids.is_empty() and not department.lift_part_ids.has(prop.id):
+				continue
+			parts.append(prop)
+		parts.sort_custom(func(a: PropData, b: PropData) -> bool:
+			return a.mass > b.mass if not is_equal_approx(a.mass, b.mass) else String(a.id) < String(b.id))
+		var kinds: Array[PropData] = []
+		var slots: Dictionary[StringName, bool] = {}
+		for prop: PropData in parts:
+			if not slots.has(prop.lift_slot):
+				slots[prop.lift_slot] = true
+				kinds.append(prop)
+		kinds.sort_custom(func(a: PropData, b: PropData) -> bool: return String(a.id) < String(b.id))
+		return kinds
+
+	## One kind, weighted by size: weight 1 + bias x (floor - 1) x size step (V10).
+	func _draw_part(kinds: Array[PropData], rng: RandomNumberGenerator) -> PropData:
+		var weights := PackedFloat32Array()
+		for part: PropData in kinds:
+			var step: int = maxi(TileStandards.PART_SIZES.find(part.part_size), 0)
+			weights.append(1.0 + tuning.part_size_bias_per_floor * float(maxi(floor_number - 1, 0)) * float(step))
+		return kinds[rng.rand_weighted(weights)]
+
+	## The spot for one part, keeping the rules it can (see _place_parts), or {}. `left` counts this part.
+	func _pick_part_spot(part: PropData, spots: Array[Dictionary], taken: FloorGenerator._PartState, left: int, farthest: float,
+			rng: RandomNumberGenerator, notes: PackedStringArray) -> Dictionary:
+		var size: int = maxi(TileStandards.PART_SIZES.find(part.part_size), 0)
+		var min_distance: float = farthest * tuning.part_min_distance_share
+		# Relaxation steps: 0 = every rule, 1 = any kind of room, 2 = any distance too.
+		for relax: int in 3:
+			var fits: Array[Dictionary] = []
+			for spot: Dictionary in spots:
+				if taken.keys.has(spot["key"]) or taken.rooms.has(spot["placement"]) or int(spot["size"]) < size:
+					continue
+				if spot["behind_keycard"] and taken.behind_keycards >= taken.keycard_limit:
+					continue
+				if relax < 1 and not (spot["categories"] as PackedStringArray).has(String(part.part_category)):
+					continue
+				if relax < 2 and float(spot["distance"]) < min_distance:
+					continue
+				fits.append(spot)
+			if fits.is_empty():
+				continue
+			# Preferences, each kept only when some spot allows it: near the incident (the first part on a
+			# high floor), a calm room (the last part, if all the others are in combat or hazard rooms), a main
+			# hallway side with no part yet, then a wing with no part yet.
+			if taken.need_near:
+				fits = _keep_if_any(fits, func(spot: Dictionary) -> bool: return spot["near"])
+			if left == 1 and not taken.calm:
+				var calm: Array[Dictionary] = _keep_if_any(fits, func(spot: Dictionary) -> bool: return spot["calm"])
+				if not calm[0]["calm"]:
+					notes.append("every part ended up in a combat or hazard room")
+				fits = calm
+			fits = _keep_if_any(fits, func(spot: Dictionary) -> bool: return not taken.sides.has(spot["side"]))
+			fits = _keep_if_any(fits, func(spot: Dictionary) -> bool: return not taken.wings.has(spot["wing"]))
+			if relax == 1:
+				notes.append("the %s is outside a room of its kind" % part.display_name.to_lower())
+			elif relax == 2:
+				notes.append("the %s is closer to the elevator than %d%% of the farthest room" % [
+					part.display_name.to_lower(), roundi(tuning.part_min_distance_share * 100.0)])
+			var weights := PackedFloat32Array()
+			for spot: Dictionary in fits:
+				var weight: float = 0.5 + float(spot["distance"]) / maxf(farthest, 1.0)
+				if spot["end"]:
+					weight *= tuning.part_branch_end_weight
+				weights.append(weight)
+			return fits[rng.rand_weighted(weights)]
+		return {}
+
+	## The spots that pass the test, or all of them if none does.
+	func _keep_if_any(spots: Array[Dictionary], test: Callable) -> Array[Dictionary]:
+		var kept: Array[Dictionary] = []
+		for spot: Dictionary in spots:
+			if test.call(spot):
+				kept.append(spot)
+		return kept if not kept.is_empty() else spots
+
+	## The way back from a tile to the elevator (tile indexes, ending in 0), shortest by walking distance, or
+	## empty if there is none.
+	func _carry_path(links: Dictionary[int, Array], from: int) -> PackedInt32Array:
+		var count: int = layout.placements.size()
+		var distances := PackedFloat32Array()
+		distances.resize(count)
+		distances.fill(INF)
+		var previous := PackedInt32Array()
+		previous.resize(count)
+		previous.fill(-1)
+		var done: Dictionary[int, bool] = {}
+		distances[from] = 0.0
+		while true:
+			var best: int = -1
+			for index: int in count:
+				if not done.has(index) and distances[index] < INF and (best < 0 or distances[index] < distances[best]):
+					best = index
+			if best < 0 or best == 0:
+				break
+			done[best] = true
+			for link: Variant in links.get(best, []):
+				var next: int = (link as Array)[0]
+				var length: float = (link as Array)[1]
+				if layout.collapsed.has(next) or distances[best] + length >= distances[next]:
+					continue
+				distances[next] = distances[best] + length
+				previous[next] = best
+		var path := PackedInt32Array()
+		if distances[0] == INF:
+			return path
+		var at: int = 0
+		while at >= 0:
+			path.append(at)
+			at = previous[at]
+		path.reverse()
+		return path
+
+	## Backup spots for each part (a lost part comes back at the first one that's free): spots it fits that no
+	## part uses, outside keycard doors first, farthest first.
+	func _pick_part_backups(spots: Array[Dictionary]) -> void:
+		var used: Dictionary[String, bool] = {}
+		for part: Array in layout.lift_parts:
+			used[str(part[1])] = true
+		var order: Array[Dictionary] = spots.duplicate()
+		order.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			if a["behind_keycard"] != b["behind_keycard"]:
+				return not a["behind_keycard"]
+			if not is_equal_approx(float(a["distance"]), float(b["distance"])):
+				return float(a["distance"]) > float(b["distance"])
+			return str(a["key"]) < str(b["key"]))
+		for part: Array in layout.lift_parts:
+			var data := ContentRegistry.get_content(StringName(str(part[0]))) as PropData
+			var size: int = maxi(TileStandards.PART_SIZES.find(data.part_size), 0) if data != null else 0
+			var backups := PackedStringArray()
+			for spot: Dictionary in order:
+				if backups.size() >= tuning.part_backup_spots:
+					break
+				if not used.has(spot["key"]) and int(spot["size"]) >= size:
+					backups.append(spot["key"])
+			layout.lift_part_backups.append(backups)
+
+	## The battery charger's spot, when a part needs charging: a charger marker the team can reach.
+	func _pick_charger(reach: Dictionary[int, bool], rng: RandomNumberGenerator) -> void:
+		var needs: bool = false
+		for part: Array in layout.lift_parts:
+			var data := ContentRegistry.get_content(StringName(str(part[0]))) as PropData
+			needs = needs or (data != null and data.needs_charge_seconds > 0.0)
+		if not needs:
+			return
+		var keys: Array[String] = []
+		for index: int in reach:
+			if layout.collapsed.has(index):
+				continue
+			for marker: Dictionary in RoomShape.of(_room_of(index), unit).markers:
+				if marker["kind"] == &"charger":
+					keys.append(FloorLayout.marker_key(index, marker["path"]))
+		if keys.is_empty():
+			_log("lift parts: no charger spot for the battery (the lift picks one)")
+			return
+		keys.sort()
+		layout.charger_marker = keys[rng.randi_range(0, keys.size() - 1)]
+
 	## The checks for this step (step 12 of the plan adds the rest).
 	func _check() -> void:
 		if not problem.is_empty():
@@ -1114,6 +1421,22 @@ class _Builder:
 		var needed: int = maxi(1, ceili(float(target_rooms) * tuning.min_rooms_share))
 		if rooms < needed:
 			problem = "only %d rooms (needs %d of the target %d)" % [rooms, needed, target_rooms]
+			return
+		# NEW 2026-11-09 (step 4d): every lift part can be carried back, and not every part is in a combat or
+		# hazard room (Q15).
+		var calm: bool = layout.lift_parts.is_empty()
+		var hazard_rooms := PackedStringArray()
+		for key: String in layout.active_markers.get(&"hazard", PackedStringArray()):
+			hazard_rooms.append(key.get_slice("/", 0))
+		for part: int in layout.lift_parts.size():
+			var path: PackedInt32Array = layout.lift_part_paths[part] if part < layout.lift_part_paths.size() else PackedInt32Array()
+			if path.is_empty() or path[path.size() - 1] != 0:
+				problem = "the %s can't be carried back to the elevator" % str(layout.lift_parts[part][0])
+				return
+			var placement: int = layout.lift_parts[part][2]
+			calm = calm or (not _room_of(placement).is_combat_room and not hazard_rooms.has(str(placement)))
+		if not calm:
+			problem = "every lift part is in a combat or hazard room"
 
 	## The safe fallback floor: the elevator, the welcome center, a short straight main hallway each way
 	## with a room at each end. No randomness that can fail.
@@ -1136,6 +1459,7 @@ class _Builder:
 					rooms += 1
 					break
 		_pick_markers()
+		_place_parts()
 		return layout
 
 	# --- Grid bookkeeping --------------------------------------------------------------------------------
@@ -1154,7 +1478,8 @@ class _Builder:
 		var own: Array = []
 		for doorway: Dictionary in shape.rotated_doorways(steps):
 			var socket: Dictionary = {"placement": index, "cell": corner + (doorway["cell"] as Vector2i),
-				"dir": doorway["dir"], "open": doorway["open_edge"], "name": doorway["name"]}
+				"dir": doorway["dir"], "open": doorway["open_edge"], "name": doorway["name"],
+				"connection": doorway.get("connection", RoomDoorway.CONNECTION_DOOR)}
 			sockets[_edge_key(socket["cell"], socket["dir"])] = socket
 			own.append(socket)
 		placement_sockets.append(own)

@@ -119,6 +119,7 @@ var markers: Array[Dictionary]                  # NEW: {"kind", "path"} read fro
 # Autoload Level
 func get_floor_transform() -> Transform3D      # NEW: where the (moved, turned) floor is
 func get_markers(kind)                          # CHANGED: only the markers the plan switched on, if it chose for that kind
+func get_marker_by_key(key: String) -> RoomMarker   # NEW 2026-11-10 (step 4d): a marker by its FloorLayout.marker_key
 # Level.build CHANGED: 3 m tile floors; an open hallway end nothing joins gets a "Cap..." wall (grid unit wide,
 # ceiling high, wall material); an unused door socket on a tile is sealed (BlockoutTile.seal_socket: plain wall,
 # no frame; CHANGED 2026-10-31), other rooms' doorways get a "Plug..." as before. Keys F3 (map) and F4 (new floor, host).
@@ -308,6 +309,25 @@ CHANGED 2026-10-31 (Zachary, "way more random"): each light has its own speed (`
 flicker is either one quick blink (`flicker_single_blink_chance`) or a burst of random switches
 (`flicker_on_chance`, not strict on-off-on) at a random brightness per flash (`flicker_brightness`), and the
 wait ranges are wider.
+
+**Lift parts** (NEW 2026-11-10, step 4d; plan step 8; numbers in `Config.floor_gen`, "Lift parts (V10)"). The
+generator picks the floor's broken lift parts and writes them into the plan (`FloorLayout.lift_parts`:
+`[part prop id, marker key, room]`), with a carry path for each (`lift_part_paths`: rooms from the part back to
+the elevator, through "door" connections only, never through a collapse), backup spots (`lift_part_backups`)
+and the battery charger's spot (`charger_marker`). How many: `parts_min/max_by_bracket`. Which: one per lift
+slot, drawn with weight `1 + part_size_bias_per_floor x (floor - 1) x size step`. Where: only in rooms (never
+the elevator, welcome center, security room or a hallway), on a `lift_part` marker whose `max_size` fits, at
+least `part_min_distance_share` of the farthest room's walking distance from the elevator, one room per part,
+spread over the two main hallways' sides and then their wings, in a room whose `part_categories` has the part's
+category, at a branch end when it can (`part_branch_end_weight`), at most
+`parts_behind_keycards_max_by_bracket` parts behind keycard doors, one near the incident from
+`part_near_incident_from_floor` (a heavy or destroyed room, or within `part_near_incident_metres`), and never
+every part in a combat or hazard room. Room kind and then distance are relaxed when nothing fits (written in
+the log); a part that fits nowhere is swapped for another kind; no part at all = the attempt fails. A part on a
+marker that isn't `visible_from_entrance` gets a cue: a small warm light (`part_cue_color`, `part_cue_range`)
+that goes out once the part is taken away. The cargo lift reads the plan (see cargo_lift.md); floors without a
+plan (the old generator) keep the lift's own pick. F3 shows parts as numbered orange diamonds with their
+carry paths.
 
 **Emergency slits** (NEW 2026-10-31, Zachary; `EmergencySlits`, numbers in `Config.floor_gen`, "Emergency
 slits"). The red emergency lights are small glowing slots low on the walls: 50 cm wide, 5 cm tall, 10 cm above
@@ -523,6 +543,16 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   `room_tile_hall_filler_dark` (tag "dark", piece "straight1_dark"): the generator puts one between two straight
   hallway pieces, and loops alternate lit and dark fillers. Level.build builds each tile's slits after sealing
   its doorways (`_light_room`). NEW tuning group "Emergency slits". Tests `test_emergency_slits.gd`.
+- 2026-11-10 (floor generation step 4d: lift parts, Q3, Q4, Q14, Q15, V9, V10): NEW generator step 8
+  (`_place_parts`): part count by floor bracket, kinds drawn by size (bigger likelier higher up), placed on
+  `lift_part` markers by the plan's rules (rooms only, far enough, spread over hallway sides and wings, room
+  kind, branch ends, at most N behind keycards, one near the incident from floor 4, never all in combat or
+  hazard rooms), relaxing room kind then distance (logged); a carry path back through door connections, backup
+  spots and the charger spot. NEW FloorLayout `lift_parts`, `lift_part_paths`, `lift_part_backups`,
+  `charger_marker`; NEW `Level.get_marker_by_key`; part cues (a small warm light) by parts on markers not
+  `visible_from_entrance`; parts and carry paths on the F3 map; validation checks carry paths and Q15. NEW
+  tuning `part_backup_spots`, `part_branch_end_weight`, `part_cue_color`, `part_cue_range`. Generator socket
+  entries carry their `connection`; `_links(doors_only)`. Tests `test_lift_parts_plan.gd`.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

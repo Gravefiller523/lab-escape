@@ -46,6 +46,17 @@ var marker_params: Dictionary[String, Dictionary] = {}
 var doors: Array[Array] = []
 ## Things the host spawns for the doors: [kind ("crowbar", "power_cell", "keycard_<colour>"), marker key, door index].
 var door_items: Array[Array] = []
+# NEW 2026-11-09 (floor generation step 4d: lift parts) --------------------------------------------------
+## The broken lift parts the plan picked: [part prop id (String), marker key, placement index]. The lift breaks
+## their slots and spawns each part at its marker (CargoLift reads this).
+var lift_parts: Array[Array] = []
+## Per part (same order): its carry path back to the elevator, placement indexes from the part's room to 0,
+## through door connections only.
+var lift_part_paths: Array[PackedInt32Array] = []
+## Per part (same order): marker keys where it comes back if it is lost (best first).
+var lift_part_backups: Array[PackedStringArray] = []
+## The battery charger's marker key ("" = no part needs charging, or no charger spot).
+var charger_marker: String = ""
 ## The generation log (host only: not sent to other PCs).
 var log_lines: PackedStringArray = PackedStringArray()
 ## Numbers about how the floor grew, for tests and the log (host only, not sent): "rooms", "max_depth".
@@ -96,6 +107,10 @@ func to_dict() -> Dictionary:
 		data["marker_params"] = params
 		data["doors"] = doors
 		data["door_items"] = door_items
+		data["lift_parts"] = lift_parts
+		data["lift_part_paths"] = lift_part_paths
+		data["lift_part_backups"] = lift_part_backups
+		data["charger_marker"] = charger_marker
 	return data
 
 
@@ -139,6 +154,13 @@ static func from_dict(data: Dictionary) -> FloorLayout:
 		layout.doors.append(door as Array)
 	for item: Variant in data.get("door_items", []):
 		layout.door_items.append(item as Array)
+	for part: Variant in data.get("lift_parts", []):
+		layout.lift_parts.append(part as Array)
+	for path: Variant in data.get("lift_part_paths", []):
+		layout.lift_part_paths.append(PackedInt32Array(path))
+	for backups: Variant in data.get("lift_part_backups", []):
+		layout.lift_part_backups.append(PackedStringArray(backups))
+	layout.charger_marker = str(data.get("charger_marker", ""))
 	var params: Dictionary = data.get("marker_params", {})
 	for key: Variant in params:
 		layout.marker_params[str(key)] = params[key] as Dictionary

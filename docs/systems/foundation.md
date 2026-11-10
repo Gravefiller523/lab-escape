@@ -123,6 +123,9 @@ None. Everything else depends on this.
 ## Changelog
 - 2026-10-07: created.
 - 2026-10-29 (feel step 0): NEW `Config.feel` (`FeelTuning`, `core/config/feel_tuning.gd`): every "how it feels" number in one file, `config/feel_tuning.tres`, with sections `player` (PlayerTuning), `props` (PropTuning) and `ai` (AiTuning). Loaded in `Config._enter_tree` after `Config.game`; an empty section falls back to its script defaults. GameConfig keeps game rules and network rates.
+- 2026-11-10 (floor generation step 4d): FloorGenTuning NEW `part_backup_spots`, `part_branch_end_weight`,
+  `part_cue_color`, `part_cue_range`. Content: `prop_lift_motor`, `prop_lift_control_board`, `prop_lift_brake_assembly`.
+  Additions only.
 - 2026-10-31 (level_gen emergency slits): FloorGenTuning NEW group "Emergency slits" (`emergency_slit_*`,
   `emergency_small_room`, `emergency_long_wall`, `emergency_room_spacing`, door/furniture clearances,
   `emergency_hall_lit_every`, `emergency_max_lights_per_tile`). Additions only.

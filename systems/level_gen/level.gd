@@ -11,6 +11,9 @@ signal floor_built()
 const ROOMS_NODE: String = "Rooms"
 const PLUG_THICKNESS: float = 0.35
 const PLUG_COLOR: Color = Color(0.5, 0.5, 0.53)
+## NEW 2026-11-09: how often (seconds) part cues check their part is still there, and how near it must be (metres).
+const CUE_CHECK_SECONDS: float = 0.5
+const CUE_REACH: float = 1.5
 
 var _config: GameConfig
 var _layout: FloorLayout
@@ -20,6 +23,9 @@ var _markers: Array[RoomMarker] = []
 ## NEW 2026-10-31: each marker's key (FloorLayout.marker_key), the same order as _markers.
 var _marker_keys: PackedStringArray = []
 var _overlay: FloorgenOverlay
+## NEW 2026-11-09 (step 4d): the lift part cues on this floor (see _add_part_cues).
+var _part_cues: Array[OmniLight3D] = []
+var _cue_check_left: float = 0.0
 
 
 ## For tests only: a different config.
@@ -163,6 +169,7 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 		for index: int in _room_nodes.size():
 			_light_room(_room_nodes[index], index, layout, department)
 		_build_doors(layout)
+		_add_part_cues(layout)
 	if layout.grid == RoomData.GRID_TILE and department != null and not department.palette.is_empty():
 		for node: Node in _rooms_root.get_children():
 			if node.name.begins_with("Cap"):
@@ -183,6 +190,7 @@ func clear() -> void:
 	_rooms_root = null
 	_room_nodes.clear()
 	_markers.clear()
+	_part_cues.clear()
 	_marker_keys.clear()
 	_layout = null
 
@@ -619,3 +627,54 @@ func spawn_door_items() -> int:
 func _marker_by_key(key: String) -> RoomMarker:
 	var index: int = _marker_keys.find(key)
 	return _markers[index] if index >= 0 and is_instance_valid(_markers[index]) else null
+
+
+## NEW 2026-11-09 (step 4d): a marker of this floor by its key (FloorLayout.marker_key), or null. The cargo
+## lift spawns the plan's lift parts (FloorLayout.lift_parts) at their markers with this.
+func get_marker_by_key(key: String) -> RoomMarker:
+	return _marker_by_key(key)
+
+
+# --- Lift part cues (NEW 2026-11-09, floor generation step 4d) ------------------------------------------
+
+## Every PC: a part on a marker you can't see from the room's doorway (not visible_from_entrance) gets a cue,
+## a small warm light with a glowing dot ("PartCue"), shown while its part is still there.
+func _add_part_cues(layout: FloorLayout) -> void:
+	var tuning: FloorGenTuning = Config.floor_gen
+	for part: Array in layout.lift_parts:
+		var marker: RoomMarker = _marker_by_key(str(part[1]))
+		if marker == null or bool(marker.params.get("visible_from_entrance", false)):
+			continue
+		var cue := OmniLight3D.new()
+		cue.name = "PartCue"
+		cue.position = Vector3(0, 0.6, 0)
+		cue.light_color = tuning.part_cue_color
+		cue.light_energy = 1.5
+		cue.omni_range = tuning.part_cue_range
+		cue.set_meta(&"part_id", StringName(str(part[0])))
+		var dot := _plain_mesh(Vector3(0.06, 0.06, 0.06), tuning.part_cue_color)
+		var glow := (dot.mesh as BoxMesh).material as StandardMaterial3D
+		glow.emission_enabled = true
+		glow.emission = tuning.part_cue_color
+		glow.emission_energy_multiplier = 3.0
+		cue.add_child(dot)
+		marker.add_child(cue)
+		_part_cues.append(cue)
+
+
+## Every PC, now and then: a cue goes out once its part has been taken away (and comes back if it is
+## brought back).
+func _process(delta: float) -> void:
+	if _part_cues.is_empty():
+		return
+	_cue_check_left -= delta
+	if _cue_check_left > 0.0:
+		return
+	_cue_check_left = CUE_CHECK_SECONDS
+	for cue: OmniLight3D in _part_cues:
+		if not is_instance_valid(cue) or not cue.is_inside_tree():
+			continue
+		var near: bool = false
+		for prop: NetProp in Props.get_props(cue.get_meta(&"part_id")):
+			near = near or prop.global_position.distance_to(cue.global_position) < CUE_REACH
+		cue.visible = near

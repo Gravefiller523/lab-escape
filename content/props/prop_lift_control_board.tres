@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/props/prop_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/cargo_lift/parts/control_board.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"prop_lift_control_board"
+display_name = "Control board"
+description = "The lift's control circuit board (grey placeholder). Slots into the CONTROL BOARD socket."
+tags = PackedStringArray("lift_part")
+scene = ExtResource("2_scene")
+mass = 1.5
+is_key_object = true
+lift_slot = &"control_board"
+part_size = &"small"
+part_category = &"electronic"
+surface = &"metal"

@@ -96,7 +96,9 @@ slot name adds a new slot to the lift), `fragile_break_speed` (above 0: shatters
 m/s), `needs_charge_seconds` (above 0: must sit on the lift charger this long before it fits). NEW 2026-10-30
 (lift parts, for the new floor generator): `part_size` (`small`, `medium`, `large`, `huge`: which `lift_part`
 markers it fits) and `part_category` (`mechanical`, `electrical`, `electronic`, `power`, `structural`: which
-rooms it turns up in). **Tags that systems look for:** `meat`, `lift_part`,
+rooms it turns up in). NEW 2026-11-10 (step 4d): a new lift part is just a new file like these: the floor generator
+picks it and places it on a `lift_part` marker it fits; check some room tiles have a marker with a big enough
+`max_size` and a room type with its `part_category`. rooms it turns up in). **Tags that systems look for:** `meat`, `lift_part`,
 `keycard`, `glowing_gem`, `robot_part`. **Test:** `spawn prop_<name>`.
 
 ## Enemy

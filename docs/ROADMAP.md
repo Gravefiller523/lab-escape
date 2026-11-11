@@ -190,7 +190,7 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Fixed on the way:** G52 (mid-floor joiners' machines and devices), G53 (prop messages too big), "player left"
   handling sending to the closed connection (net_core now handles a disconnect a frame later), the speed check's
   put-back message to players who aren't connected (G49), and the orphan node in the damage test.
-- **Status: waiting for your play test.** Branch `wp/01-full-run-test` (stacked on `docs/roadmap`).
+- **Status: done.** Merged into main 2026-11-11.
 
 #### WP2: Disconnects, late joiners and ghosts
 - **What:** a leaving client always drops what it held (lift parts and keycards come back); ghosts are moved into
@@ -208,7 +208,7 @@ can play. Every package follows the Working rules (section i). Status values: **
   (death_respawn), and ghosts have no nameplate (ui). G2 turned out to work already; the test now guards it.
 - **Not done here:** a rejoining player getting their mutations back can only be checked with real Steam IDs
   (local test players get a new id each time), so it's on the real-Steam checklist; G51 is still listed as known.
-- **Status: waiting for your play test.** Branch `wp/02-disconnects` (stacked on WP1).
+- **Status: done.** Merged into main 2026-11-11.
 
 #### WP3: Small leftovers that break plans
 - **What:** gems in a cart count at a vendor (the pusher gets the credit); duplicate key bindings warn; voice reads
@@ -224,7 +224,7 @@ can play. Every package follows the Working rules (section i). Status values: **
   share a key, "quieter voice effects" now works, enemy navigation reads the rooms' collision shapes (G50 gone),
   enemies wait a moment before their first position update (G54 gone; both removed from the test's known list),
   and the full-run test checks every floor, boss floors included, has a 3D printer (G5).
-- **Status: waiting for your play test.** Branch `wp/03-leftovers` (stacked on WP2).
+- **Status: done.** Merged into main 2026-11-11.
 
 #### WP4: Playtest log (telemetry)
 - **What:** the telemetry system from its spec: writes every EventBus event and a per-run summary (floors, deaths,

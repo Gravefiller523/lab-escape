@@ -41,6 +41,7 @@ func _ready() -> void:
 		_died_msec.clear()
 		_new_floor())
 	EventBus.player_left.connect(_on_player_left)
+	EventBus.lift_departed.connect(func(_floor_number: int) -> void: _bring_ghosts_aboard())
 	EventBus.run_ended.connect(func(_result: StringName) -> void: _revive_everyone())
 	DebugConsole.register_command(&"kill", _cmd_kill, "kill: die (to test reprinting)")
 	DebugConsole.register_command(&"meat", _cmd_meat, "meat <count>: drop meat in front of you (default 1)")
@@ -242,6 +243,23 @@ func _on_player_left(player_id: int) -> void:
 	var body: PlayerCharacter = PlayerCharacter.find(player_id)
 	if body != null and not body.is_queued_for_deletion():
 		_drop_everything(body)
+
+
+## NEW 2026-11-11 (roadmap WP2): host: the lift is leaving, so ghosts ride in it instead of staying where they died
+## (they used to arrive on the next floor wherever their body had been, floating outside the level).
+func _bring_ghosts_aboard() -> void:
+	var lift: CargoLift = CargoLift.current()
+	if not multiplayer.is_server() or lift == null:
+		return
+	var spots: Array[Node3D] = lift.get_spawn_points()
+	if spots.is_empty():
+		return
+	var index: int = 0
+	for player_id: int in _dead_order:
+		var body: PlayerCharacter = PlayerCharacter.find(player_id)
+		if body != null:
+			body.teleport(spots[index % spots.size()].global_transform)
+			index += 1
 
 
 ## The run is over (back to the Break Room): nobody stays a ghost. Host revives; every PC drops its ghost camera.

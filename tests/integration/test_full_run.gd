@@ -28,6 +28,11 @@ const EXIT_NOISE: PackedStringArray = ["leaked at exit", "resources still in use
 const KNOWN: PackedStringArray = [
 	# Roadmap G50 / WP3: enemy navigation reads the blockout rooms' visual meshes.
 	"Source geometry parsing for navigation mesh baking had to parse RenderingServer meshes at runtime",
+	# Roadmap G54 / WP3: now and then an enemy's position update reaches a client just before the enemy appears there
+	# (or just after it is gone), so the client can't find it. Harmless, but it fills the log.
+	"Node not found: \"Enemies/Spawner/Enemy",
+	"Failed to get path from RPC: Enemies/Spawner/Enemy",
+	"Invalid packet received. Requested node was not found.",
 ]
 ## The same, but only allowed after the process has finished its run and is leaving.
 const KNOWN_WHILE_LEAVING: PackedStringArray = [
@@ -84,7 +89,7 @@ func _problems(role: String) -> PackedStringArray:
 	var found := PackedStringArray()
 	var leaving: bool = false
 	for line: String in _read_text(_path(role, "log")).split("\n"):
-		leaving = leaving or line.begins_with("[full_run] %s finished" % ("host" if role == "host" else "client"))
+		leaving = leaving or (line.begins_with("[full_run] ") and line.contains(" finished: "))
 		if not (line.begins_with("SCRIPT ERROR") or line.begins_with("ERROR") or line.begins_with("WARNING")):
 			continue
 		var noise: bool = false
@@ -195,3 +200,49 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 		assert_eq((seen as Dictionary).get("has_body", false), number > LATE_FLOOR,
 			"the late joiner has a body on floor %d: %s" % [number, number > LATE_FLOOR])
 	assert_eq(late.get("result", ""), "escaped", "the late joiner saw the escape")
+
+
+## NEW 2026-11-11 (roadmap WP2): players leaving mid-floor. A client given a crowbar grabs a lift part and quits on
+## floor 1: its crowbar drops, the part stays on the floor (let go) and the run goes on. On floor 2 the host walks
+## out: the last client lands back in the main menu.
+func test_players_leaving_mid_floor() -> void:
+	var leave_port: String = "--port=%d" % (PORT + 1)
+	_start("leave_host", "host", PackedStringArray(["--progress=%s" % _path("leave_host", "progress"),
+		"--start_players=3", "--floors=3", "--boss_every=0", "--ride=%s" % QUICK_RIDE_SECONDS, "--leave_floor=1",
+		"--leaver_id_file=%s" % _path("leaver", "id"), "--quit_floor=2", leave_port]))
+	_start("stayer", "client", PackedStringArray([leave_port]))
+	_start("leaver", "leaver", PackedStringArray(["--id_file=%s" % _path("leaver", "id"),
+		"--host_progress=%s" % _path("leave_host", "progress"), leave_port]))
+	var all_done: Callable = func() -> bool:
+		return not _running("leave_host") and not _running("stayer") and not _running("leaver")
+	await wait_until(all_done, QUICK_TIMEOUT)
+
+	var host: Dictionary = _report("leave_host")
+	var stayer: Dictionary = _report("stayer")
+	var leaver: Dictionary = _report("leaver")
+	for role: String in ["leave_host", "stayer", "leaver"]:
+		gut.p("%s report: %s" % [role, _read_text(_path(role, "json"))])
+		var problems: PackedStringArray = _problems(role)
+		for line: String in problems:
+			gut.p("%s log: %s" % [role, line])
+		assert_eq(problems.size(), 0, "no errors or warnings in the %s's log" % role)
+
+	assert_true(host.get("ok", false), "the host got to floor 2: %s" % str(host.get("notes", [])))
+	assert_true(leaver.get("ok", false), "the leaver did its part: %s" % str(leaver.get("notes", [])))
+	assert_true(leaver.get("held", false), "the leaver was holding the part when it quit")
+	var floors: Array = host.get("floors", [])
+	assert_eq(_floor_numbers(floors), [1, 2] as Array[int], "floor 1, then the host quits on floor 2")
+	if floors.is_empty():
+		return
+	var leave: Dictionary = (floors[0] as Dictionary).get("leave", {})
+	assert_true(leave.get("held_by_leaver", false), "the host saw the leaver holding the part")
+	assert_true(leave.get("left", false), "the leaver left")
+	assert_true(leave.get("body_gone", false), "its body is gone")
+	assert_true(leave.get("crowbar_dropped", false), "its crowbar dropped for the team")
+	assert_true(leave.get("part_still_there", false), "the lift part is still on the floor")
+	assert_true(leave.get("part_let_go", false), "and nobody is holding it")
+	assert_true((floors[0] as Dictionary).get("lift_fixed", false), "the lift could still be fixed")
+
+	assert_true(stayer.get("host_left", false), "the client noticed the host leaving")
+	assert_eq(stayer.get("state_after_host_left", ""), "MAIN_MENU", "and went back to the main menu")
+	assert_eq(_floor_numbers(stayer.get("floors", [])), [1, 2] as Array[int], "after playing floors 1 and 2")

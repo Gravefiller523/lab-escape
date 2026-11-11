@@ -143,6 +143,21 @@ func test_plate_goes_when_the_player_leaves() -> void:
 	assert_null(plates.get_plate(1001))
 
 
+## NEW 2026-11-11 (roadmap WP2): a dead player (a ghost) shows no name, and gets it back when reprinted.
+func test_ghosts_have_no_plate() -> void:
+	var other := _body(1001, Vector3(0, 0, -3))
+	_viewer()
+	var plates := _nameplates()
+	await wait_process_frames(3)
+	assert_not_null(plates.get_plate(1001), "alive: a name")
+	other.set_ghost(true)
+	await wait_process_frames(3)
+	assert_null(plates.get_plate(1001), "a ghost: no name")
+	other.set_ghost(false)
+	await wait_process_frames(3)
+	assert_not_null(plates.get_plate(1001), "reprinted: the name is back")
+
+
 func test_names_fade_out_and_back_in() -> void:
 	var other := _body(1001, Vector3(0, 0, -3))
 	_viewer()

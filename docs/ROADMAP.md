@@ -233,7 +233,7 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Test it:** console `telemetry on`, play two floors, open the file it names.
 - **Gaps:** G20, G26.
 - **Built:** `Telemetry` autoload, 5 tests. Each PC writes its own log; the host's is the most complete.
-- **Status: waiting for your play test.** Branch `wp/04-telemetry` (stacked on `wp/05-hud`).
+- **Status: done.** Merged into main 2026-11-11.
 
 ### Phase U: the game explains itself
 

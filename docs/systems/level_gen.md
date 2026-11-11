@@ -589,6 +589,16 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   are mostly vines (NEW prop `prop_debris_vines`). The airlock is an ordinary small room with a door on each side
   for now (a true two-door choke point between a hallway and a lab needs generator support; later). Tests
   `test_botany.gd`.
+- 2026-11-11 (floor generation step 5b: Zoology, plan section 8): the Zoology department is real: its own welcome
+  center (hay bales, a moss stripe), 7 room tiles (animal holding, veterinary surgery, feed storage, observation
+  room with one-way windows, aquarium, habitat simulation, quarantine pens), required rooms animal holding, vet
+  surgery and feed storage, room types with part categories, a wood, sand and moss palette
+  (`assets/materials/zoology/`), amber emergency slits, a prop pool (crates, meat, feed sacks, hay), 2 incidents
+  (enclosure breakout: NEW overlay flavour "claws"; tank rupture: the "flood" overlay and water hazards), hazards
+  (broken enclosures, water) and debris (NEW props `prop_debris_hay`, `prop_debris_feed_sack`,
+  `prop_debris_cage_bars`). It keeps the giant rat boss floors and its rat, bat, fly and kangaroo. Generator: a room
+  with a broken enclosure hazard also gets its enemy spawn spots switched on (never the calm part room). Not done:
+  the plan's "broken skylights and dark corners" damage look. Tests `test_zoology.gd`.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

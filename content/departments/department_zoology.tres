@@ -1,8 +1,15 @@
-[gd_resource type="Resource" script_class="DepartmentData" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="DepartmentData" load_steps=34 format=3]
 
 [ext_resource type="Script" path="res://core/data/levels/department_data.gd" id="1_data"]
 [ext_resource type="Script" path="res://core/data/shared/weighted_id_data.gd" id="2_weighted"]
-[ext_resource type="Script" path="res://core/data/levels/lighting_style_data.gd" id="3_lighting"]
+[ext_resource type="Script" path="res://core/data/levels/room_type_data.gd" id="3_room_type"]
+[ext_resource type="Script" path="res://core/data/levels/incident_data.gd" id="4_incident"]
+[ext_resource type="Script" path="res://core/data/levels/lighting_style_data.gd" id="5_lighting"]
+[ext_resource type="Material" path="res://assets/materials/zoology/zoology_wall.tres" id="6_wall"]
+[ext_resource type="Material" path="res://assets/materials/zoology/zoology_floor.tres" id="7_floor"]
+[ext_resource type="Material" path="res://assets/materials/zoology/zoology_trim.tres" id="8_trim"]
+[ext_resource type="Material" path="res://assets/materials/zoology/zoology_accent.tres" id="9_accent"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_zoology_welcome_center.tscn" id="10_welcome"]
 
 [sub_resource type="Resource" id="Enemy_rat"]
 script = ExtResource("2_weighted")
@@ -24,24 +31,151 @@ script = ExtResource("2_weighted")
 content_id = &"enemy_kangaroo"
 weight = 0.5
 
+[sub_resource type="Resource" id="Prop_crate"]
+script = ExtResource("2_weighted")
+content_id = &"prop_crate"
+weight = 2.0
+
+[sub_resource type="Resource" id="Prop_meat"]
+script = ExtResource("2_weighted")
+content_id = &"prop_meat"
+weight = 2.0
+
+[sub_resource type="Resource" id="Prop_feed_sack"]
+script = ExtResource("2_weighted")
+content_id = &"prop_debris_feed_sack"
+weight = 1.5
+
+[sub_resource type="Resource" id="Prop_hay"]
+script = ExtResource("2_weighted")
+content_id = &"prop_debris_hay"
+weight = 1.0
+
+[sub_resource type="Resource" id="Type_animal_holding"]
+script = ExtResource("3_room_type")
+id = &"room_type_animal_holding"
+room_kind = &"animal_holding"
+display_name = "Animal Holding"
+max_per_floor = 1
+size_categories = PackedStringArray("large")
+part_categories = PackedStringArray("structural", "mechanical")
+
+[sub_resource type="Resource" id="Type_vet_surgery"]
+script = ExtResource("3_room_type")
+id = &"room_type_vet_surgery"
+room_kind = &"vet_surgery"
+display_name = "Veterinary Surgery"
+max_per_floor = 1
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("electronic", "electrical")
+
+[sub_resource type="Resource" id="Type_feed_storage"]
+script = ExtResource("3_room_type")
+id = &"room_type_feed_storage"
+room_kind = &"feed_storage"
+display_name = "Feed Storage"
+max_per_floor = 2
+size_categories = PackedStringArray("small")
+part_categories = PackedStringArray("mechanical", "power")
+
+[sub_resource type="Resource" id="Type_observation_room"]
+script = ExtResource("3_room_type")
+id = &"room_type_observation_room"
+room_kind = &"observation_room"
+display_name = "Observation Room"
+weight = 1.2
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("electronic")
+
+[sub_resource type="Resource" id="Type_aquarium"]
+script = ExtResource("3_room_type")
+id = &"room_type_aquarium"
+room_kind = &"aquarium"
+display_name = "Aquarium"
+weight = 1.2
+max_per_floor = 2
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("power", "electrical")
+
+[sub_resource type="Resource" id="Type_habitat_sim"]
+script = ExtResource("3_room_type")
+id = &"room_type_habitat_sim"
+room_kind = &"habitat_sim"
+display_name = "Habitat Simulation"
+max_per_floor = 1
+size_categories = PackedStringArray("large")
+part_categories = PackedStringArray("structural", "mechanical")
+
+[sub_resource type="Resource" id="Type_quarantine_pens"]
+script = ExtResource("3_room_type")
+id = &"room_type_quarantine_pens"
+room_kind = &"quarantine_pens"
+display_name = "Quarantine Pens"
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("electrical", "mechanical")
+
 [sub_resource type="Resource" id="Lighting"]
-script = ExtResource("3_lighting")
-light_color = Color(1, 0.9, 0.75, 1)
+script = ExtResource("5_lighting")
+light_color = Color(1, 0.88, 0.7, 1)
+light_energy = 0.95
+emergency_color = Color(1, 0.55, 0.1, 1)
+
+[sub_resource type="Resource" id="Incident_breakout_lighting"]
+script = ExtResource("5_lighting")
+light_color = Color(1, 0.8, 0.6, 1)
+light_energy = 0.7
+emergency_color = Color(1, 0.45, 0.08, 1)
+
+[sub_resource type="Resource" id="Incident_tank_lighting"]
+script = ExtResource("5_lighting")
+light_color = Color(0.8, 0.92, 1, 1)
+light_energy = 0.8
+emergency_color = Color(1, 0.55, 0.15, 1)
+
+[sub_resource type="Resource" id="Incident_enclosure_breakout"]
+script = ExtResource("4_incident")
+id = &"incident_enclosure_breakout"
+display_name = "Enclosure breakout"
+weight = 1.5
+origin_room_kinds = PackedStringArray("animal_holding", "habitat_sim", "quarantine_pens")
+overlay_flavour = &"claws"
+hazard_kinds = PackedStringArray("broken_enclosure")
+lighting = SubResource("Incident_breakout_lighting")
+
+[sub_resource type="Resource" id="Incident_tank_rupture"]
+script = ExtResource("4_incident")
+id = &"incident_tank_rupture"
+display_name = "Tank rupture"
+origin_room_kinds = PackedStringArray("aquarium")
+overlay_flavour = &"flood"
+hazard_kinds = PackedStringArray("water")
+lighting = SubResource("Incident_tank_lighting")
 
 [resource]
 script = ExtResource("1_data")
 id = &"department_zoology"
 display_name = "Zoology"
-description = "Animal holding, vet surgery, tanks. PLACEHOLDER (floor generation step 4a): uses only the shared rooms until its own rooms are built (plan step 5). Its boss is the giant rat."
-tags = PackedStringArray("zoology", "placeholder")
-room_ids = Array[StringName]([&"room_tile_office"])
+description = "Warm natural tones (wood, sand, moss green) and warm light. Animal holding, vet surgery, tanks and habitats (floor generation step 5b). Its boss is the giant rat."
+tags = PackedStringArray("zoology")
+room_ids = Array[StringName]([&"room_tile_zoology_welcome_center", &"room_tile_zoology_animal_holding", &"room_tile_zoology_vet_surgery", &"room_tile_zoology_feed_storage", &"room_tile_zoology_observation_room", &"room_tile_zoology_aquarium", &"room_tile_zoology_habitat_sim", &"room_tile_zoology_quarantine_pens"])
 enemy_spawns = Array[ExtResource("2_weighted")]([SubResource("Enemy_rat"), SubResource("Enemy_bat"), SubResource("Enemy_fly"), SubResource("Enemy_kangaroo")])
 boss_id = &"boss_giant_rat"
 loot_id = &"loot_zoology_small"
 stock_id = &"stock_zoology_vending"
 upgrade_type = &"mutation"
+required_room_kinds = PackedStringArray("lift", "animal_holding", "vet_surgery", "feed_storage")
 ambient_color = Color(0.65, 0.6, 0.5, 1)
 accent_color = Color(0.45, 0.6, 0.3, 1)
 boss_floors = true
+welcome_center_scene = ExtResource("10_welcome")
+room_types = Array[ExtResource("3_room_type")]([SubResource("Type_animal_holding"), SubResource("Type_vet_surgery"), SubResource("Type_feed_storage"), SubResource("Type_observation_room"), SubResource("Type_aquarium"), SubResource("Type_habitat_sim"), SubResource("Type_quarantine_pens")])
+palette = {
+"accent": ExtResource("9_accent"),
+"floor": ExtResource("7_floor"),
+"trim": ExtResource("8_trim"),
+"wall": ExtResource("6_wall")
+}
 lighting = SubResource("Lighting")
+prop_pool = Array[ExtResource("2_weighted")]([SubResource("Prop_crate"), SubResource("Prop_meat"), SubResource("Prop_feed_sack"), SubResource("Prop_hay")])
 hazard_kinds = PackedStringArray("broken_enclosure", "water")
+incidents = Array[ExtResource("4_incident")]([SubResource("Incident_enclosure_breakout"), SubResource("Incident_tank_rupture")])

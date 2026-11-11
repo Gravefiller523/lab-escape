@@ -658,6 +658,7 @@ class _Builder:
 		var rng: RandomNumberGenerator = _rng(&"floorgen_markers")
 		var keys := PackedStringArray()
 		var debris: int = 0
+		var debris_props: Array[StringName] = tuning.debris_props_for(department.id if department != null else &"")
 		for index: int in layout.placements.size():
 			var level: int = layout.damage[index] if index < layout.damage.size() else 0
 			var share: float = tuning.prop_spawn_share_damaged if level >= 2 else tuning.prop_spawn_share
@@ -670,8 +671,8 @@ class _Builder:
 					continue
 				var debris_chance: float = [0.0, tuning.debris_prop_chance_light, tuning.debris_prop_chance_heavy,
 					tuning.debris_prop_chance_destroyed][level]
-				if not tuning.debris_prop_ids.is_empty() and rng.randf() < debris_chance:
-					layout.marker_params[key] = {"prop_id": String(tuning.debris_prop_ids[rng.randi_range(0, tuning.debris_prop_ids.size() - 1)])}
+				if not debris_props.is_empty() and rng.randf() < debris_chance:
+					layout.marker_params[key] = {"prop_id": String(debris_props[rng.randi_range(0, debris_props.size() - 1)])}
 					debris += 1
 				elif department != null and not department.prop_pool.is_empty():
 					var weights := PackedFloat32Array()

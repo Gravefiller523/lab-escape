@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/props/prop_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/debris/debris_vines.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"prop_debris_vines"
+display_name = "Tangle of vines"
+description = "Overgrown vines blocking Botany doorways and lying in damaged rooms (floor generation step 5a). Light enough to drag away alone."
+tags = PackedStringArray("debris")
+scene = ExtResource("2_scene")
+mass = 6.0
+surface = &"wood"

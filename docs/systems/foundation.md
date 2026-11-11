@@ -123,6 +123,9 @@ None. Everything else depends on this.
 ## Changelog
 - 2026-10-07: created.
 - 2026-10-29 (feel step 0): NEW `Config.feel` (`FeelTuning`, `core/config/feel_tuning.gd`): every "how it feels" number in one file, `config/feel_tuning.tres`, with sections `player` (PlayerTuning), `props` (PropTuning) and `ai` (AiTuning). Loaded in `Config._enter_tree` after `Config.game`; an empty section falls back to its script defaults. GameConfig keeps game rules and network rates.
+- 2026-11-11 (floor generation step 5a): FloorGenTuning NEW `debris_prop_ids_by_department`, `debris_props_for()`,
+  `hazard_slow`; `hazard_damage_per_second` and `hazard_damage_types` gain toxic_spores, toxic_gas and water. Content:
+  the Botany department, its tiles and room data, `prop_debris_vines`, `assets/materials/botany/`. Additions only.
 - 2026-11-10 (floor generation step 4f): FloorGenTuning NEW `enemy_spot_share`, `enemy_spots_min`,
   `enemy_spot_min_distance`. Additions only.
 - 2026-11-10 (floor generation step 4e): FloorGenTuning NEW `map_resolution`, `map_blink_seconds`, `map_scan_seconds`,

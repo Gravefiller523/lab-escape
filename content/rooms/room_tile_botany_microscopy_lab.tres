@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="RoomData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/levels/room_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_botany_microscopy_lab.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"room_tile_botany_microscopy_lab"
+display_name = "Microscopy lab (blockout)"
+description = "Botany microscopy lab: microscope benches along the walls, a sorting table."
+tags = PackedStringArray("blockout")
+scene = ExtResource("2_scene")
+size_cells = Vector3i(3, 1, 4)
+room_kind = &"microscopy_lab"
+grid = &"tile_3m"
+tile_role = &"room"
+size_category = &"medium"
+part_categories = PackedStringArray("electronic")
+department_ids = Array[StringName]([&"department_botany"])

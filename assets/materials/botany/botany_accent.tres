@@ -1,0 +1,7 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+resource_name = "botany_accent"
+albedo_color = Color(0.8, 0.86, 0.84, 1)
+roughness = 0.5
+metallic = 0.2

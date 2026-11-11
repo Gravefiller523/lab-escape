@@ -1,0 +1,7 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+resource_name = "botany_floor"
+albedo_color = Color(0.7, 0.74, 0.72, 1)
+roughness = 0.9
+metallic = 0.0

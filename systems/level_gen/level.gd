@@ -150,6 +150,7 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 		if layout.grid == RoomData.GRID_TILE:
 			_dress_room(node, room, department)
 			_apply_damage(node, index, layout)
+			IncidentOverlays.dress(node, index, layout, department)
 		for marker: RoomMarker in _markers_in(node):
 			var key: String = FloorLayout.marker_key(index, String(node.get_path_to(marker)))
 			if layout.marker_params.has(key):
@@ -619,8 +620,10 @@ func spawn_door_items() -> int:
 			Props.spawn_prop(StringName("prop_%s" % kind), xform)
 		spawned += 1
 	var rng: RandomNumberGenerator = SeededRng.make(_layout.floor_seed, &"floorgen_door_debris", _layout.attempt)
+	# CHANGED 2026-11-11 (step 5a): the department's own debris (vines in Botany).
+	var debris_props: Array[StringName] = tuning.debris_props_for(_layout.department_id)
 	for index: int in _layout.doors.size():
-		if _layout.doors[index][3] != FloorGenerator.DOOR_DEBRIS or tuning.debris_prop_ids.is_empty():
+		if _layout.doors[index][3] != FloorGenerator.DOOR_DEBRIS or debris_props.is_empty():
 			continue
 		var room_index: int = _layout.doors[index][0]
 		if room_index >= _room_nodes.size():
@@ -630,7 +633,7 @@ func spawn_door_items() -> int:
 			continue
 		for piece: int in rng.randi_range(tuning.debris_pieces_min, tuning.debris_pieces_max):
 			var local := Vector3(rng.randf_range(-1.0, 1.0), 0.35 + 0.35 * floorf(float(piece) / 3.0), rng.randf_range(-0.6, 0.6))
-			var prop_id: StringName = tuning.debris_prop_ids[rng.randi_range(0, tuning.debris_prop_ids.size() - 1)]
+			var prop_id: StringName = debris_props[rng.randi_range(0, debris_props.size() - 1)]
 			Props.spawn_prop(prop_id, Transform3D(holder.global_basis, holder.global_transform * local))
 			spawned += 1
 	return spawned

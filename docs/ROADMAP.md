@@ -250,7 +250,7 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **What:** Tab shows every player with ping, a mute button and (host) kick; the pause menu gets a controls page.
 - **Gaps:** G21, G31.
 - **Built:** Tab opens a list of every player with their ping, Mute / Unmute (only what you hear) and, for the host, Kick; Tab or Esc closes it. The pause menu has a Controls button listing every action and its key. Ping shows "-" over Steam for now (Steam's relay doesn't report it the same way); it works in local tests.
-- **Status: waiting for your play test.** Branch `wp/06-players-controls` (from main).
+- **Status: done.** Merged into main 2026-11-11.
 
 #### WP7: Hits you can feel (needs your OK on a mock-up first)
 - **What:** hit flash on enemies and players, a 40 to 60 ms hit pause on melee hits, camera kick when hurt (honours

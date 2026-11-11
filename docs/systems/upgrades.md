@@ -119,6 +119,8 @@ GUT tests: `test_grant_applies_every_effect_piece`, `test_unique_does_not_stack`
   `PropPunter`) plus the robot arm at `right_arm`. Right click punts props (see docs/systems/physics_props.md, "Punt"). No code
   in upgrades. Test: `test_the_punt_arm_gives_the_punt`.
 
+- 2026-11-11 (roadmap WP1): a mid-floor joiner's mutation machine asks the host for its state once the connection is open (`HostLink`).
+
 ## HANDOFF
 **Built (2026-10-23):** the `Upgrades` autoload (`UpgradesService`), `UpgradeCarrier`, `UpgradeEffect` + six runtime pieces
 (movement, voice, slot, stat, visual attachment, behaviour), the five launch mutations and the test arm, the test scene

@@ -94,6 +94,8 @@ GUT tests: `test_death_drops_all_items`, `test_death_releases_held_prop`, `test_
 - 2026-10-24: playtest fixes: the printer hopper also checks what is already in it every physics tick (meat let go inside it now goes in). After a team wipe a client could stay dead and invisible in the Break Room: fixed in damage (see damage.md).
 - 2026-10-24 (later): meat touching the printer hopper goes in even while it is held (the host lets go of it first). Test `test_held_meat_touching_the_hopper_counts`.
 
+- 2026-11-11 (roadmap WP1): a mid-floor joiner's printers ask the host for their state once the connection is open (`HostLink`).
+
 ## HANDOFF
 **Built (2026-10-23):** the `Death` autoload (`DeathService`), `Printer3D` (`printer_3d.tscn`: a hopper for meat, a print
 button, a screen with the meat count and who's next, an output pad), the test scene

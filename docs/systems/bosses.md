@@ -105,6 +105,8 @@ F7 players invisible, F10 crowbar). GUT (`tests/unit/bosses/test_bosses.gd`, 9):
 - 2026-10-23: built (Phase 1b). Changes marked above. New GameConfig `boss_minions_per_extra_player` (0.5). Content:
   `boss_giant_rat`. game_flow's "Defeat the boss" button stub is gone.
 
+- 2026-11-11 (roadmap WP1): a boss arena built by a mid-floor joiner asks the host for its state once the connection is open (`HostLink`).
+
 ## HANDOFF
 **Built (2026-10-23):** `Boss` (phases, minion waves, health label), `BossAttack` + `charge` and `slam`, the
 `boss_fight` state, `BossArena` (fight start, door bars, keeps the boss inside), the `Bosses` autoload (boss floors,

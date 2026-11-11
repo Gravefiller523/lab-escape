@@ -99,6 +99,9 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G11 | Steam rich presence in a friend's list never checked. | reliability | S | You |
 | G49 | The test run prints 79 RPC errors (from `test_speed_check.gd`'s fake client) and leaves 1 orphan node, so a real new error is easy to miss in the Output panel. | reliability | S | |
 | G50 | Enemy navigation baking reads visual meshes (Godot warns this is slow) and reports 2 navmesh edge errors on some floors: a possible hitch on floor load and odd enemy paths. | reliability | S | |
+| G51 | When the host leaves a local (no Steam) game, ENet prints one "Unable to send packet on channel 0" error while saying goodbye. Harmless; found by WP1. | reliability | S | |
+| G52 | ~~A player who joins mid-floor built the floor before their connection opened, so its vending machines, printers, mutation machine, doors, buttons, boss arena and plants asked the host for their state too early and never heard back (no shop offers, wrong door states).~~ Fixed in WP1. | reliability | S | |
+| G53 | ~~Prop snapshot messages reached 1,900 bytes, over one network packet, so on real connections they'd be lost more often (jumpy props).~~ Fixed in WP1. | reliability | S | |
 
 ### Fun and clarity
 | # | Gap | Tag | Size | You |
@@ -174,8 +177,18 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Why first:** every later package changes many systems. This catches "the run breaks on floor 8" in minutes.
 - **Test it in the game:** run the test from the GUT panel and watch it pass; the soak prints one line per floor.
 - Also: silence the 79 RPC errors and the orphan in the test run, so the Output panel is clean (G49).
-- **Gaps:** G1, G5, G49.
-- **Status: in progress.** Branch `wp/01-full-run-test`.
+- **Gaps:** G1, G5, G49, G52, G53.
+- **Built:** `tests/integration/test_full_run.gd` starts 3 Godot processes (host, a client, and a late joiner who
+  connects during floor 1) running `tests/integration/full_run/full_run_launcher.tscn`. The quick run: 4 floors, a
+  boss every 2nd floor, 1 s rides; the host fixes the lift by slotting each broken part, a client dies and is
+  reprinted on floor 3, both bosses are beaten, and everyone rides back to the Break Room. It checks every floor in
+  order on all 3 PCs with the same departments, bodies for everyone, the late joiner waiting then spawning, and no
+  errors in any process's log (two known ones, G50 and G51, are listed in the test and printed). About 25 s.
+  Long version: set `LAB_ESCAPE_FULL_RUN=soak` to play the real 18 floors.
+- **Fixed on the way:** G52 (mid-floor joiners' machines and devices), G53 (prop messages too big), "player left"
+  handling sending to the closed connection (net_core now handles a disconnect a frame later), the speed check's
+  put-back message to players who aren't connected (G49), and the orphan node in the damage test.
+- **Status: waiting for your play test.** Branch `wp/01-full-run-test` (stacked on `docs/roadmap`).
 
 #### WP2: Disconnects, late joiners and ghosts
 - **What:** a leaving client always drops what it held (lift parts and keycards come back); ghosts are moved into
@@ -184,7 +197,9 @@ can play. Every package follows the Working rules (section i). Status values: **
   3 local windows.
 - **Test it:** Host local + 2 Join local. Close a client while it carries a lift part; the part reappears.
   Die outside the lift and let it leave; you arrive inside the lift as a ghost. Join while a floor is running.
-- **Gaps:** G2, G3, G8.
+- Start from WP1's full-run test: add a client leaving mid-floor while carrying a lift part, and the host leaving.
+  Note from WP1: the host's log shows one ENet error when it leaves a local game (G51).
+- **Gaps:** G2, G3, G8, G51.
 - **Status: not started.**
 
 #### WP3: Small leftovers that break plans

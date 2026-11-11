@@ -63,7 +63,12 @@ func _ready() -> void:
 		_area.body_entered.connect(func(_body: Node3D) -> void: _check())
 	EventBus.boss_defeated.connect(_on_boss_defeated)
 	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
-		_request_state_rpc.rpc_id(1)
+		# CHANGED 2026-11-11 (roadmap WP1): a mid-floor joiner asks once its connection is open.
+		HostLink.when_connected(self, _send_state_request)
+
+
+func _send_state_request() -> void:
+	_request_state_rpc.rpc_id(1)
 
 
 func is_locked() -> bool:

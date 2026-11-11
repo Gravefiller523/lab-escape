@@ -46,7 +46,12 @@ func _ready() -> void:
 	if multiplayer.is_server():
 		roll_offers()
 	elif multiplayer.has_multiplayer_peer():
-		_request_state_rpc.rpc_id(1)
+		# CHANGED 2026-11-11 (roadmap WP1): a mid-floor joiner asks once its connection is open.
+		HostLink.when_connected(self, _send_state_request)
+
+
+func _send_state_request() -> void:
+	_request_state_rpc.rpc_id(1)
 
 
 ## For tests: roll offers with this seed instead of the run's.

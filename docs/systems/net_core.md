@@ -148,6 +148,8 @@ game_flow's EventBus signals on that PC only; press them in the host window), "G
 - 2026-10-18 (asked by Zachary): joining handshake so mid-floor joiners load the floor before anything is sent
   to them. NEW `set_join_handlers()`, GameConfig `join_load_timeout`. Test: `test_joiner_gets_ready_before_the_connection_opens`.
 
+- 2026-11-11 (roadmap WP1): CHANGED timing: a disconnect is handled one frame after the network reports it, so `player_left` (EventBus and `roster_changed`) now comes a frame later. While the signal runs the leaving peer is still on the network's list, so everything the host sent everyone in reaction also went to the closed connection and printed "Unable to send packet" errors. No API change.
+
 ## HANDOFF
 **Done:** the `Net` autoload: roster, slot indexes (lowest free slot, reused), PlayerRecords synced
 host -> clients, joining rules (open, room left, reconnects always allowed), mid-run joiners marked

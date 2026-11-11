@@ -331,7 +331,14 @@ func _reconnect(record: PlayerRecord, peer_id: int) -> void:
 	roster_changed.emit()
 
 
+## CHANGED 2026-11-11 (roadmap WP1): handled one frame later. While the signal runs, the leaving peer is still in the
+## network's list, so every message the host sends everyone in reaction (here, and in every player_left listener)
+## also went to the closed connection and printed "Unable to send packet" errors.
 func _on_peer_disconnected(peer_id: int) -> void:
+	_handle_peer_disconnected.call_deferred(peer_id)
+
+
+func _handle_peer_disconnected(peer_id: int) -> void:
 	# steam_session says goodbye while the game quits; by then we may already be out of the tree.
 	if not is_inside_tree():
 		return

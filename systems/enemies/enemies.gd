@@ -40,6 +40,7 @@ const NAV_MAP_RETRY_FRAMES: int = 5
 const NAV_MAP_RETRIES: int = 6
 
 var _spawner: EnemySpawner
+var _projectiles: Node3D
 var _nav_region: NavigationRegion3D
 ## NEW 2026-10-30 (doors): what was baked last (baked again by update_navigation), and regions a newer bake is
 ## replacing (in use until it is ready).
@@ -59,6 +60,10 @@ func _ready() -> void:
 	_spawner = EnemySpawner.new()
 	_spawner.name = "Spawner"
 	add_child(_spawner)
+	# NEW 2026-11-11 (roadmap WP9): enemy shots in flight (every PC flies its own copies).
+	_projectiles = Node3D.new()
+	_projectiles.name = "Projectiles"
+	add_child(_projectiles)
 	EventBus.floor_ready.connect(_on_floor_ready)
 	# NEW 2026-11-10 (floor generation step 4f, Q20): the host bakes the navigation as soon as the floor is built;
 	# game_flow waits for that bake before floor_ready, so enemies, props and parts spawn on a ready navmesh.
@@ -90,6 +95,24 @@ func despawn_all() -> void:
 ## NEW: the spawner node (tests).
 func get_spawner() -> EnemySpawner:
 	return _spawner
+
+
+## NEW 2026-11-11 (roadmap WP9): every PC: start a shot here (Enemy.fire_at sends it to everyone).
+func add_projectile(from: Vector3, velocity: Vector3, attack: RangedAttackData, shooter: Node) -> EnemyProjectile:
+	var shot := EnemyProjectile.new()
+	shot.launch(from, velocity, attack, shooter)
+	_projectiles.add_child(shot)
+	return shot
+
+
+## The shots in flight on this PC.
+func get_projectiles() -> Array[EnemyProjectile]:
+	var shots: Array[EnemyProjectile] = []
+	for child: Node in _projectiles.get_children():
+		var shot := child as EnemyProjectile
+		if shot != null and not shot.is_queued_for_deletion():
+			shots.append(shot)
+	return shots
 
 
 ## Which enemies a floor gets: spend `budget` on weighted picks from `pool` that are allowed on this
@@ -356,6 +379,8 @@ func _physics_process(delta: float) -> void:
 
 func _clear_floor() -> void:
 	despawn_all()
+	for shot: Node in _projectiles.get_children():
+		shot.queue_free()
 	_clear_navigation()
 
 

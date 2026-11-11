@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://core/data/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/enemies/scenes/spitter.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://core/data/enemies/ranged_attack_data.gd" id="3_ranged"]
+
+[sub_resource type="Resource" id="Ranged_1"]
+script = ExtResource("3_ranged")
+shots = 3
+shot_interval = 0.25
+projectile_speed = 12.0
+gravity_scale = 0.15
+spread_degrees = 4.0
+damage = 6.0
+damage_type = &"blunt"
+min_range = 4.0
+max_range = 14.0
+projectile_color = Color(0.6, 0.9, 0.3, 1)
+
+[resource]
+script = ExtResource("1_data")
+id = &"enemy_test_spitter"
+display_name = "Test spitter"
+description = "Grey-box test enemy for the ranged attack building block (roadmap WP9). In no department: spawn it with the console (spawn enemy_test_spitter). Botany's spore shooter and Robotics' turrets and drones are built from the same pieces."
+tags = PackedStringArray("test")
+scene = ExtResource("2_scene")
+max_health = 20.0
+move_speed = 2.5
+attack_cooldown = 2.5
+sight_range = 18.0
+sight_cone_degrees = 200.0
+spawn_cost = 2
+loot_id = &"loot_zoology_small"
+ranged_attack = SubResource("Ranged_1")

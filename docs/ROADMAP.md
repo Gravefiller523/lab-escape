@@ -270,7 +270,9 @@ can play. Every package follows the Working rules (section i). Status values: **
 #### WP9: Ranged attacks building block
 - **What:** a projectile scene plus a ranged attack state that any enemy or boss can use from its content file
   (speed, damage, spread, status on hit, wind-up). One test enemy uses it.
-- **Gaps:** G17. **Status: not started.**
+- **Gaps:** G17.
+- **Built:** RangedAttackData, the attack_ranged state, EnemyProjectile, and a grey-box test enemy (`enemy_test_spitter`, in no department) that keeps its distance and fires 3-shot bursts of slow green balls. A turret is the same enemy with `move_speed` 0 and no moving states. How to make one is in ADDING_CONTENT.md.
+- **Status: waiting for your play test.** Branch `wp/09-ranged-attacks` (stacked on `wp/06-players-controls`).
 
 #### WP10: Botany roster (2 to 3 sessions)
 - **What:** flytrap (hides, snaps at whoever comes close), spore shooter (ranged, leaves a spore cloud that

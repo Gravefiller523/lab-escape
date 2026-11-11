@@ -20,6 +20,8 @@ func physics_update(enemy: Enemy, delta: float) -> StringName:
 			return enemy.lose_target()
 		enemy.move_towards(enemy.last_known_position, 1.0, delta)
 		return &""
+	if should_shoot(enemy):
+		return &"attack_ranged"
 	if enemy.has_state(&"attack_melee") and enemy.flat_distance_to_target() <= engage_distance(enemy):
 		if enemy.claim_attack_ticket():
 			return &"attack_melee"

@@ -222,6 +222,8 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
 
 - 2026-11-11 (roadmap WP3): navigation baking reads solid CSG shapes (the blockout rooms) from their collision faces (`CSGShape3D.bake_collision_shape`) instead of letting Godot read their visual meshes, which it warned is slow. An enemy's first position update now waits 4 update intervals after it spawns, so it no longer reaches a client before the enemy exists there ("Node not found: Enemies/Spawner/EnemyN").
 
+- 2026-11-11 (roadmap WP9): ranged attacks. NEW state `attack_ranged` (keep between `min_range` and `max_range`, wind up, fire a burst, wait `attack_cooldown`; stationary if `move_speed` is 0), NEW `EnemyProjectile` (every PC flies its own copy from the same start and velocity; the host's copy deals damage; it stops at walls, props and players), NEW Enemy `fire_at(point)` and `start_attack_cooldown()` (host), Enemies `add_projectile()` / `get_projectiles()` (shots are cleared with the floor). chase and swarm switch to `attack_ranged` when `EnemyState.should_shoot()`; `pursuit_state()` is `attack_ranged` for an enemy with neither swarm nor chase (turrets). Test enemy `enemy_test_spitter` (in no department; `spawn enemy_test_spitter`), scene `scenes/spitter.tscn`. Tests in `tests/unit/enemies/test_ranged.gd`.
+
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and
 `SwoopBehaviour`, `Perception`, `EnemySpawner`, the `Enemies` autoload (floor spawning on `floor_ready`, navmesh baking,

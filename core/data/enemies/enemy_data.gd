@@ -34,6 +34,9 @@ extends ContentData
 ## NEW 2026-10-29: how heavy it counts as when a thrown prop hits it (kg). Light enemies are hurt a lot by a
 ## thrown crate, heavy ones barely (rat 5, bat 2, fly 0.5, kangaroo 50).
 @export var impact_mass: float = 20.0
+## NEW 2026-11-11 (roadmap WP9): how it shoots, if it does. Needs an "attack_ranged" state in its scene. Its
+## attack_cooldown is the time between bursts.
+@export var ranged_attack: RangedAttackData
 
 
 func get_type_key() -> StringName:

@@ -27,6 +27,8 @@ const SYNC_INTERVAL: float = 0.05
 const FIRST_SYNC_DELAY_UPDATES: float = 4.0
 ## NEW 2026-10-30: this close (m, flat) to where it's going counts as "got there".
 const ARRIVE_DISTANCE: float = 1.0
+## NEW 2026-11-11 (roadmap WP9): shots leave from this height above its feet.
+const MUZZLE_HEIGHT: float = 0.6
 ## NEW 2026-10-30: the states in which it's calm (it listens for noises and can be startled).
 const CALM_STATES: Array[StringName] = [&"idle", &"patrol", &"search"]
 ## NEW 2026-10-30: how long (s) a jump aside lasts.
@@ -227,9 +229,14 @@ func has_state(state: StringName) -> bool:
 	return _states.has(state)
 
 
-## The state used to go after a player: "swarm" if this enemy has it, else "chase".
+## The state used to go after a player: "swarm" if this enemy has it, else "chase". CHANGED 2026-11-11 (roadmap
+## WP9): an enemy that can only shoot (a turret: no swarm or chase state) goes straight to "attack_ranged".
 func pursuit_state() -> StringName:
-	return &"swarm" if _states.has(&"swarm") else &"chase"
+	if _states.has(&"swarm"):
+		return &"swarm"
+	if not _states.has(&"chase") and _states.has(&"attack_ranged"):
+		return &"attack_ranged"
+	return &"chase"
 
 
 ## Host: the player it's after, from Perception (whom it noticed, spread over the team, see
@@ -808,6 +815,39 @@ func _attacked_rpc() -> void:
 	var tween: Tween = mesh.create_tween()
 	tween.tween_property(mesh, "position", rest + Vector3(0, 0, -0.25), 0.08)
 	tween.tween_property(mesh, "position", rest, 0.15)
+
+
+## NEW 2026-11-11 (roadmap WP9): host: it just attacked without try_attack (a ranged burst): wait attack_cooldown.
+func start_attack_cooldown() -> void:
+	if data != null:
+		_attack_ready_at = _now() + data.attack_cooldown
+
+
+## NEW 2026-11-11 (roadmap WP9): host: fire one shot of its ranged attack at `point` (aim error from its
+## RangedAttackData, rolled with its own seeded numbers). Every PC flies a copy; the host's deals the damage.
+func fire_at(point: Vector3) -> void:
+	if not multiplayer.is_server() or data == null or data.ranged_attack == null:
+		return
+	var attack: RangedAttackData = data.ranged_attack
+	var from: Vector3 = global_position + Vector3.UP * MUZZLE_HEIGHT
+	var direction: Vector3 = (point - from).normalized()
+	if direction.is_zero_approx():
+		direction = -global_basis.z
+	var spread: float = deg_to_rad(attack.spread_degrees)
+	direction = direction.rotated(Vector3.UP, rng.randf_range(-spread, spread))
+	var side: Vector3 = direction.cross(Vector3.UP)
+	if not side.is_zero_approx():
+		direction = direction.rotated(side.normalized(), rng.randf_range(-spread, spread))
+	_fire_rpc.rpc(from, direction * attack.projectile_speed)
+
+
+## Host -> everyone: a shot leaves the muzzle.
+@rpc("authority", "call_local", "reliable")
+func _fire_rpc(from: Vector3, velocity: Vector3) -> void:
+	if not is_inside_tree() or data == null or data.ranged_attack == null:
+		return
+	Enemies.add_projectile(from, velocity, data.ranged_attack, self)
+	Sound.play_3d(Sound.event_sound(&"enemy_shoot"), from, -4.0, 0.1)
 
 
 ## NEW 2026-10-30: host -> everyone: it noticed someone (a squeak).

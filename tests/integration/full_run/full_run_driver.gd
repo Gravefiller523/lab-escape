@@ -10,9 +10,13 @@ extends Node
 ## write down every floor they reach, whether they have a body there, and how the run ended.
 ## Each process writes a JSON report to --out (and the host its progress to --progress), then quits.
 ##
-## Command line (after "--"): --role=host|client --port=N --out=PATH [--progress=PATH] [--seed=N]
+## NEW (roadmap WP2): a "leaver" client grabs a lift part the host puts in front of it and quits the game on the
+## leave floor; the host can also walk out mid-floor (quit floor). Clients write down where they end up afterwards.
+##
+## Command line (after "--"): --role=host|client|leaver --port=N --out=PATH [--progress=PATH] [--seed=N]
 ## [--floors=N --boss_every=N --ride=SECONDS] (host: shortens the run) [--start_players=N] [--late_floor=N
-## --late_players=N] [--death_floor=N]
+## --late_players=N] [--death_floor=N] [--leave_floor=N --leaver_id_file=PATH] [--quit_floor=N]
+## Leaver: --id_file=PATH --host_progress=PATH
 
 const FLOOR_TIMEOUT: float = 90.0
 const STEP_TIMEOUT: float = 20.0
@@ -27,6 +31,8 @@ const DEATH_DELAY_SECONDS: float = 2.0
 const LINGER_SECONDS: float = 4.0
 ## Every process gives up after this long and reports what it saw.
 const TOTAL_TIMEOUT: float = 900.0
+## Clients: how long after the host has gone they check where they ended up.
+const HOST_GONE_SECONDS: float = 3.0
 
 var _args: Dictionary[String, String] = {}
 var _report: Dictionary = {"ok": false, "role": "", "floors": [], "notes": []}
@@ -102,6 +108,14 @@ func _run_host() -> void:
 		if floor_number == _int_arg("death_floor", 0):
 			await _seconds(DEATH_DELAY_SECONDS)
 			entry["death"] = await _kill_and_reprint(start_ids)
+		if floor_number == _int_arg("leave_floor", 0):
+			entry["leave"] = await _watch_leaver()
+		if floor_number == _int_arg("quit_floor", 0):
+			# The host walks out mid-floor: the clients must land back in the menu.
+			(_report["floors"] as Array).append(entry)
+			_report["ok"] = true
+			_finish()
+			return
 		var run: RunState = GameFlow.get_run()
 		if run.is_boss_floor:
 			entry["boss"] = await _beat_boss()
@@ -175,6 +189,41 @@ func _kill_and_reprint(start_ids: Array[int]) -> Dictionary:
 	return {"player_id": victim, "died": died, "ghost": ghost, "reprinted": back}
 
 
+## NEW (roadmap WP2): the leaver (a client) is given a crowbar and grabs one of the lift's parts, then quits the game.
+## Its crowbar must drop where it stood, and the part must stay on the floor, let go, so the lift can still be fixed.
+func _watch_leaver() -> Dictionary:
+	var leaver_id: int = _read_file(_arg("leaver_id_file")).to_int()
+	var body: PlayerCharacter = PlayerCharacter.find(leaver_id)
+	if body == null:
+		return {"found": false}
+	InventoryComponent.of(body).add_item(&"item_crowbar")
+	var part: NetProp = null
+	var lift: CargoLift = CargoLift.current()
+	for slot: StringName in lift.get_broken_slots():
+		var data: PropData = lift.get_slot_part(slot)
+		for prop: NetProp in Props.get_props(data.id if data != null else &""):
+			if not prop.needs_help():
+				part = prop
+	if part == null:
+		return {"found": true, "part": false}
+	var part_id: StringName = part.data.id
+	part.global_position = body.global_position - body.global_transform.basis.z + Vector3.UP
+	part.linear_velocity = Vector3.ZERO
+	var crowbars_before: int = Props.get_props(&"item_crowbar").size()
+	await _seconds(0.5)
+	_progress("leave_now:%d" % part.net_id)
+	var held_by_leaver: Callable = func() -> bool:
+		return is_instance_valid(part) and part.get_holder_ids().has(leaver_id)
+	var held: bool = await _until(held_by_leaver, STEP_TIMEOUT)
+	var gone: bool = await _until(func() -> bool: return not Net.get_player_ids().has(leaver_id), JOIN_TIMEOUT)
+	await _seconds(SETTLE_SECONDS)
+	var still_there: bool = is_instance_valid(part) and not part.is_queued_for_deletion()
+	return {"found": true, "part": true, "part_id": String(part_id), "held_by_leaver": held, "left": gone,
+		"part_still_there": still_there, "part_let_go": still_there and not part.is_held(),
+		"crowbar_dropped": Props.get_props(&"item_crowbar").size() > crowbars_before,
+		"body_gone": PlayerCharacter.find(leaver_id) == null}
+
+
 func _beat_boss() -> Dictionary:
 	var found: bool = await _until(func() -> bool: return Boss.current() != null, STEP_TIMEOUT)
 	if not found:
@@ -234,15 +283,43 @@ func _run_client() -> void:
 	_report["player_id"] = Net.local_player_id()
 	_report["joined_in_state"] = GameFlow.get_state_name()
 	_report["waiting_on_join"] = Net.is_waiting_for_next_floor(Net.local_player_id())
+	if _report["role"] == "leaver":
+		await _leave_holding_a_part()
+		return
 	await _until(func() -> bool: return _run_result != &"" or not Net.is_online(), TOTAL_TIMEOUT)
 	_report["result"] = String(_run_result)
 	var home_or_gone: Callable = func() -> bool:
 		return GameFlow.get_state() == GameFlowService.State.BREAK_ROOM or not Net.is_online()
 	await _until(home_or_gone, FLOOR_TIMEOUT)
 	_report["final_state"] = GameFlow.get_state_name()
-	_report["ok"] = _run_result != &""
-	# Stay until the host leaves: players leaving mid-game is roadmap WP2's test, not this one's.
+	# Stay until the host leaves, then see where that leaves us (the main menu, with a message).
 	await _until(func() -> bool: return not Net.is_online(), FLOOR_TIMEOUT)
+	_report["host_left"] = not Net.is_online()
+	await _seconds(HOST_GONE_SECONDS)
+	_report["state_after_host_left"] = GameFlow.get_state_name()
+	_report["ok"] = _run_result != &"" or bool(_report["host_left"])
+	_finish()
+
+
+## The leaver: writes its id for the host, waits for the host to put a lift part in front of it, grabs it, and quits.
+func _leave_holding_a_part() -> void:
+	var id_file: FileAccess = FileAccess.open(_arg("id_file"), FileAccess.WRITE)
+	if id_file != null:
+		id_file.store_string(str(Net.local_player_id()))
+		id_file.close()
+	var host_progress: String = _arg("host_progress")
+	if not await _until(func() -> bool: return _read_file(host_progress).begins_with("leave_now:"), TOTAL_TIMEOUT):
+		_finish("the host never said when to leave")
+		return
+	var part: NetProp = Props.get_prop(_read_file(host_progress).trim_prefix("leave_now:").to_int())
+	var body: PlayerCharacter = PlayerCharacter.find(Net.local_player_id())
+	if part == null or body == null:
+		_finish("no part (%s) or no body (%s)" % [part != null, body != null])
+		return
+	var grab: GrabController = PropsService.grab_of(body)
+	grab.try_grab(part)
+	_report["held"] = await _until(func() -> bool: return grab.get_held() == part and part.is_held(), STEP_TIMEOUT)
+	_report["ok"] = true
 	_finish()
 
 
@@ -264,6 +341,10 @@ func _until(check: Callable, timeout: float) -> bool:
 		await get_tree().process_frame
 		waited += get_process_delta_time()
 	return true
+
+
+func _read_file(path: String) -> String:
+	return FileAccess.get_file_as_string(path) if not path.is_empty() and FileAccess.file_exists(path) else ""
 
 
 func _seconds(seconds: float) -> void:

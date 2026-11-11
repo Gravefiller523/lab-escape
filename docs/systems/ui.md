@@ -132,6 +132,8 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
   `nameplate_fade_seconds` (0.4), `Nameplates.get_alpha()`. Test: `test_names_fade_out_and_back_in`.
 - 2026-10-24 (settings_input): Settings buttons in the main and pause menus (`Settings.open(...)`, screen `&"settings"`); the mic sensitivity panel moved from the pause menu to Settings > Audio; `caption()` only shows with Settings > Accessibility > Subtitles on (still as a toast); the main menu's `host`/`join` launch options run once per game start (`static var _launch_options_used`), not every time the menu is rebuilt. Text scale is done by settings_input (the window's content_scale_factor).
 
+- 2026-11-11 (roadmap WP2): ghosts (dead players) have no nameplate; it comes back when they are reprinted. Test `test_ghosts_have_no_plate`.
+
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and
 "Join game", Join by lobby id for testing, a "Testing on one PC" section with address, port, Host

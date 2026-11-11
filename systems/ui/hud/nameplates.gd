@@ -68,7 +68,8 @@ func _process(delta: float) -> void:
 	var seen: Dictionary[int, bool] = {}
 	for node: Node in get_tree().get_nodes_in_group(PlayerCharacter.GROUP):
 		var body := node as PlayerCharacter
-		if body == null or body.is_queued_for_deletion() or body.player_id == me \
+		# CHANGED 2026-11-11 (roadmap WP2): ghosts (dead players) have no nameplate.
+		if body == null or body.is_queued_for_deletion() or body.player_id == me or body.is_ghost() \
 				or body.get_viewport() != get_viewport():
 			continue
 		seen[body.player_id] = true

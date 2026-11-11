@@ -5,6 +5,7 @@ extends GutTest
 
 const PLAYER_SCENE: PackedScene = preload("res://systems/player/player.tscn")
 const PRINTER_SCENE: PackedScene = preload("res://systems/death_respawn/printer_3d.tscn")
+const LIFT_SCENE: PackedScene = preload("res://systems/cargo_lift/cargo_lift.tscn")
 const WAIT: float = 5.0
 
 var _world: Node3D
@@ -200,3 +201,21 @@ func test_ghosts_are_not_waited_for_by_the_lift() -> void:
 	var zone := ElevatorZone.new()
 	add_child_autofree(zone)
 	assert_true(zone.contains_all_players(), "the lift doesn't wait for a ghost")
+
+
+## NEW 2026-11-11 (roadmap WP2): a ghost left outside the lift rides in it, not where it died.
+func test_ghosts_board_the_lift_when_it_leaves() -> void:
+	_no_free_reprints()
+	var lift := LIFT_SCENE.instantiate() as CargoLift
+	lift.position = Vector3(10, 0, 0)
+	_world.add_child(lift)
+	await wait_physics_frames(2)
+	_body.global_position = Vector3(-10, 0.1, 0)
+	Death.kill(_body.player_id)
+	assert_true(_body.is_ghost(), "a ghost")
+	EventBus.lift_departed.emit(1)
+	await wait_physics_frames(2)
+	var nearest: float = INF
+	for spot: Node3D in lift.get_spawn_points():
+		nearest = minf(nearest, spot.global_position.distance_to(_body.global_position))
+	assert_lt(nearest, 0.5, "the ghost is at one of the lift's spawn points")

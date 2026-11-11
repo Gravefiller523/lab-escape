@@ -102,6 +102,7 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G51 | When the host leaves a local (no Steam) game, ENet prints one "Unable to send packet on channel 0" error while saying goodbye. Harmless; found by WP1. | reliability | S | |
 | G52 | ~~A player who joins mid-floor built the floor before their connection opened, so its vending machines, printers, mutation machine, doors, buttons, boss arena and plants asked the host for their state too early and never heard back (no shop offers, wrong door states).~~ Fixed in WP1. | reliability | S | |
 | G53 | ~~Prop snapshot messages reached 1,900 bytes, over one network packet, so on real connections they'd be lost more often (jumpy props).~~ Fixed in WP1. | reliability | S | |
+| G54 | Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors. Harmless, but noisy. Found by WP2's test. | reliability | S | |
 
 ### Fun and clarity
 | # | Gap | Tag | Size | You |
@@ -200,7 +201,13 @@ can play. Every package follows the Working rules (section i). Status values: **
 - Start from WP1's full-run test: add a client leaving mid-floor while carrying a lift part, and the host leaving.
   Note from WP1: the host's log shows one ENet error when it leaves a local game (G51).
 - **Gaps:** G2, G3, G8, G51.
-- **Status: not started.**
+- **Built:** a second full-run test, `test_players_leaving_mid_floor`: a client holding a lift part and a crowbar
+  quits on floor 1 (the crowbar drops, the part stays on the floor let go, the lift can still be fixed), then the
+  host walks out on floor 2 (the last client lands in the main menu). Ghosts are moved into the lift when it leaves
+  (death_respawn), and ghosts have no nameplate (ui). G2 turned out to work already; the test now guards it.
+- **Not done here:** a rejoining player getting their mutations back can only be checked with real Steam IDs
+  (local test players get a new id each time), so it's on the real-Steam checklist; G51 is still listed as known.
+- **Status: waiting for your play test.** Branch `wp/02-disconnects` (stacked on WP1).
 
 #### WP3: Small leftovers that break plans
 - **What:** gems in a cart count at a vendor (the pusher gets the credit); duplicate key bindings warn; voice reads
@@ -208,7 +215,9 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Test it:** push a cart of gems into a vending machine; bind two actions to one key.
 - Also: bake enemy navigation from collision shapes instead of visual meshes, and look at the navmesh edge errors
   (enemies system only; level_gen stays untouched) (G50).
-- **Gaps:** G4, G9, G50, settings_input leftovers.
+- Also: G54, enemy position updates that reach a client before the enemy exists there (or after it's gone).
+  When G50 and G54 are fixed, take their lines out of `KNOWN` in `tests/integration/test_full_run.gd`.
+- **Gaps:** G4, G9, G50, G54, settings_input leftovers.
 - **Status: not started.**
 
 #### WP4: Playtest log (telemetry)

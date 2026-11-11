@@ -186,6 +186,8 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
   host's navigation bake (`Enemies.is_baking_navigation()`) before arriving, so `floor_ready` (props, parts and
   enemies spawning) comes after it; the same timeout as for slow PCs.
 
+- 2026-11-11 (roadmap WP5): GameConfig `run_summary_seconds` default 5 -> 12, so the new run summary screen can be read.
+
 ## HANDOFF
 **Built (2026-10-18):** autoload `GameFlow` (`GameFlowService`, `systems/game_flow/game_flow.gd`),
 `RunState`, `RunDifficulty`, a loading screen, the stub floor and the test scene. Breaks a run into

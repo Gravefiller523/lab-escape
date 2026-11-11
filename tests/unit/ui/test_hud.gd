@@ -175,3 +175,106 @@ func test_names_fade_out_and_back_in() -> void:
 	assert_between(plates.get_alpha(1001), 0.01, 0.99, "coming back: fading in")
 	await wait_until(func() -> bool: return is_equal_approx(plates.get_alpha(1001), 1.0), WAIT)
 	assert_almost_eq(plates.get_alpha(1001), 1.0, 0.001, "fully back")
+
+
+# --- NEW 2026-11-11 (roadmap WP5): the rest of the HUD ------------------------------------------------------
+
+func _target_with_health(max_health: float = 100.0) -> Node3D:
+	var target := Node3D.new()
+	_world.add_child(target)
+	DamageService.give_components(target, max_health)
+	return target
+
+
+func test_the_hud_has_every_widget() -> void:
+	var hud := Hud.new()
+	add_child_autofree(hud)
+	assert_not_null(hud.health_bar, "health bar")
+	assert_eq(hud.health_bar.get_parent().name, &"HealthSlot", "in the bottom-left spot")
+	assert_not_null(hud.inventory_bar, "inventory bar")
+	assert_eq(hud.inventory_bar.get_parent().name, &"InventorySlot", "in the bottom-middle spot")
+	assert_not_null(hud.boss_bar, "boss bar")
+	assert_not_null(hud.player_list, "player list")
+	assert_not_null(hud.ghost_panel, "ghost panel")
+	assert_not_null(hud.run_summary, "run summary")
+
+
+func test_health_bar_shows_health_and_statuses() -> void:
+	var target: Node3D = _target_with_health(100.0)
+	var bar := HealthBar.new()
+	bar.use_body(target)
+	_world.add_child(bar)
+	await wait_process_frames(2)
+	assert_eq(bar.get_text(), "100 / 100")
+	HealthComponent.of(target).apply_damage(DamageInfo.make(28.0, &"blunt"))
+	await wait_process_frames(2)
+	assert_eq(bar.get_text(), "72 / 100", "28 damage")
+	StatusEffectComponent.of(target).apply(&"status_burning")
+	await wait_process_frames(2)
+	assert_eq(bar.get_status_texts().size(), 1, "one status chip")
+	assert_string_contains(bar.get_status_texts()[0], "s", "with the seconds left")
+	HealthComponent.of(target).apply_damage(DamageInfo.make(500.0, &"blunt"))
+	await wait_process_frames(2)
+	assert_eq(bar.get_text(), "", "hidden once you're dead (the ghost screen takes over)")
+
+
+func test_inventory_bar_shows_slots_and_what_you_hold() -> void:
+	var body := Node3D.new()
+	_world.add_child(body)
+	var inventory := InventoryComponent.new()
+	body.add_child(inventory)
+	var bar := InventoryBar.new()
+	bar.use_body(body)
+	_world.add_child(bar)
+	await wait_process_frames(2)
+	assert_eq(bar.get_slot_texts().size(), inventory.get_slot_count(), "one box per slot")
+	assert_true(inventory.add_item(&"item_crowbar"))
+	await wait_process_frames(2)
+	assert_string_contains(bar.get_slot_texts()[0], "Crowbar", "the crowbar is in slot 1")
+	assert_true(bar.get_slot_texts()[0].begins_with(">"), "slot 1 is selected")
+	assert_string_contains(bar.get_held_text(), "Crowbar", "and in your hands")
+	inventory.set_bonus_slots(&"mutation_octo", 1)
+	await wait_process_frames(2)
+	assert_eq(bar.get_slot_texts().size(), inventory.get_slot_count(), "an extra slot gets a box too")
+
+
+func test_ghost_panel_tells_you_how_to_come_back() -> void:
+	var panel := GhostPanel.new()
+	_world.add_child(panel)
+	panel.use_state(0, 0)
+	await wait_process_frames(2)
+	assert_eq(panel.get_text(), "", "alive: nothing")
+	panel.use_state(1, 0)
+	await wait_process_frames(2)
+	assert_string_contains(panel.get_text(), "ghost")
+	panel.use_state(0, 1)
+	await wait_process_frames(2)
+	assert_string_contains(panel.get_text(), "next floor", "a mid-run joiner hears when they'll spawn")
+
+
+func test_player_list_has_a_line_per_player() -> void:
+	var list := PlayerList.new()
+	_world.add_child(list)
+	await wait_process_frames(2)
+	assert_eq(list.get_lines().size(), Net.get_player_ids().size(), "one line per player in the game")
+	EventBus.player_speaking_changed.emit(Net.local_player_id(), true)
+	await wait_process_frames(2)
+	assert_string_contains(list.get_lines()[0], "speaking")
+	EventBus.player_speaking_changed.emit(Net.local_player_id(), false)
+
+
+func test_run_summary_counts_the_run() -> void:
+	var summary := RunSummaryPanel.new()
+	_world.add_child(summary)
+	summary.show_now()
+	var me: int = Net.local_player_id()
+	EventBus.run_started.emit(1)
+	EventBus.player_died.emit(me, Vector3.ZERO)
+	EventBus.vendor_purchase.emit(me, &"item_crowbar", 3)
+	EventBus.run_ended.emit(&"escaped")
+	await wait_process_frames(2)
+	assert_string_contains(summary.get_text(), "Escaped")
+	assert_string_contains(summary.get_text(), "0 floors", "no floor was reached in this test")
+	var rows: PackedStringArray = summary.get_rows()
+	assert_gt(rows.size(), 0, "a row for you")
+	assert_string_contains(rows[0], "| 1 | 3 |", "1 death, 3 gems spent")

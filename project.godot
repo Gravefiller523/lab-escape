@@ -44,10 +44,10 @@ Upgrades="*res://systems/upgrades/upgrades.gd"
 Carts="*res://systems/carts/carts.gd"
 Level="*res://systems/level_gen/level.gd"
 Hazards="*res://systems/hazards/hazards.gd"
+Security="*res://systems/security/security.gd"
 GameFlow="*res://systems/game_flow/game_flow.gd"
 Settings="*res://systems/settings_input/settings.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
-Security="*res://systems/security/security.gd"
 
 [debug]
 

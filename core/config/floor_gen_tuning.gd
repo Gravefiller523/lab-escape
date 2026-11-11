@@ -279,9 +279,10 @@ extends Resource
 ## NEW 2026-10-31 (step 4b, placeholder hazard zones in systems/hazards): damage per second to anyone
 ## standing in one, by hazard kind (kinds not listed use "sparks"), and its damage type.
 @export var hazard_damage_per_second: Dictionary[StringName, float] = {&"sparks": 8.0, &"fire": 12.0,
-	&"toxic_spores": 5.0, &"toxic_gas": 7.0, &"water": 2.0}
+	&"toxic_spores": 5.0, &"toxic_gas": 7.0, &"water": 2.0, &"broken_enclosure": 0.0}
 @export var hazard_damage_types: Dictionary[StringName, StringName] = {&"sparks": &"electric", &"fire": &"fire",
-	&"toxic_spores": &"poison", &"toxic_gas": &"poison", &"water": &"poison"}
+	&"toxic_spores": &"poison", &"toxic_gas": &"poison", &"water": &"poison",
+	&"broken_enclosure": &"blunt"}
 ## NEW 2026-11-11 (step 5a): hazards that slow whoever stands in them (speed x this), by kind: contaminated water.
 @export var hazard_slow: Dictionary[StringName, float] = {&"water": 0.6}
 ## How often a hazard hurts (seconds) and how big its zone is (radius, metres).
@@ -343,7 +344,8 @@ extends Resource
 @export var debris_prop_ids: Array[StringName] = [&"prop_debris_chunk", &"prop_debris_panel"]
 ## NEW 2026-11-11 (step 5a): a department's own loose debris instead (e.g. vines in Botany), by department id.
 @export var debris_prop_ids_by_department: Dictionary[StringName, Array] = {
-	&"department_botany": [&"prop_debris_vines", &"prop_debris_vines", &"prop_debris_chunk"]}
+	&"department_botany": [&"prop_debris_vines", &"prop_debris_vines", &"prop_debris_chunk"],
+	&"department_zoology": [&"prop_debris_hay", &"prop_debris_feed_sack", &"prop_debris_cage_bars", &"prop_debris_chunk"]}
 ## NEW 2026-11-10 (step 4f, plan step 10): how many enemy_spawn spots are switched on: this share of the floor's
 ## enemy budget (RunDifficulty.enemy_budget: grows with the floor and the players), at least the minimum, never
 ## closer to the elevator than this walking distance (metres), so the start stays calm.

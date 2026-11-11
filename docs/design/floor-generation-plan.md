@@ -684,6 +684,9 @@ You read it, answer the questions in section 16, and approve. **Stop here until 
 - **Built 2026-11-11 (5a, Botany):** its welcome center and 9 room tiles, required rooms, palette, green emergency
   slits, 4 incidents with their overlays (vines, spores, flood, frost), toxic spores, toxic gas and slowing water,
   vines as debris. The airlock is an ordinary small room for now. Waiting for Zachary to play it.
+- **Built 2026-11-11 (5b, Zoology):** its welcome center and 7 room tiles, required rooms, a warm palette, amber
+  emergency slits, enclosure breakout (claw marks) and tank rupture (flooding), broken enclosures that wake an
+  enemy spawn, hay, feed sack and cage-bar debris. Waiting for Zachary to play it.
 Mostly content: department files, welcome centers, room tiles, incidents (gas, flood), hazards,
 palettes. New code only for new hazard kinds. *Test: play 3 floors of each; F3 view on 10 seeds each.*
 

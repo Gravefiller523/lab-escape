@@ -3,7 +3,8 @@ extends RefCounted
 ## NEW 2026-11-11 (floor generation step 5a): what an incident leaves on the damaged tiles around it, by its
 ## IncidentData.overlay_flavour: "vines" (creepers down the walls, clumps on the floor), "spores" (drifting
 ## glowing motes, mould patches), "flood" (water over the floor; puddles when lightly damaged), "frost" (ice on the
-## floor and walls), "scorch" (soot) and "wreckage" (bent scrap). Each damaged tile takes the flavour of the
+## floor and walls), "scorch" (soot), "wreckage" (bent scrap) and NEW 2026-11-11 (step 5b) "claws" (claw marks
+## on the walls, broken cage bars on the floor). Each damaged tile takes the flavour of the
 ## nearest incident (the main one or a smaller one), and gets more of it the worse its damage. Looks only: no
 ## collision, nothing networked; seeded by the floor, so every PC sees the same. Built by Level.build.
 
@@ -42,6 +43,8 @@ static func dress(tile: Node3D, index: int, layout: FloorLayout, department: Dep
 			_patches(holder, size, count, rng, Color(0.06, 0.05, 0.05, 0.85), true)
 		&"wreckage":
 			_wreckage(holder, size, count, rng)
+		&"claws":
+			_claws(holder, size, count, rng)
 
 
 ## The flavour of the incident nearest this tile (by straight distance between tile middles), or "".
@@ -166,3 +169,22 @@ static func _wreckage(holder: Node3D, size: Vector2, count: int, rng: RandomNumb
 			rng.randf_range(0.5, size.y - 0.5)), Vector3(rng.randf_range(0.2, 0.7), 0.06, rng.randf_range(0.1, 0.4)),
 			metal, rng.randf() * TAU)
 		piece.rotation.x = rng.randf_range(-0.3, 0.3)
+
+
+## NEW 2026-11-11 (step 5b): claw marks (three slanted scratches) on the walls, bent cage bars on the floor.
+static func _claws(holder: Node3D, size: Vector2, count: int, rng: RandomNumberGenerator) -> void:
+	var scratch := _material(Color(0.1, 0.08, 0.07))
+	var metal := _material(Color(0.42, 0.43, 0.45))
+	for index: int in count:
+		var spot: Array = _wall_spot(size, rng)
+		var at: Vector2 = spot[0]
+		var turn: float = spot[1]
+		var along := Vector3(cos(turn), 0.0, -sin(turn))
+		var height: float = rng.randf_range(0.8, 2.2)
+		for line: int in 3:
+			var mark := _piece(holder, "Claw%d_%d" % [index, line], Vector3(at.x, height, at.y) + along * (float(line) - 1.0) * 0.12,
+				Vector3(0.03, 0.6, 0.02), scratch, turn)
+			mark.rotation.z = 0.35
+		var bar := _piece(holder, "Bars%d" % index, Vector3(rng.randf_range(0.5, size.x - 0.5), 0.04, rng.randf_range(0.5, size.y - 0.5)),
+			Vector3(rng.randf_range(0.6, 1.2), 0.05, 0.05), metal, rng.randf() * TAU)
+		bar.rotation.x = rng.randf_range(-0.2, 0.2)

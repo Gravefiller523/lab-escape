@@ -2,7 +2,8 @@ class_name HazardZone
 extends Area3D
 ## NEW 2026-10-31 (floor generation step 4b): a placeholder hazard. Sparks (a crackling yellow light) and
 ## fire (an orange glow); NEW 2026-11-11 (step 5a): toxic spores (green motes), toxic gas (a haze) and water (a pool
-## that slows players: Config.floor_gen.hazard_slow); any other kind looks like sparks for now. Everyone standing in
+## that slows players: Config.floor_gen.hazard_slow); NEW 2026-11-11 (step 5b): broken_enclosure (bent bars, straw;
+## harmless, but an enemy spawn wakes in its room); any other kind looks like sparks for now. Everyone standing in
 ## it (players and enemies) is hurt through the damage system: only on the host, every hazard_tick_seconds.
 ## Spec: docs/systems/hazards.md.
 
@@ -55,6 +56,9 @@ func _build_look(tuning: FloorGenTuning) -> void:
 			return
 		&"water":
 			_build_pool(tuning)
+			return
+		&"broken_enclosure":
+			_build_broken_enclosure()
 			return
 	var fire: bool = kind == &"fire"
 	var color := Color(1.0, 0.45, 0.1) if fire else Color(1.0, 0.9, 0.3)
@@ -112,6 +116,8 @@ func _physics_process(delta: float) -> void:
 		return
 	_tick_left = tuning.hazard_tick_seconds
 	var per_second: float = tuning.hazard_damage_per_second.get(kind, tuning.hazard_damage_per_second.get(&"sparks", 0.0))
+	if per_second <= 0.0:
+		return
 	var damage_type: StringName = tuning.hazard_damage_types.get(kind, &"electric")
 	for body: Node3D in get_overlapping_bodies():
 		var health: HealthComponent = HealthComponent.of(body)
@@ -243,3 +249,34 @@ func is_slowing(player: PlayerCharacter) -> bool:
 
 func _slow_source() -> StringName:
 	return StringName("hazard_%d" % get_instance_id())
+
+
+# --- NEW 2026-11-11 (floor generation step 5b): Zoology's broken enclosure -------------------------------
+
+## Bent cage bars and spilt straw: harmless in itself (hazard_damage_per_second 0); the floor plan wakes an
+## enemy spawn in the same room, so whatever was inside is loose.
+func _build_broken_enclosure() -> void:
+	var metal := StandardMaterial3D.new()
+	metal.albedo_color = Color(0.42, 0.43, 0.45)
+	var straw := StandardMaterial3D.new()
+	straw.albedo_color = Color(0.85, 0.72, 0.35)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(kind)
+	for index: int in 5:
+		var bar := MeshInstance3D.new()
+		bar.name = "Bar%d" % index
+		var box := BoxMesh.new()
+		box.size = Vector3(0.05, rng.randf_range(1.2, 2.0), 0.05)
+		box.material = metal
+		bar.mesh = box
+		bar.position = Vector3(rng.randf_range(-0.6, 0.6), 0.6, rng.randf_range(-0.3, 0.3))
+		bar.rotation = Vector3(rng.randf_range(-0.9, 0.9), rng.randf() * TAU, rng.randf_range(-0.9, 0.9))
+		add_child(bar)
+	var patch := MeshInstance3D.new()
+	patch.name = "Straw"
+	var flat := BoxMesh.new()
+	flat.size = Vector3(1.6, 0.03, 1.2)
+	flat.material = straw
+	patch.mesh = flat
+	patch.position.y = 0.015
+	add_child(patch)

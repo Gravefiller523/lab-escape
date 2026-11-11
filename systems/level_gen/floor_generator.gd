@@ -1550,6 +1550,17 @@ class _Builder:
 		spots.sort()
 		_shuffle(spots, rng)
 		var keys := PackedStringArray(spots.slice(0, wanted))
+		# NEW 2026-11-11 (step 5b): a broken enclosure (hazard) lets its animal out: that room's spawn spots wake too.
+		for hazard_key: String in layout.active_markers.get(&"hazard", PackedStringArray()):
+			if str((layout.marker_params.get(hazard_key, {}) as Dictionary).get("hazard_kind", "")) != "broken_enclosure":
+				continue
+			var room: int = hazard_key.get_slice("/", 0).to_int()
+			if room == quiet or _room_of(room).tile_role == TileStandards.ROLE_TEMPLATE:
+				continue
+			for marker: Dictionary in RoomShape.of(_room_of(room), unit).markers:
+				var key: String = FloorLayout.marker_key(room, marker["path"])
+				if marker["kind"] == &"enemy_spawn" and not keys.has(key):
+					keys.append(key)
 		keys.sort()
 		layout.active_markers[&"enemy_spawn"] = keys
 		_log("enemies: %d of %d spawn spots on (budget %d)" % [keys.size(), spots.size(), budget])

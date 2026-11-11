@@ -1,0 +1,7 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+resource_name = "zoology_floor"
+albedo_color = Color(0.45, 0.33, 0.22, 1)
+roughness = 0.85
+metallic = 0.0

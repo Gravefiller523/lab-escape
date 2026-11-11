@@ -190,7 +190,7 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Fixed on the way:** G52 (mid-floor joiners' machines and devices), G53 (prop messages too big), "player left"
   handling sending to the closed connection (net_core now handles a disconnect a frame later), the speed check's
   put-back message to players who aren't connected (G49), and the orphan node in the damage test.
-- **Status: waiting for your play test.** Branch `wp/01-full-run-test` (stacked on `docs/roadmap`).
+- **Status: done.** Merged into main 2026-11-11.
 
 #### WP2: Disconnects, late joiners and ghosts
 - **What:** a leaving client always drops what it held (lift parts and keycards come back); ghosts are moved into
@@ -208,7 +208,7 @@ can play. Every package follows the Working rules (section i). Status values: **
   (death_respawn), and ghosts have no nameplate (ui). G2 turned out to work already; the test now guards it.
 - **Not done here:** a rejoining player getting their mutations back can only be checked with real Steam IDs
   (local test players get a new id each time), so it's on the real-Steam checklist; G51 is still listed as known.
-- **Status: waiting for your play test.** Branch `wp/02-disconnects` (stacked on WP1).
+- **Status: done.** Merged into main 2026-11-11.
 
 #### WP3: Small leftovers that break plans
 - **What:** gems in a cart count at a vendor (the pusher gets the credit); duplicate key bindings warn; voice reads
@@ -224,7 +224,7 @@ can play. Every package follows the Working rules (section i). Status values: **
   share a key, "quieter voice effects" now works, enemy navigation reads the rooms' collision shapes (G50 gone),
   enemies wait a moment before their first position update (G54 gone; both removed from the test's known list),
   and the full-run test checks every floor, boss floors included, has a 3D printer (G5).
-- **Status: waiting for your play test.** Branch `wp/03-leftovers` (stacked on WP2).
+- **Status: done.** Merged into main 2026-11-11.
 
 #### WP4: Playtest log (telemetry)
 - **What:** the telemetry system from its spec: writes every EventBus event and a per-run summary (floors, deaths,
@@ -232,7 +232,8 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Why now:** every balance decision afterwards (prices, drops, run length) comes from these files.
 - **Test it:** console `telemetry on`, play two floors, open the file it names.
 - **Gaps:** G20, G26.
-- **Status: not started.**
+- **Built:** `Telemetry` autoload, 5 tests. Each PC writes its own log; the host's is the most complete.
+- **Status: done.** Merged into main 2026-11-11.
 
 ### Phase U: the game explains itself
 
@@ -242,7 +243,7 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Test it:** take damage, switch slots, die, beat or lose a run.
 - **Gaps:** G12, G13.
 - **Built:** everything in the mock-up, plus a player list in the bottom right (names with speaking / ghost / joining; the Tab list with ping, mute and kick is still WP6). The run summary shows deaths, gems spent and upgrades per player. Kills are left out for now because only the host hears about them (a later package can send them). `run_summary_seconds` went from 5 to 12 so the summary can be read.
-- **Status: waiting for your play test.** Mock-up approved 2026-11-11. Branch `wp/05-hud` (stacked on `wp/03-leftovers`).
+- **Status: done.** Mock-up approved and merged into main 2026-11-11.
 
 #### WP6: Player list and pause menu
 - **What:** Tab shows every player with ping, a mute button and (host) kick; the pause menu gets a controls page.

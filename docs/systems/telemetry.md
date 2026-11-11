@@ -51,3 +51,15 @@ GUT tests: `test_disabled_writes_nothing`, `test_every_signal_connected`, `test_
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-11-11 (roadmap WP4): built. `TelemetryService` (`systems/telemetry/telemetry.gd`), autoload line `Telemetry` (after
+  Security). NEW `use_folder(folder)` for tests. Console `telemetry [on|off]` (not a cheat: any player can log their own
+  PC). The first line of each file is `telemetry_started` (version, this PC's player id, host or not). At `run_ended` a
+  `run_summary` line: result, floors reached, minutes, seconds per floor, deaths, gems spent, upgrades found, players.
+  Signals with up to 5 arguments are logged (EventBus's longest has 4); a longer one prints a warning. Tests: the spec's
+  four plus `test_run_summary_is_written_when_a_run_ends`.
+
+## HANDOFF
+**Built (2026-11-11, roadmap WP4):** see the Changelog. **How to use it in a playtest:** start the game with `--telemetry`
+(or type `telemetry on` in the console), play, and the console's `telemetry` command shows where the file is (Windows:
+`%APPDATA%\Godot\app_userdata\Lab Escape\telemetry\`). **Not yet:** a settings toggle for playtest builds (settings_input)
+and kills per player in the summary (the host's log has every `enemy_killed` with the killer's id).

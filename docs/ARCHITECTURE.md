@@ -277,7 +277,7 @@ Things that look like dependencies but are **not**, because they go through Even
 | `Cosmetics` | cosmetics | |
 | `UI` | ui | Screens, HUD and toasts. |
 | `Achievements` | achievements | |
-| `Telemetry` | telemetry | |
+| `Telemetry` | telemetry | Built 2026-11-11 (roadmap WP4): the playtest log, off unless `--telemetry` or `telemetry on`. |
 | `DebugConsole` | debug_console | Last, so every system can register commands in `_ready`. |
 
 Each system adds its own autoload line to `project.godot` when it is merged.

@@ -34,6 +34,10 @@ const NAV_SKIP_GROUP: StringName = &"nav_skip"
 ## NEW 2026-10-30 (doors): a bake asked for by request_navigation_update() waits this long (s), so a door that
 ## is still swinging has stopped, and several changes at once make one bake.
 const NAV_UPDATE_DELAY: float = 1.0
+## NEW 2026-11-11: if the navigation map hasn't taken in a new mesh after this many physics frames, hand it over again.
+const NAV_MAP_RETRY_FRAMES: int = 5
+## NEW 2026-11-11: and give up (with a warning) after this many tries.
+const NAV_MAP_RETRIES: int = 6
 
 var _spawner: EnemySpawner
 var _nav_region: NavigationRegion3D
@@ -41,6 +45,8 @@ var _nav_region: NavigationRegion3D
 ## replacing (in use until it is ready).
 var _nav_root: Node3D
 var _old_regions: Array[NavigationRegion3D] = []
+## NEW 2026-11-11: physics frames the newest mesh has been waiting for the map to take it in.
+var _map_wait_frames: int = 0
 ## Seconds until an asked-for bake starts (< 0 = none asked for).
 var _nav_update_left: float = -1.0
 ## Counts bakes, so a slow bake that finishes after a newer one started is thrown away.
@@ -203,9 +209,28 @@ func _parse_source(mesh: NavigationMesh, root: Node3D) -> NavigationMeshSourceGe
 	return source
 
 
-## True while a navigation mesh is still being baked in the background.
+## True while a navigation mesh is still being baked in the background. CHANGED 2026-11-11: also while the
+## navigation server hasn't taken the new mesh into its map yet. It does that on its own background update
+## (Godot's async map iterations), a physics frame or two after the mesh is set; path queries before then still
+## see the old mesh, or none. So "not baking" now means enemies can really path on the new mesh.
 func is_baking_navigation() -> bool:
-	return _nav_region != null and is_instance_valid(_nav_region) and _nav_region.navigation_mesh == null
+	if _nav_region == null or not is_instance_valid(_nav_region):
+		return false
+	if _nav_region.navigation_mesh == null:
+		return true
+	return not _map_uses(_nav_region)
+
+
+## NEW 2026-11-11: does the region's navigation map use this region's mesh yet? (The map's closest point to one
+## of the mesh's corners belongs to this region once the map has taken it in.)
+func _map_uses(region: NavigationRegion3D) -> bool:
+	if not region.is_inside_tree() or not region.enabled:
+		return true
+	var vertices: PackedVector3Array = region.navigation_mesh.get_vertices()
+	if vertices.is_empty():
+		return true
+	var point: Vector3 = region.global_transform * vertices[0]
+	return NavigationServer3D.map_get_closest_point_owner(region.get_navigation_map(), point) == region.get_rid()
 
 
 func _on_navigation_baked(mesh: NavigationMesh, region: NavigationRegion3D, number: int) -> void:
@@ -287,6 +312,7 @@ func _on_prop_released(_player_id: int, prop: Node3D, thrown: bool) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_check_map_took_mesh()
 	if _nav_update_left >= 0.0:
 		_nav_update_left -= delta
 		if _nav_update_left < 0.0:
@@ -375,3 +401,21 @@ func _on_navigation_baked_by_id(mesh: NavigationMesh, region_id: int, number: in
 	var region := instance_from_id(region_id) as NavigationRegion3D
 	if region != null:
 		_on_navigation_baked(mesh, region, number)
+
+
+## NEW 2026-11-11 (the 2 long-failing navigation tests): Godot's navigation server can miss a mesh that is set on a
+## region while the server is already busy taking that (still empty) region into its map on its background thread:
+## the map then stays without the mesh for good, and enemies (and voice muffling) can't path. If the map hasn't
+## taken the newest mesh in after NAV_MAP_RETRY_FRAMES physics frames, hand the mesh to the server again.
+func _check_map_took_mesh() -> void:
+	if _nav_region == null or not is_instance_valid(_nav_region) or _nav_region.navigation_mesh == null \
+			or _map_uses(_nav_region):
+		_map_wait_frames = 0
+		return
+	if _map_wait_frames > NAV_MAP_RETRY_FRAMES * NAV_MAP_RETRIES:
+		return
+	_map_wait_frames += 1
+	if _map_wait_frames > NAV_MAP_RETRY_FRAMES * NAV_MAP_RETRIES:
+		push_warning("Enemies: the navigation map still hasn't taken the new navigation mesh in.")
+	elif _map_wait_frames % NAV_MAP_RETRY_FRAMES == 0:
+		NavigationServer3D.region_set_navigation_mesh(_nav_region.get_rid(), _nav_region.navigation_mesh)

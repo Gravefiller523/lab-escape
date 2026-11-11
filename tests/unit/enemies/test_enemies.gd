@@ -207,7 +207,7 @@ func test_navigation_goes_around_walls() -> void:
 	assert_true(Enemies.is_baking_navigation(), "it bakes in the background (no freeze)")
 	await wait_for_signal(Enemies.navigation_baked, WAIT)
 	assert_not_null(region.navigation_mesh)
-	await wait_physics_frames(3)
+	await _wait_for_navigation_map()
 	var map: RID = _world.get_world_3d().navigation_map
 	var path: PackedVector3Array = NavigationServer3D.map_get_path(map, Vector3(0, 0, -3), Vector3(0, 0, 3), true)
 	assert_gt(path.size(), 2, "there is a path")
@@ -465,6 +465,14 @@ func _door_wall(locked: bool = false) -> WorldDoor:
 
 
 ## How long the navigation path from `from` to `to` is (INF if it doesn't get there).
+## CHANGED 2026-11-11 (the 2 long-failing navigation tests): wait until the navigation server's map really uses
+## the newest mesh before asking it for paths. Godot updates maps on its own background thread, a few physics frames
+## after a mesh is set (and Enemies hands a missed mesh over again, see Enemies._check_map_took_mesh), so the old
+## fixed "wait 3 frames" was too short and the map was still empty. Only the wait changed; every check is the same.
+func _wait_for_navigation_map() -> void:
+	await wait_until(func() -> bool: return not Enemies.is_baking_navigation(), WAIT)
+
+
 func _path_length(from: Vector3, to: Vector3) -> float:
 	var path: PackedVector3Array = NavigationServer3D.map_get_path(_world.get_world_3d().navigation_map, from, to, true)
 	if path.size() < 2 or path[path.size() - 1].distance_to(to) > 1.0:
@@ -479,19 +487,19 @@ func test_enemies_path_through_doors_they_can_open_but_not_locked_ones() -> void
 	var door := _door_wall()
 	await wait_physics_frames(2)
 	Enemies.bake_navigation(_world, true)
-	await wait_physics_frames(3)
+	await _wait_for_navigation_map()
 	var from := Vector3(0, 0, -3)
 	var to := Vector3(0, 0, 3)
 	var through: float = _path_length(from, to)
 	assert_lt(through, 8.0, "a shut door they can open doesn't block the path (%.1f m)" % through)
 	door.receive(&"lock")
 	Enemies.update_navigation(true)
-	await wait_physics_frames(3)
+	await _wait_for_navigation_map()
 	var around: float = _path_length(from, to)
 	assert_between(around, 15.0, 40.0, "locked, the path goes round the wall (%.1f m)" % around)
 	door.receive(&"unlock")
 	await wait_for_signal(Enemies.navigation_baked, WAIT)
-	await wait_physics_frames(3)
+	await _wait_for_navigation_map()
 	through = _path_length(from, to)
 	assert_lt(through, 8.0, "unlocking it bakes the navigation again by itself (%.1f m)" % through)
 

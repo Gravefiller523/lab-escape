@@ -211,6 +211,15 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
   region's id, so clearing a floor mid-bake no longer prints "Lambda capture was freed". The floor plan now
   switches on only some `enemy_spawn` markers (`Level.get_markers` returns those).
 
+- 2026-11-11 (fix: the 2 long-failing navigation tests): Godot updates navigation maps on a background thread, and a
+  mesh set on a region the server is already taking in (still empty) could be missed for good, leaving the map empty
+  (enemies couldn't path; a door locking could be ignored). NEW: Enemies hands the mesh over again if the map hasn't
+  taken it in after `NAV_MAP_RETRY_FRAMES` physics frames (up to `NAV_MAP_RETRIES` times, then a warning).
+  CHANGED `is_baking_navigation()`: true until the map really uses the newest mesh, so game_flow's floor_ready waits
+  for a usable map. Tests wait for that instead of a fixed 3 frames (no check changed). Known, not fixed: baking the
+  CSG blockout tiles prints Godot's "had to parse RenderingServer meshes" performance warning (the CSG parser reads
+  the render meshes even for static colliders); the fix would be to give tiles baked collision shapes (level_gen).
+
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and
 `SwoopBehaviour`, `Perception`, `EnemySpawner`, the `Enemies` autoload (floor spawning on `floor_ready`, navmesh baking,

@@ -278,8 +278,12 @@ extends Resource
 @export var hazard_min_damage: StringName = &"heavy"
 ## NEW 2026-10-31 (step 4b, placeholder hazard zones in systems/hazards): damage per second to anyone
 ## standing in one, by hazard kind (kinds not listed use "sparks"), and its damage type.
-@export var hazard_damage_per_second: Dictionary[StringName, float] = {&"sparks": 8.0, &"fire": 12.0}
-@export var hazard_damage_types: Dictionary[StringName, StringName] = {&"sparks": &"electric", &"fire": &"fire"}
+@export var hazard_damage_per_second: Dictionary[StringName, float] = {&"sparks": 8.0, &"fire": 12.0,
+	&"toxic_spores": 5.0, &"toxic_gas": 7.0, &"water": 2.0}
+@export var hazard_damage_types: Dictionary[StringName, StringName] = {&"sparks": &"electric", &"fire": &"fire",
+	&"toxic_spores": &"poison", &"toxic_gas": &"poison", &"water": &"poison"}
+## NEW 2026-11-11 (step 5a): hazards that slow whoever stands in them (speed x this), by kind: contaminated water.
+@export var hazard_slow: Dictionary[StringName, float] = {&"water": 0.6}
 ## How often a hazard hurts (seconds) and how big its zone is (radius, metres).
 @export var hazard_tick_seconds: float = 0.5
 @export var hazard_radius: float = 1.4
@@ -337,6 +341,9 @@ extends Resource
 @export var debris_prop_chance_destroyed: float = 0.9
 ## NEW 2026-10-31 (step 4b): the loose debris props (PropData ids), picked evenly.
 @export var debris_prop_ids: Array[StringName] = [&"prop_debris_chunk", &"prop_debris_panel"]
+## NEW 2026-11-11 (step 5a): a department's own loose debris instead (e.g. vines in Botany), by department id.
+@export var debris_prop_ids_by_department: Dictionary[StringName, Array] = {
+	&"department_botany": [&"prop_debris_vines", &"prop_debris_vines", &"prop_debris_chunk"]}
 ## NEW 2026-11-10 (step 4f, plan step 10): how many enemy_spawn spots are switched on: this share of the floor's
 ## enemy budget (RunDifficulty.enemy_budget: grows with the floor and the players), at least the minimum, never
 ## closer to the elevator than this walking distance (metres), so the start stays calm.
@@ -385,3 +392,14 @@ func size_category_for(size_units: Vector2i) -> StringName:
 		if sizes.has(size_units) or sizes.has(turned):
 			return category
 	return &""
+
+
+## NEW 2026-11-11 (step 5a): the loose debris props for a department (its own list, or debris_prop_ids).
+func debris_props_for(department_id: StringName) -> Array[StringName]:
+	var props: Array[StringName] = []
+	var own: Array = debris_prop_ids_by_department.get(department_id, [])
+	for prop_id: Variant in own:
+		props.append(StringName(str(prop_id)))
+	if props.is_empty():
+		props = debris_prop_ids.duplicate()
+	return props

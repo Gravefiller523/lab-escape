@@ -1,8 +1,15 @@
-[gd_resource type="Resource" script_class="DepartmentData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="DepartmentData" load_steps=40 format=3]
 
 [ext_resource type="Script" path="res://core/data/levels/department_data.gd" id="1_data"]
 [ext_resource type="Script" path="res://core/data/shared/weighted_id_data.gd" id="2_weighted"]
-[ext_resource type="Script" path="res://core/data/levels/lighting_style_data.gd" id="3_lighting"]
+[ext_resource type="Script" path="res://core/data/levels/room_type_data.gd" id="3_room_type"]
+[ext_resource type="Script" path="res://core/data/levels/incident_data.gd" id="4_incident"]
+[ext_resource type="Script" path="res://core/data/levels/lighting_style_data.gd" id="5_lighting"]
+[ext_resource type="Material" path="res://assets/materials/botany/botany_wall.tres" id="6_wall"]
+[ext_resource type="Material" path="res://assets/materials/botany/botany_floor.tres" id="7_floor"]
+[ext_resource type="Material" path="res://assets/materials/botany/botany_trim.tres" id="8_trim"]
+[ext_resource type="Material" path="res://assets/materials/botany/botany_accent.tres" id="9_accent"]
+[ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_botany_welcome_center.tscn" id="10_welcome"]
 
 [sub_resource type="Resource" id="Enemy_fly"]
 script = ExtResource("2_weighted")
@@ -14,24 +21,181 @@ script = ExtResource("2_weighted")
 content_id = &"enemy_rat"
 weight = 1.0
 
+[sub_resource type="Resource" id="Prop_crate"]
+script = ExtResource("2_weighted")
+content_id = &"prop_crate"
+weight = 3.0
+
+[sub_resource type="Resource" id="Prop_crate_heavy"]
+script = ExtResource("2_weighted")
+content_id = &"prop_crate_heavy"
+weight = 1.0
+
+[sub_resource type="Resource" id="Prop_dna_vial"]
+script = ExtResource("2_weighted")
+content_id = &"prop_dna_vial"
+weight = 1.0
+
+[sub_resource type="Resource" id="Type_greenhouse"]
+script = ExtResource("3_room_type")
+id = &"room_type_greenhouse"
+room_kind = &"greenhouse"
+display_name = "Greenhouse"
+max_per_floor = 1
+size_categories = PackedStringArray("large")
+part_categories = PackedStringArray("mechanical", "structural")
+
+[sub_resource type="Resource" id="Type_seed_vault"]
+script = ExtResource("3_room_type")
+id = &"room_type_seed_vault"
+room_kind = &"seed_vault"
+display_name = "Seed Vault"
+max_per_floor = 1
+size_categories = PackedStringArray("small")
+part_categories = PackedStringArray("power", "electrical")
+
+[sub_resource type="Resource" id="Type_decon_airlock"]
+script = ExtResource("3_room_type")
+id = &"room_type_decon_airlock"
+room_kind = &"decon_airlock"
+display_name = "Decontamination"
+max_per_floor = 2
+size_categories = PackedStringArray("small")
+part_categories = PackedStringArray("electrical")
+
+[sub_resource type="Resource" id="Type_cell_culture_lab"]
+script = ExtResource("3_room_type")
+id = &"room_type_cell_culture_lab"
+room_kind = &"cell_culture_lab"
+display_name = "Cell Culture Lab"
+weight = 1.5
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("electronic", "electrical")
+
+[sub_resource type="Resource" id="Type_microscopy_lab"]
+script = ExtResource("3_room_type")
+id = &"room_type_microscopy_lab"
+room_kind = &"microscopy_lab"
+display_name = "Microscopy Lab"
+weight = 1.5
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("electronic")
+
+[sub_resource type="Resource" id="Type_soil_prep"]
+script = ExtResource("3_room_type")
+id = &"room_type_soil_prep"
+room_kind = &"soil_prep"
+display_name = "Soil and Sample Prep"
+weight = 1.2
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("mechanical")
+
+[sub_resource type="Resource" id="Type_autoclave_room"]
+script = ExtResource("3_room_type")
+id = &"room_type_autoclave_room"
+room_kind = &"autoclave_room"
+display_name = "Autoclave Room"
+size_categories = PackedStringArray("small")
+part_categories = PackedStringArray("electrical")
+
+[sub_resource type="Resource" id="Type_growth_chamber"]
+script = ExtResource("3_room_type")
+id = &"room_type_growth_chamber"
+room_kind = &"growth_chamber"
+display_name = "Growth Chamber"
+weight = 1.2
+max_per_floor = 2
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("electrical", "power")
+
+[sub_resource type="Resource" id="Type_pump_room"]
+script = ExtResource("3_room_type")
+id = &"room_type_pump_room"
+room_kind = &"pump_room"
+display_name = "Irrigation Pump Room"
+max_per_floor = 1
+size_categories = PackedStringArray("medium")
+part_categories = PackedStringArray("mechanical", "power")
+
 [sub_resource type="Resource" id="Lighting"]
-script = ExtResource("3_lighting")
-light_color = Color(0.95, 1, 0.95, 1)
+script = ExtResource("5_lighting")
+light_color = Color(0.95, 1, 0.97, 1)
+light_energy = 1.1
+emergency_color = Color(0.25, 1, 0.4, 1)
+
+[sub_resource type="Resource" id="Incident_overgrowth_lighting"]
+script = ExtResource("5_lighting")
+light_color = Color(0.7, 1, 0.72, 1)
+light_energy = 0.75
+emergency_color = Color(0.3, 1, 0.35, 1)
+
+[sub_resource type="Resource" id="Incident_frost_lighting"]
+script = ExtResource("5_lighting")
+light_color = Color(0.8, 0.9, 1, 1)
+light_energy = 0.85
+emergency_color = Color(0.3, 0.95, 0.6, 1)
+
+[sub_resource type="Resource" id="Incident_overgrowth_breach"]
+script = ExtResource("4_incident")
+id = &"incident_overgrowth_breach"
+display_name = "Overgrowth breach"
+weight = 1.5
+origin_room_kinds = PackedStringArray("greenhouse")
+overlay_flavour = &"vines"
+hazard_kinds = PackedStringArray("toxic_spores")
+lighting = SubResource("Incident_overgrowth_lighting")
+
+[sub_resource type="Resource" id="Incident_spore_release"]
+script = ExtResource("4_incident")
+id = &"incident_spore_release"
+display_name = "Toxic spore release"
+origin_room_kinds = PackedStringArray("growth_chamber", "cell_culture_lab")
+overlay_flavour = &"spores"
+hazard_kinds = PackedStringArray("toxic_spores", "toxic_gas")
+lighting = SubResource("Incident_overgrowth_lighting")
+
+[sub_resource type="Resource" id="Incident_irrigation_flood"]
+script = ExtResource("4_incident")
+id = &"incident_irrigation_flood"
+display_name = "Irrigation flood"
+origin_room_kinds = PackedStringArray("pump_room")
+overlay_flavour = &"flood"
+hazard_kinds = PackedStringArray("water")
+
+[sub_resource type="Resource" id="Incident_vault_cooling_failure"]
+script = ExtResource("4_incident")
+id = &"incident_vault_cooling_failure"
+display_name = "Seed vault cooling failure"
+origin_room_kinds = PackedStringArray("seed_vault")
+overlay_flavour = &"frost"
+hazard_kinds = PackedStringArray("toxic_gas")
+lighting = SubResource("Incident_frost_lighting")
 
 [resource]
 script = ExtResource("1_data")
 id = &"department_botany"
 display_name = "Botany"
-description = "Greenhouses, seed vault, labs. PLACEHOLDER (floor generation step 4a): uses only the shared rooms until its own rooms are built (plan step 5). Its enemies and boss are stand-ins; its boss floors are off (boss_floors) until it has its own boss."
-tags = PackedStringArray("botany", "placeholder")
-room_ids = Array[StringName]([&"room_tile_office"])
+description = "Clinical white with green accents and bright flat light. Greenhouses, seed vault, decontamination, labs (floor generation step 5a). Its enemies, loot, vendor stock and boss are stand-ins; its boss floors are off (boss_floors) until it has its own boss."
+tags = PackedStringArray("botany")
+room_ids = Array[StringName]([&"room_tile_botany_welcome_center", &"room_tile_botany_greenhouse", &"room_tile_botany_seed_vault", &"room_tile_botany_decon_airlock", &"room_tile_botany_cell_culture_lab", &"room_tile_botany_microscopy_lab", &"room_tile_botany_soil_prep", &"room_tile_botany_autoclave_room", &"room_tile_botany_growth_chamber", &"room_tile_botany_pump_room"])
 enemy_spawns = Array[ExtResource("2_weighted")]([SubResource("Enemy_fly"), SubResource("Enemy_rat")])
 boss_id = &"boss_giant_rat"
 loot_id = &"loot_zoology_small"
 stock_id = &"stock_zoology_vending"
 upgrade_type = &"mutation"
-ambient_color = Color(0.85, 0.9, 0.85, 1)
+required_room_kinds = PackedStringArray("lift", "greenhouse", "seed_vault", "decon_airlock")
+ambient_color = Color(0.85, 0.9, 0.86, 1)
 accent_color = Color(0.3, 0.8, 0.4, 1)
 boss_floors = false
+welcome_center_scene = ExtResource("10_welcome")
+room_types = Array[ExtResource("3_room_type")]([SubResource("Type_greenhouse"), SubResource("Type_seed_vault"), SubResource("Type_decon_airlock"), SubResource("Type_cell_culture_lab"), SubResource("Type_microscopy_lab"), SubResource("Type_soil_prep"), SubResource("Type_autoclave_room"), SubResource("Type_growth_chamber"), SubResource("Type_pump_room")])
+palette = {
+"accent": ExtResource("9_accent"),
+"floor": ExtResource("7_floor"),
+"trim": ExtResource("8_trim"),
+"wall": ExtResource("6_wall")
+}
 lighting = SubResource("Lighting")
+prop_pool = Array[ExtResource("2_weighted")]([SubResource("Prop_crate"), SubResource("Prop_crate_heavy"), SubResource("Prop_dna_vial")])
 hazard_kinds = PackedStringArray("toxic_spores", "toxic_gas", "water")
+incidents = Array[ExtResource("4_incident")]([SubResource("Incident_overgrowth_breach"), SubResource("Incident_spore_release"), SubResource("Incident_irrigation_flood"), SubResource("Incident_vault_cooling_failure")])

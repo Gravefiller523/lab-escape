@@ -577,6 +577,18 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   `floor_built`, game_flow waits for it. Tests `test_floor_step_4f.gd`, `test_floor_rules_bulk.gd` (30 seeds per
   department) and the slow group `tests_slow/level_gen/test_floor_rules_bulk_500.gd` (500 per department, about
   a minute: `-gdir=res://tests_slow`).
+- 2026-11-11 (floor generation step 5a: Botany, plan section 8, F4): the Botany department is real: its own welcome
+  center (planters, a green stripe), 9 room tiles (greenhouse, seed vault, decontamination airlock, cell culture lab,
+  microscopy lab, soil and sample prep, autoclave room, growth chamber, irrigation pump room), required rooms
+  greenhouse, seed vault and airlock, room types with part categories, a clinical white and green palette
+  (`assets/materials/botany/`), green emergency slits, a prop pool with DNA vials, 4 incidents (overgrowth breach,
+  spore release, irrigation flood, seed vault cooling failure) and hazards (toxic spores, toxic gas, water). NEW
+  `IncidentOverlays` (`systems/level_gen/tiles/incident_overlays.gd`): damaged tiles wear the nearest incident's
+  `overlay_flavour` (vines, spores, flood, frost, scorch, wreckage; Robotics' scorch and wreckage now show too).
+  NEW tuning `debris_prop_ids_by_department` and `debris_props_for()`: Botany's loose debris and debris doorways
+  are mostly vines (NEW prop `prop_debris_vines`). The airlock is an ordinary small room with a door on each side
+  for now (a true two-door choke point between a hallway and a lab needs generator support; later). Tests
+  `test_botany.gd`.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

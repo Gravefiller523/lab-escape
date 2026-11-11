@@ -50,3 +50,8 @@ zones appear at exactly the switched-on markers, once.
 
 ## Changelog
 - 2026-10-31: created (floor generation step 4b).
+- 2026-11-11 (floor generation step 5a, Botany): NEW looks for `toxic_spores` (drifting green motes, a slow green
+  glow), `toxic_gas` (a yellow-green haze) and `water` (a murky pool). Water slows players while they stand in it:
+  every PC sets a player movement modifier (`PlayerMovement.set_modifier`, speed x `Config.floor_gen.hazard_slow`)
+  and removes it when they step out or the zone goes. NEW `HazardZone.is_slowing(player)`. Damage numbers: spores 5,
+  gas 7, water 2 per second, all "poison". Tests in `tests/unit/level_gen/test_botany.gd`.

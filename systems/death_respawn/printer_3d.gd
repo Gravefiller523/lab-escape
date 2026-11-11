@@ -26,7 +26,12 @@ func _ready() -> void:
 	add_to_group(GROUP)
 	_build()
 	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
-		_request_state_rpc.rpc_id(1)
+		# CHANGED 2026-11-11 (roadmap WP1): a mid-floor joiner asks once its connection is open.
+		HostLink.when_connected(self, _send_state_request)
+
+
+func _send_state_request() -> void:
+	_request_state_rpc.rpc_id(1)
 
 
 func get_meat_inserted() -> int:

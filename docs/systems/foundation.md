@@ -82,6 +82,10 @@ static func PhysicsLayers.bit(layer: int) -> int
 
 static func SeededRng.make(base_seed: int, stream: StringName, index: int = 0) -> RandomNumberGenerator
 static func SeededRng.pick_weighted(rng: RandomNumberGenerator, weights: PackedFloat32Array) -> int
+
+# NEW 2026-11-11 (roadmap WP1). Client: call send() now if the connection to the host is open, else once it opens.
+# Use it for "ask the host for my state" requests in _ready of anything built with a floor. send = a method of node.
+static func HostLink.when_connected(node: Node, send: Callable) -> void
 ```
 
 ## EventBus
@@ -150,3 +154,4 @@ None. Everything else depends on this.
   `floor_count` deprecated. FloorGenTuning step 3 additions (generator, secondary hallways, markers). Additions only.
 - 2026-10-30 (floor generation step 2): NEW `Config.floor_gen` (`FloorGenTuning`, `core/config/floor_gen_tuning.gd`, live copy `config/floor_gen_tuning.tres`): every floor generation number (plan section 17, V1-V16), grouped. Loaded after `Config.feel`. NEW data classes `RoomTypeData`, `IncidentData`, `LightingStyleData` (`core/data/levels/`); new fields on RoomData, DepartmentData and PropData (see docs/systems/level_gen.md changelog). Additions only.
 - 2026-10-29 (HL2 feel step 2): NEW `PhysicsLayers.DEBRIS` (10): broken prop pieces, which only hit the world. NEW `MovementEffectData.can_sprint` (default true), `PropData.surface`, `health`, `break_pieces`, `break_scene`, `EnemyData.impact_mass`, `BossData.impact_mass`.
+- 2026-11-11 (roadmap WP1): NEW `HostLink` (`core/util/host_link.gd`): `HostLink.when_connected(node, send)` runs a client's request to the host now, or once the connection opens (a mid-floor joiner builds the floor before it is open). NEW GameConfig `prop_snapshot_max_bytes` (1100).

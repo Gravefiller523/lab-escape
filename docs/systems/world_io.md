@@ -120,3 +120,4 @@ GUT (`tests/unit/world_io/test_world_io.gd`): `test_a_wire_waits_its_delay_and_o
   `lets_enemies_through`, `can_enemies_open`, `open_away_from`, `find_enemy_walking_in`. Enemies path through doors
   they can open, and through ones that stand open, and push them open; locked doors and hand-proof gates are walls to them, and
   the navigation is baked again when that changes. A door swinging open for an enemy only stops for players.
+- 2026-11-11 (roadmap WP1): a client asks the host for a device's state once its connection is open (`HostLink`). A mid-floor joiner builds the floor before that, so its doors, buttons and readers used to ask too early, never got the host's state, and printed "unknown peer ID: 1" errors.

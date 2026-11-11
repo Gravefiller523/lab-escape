@@ -917,9 +917,17 @@ func _physics_process(delta: float) -> void:
 		_send_batch(get_snapshot_batch(false))
 
 
+## CHANGED 2026-11-11 (roadmap WP1): a batch bigger than GameConfig prop_snapshot_max_bytes goes out in halves, so
+## every message fits in one network packet.
 func _send_batch(batch: Array) -> void:
-	if not batch.is_empty():
-		_receive_snapshots.rpc(Time.get_ticks_msec(), batch)
+	if batch.is_empty():
+		return
+	if batch.size() > 1 and var_to_bytes(batch).size() > _config.prop_snapshot_max_bytes:
+		var half: int = floori(batch.size() / 2.0)
+		_send_batch(batch.slice(0, half))
+		_send_batch(batch.slice(half))
+		return
+	_receive_snapshots.rpc(Time.get_ticks_msec(), batch)
 
 
 ## The host's clock (milliseconds), as best this PC can tell. On the host, its own clock.

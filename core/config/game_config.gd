@@ -133,6 +133,9 @@ extends Resource
 @export var prop_sync_rate_near: int = 40
 ## How often (per second) moving props far from every player are sent.
 @export var prop_sync_rate_far: int = 4
+## NEW 2026-11-11 (roadmap WP1): the biggest message of prop snapshots (bytes). Bigger batches are split, because a
+## message over one network packet (about 1,400 bytes) is cut up and lost far more often on real connections.
+@export var prop_snapshot_max_bytes: int = 1100
 ## Clients show props this many milliseconds behind the host, so they can glide evenly between
 ## snapshots instead of hopping. Higher = smoother but later.
 @export var prop_interpolation_delay_msec: int = 50

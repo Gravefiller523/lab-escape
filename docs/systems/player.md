@@ -215,6 +215,8 @@ launch options `-- host` / `-- join`.
 - 2026-10-29 (HL2 feel step 2): NEW `PlayerMovement.can_sprint()` and `MovementEffectData.can_sprint` (walk mode only sprints if every modifier allows it); carrying a prop turns sprinting off. The feel playtest level now has a prop spawner, a prop yard and targets to throw at.
 - 2026-10-30 (HL2 feel step 3.3): footsteps and landings are also noises enemies hear (`EventBus.noise_made`, emitted on the host for every body): crouch step 2 m, walk 5 m, sprint 10 m, landing 7 m (`Config.feel.ai`, "Hearing").
 
+- 2026-11-11 (roadmap WP1): `teleport` only sends the "move there" message to an owner that is connected (or this PC). The host's speed check used to send it to players who had just left, printing an engine error each time.
+
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,
 crouch (with headroom check), gravity, mouse look, camera, a grey capsule body with a blue visor so

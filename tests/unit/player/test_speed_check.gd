@@ -52,8 +52,9 @@ func _drive(body: PlayerCharacter, distance_at: Callable, seconds: float) -> int
 	return snaps
 
 
-## There is no player 7 connected in a test, so each "go back" message the host sends them fails with an
-## engine error. The test counts the put-backs on the host's side instead.
+## There is no player 7 connected in a test. CHANGED 2026-11-11: the host no longer sends a "go back" message to an
+## owner that isn't connected, so there should be no engine errors; any that still come are ignored here, because
+## the test counts the put-backs on the host's side.
 func _ignore_offline_message_errors() -> void:
 	for tracked: Variant in get_errors():
 		if tracked.is_engine_error():

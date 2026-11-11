@@ -92,6 +92,8 @@ GUT tests: `test_gem_credits_last_holder`, `test_buy_with_exact_credit`, `test_c
 - 2026-10-24: playtest fix: a gem carried into the coin slot and let go there never went in (the slot only noticed gems as they entered, and a held one is refused). The host now also checks what is already in the slot every physics tick. Test `test_gem_let_go_inside_the_slot_goes_in`.
 - 2026-10-24 (later): a gem touching the coin slot goes in even while it is held (the host lets go of it first and credits the holder). No need to throw it in.
 
+- 2026-11-11 (roadmap WP1): a mid-floor joiner's vending machines ask the host for their offers and credit once the connection is open (`HostLink`); they used to ask too early and showed no offers.
+
 ## HANDOFF
 **Built (2026-10-23):** `VendorOffer`, `Vendor` (coin slot credit to the last holder, buying, change as gems via
 `LootService.gems_for_value`, refunds, synced offers and credits, toasts for "not enough gems"), the `Vendors` autoload,

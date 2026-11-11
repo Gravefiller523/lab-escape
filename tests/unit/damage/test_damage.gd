@@ -134,7 +134,7 @@ func test_hurtbox_weak_spot_multiplies() -> void:
 	assert_eq(HealthComponent.of(target).get_current(), 80.0, "a weak spot does double")
 	assert_true(Damage.hit(target, DamageInfo.make(10.0, &"sharp")), "hitting the node itself works too")
 	assert_eq(HealthComponent.of(target).get_current(), 70.0)
-	assert_false(Damage.hit(Node3D.new(), DamageInfo.make(10.0, &"sharp")), "nothing to hurt")
+	assert_false(Damage.hit(autofree(Node3D.new()), DamageInfo.make(10.0, &"sharp")), "nothing to hurt")
 
 
 func test_stats_add_then_multiply() -> void:

@@ -120,6 +120,8 @@ all of the above plus `test_fists_do_damage_too`, `test_melee_does_not_hurt_team
 - 2026-10-24 (player): the mutated plant grows a real, climbable `Ladder` (player's `systems/player/ladder.gd`), added once its grow animation ends, instead of a spiral of steps. `test_water_grows_plant_ladder` checks `Vine/Ladder`.
 - 2026-10-29 (HL2 feel step 2.7): thrown items check for hurtboxes along their whole path each frame (`ThrownItem._hurtbox_along`), so a fast throw can't skip through an enemy between two frames. While a throw counts, its prop's `own_hit_damage` is on, so the physics impact damage doesn't hurt the same target again.
 
+- 2026-11-11 (roadmap WP1): use targets (the mutated plant) built by a mid-floor joiner ask the host for their state once the connection is open (`HostLink`).
+
 ## HANDOFF
 **Built (2026-10-19):** `HeldItemController`, `ItemBehaviour` + the melee, throw, consume and use-on-object runtime pieces,
 `ThrownItem`, `ItemPickup`, `UseTarget`, `MutatedPlant` (`world/mutated_plant.tscn`), the `Items` autoload, grey-box world

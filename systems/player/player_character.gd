@@ -167,7 +167,11 @@ func teleport(xform: Transform3D) -> void:
 		sync_position = xform.origin
 		global_position = xform.origin
 		reset_physics_interpolation()
-	_teleport_owner.rpc_id(get_multiplayer_authority(), xform)
+	# CHANGED 2026-11-11 (roadmap WP1): not to an owner that isn't connected (just left, or a test's pretend player),
+	# which printed an engine error for every put-back.
+	var owner_peer: int = get_multiplayer_authority()
+	if owner_peer == multiplayer.get_unique_id() or multiplayer.get_peers().has(owner_peer):
+		_teleport_owner.rpc_id(owner_peer, xform)
 
 
 ## Local. Menus and the console turn movement and mouse look off.

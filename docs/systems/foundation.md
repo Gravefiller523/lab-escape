@@ -156,3 +156,4 @@ None. Everything else depends on this.
 - 2026-10-29 (HL2 feel step 2): NEW `PhysicsLayers.DEBRIS` (10): broken prop pieces, which only hit the world. NEW `MovementEffectData.can_sprint` (default true), `PropData.surface`, `health`, `break_pieces`, `break_scene`, `EnemyData.impact_mass`, `BossData.impact_mass`.
 - 2026-11-11 (roadmap WP1): NEW `HostLink` (`core/util/host_link.gd`): `HostLink.when_connected(node, send)` runs a client's request to the host now, or once the connection opens (a mid-floor joiner builds the floor before it is open). NEW GameConfig `prop_snapshot_max_bytes` (1100).
 - 2026-11-11 (roadmap WP6): NEW `InputActions.PLAYER_LIST` (Tab): open or close the player list.
+- 2026-11-11 (roadmap WP9): NEW `RangedAttackData` (`core/data/enemies/ranged_attack_data.gd`: shots, interval, speed, gravity, spread, damage, status, min/max range, projectile size and colour, lifetime) and `EnemyData.ranged_attack`.

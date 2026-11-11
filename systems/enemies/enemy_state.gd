@@ -41,3 +41,14 @@ static func should_flee(enemy: Enemy) -> bool:
 		return false
 	var health: HealthComponent = enemy.get_health()
 	return health != null and health.get_fraction() <= enemy.data.flee_health_fraction
+
+
+## NEW 2026-11-11 (roadmap WP9): for chase and swarm: an enemy with a ranged attack starts shooting once it can see
+## its target, is outside melee reach but inside its range, and its attack is ready.
+static func should_shoot(enemy: Enemy) -> bool:
+	if not enemy.has_state(&"attack_ranged") or enemy.data == null or enemy.data.ranged_attack == null:
+		return false
+	var distance: float = enemy.flat_distance_to_target()
+	var melee_close: bool = enemy.has_state(&"attack_melee") and distance <= engage_distance(enemy)
+	return not melee_close and distance <= enemy.data.ranged_attack.max_range and enemy.attack_ready() \
+		and enemy.can_see_target()

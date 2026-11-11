@@ -107,6 +107,10 @@ picks it and places it on a `lift_part` marker it fits; check some room tiles ha
 attack_ranged, flee, swarm) and add behaviour nodes. **Fill in:** health, speed, attack numbers,
 `sight_range`, `flee_health_fraction`, `spawn_cost`, `min_floor`, `loot_id`. Then add it to a
 department's `enemy_spawns` (with a weight) so it appears. **Test:** `spawn enemy_<name>`.
+**A shooter (NEW 2026-11-11):** copy `enemy_test_spitter.tres` and `scenes/spitter.tscn`. Its scene has an
+`attack_ranged` state, and its file a `ranged_attack` (a RangedAttackData: shots per burst, speed, gravity, spread,
+damage, status, min and max range, projectile size and colour). `attack_cooldown` is the time between bursts. A
+turret: `move_speed` 0 and only the idle, search and attack_ranged states.
 
 ## Boss
 **Fill in:** `scene`, `max_health`, `phases` (each: `starts_at_health_fraction`, `attack_names` from

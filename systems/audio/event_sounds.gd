@@ -17,6 +17,8 @@ extends Resource
 @export var enemy_notice: AudioStream
 ## NEW 2026-10-30: an enemy winds up an attack (a growl, at it), just before it strikes.
 @export var enemy_windup: AudioStream
+## NEW 2026-11-11 (roadmap WP9): an enemy fires a shot (at the muzzle).
+@export var enemy_shoot: AudioStream
 
 @export_group("Players")
 ## A dead player came out of the 3D printer.
@@ -60,7 +62,7 @@ extends Resource
 ## field name -> placeholder kind (PlaceholderSounds) used while the field is empty.
 const PLACEHOLDERS: Dictionary = {
 	"hit": &"thunk", "enemy_death": &"squeak", "player_death": &"low", "item_use": &"whoosh",
-	"enemy_notice": &"chirp", "enemy_windup": &"growl",
+	"enemy_notice": &"chirp", "enemy_windup": &"growl", "enemy_shoot": &"whoosh",
 	"use_deny": &"buzz", "button_press": &"click", "door_move": &"creak", "door_shut": &"clunk", "crank_turn": &"ratchet", "punt": &"whump",
 	"reprint": &"rise", "upgrade": &"sparkle", "purchase": &"chime",
 	"lift_ride": &"hum", "lift_arrive": &"chime", "lift_part": &"clunk", "boss_phase": &"roar", "boss_defeated": &"fanfare",

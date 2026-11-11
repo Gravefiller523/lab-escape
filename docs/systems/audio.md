@@ -75,6 +75,8 @@ GUT tests: `test_buses_exist`, `test_music_switches_on_floor_ready`, `test_pool_
 - 2026-10-30 (HL2 feel step 4): NEW event sounds in a "World" group: `use_deny` (a buzz, on your PC when use does nothing or is refused; played from `EventBus.use_denied`), `button_press`, `door_move`, `door_shut` and `crank_turn` (played by world_io devices on every PC). NEW placeholder kinds `buzz`, `click`, `creak`, `ratchet`.
 - 2026-10-30 (HL2 feel step 4.3): NEW `EventSounds.punt` (someone punted a prop with the punt arm, at the prop; placeholder NEW kind `whump`).
 
+- 2026-11-11 (roadmap WP9): NEW event sound `enemy_shoot` (placeholder: whoosh), played where an enemy shot leaves.
+
 ## HANDOFF
 **Built (2026-10-23):** the `Sound` autoload (`SoundService`), `EventSounds` + `event_sounds.tres`, `PlaceholderSounds`, the
 test scene (`systems/audio/test/audio_test.tscn`) and 8 GUT tests (`tests/unit/audio/test_audio.gd`: the spec's list plus

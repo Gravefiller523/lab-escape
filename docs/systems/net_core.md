@@ -43,6 +43,7 @@ func get_waiting_player_ids() -> Array[int]               # NEW 2026-10-17
 func set_waiting_for_next_floor(player_id: int, waiting: bool) -> void   # NEW 2026-10-17: host only
 func clear_run_records() -> void           # host; at run start and end
 func kick(player_id: int) -> void          # host
+func get_ping_msec(player_id: int) -> int  # NEW 2026-11-11: ms, -1 if unknown (you, solo, Steam)
 func use_config(config: GameConfig) -> void   # NEW 2026-10-17: tests only; call before adding the node to the tree
 ## NEW 2026-10-18: get a joining PC into the right scene before Godot sends it anything there (game_flow).
 ## provider (host): func() -> Dictionary; preparer (client): func(info: Dictionary) -> void, may await.
@@ -149,6 +150,8 @@ game_flow's EventBus signals on that PC only; press them in the host window), "G
   to them. NEW `set_join_handlers()`, GameConfig `join_load_timeout`. Test: `test_joiner_gets_ready_before_the_connection_opens`.
 
 - 2026-11-11 (roadmap WP1): CHANGED timing: a disconnect is handled one frame after the network reports it, so `player_left` (EventBus and `roster_changed`) now comes a frame later. While the signal runs the leaving peer is still on the network's list, so everything the host sent everyone in reaction also went to the closed connection and printed "Unable to send packet" errors. No API change.
+
+- 2026-11-11 (roadmap WP6): NEW `get_ping_msec(player_id) -> int`: round trip time to that player as this PC knows it (host: every client; client: the host only); -1 for yourself, solo, or Steam (not reported yet). Test `test_ping_to_other_players`.
 
 ## HANDOFF
 **Done:** the `Net` autoload: roster, slot indexes (lowest free slot, reused), PlayerRecords synced

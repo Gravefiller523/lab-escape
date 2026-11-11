@@ -28,6 +28,8 @@ const HOLSTER: StringName = &"holster"
 const EQUIP: StringName = &"equip"
 const PUSH_TO_TALK: StringName = &"push_to_talk"
 const PAUSE: StringName = &"pause"
+## NEW 2026-11-11 (roadmap WP6, ui): open or close the player list (ping, mute, kick).
+const PLAYER_LIST: StringName = &"player_list"
 const DEBUG_CONSOLE: StringName = &"debug_console"
 ## NEW 2026-10-31 (level_gen floor generation, debug): show the floor from above, and make a new floor (host).
 ## Not F5 to F8: the Godot editor uses those while a game runs (F8 stops it).
@@ -51,6 +53,7 @@ const DEFAULT_KEYS: Dictionary = {
 	HOLSTER: KEY_ALT,
 	EQUIP: KEY_F,
 	PAUSE: KEY_ESCAPE,
+	PLAYER_LIST: KEY_TAB,
 	DEBUG_CONSOLE: KEY_QUOTELEFT,
 	DEBUG_FLOOR_MAP: KEY_F3,
 	DEBUG_FLOOR_REGENERATE: KEY_F4,

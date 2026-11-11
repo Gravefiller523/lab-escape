@@ -7,6 +7,8 @@ extends CanvasLayer
 
 const SCREEN_MAIN_MENU: StringName = &"main_menu"
 const SCREEN_PAUSE: StringName = &"pause"
+## NEW 2026-11-11 (roadmap WP6): Tab: everyone with their ping, Mute and (host) Kick.
+const SCREEN_PLAYERS: StringName = &"players"
 ## Above the game, below debug overlays.
 const LAYER: int = 10
 const TOAST_GAP_SECONDS: float = 0.2
@@ -14,6 +16,7 @@ const TOAST_GAP_SECONDS: float = 0.2
 var _screens: Dictionary[StringName, PackedScene] = {
 	SCREEN_MAIN_MENU: preload("res://systems/ui/screens/main_menu.tscn"),
 	SCREEN_PAUSE: preload("res://systems/ui/screens/pause_menu.tscn"),
+	SCREEN_PLAYERS: preload("res://systems/ui/screens/player_list_screen.tscn"),
 }
 var _open_screen: Control
 var _open_name: StringName = &""
@@ -151,6 +154,11 @@ func _next_toast() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# NEW 2026-11-11 (roadmap WP6): Tab opens the player list while you have a body (the screen closes itself).
+	if event.is_action_pressed(InputActions.PLAYER_LIST) and not is_screen_open() and _local_body() != null:
+		show_screen(SCREEN_PLAYERS)
+		get_viewport().set_input_as_handled()
+		return
 	if not event.is_action_pressed(InputActions.PAUSE):
 		return
 	if _open_name == SCREEN_PAUSE:

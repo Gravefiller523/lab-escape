@@ -136,6 +136,8 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
 
 - 2026-11-11 (roadmap WP5, mock-up approved by Zachary): the rest of the HUD, one script each in `systems/ui/hud/`: `HealthBar` (bottom left, in HealthSlot: health and status chips), `InventoryBar` (bottom middle, in InventorySlot: one box per slot, the selected one outlined, what you hold and its uses above), `BossBar` (top middle while a boss lives: name, phase, health), `PlayerList` (bottom right: everyone, with speaking / ghost / joining), `GhostPanel` (middle, while dead or waiting to spawn: who you watch, the reprint cost), `RunSummaryPanel` (middle during the run summary: result, floors, minutes, and per player deaths, gems spent and upgrades). `HudStyle` holds the shared look until the UI theme. NEW Hud fields `health_bar`, `inventory_bar`, `boss_bar`, `player_list`, `ghost_panel`, `run_summary`. Kills are not in the summary yet: `enemy_killed` only fires on the host. Tests in `tests/unit/ui/test_hud.gd`.
 
+- 2026-11-11 (roadmap WP6): NEW screen `SCREEN_PLAYERS` (`systems/ui/screens/player_list_screen.tscn`), opened with Tab (`InputActions.PLAYER_LIST`) while you have a body, closed with Tab or Esc: every player with their ping (`Net.get_ping_msec`), a Mute / Unmute button for the others (`Voice.set_player_muted`, only what you hear) and, for the host, Kick (`Net.kick`). The pause menu has a Controls button that shows every action with its current key (scrolls). Tests `test_tab_shows_the_player_list`, `test_pause_menu_lists_the_controls`.
+
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and
 "Join game", Join by lobby id for testing, a "Testing on one PC" section with address, port, Host

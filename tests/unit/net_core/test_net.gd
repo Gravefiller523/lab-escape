@@ -217,3 +217,17 @@ func test_joiner_gets_ready_before_the_connection_opens() -> void:
 	assert_eq(got, ["floor_3", "ready"] as Array[String], "the joiner got the host's info and finished getting ready")
 	assert_eq(connected_before_ready, [false] as Array[bool], "nothing was connected while it got ready")
 	assert_eq(client.get_player_count(), 2, "then the connection opened and the hello went through")
+
+
+## NEW 2026-11-11 (roadmap WP6): ping for the Tab player list. Solo has none; the host knows each client's, a client
+## knows the host's, and nobody has a ping to themselves.
+func test_ping_to_other_players() -> void:
+	var solo := _make_pc(_config())
+	assert_eq(solo.get_ping_msec(solo.local_player_id()), -1, "solo: no ping")
+	var host := _host(_config())
+	var client := _client(_config())
+	await wait_until(_count_is(host, 2), WAIT)
+	await wait_until(_count_is(client, 2), WAIT)
+	assert_gte(host.get_ping_msec(client.local_player_id()), 0, "the host knows the client's ping")
+	assert_gte(client.get_ping_msec(host.local_player_id()), 0, "the client knows the host's")
+	assert_eq(host.get_ping_msec(host.local_player_id()), -1, "no ping to yourself")

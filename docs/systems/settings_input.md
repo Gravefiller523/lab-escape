@@ -92,6 +92,8 @@ GUT tests: `test_defaults_when_no_file`, `test_set_value_saves_and_reloads`, `te
 
 - 2026-11-11 (roadmap WP3): NEW `get_conflicts(action) -> Array[StringName]`: other actions on the same key. Two actions may still share a key, but the rebinding screen now shows it on both buttons ("E (also: Drop)"). "Quieter voice effects" now reaches voice (`Voice.set_reduce_effects`). Test `test_a_shared_key_is_shown_on_both_buttons`.
 
+- 2026-11-11 (roadmap WP6): NEW `SettingsScreen.action_name(action)` (static): the readable name of an action, also used by the pause menu's controls page. "Player list" added to `ACTION_NAMES`.
+
 ## HANDOFF
 
 **Done:** everything in the spec. 14 GUT tests in `tests/unit/settings_input/` (the spec's five, plus reload,

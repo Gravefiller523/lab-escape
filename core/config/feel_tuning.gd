@@ -16,3 +16,5 @@ extends Resource
 @export var ai: AiTuning
 ## NEW 2026-10-30 (HL2 feel step 4.1): using things: the aim helper and the "can't use" buzz.
 @export var interaction: UseTuning
+## NEW 2026-11-11 (roadmap WP7): hit flashes, hit pause, hurt kick, death poofs and gem sparkles.
+@export var hits: HitFeelTuning

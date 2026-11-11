@@ -29,6 +29,8 @@ const FIRST_SYNC_DELAY_UPDATES: float = 4.0
 const ARRIVE_DISTANCE: float = 1.0
 ## NEW 2026-11-11 (roadmap WP9): shots leave from this height above its feet.
 const MUZZLE_HEIGHT: float = 0.6
+## NEW 2026-11-11 (roadmap WP7): the colour of the puff of cubes a dead enemy pops into (grey box).
+const DEATH_POOF_COLOR: Color = Color(0.85, 0.85, 0.8)
 ## NEW 2026-10-30: the states in which it's calm (it listens for noises and can be startled).
 const CALM_STATES: Array[StringName] = [&"idle", &"patrol", &"search"]
 ## NEW 2026-10-30: how long (s) a jump aside lasts.
@@ -85,6 +87,10 @@ var _attack_ready_at: float = 0.0
 ## CHANGED 2026-11-11 (roadmap WP3, G54): starts a few updates in, so the first position update doesn't reach clients
 ## before the spawn message that creates the enemy there (they travel separately and the update could win).
 var _sync_left: float = SYNC_INTERVAL * FIRST_SYNC_DELAY_UPDATES
+## NEW 2026-11-11 (roadmap WP7): the hit reaction now playing, its mesh's resting place, and the last health seen.
+var _hit_reaction: Tween
+var _mesh_rest: Vector3 = Vector3.ZERO
+var _last_health: float = 0.0
 var _synced_position: Vector3 = Vector3.ZERO
 var _synced_yaw: float = 0.0
 var _has_sync: bool = false
@@ -165,6 +171,11 @@ func _ready() -> void:
 	var health: HealthComponent = get_health()
 	if health != null:
 		health.died.connect(_on_died)
+		_last_health = health.get_current()
+		health.health_changed.connect(_show_hit)
+	var rest_mesh := get_node_or_null(^"Mesh") as Node3D
+	if rest_mesh != null:
+		_mesh_rest = rest_mesh.position
 	if multiplayer.is_server():
 		var first: StringName = start_state
 		if not _states.has(first) and not _states.is_empty():
@@ -601,10 +612,46 @@ func _on_noticed(player: PlayerCharacter) -> void:
 
 ## Every PC: it died. It becomes a tumbling body; the host tells EventBus, squeals (a noise enemies hear) and
 ## removes it after a moment.
+## NEW 2026-11-11 (roadmap WP7): true for the short moment it shows it was hit (flash and flinch).
+func is_reacting_to_hit() -> bool:
+	return _hit_reaction != null and _hit_reaction.is_valid() and _hit_reaction.is_running()
+
+
+## Every PC (health is synced to everyone): lost health, so show it: flash white, hold still for a blink at the
+## moment of impact (the hit pause), jerk back and settle. Looks only; the AI isn't paused.
+func _show_hit(current: float, _maximum: float) -> void:
+	var lost: bool = current < _last_health
+	_last_health = current
+	if not lost or _dead or current <= 0.0:
+		return
+	var mesh := get_node_or_null(^"Mesh") as GeometryInstance3D
+	if mesh == null:
+		return
+	var feel: HitFeelTuning = Config.feel.hits
+	if _hit_reaction != null and _hit_reaction.is_valid():
+		_hit_reaction.kill()
+	var flash := StandardMaterial3D.new()
+	flash.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	flash.albedo_color = Color.WHITE
+	mesh.material_overlay = flash
+	_hit_reaction = mesh.create_tween()
+	_hit_reaction.tween_property(mesh, "position", _mesh_rest + Vector3(0, 0, feel.flinch_distance), 0.0)
+	_hit_reaction.tween_interval(maxf(feel.impact_freeze_seconds, feel.enemy_flash_seconds))
+	_hit_reaction.tween_callback(func() -> void: mesh.material_overlay = null)
+	_hit_reaction.tween_property(mesh, "position", _mesh_rest, feel.flinch_seconds)
+
+
 func _on_died(info: DamageInfo) -> void:
 	if _dead:
 		return
 	_dead = true
+	# NEW 2026-11-11 (roadmap WP7): it pops into a puff of little cubes (every PC; no blood, it's a comedy).
+	var feel: HitFeelTuning = Config.feel.hits
+	Effects.burst(get_parent(), global_position + Vector3.UP * 0.3, DEATH_POOF_COLOR, feel.death_poof_cubes,
+		feel.death_poof_speed, feel.death_poof_cube_size, feel.death_poof_seconds)
+	var mesh := get_node_or_null(^"Mesh") as GeometryInstance3D
+	if mesh != null:
+		mesh.material_overlay = null
 	AttackTickets.release(self)
 	collision_layer = 0
 	var hurtbox := get_node_or_null(NodePath(Hurtbox.NODE_NAME)) as Area3D

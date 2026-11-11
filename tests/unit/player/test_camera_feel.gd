@@ -52,3 +52,21 @@ func test_bob_and_roll_are_off_by_default() -> void:
 		feel.update(tuning, DT, true, Vector3(4, 0, 0), Vector3.RIGHT, 1.0)
 	assert_eq(feel.get_height_offset(tuning, 1.0), 0.0, "no bob, like HL2")
 	assert_eq(feel.get_roll(), 0.0, "no strafe roll, like HL2")
+
+
+## NEW 2026-11-11 (roadmap WP7): getting hurt kicks the view up, and springs back; nothing with reduce motion.
+func test_getting_hurt_kicks_the_view_up() -> void:
+	var tuning := PlayerTuning.new()
+	var feel := CameraFeel.new()
+	feel.hurt(4.0, 1.0)
+	var highest: float = 0.0
+	for _tick: int in 20:
+		feel.update(tuning, DT, true, Vector3.ZERO, Vector3.RIGHT, 1.0)
+		highest = maxf(highest, feel.punch)
+	assert_between(rad_to_deg(highest), 1.0, 6.0, "looks up a few degrees")
+	_settle(feel, tuning, 1.5)
+	assert_almost_eq(feel.punch, 0.0, deg_to_rad(0.1), "back to level")
+	var calm := CameraFeel.new()
+	calm.hurt(4.0, 0.0)
+	calm.update(tuning, DT, true, Vector3.ZERO, Vector3.RIGHT, 0.0)
+	assert_eq(calm.punch, 0.0, "reduce motion: no kick")

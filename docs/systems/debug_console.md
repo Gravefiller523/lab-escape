@@ -82,6 +82,8 @@ Test scene: `systems/debug_console/test/console_test.tscn` (floor, player, PropS
 - 2026-10-29 (feel step 0): NEW commands (cheats only, run on this PC): `tune` (list sections), `tune <section>` (list numbers), `tune <section>.<name> [value]` (show or change one now), `tune_save` (editor only: write them into the .tres files), `tune_reset` (reload from the files). Code in `systems/debug_console/tune_commands.gd` (`TuneCommands`). Player numbers change your own PC; props and enemies run on the host, so tune those there.
 - 2026-10-30 (HL2 feel step 4.1): `tune` has a fourth section, `interaction` (aiming help and the "can't use" buzz).
 
+- 2026-11-11 (roadmap WP7): `tune` has a new section, `hits` (Config.feel.hits: hit flash, hit pause, death poof, hurt kick, gem sparkle).
+
 ## HANDOFF
 **Built (2026-10-18):** `systems/debug_console/debug_console.gd` (`DebugConsoleService`, autoload `DebugConsole`,
 a CanvasLayer on layer 20). Press `` ` `` to open/close, Esc closes, Up/Down go through history

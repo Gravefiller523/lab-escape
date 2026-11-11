@@ -77,6 +77,8 @@ GUT tests: `test_buses_exist`, `test_music_switches_on_floor_ready`, `test_pool_
 
 - 2026-11-11 (roadmap WP9): NEW event sound `enemy_shoot` (placeholder: whoosh), played where an enemy shot leaves.
 
+- 2026-11-11 (roadmap WP7): NEW event sound `gem_pickup` (placeholder: sparkle).
+
 ## HANDOFF
 **Built (2026-10-23):** the `Sound` autoload (`SoundService`), `EventSounds` + `event_sounds.tres`, `PlaceholderSounds`, the
 test scene (`systems/audio/test/audio_test.tscn`) and 8 GUT tests (`tests/unit/audio/test_audio.gd`: the spec's list plus

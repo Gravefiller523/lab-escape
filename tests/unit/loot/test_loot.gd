@@ -160,3 +160,18 @@ func test_merge_keeps_total_value() -> void:
 		total += prop.data.gem_value
 	assert_eq(total, 8, "no value lost")
 	assert_lte(Props.get_props().size(), 4)
+
+
+## NEW 2026-11-11 (roadmap WP7): grabbing a gem gives a sparkle and its value floating up, on the grabber's PC only.
+func test_grabbing_a_gem_sparkles_and_shows_its_value() -> void:
+	var gem: NetProp = Props.spawn_prop(&"prop_gem_large", Transform3D(Basis.IDENTITY, Vector3(0, 0.5, 0)))
+	assert_not_null(gem, "a large gem")
+	await wait_physics_frames(2)
+	EventBus.prop_grabbed.emit(Net.local_player_id() + 1, gem)
+	assert_eq(gem.get_parent().find_children("FloatText", "Label3D", false, false).size(), 0,
+		"someone else's grab: nothing on this PC")
+	EventBus.prop_grabbed.emit(Net.local_player_id(), gem)
+	var texts: Array[Node] = gem.get_parent().find_children("FloatText", "Label3D", false, false)
+	assert_eq(texts.size(), 1, "your grab: the value floats up")
+	assert_eq((texts[0] as Label3D).text, "+%d" % gem.data.gem_value)
+	assert_eq(gem.get_parent().find_children("Burst", "CPUParticles3D", false, false).size(), 1, "and it sparkles")

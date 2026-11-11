@@ -41,6 +41,8 @@ func _load_feel() -> void:
 		feel.props = PropTuning.new()
 	if feel.ai == null:
 		feel.ai = AiTuning.new()
+	if feel.hits == null:
+		feel.hits = HitFeelTuning.new()
 
 
 func _load_floor_gen() -> void:

@@ -224,6 +224,8 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
 
 - 2026-11-11 (roadmap WP9): ranged attacks. NEW state `attack_ranged` (keep between `min_range` and `max_range`, wind up, fire a burst, wait `attack_cooldown`; stationary if `move_speed` is 0), NEW `EnemyProjectile` (every PC flies its own copy from the same start and velocity; the host's copy deals damage; it stops at walls, props and players), NEW Enemy `fire_at(point)` and `start_attack_cooldown()` (host), Enemies `add_projectile()` / `get_projectiles()` (shots are cleared with the floor). chase and swarm switch to `attack_ranged` when `EnemyState.should_shoot()`; `pursuit_state()` is `attack_ranged` for an enemy with neither swarm nor chase (turrets). Test enemy `enemy_test_spitter` (in no department; `spawn enemy_test_spitter`), scene `scenes/spitter.tscn`. Tests in `tests/unit/enemies/test_ranged.gd`.
 
+- 2026-11-11 (roadmap WP7, mock-up approved by Zachary): on every PC, an enemy that loses health flashes white, holds still for a blink at the impact (the hit pause) and jerks back (`is_reacting_to_hit()`); a dead enemy pops into a puff of cubes (`Effects.burst`). Looks only: the AI is not paused. Tests in `tests/unit/enemies/test_hit_feedback.gd`.
+
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and
 `SwoopBehaviour`, `Perception`, `EnemySpawner`, the `Enemies` autoload (floor spawning on `floor_ready`, navmesh baking,

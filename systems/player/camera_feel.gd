@@ -34,6 +34,14 @@ func landed(tuning: PlayerTuning, fall_speed: float, shake: float) -> void:
 		_punch_speed -= deg_to_rad(degrees) * PUNCH_KICK * shake
 
 
+## NEW 2026-11-11 (roadmap WP7): you were hurt: the view kicks up by about `degrees`, springing back. Off with
+## reduce motion (shake 0).
+func hurt(degrees: float, shake: float) -> void:
+	if shake <= 0.0:
+		return
+	_punch_speed += deg_to_rad(degrees) * PUNCH_KICK * shake
+
+
 ## Advances the springs, bob and roll. `flat_velocity` is the body's speed along the ground, `right` its
 ## right-hand direction.
 func update(tuning: PlayerTuning, delta: float, grounded: bool, flat_velocity: Vector3, right: Vector3,

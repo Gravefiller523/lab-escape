@@ -22,6 +22,7 @@ var boss_bar: BossBar
 var player_list: PlayerList
 var ghost_panel: GhostPanel
 var run_summary: RunSummaryPanel
+var hurt_vignette: HurtVignette
 
 var _crosshair: ColorRect
 var _prompt: Label
@@ -124,6 +125,11 @@ func _ready() -> void:
 		spot.set_anchors_preset(spots[spot_name])
 		spot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(spot)
+
+	# NEW 2026-11-11 (roadmap WP7): red screen edges when you get hurt (behind every other widget).
+	hurt_vignette = HurtVignette.new()
+	add_child(hurt_vignette)
+	move_child(hurt_vignette, 0)
 
 	# NEW 2026-11-11 (roadmap WP5, mock-up approved by Zachary): the rest of the HUD. Each widget reads other systems'
 	# public APIs and hides itself when there's nothing to show.

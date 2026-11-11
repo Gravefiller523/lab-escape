@@ -82,6 +82,8 @@ GUT tests: `test_same_seed_same_drops`, `test_weights_respected_over_many_rolls`
   four enemies and the Giant Rat point at them (`loot_id`). Nothing drops where there is no PropSpawner.
 - 2026-10-24: playtest "only the rat dropped meat": the rolls were working, meat was just rare (rats and flies 1 kill in 6). Meat weight raised: `loot_zoology_small` 1 -> 2 (about 1 kill in 3), `loot_zoology_medium` 1.5 -> 2.5 (over half of kills). Test `test_every_enemy_drops_meat_often`.
 
+- 2026-11-11 (roadmap WP7): picking up a gem (EventBus `prop_grabbed` for you) gives a sparkle, its value floating up ("+5") and a tick sound, on your PC only. Test `test_grabbing_a_gem_sparkles_and_shows_its_value`.
+
 ## HANDOFF
 **Built (2026-10-23):** `LootDrop`, the `Loot` autoload (rolls with `SeededRng(run_seed, &"loot", drop counter)`, glow
 with pity from GameConfig, mutation / cybernetic picks filtered by department and weighted by `drop_weight`, robot parts

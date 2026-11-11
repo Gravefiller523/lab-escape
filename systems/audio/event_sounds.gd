@@ -27,6 +27,8 @@ extends Resource
 @export var upgrade: AudioStream
 ## Someone bought something from a vendor.
 @export var purchase: AudioStream
+## NEW 2026-11-11 (roadmap WP7): you picked up a gem (a coin tick, at the gem; only you hear it).
+@export var gem_pickup: AudioStream
 
 @export_group("World (NEW 2026-10-30)")
 ## You pressed use and nothing happened, or it's locked (a buzz, on your PC only).
@@ -64,7 +66,7 @@ const PLACEHOLDERS: Dictionary = {
 	"hit": &"thunk", "enemy_death": &"squeak", "player_death": &"low", "item_use": &"whoosh",
 	"enemy_notice": &"chirp", "enemy_windup": &"growl", "enemy_shoot": &"whoosh",
 	"use_deny": &"buzz", "button_press": &"click", "door_move": &"creak", "door_shut": &"clunk", "crank_turn": &"ratchet", "punt": &"whump",
-	"reprint": &"rise", "upgrade": &"sparkle", "purchase": &"chime",
+	"reprint": &"rise", "upgrade": &"sparkle", "purchase": &"chime", "gem_pickup": &"sparkle",
 	"lift_ride": &"hum", "lift_arrive": &"chime", "lift_part": &"clunk", "boss_phase": &"roar", "boss_defeated": &"fanfare",
 	"menu_music": &"music_calm", "floor_music": &"music_floor", "boss_music": &"music_boss",
 }

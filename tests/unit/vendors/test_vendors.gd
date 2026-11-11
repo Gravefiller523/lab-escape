@@ -3,6 +3,7 @@ extends GutTest
 ## and a vending machine at the origin (front facing +z). Test stock is registered in code.
 
 const VENDING_SCENE: PackedScene = preload("res://systems/vendors/vending_machine.tscn")
+const CART_PLAYER_SCENE: PackedScene = preload("res://systems/player/player.tscn")
 const PORT: int = 18180
 const WAIT: float = 5.0
 
@@ -222,3 +223,29 @@ func _make_pc(hosting: bool) -> Node:
 	pc.multiplayer.multiplayer_peer = peer
 	_pcs.append(pc)
 	return pc
+
+
+## NEW 2026-11-11 (roadmap WP3): a cart full of gems pushed into the bay in front of the machine pays with them, and
+## the pusher gets the credit.
+func test_a_cart_pushed_into_the_bay_pays_the_pusher() -> void:
+	var vendor: Vendor = _vendor()
+	var body := CART_PLAYER_SCENE.instantiate() as PlayerCharacter
+	body.player_id = Net.local_player_id()
+	body.name = str(body.player_id)
+	body.position = Vector3(0, 0, 4)
+	_world.add_child(body)
+	body.set_input_override(PlayerInputState.new())
+	var cart := Props.spawn_prop(&"prop_cart_standard", Transform3D(Basis.IDENTITY, Vector3(0, 0.1, 2.7))) as Cart
+	await wait_physics_frames(5)
+	for index: int in 3:
+		var gem: NetProp = Props.spawn_prop(&"prop_gem", Transform3D(Basis.IDENTITY, Vector3(3 + index, 0.5, 3)))
+		assert_true(cart.add_prop(gem), "gem %d is in the cart" % index)
+	assert_eq(vendor.get_credit(body.player_id), 0, "nothing paid yet")
+	cart.request_push(true)
+	assert_eq(cart.get_pusher_id(), body.player_id, "we push it")
+	# Walk the cart up to the machine (the pushed cart sits about 1.3 m in front of you).
+	body.global_position = Vector3(0, 0, 2.1)
+	await wait_until(func() -> bool: return vendor.get_credit(body.player_id) == 3, WAIT)
+	assert_eq(vendor.get_credit(body.player_id), 3, "3 gems credited to the pusher")
+	assert_eq(cart.get_contents().size(), 0, "the cart is empty")
+	cart.request_push(false)

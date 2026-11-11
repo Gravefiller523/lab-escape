@@ -89,7 +89,7 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G1 | No automated test plays a whole run (Break Room to escape, with a client). Each system is tested alone; a run that breaks between floor 7 and 8 would only show up by hand. | reliability | M | |
 | G2 | A client that disconnects only drops its items if its body still exists when the host hears about it (death_respawn "Not yet", never tested). Lift parts or keycards in its hands could vanish and block the floor. | reliability | S | |
 | G3 | Ghosts left outside the lift "ride along invisibly where they died" (death_respawn). After the ride they are somewhere odd on the new floor. | reliability | S | |
-| G4 | Gems pushed into a vendor inside a cart don't count (carts / vendors "Not yet"). | reliability | S | |
+| G4 | ~~Gems pushed into a vendor inside a cart don't count.~~ Fixed in WP3 (the cart bay). | reliability | S | |
 | G5 | The boss arena has a printer marker by default, but nothing checks that a death in a boss fight can be reprinted on every boss floor. | reliability | S | |
 | G6 | Mid-floor joining, host quitting mid-floor and 3+ PCs were never checked on real Steam. Local tests exist for parts of it. | reliability | M | You |
 | G7 | Voice delay, the Fly voice over Steam, and voice CPU with many players were never judged on real Steam. | reliability | S | You |
@@ -102,6 +102,7 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G51 | When the host leaves a local (no Steam) game, ENet prints one "Unable to send packet on channel 0" error while saying goodbye. Harmless; found by WP1. | reliability | S | |
 | G52 | ~~A player who joins mid-floor built the floor before their connection opened, so its vending machines, printers, mutation machine, doors, buttons, boss arena and plants asked the host for their state too early and never heard back (no shop offers, wrong door states).~~ Fixed in WP1. | reliability | S | |
 | G53 | ~~Prop snapshot messages reached 1,900 bytes, over one network packet, so on real connections they'd be lost more often (jumpy props).~~ Fixed in WP1. | reliability | S | |
+| G55 | The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
 | G54 | Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors. Harmless, but noisy. Found by WP2's test. | reliability | S | |
 
 ### Fun and clarity
@@ -218,7 +219,12 @@ can play. Every package follows the Working rules (section i). Status values: **
 - Also: G54, enemy position updates that reach a client before the enemy exists there (or after it's gone).
   When G50 and G54 are fixed, take their lines out of `KNOWN` in `tests/integration/test_full_run.gd`.
 - **Gaps:** G4, G9, G50, G54, settings_input leftovers.
-- **Status: not started.**
+- **Built:** a cart bay in front of every vending machine (push a cart of gems into it and the pusher gets the
+  credit; no new art, it's an invisible box at floor level), a warning on the rebinding buttons when two actions
+  share a key, "quieter voice effects" now works, enemy navigation reads the rooms' collision shapes (G50 gone),
+  enemies wait a moment before their first position update (G54 gone; both removed from the test's known list),
+  and the full-run test checks every floor, boss floors included, has a 3D printer (G5).
+- **Status: waiting for your play test.** Branch `wp/03-leftovers` (stacked on WP2).
 
 #### WP4: Playtest log (telemetry)
 - **What:** the telemetry system from its spec: writes every EventBus event and a per-run summary (floors, deaths,

@@ -16,6 +16,8 @@ const GROUP: StringName = &"vendors"
 const BODY_SIZE: Vector3 = Vector3(1.2, 2.0, 0.8)
 const SLOT_SIZE: Vector3 = Vector3(0.22, 0.2, 0.3)
 const TRAY_OFFSET: Vector3 = Vector3(0.0, 0.5, 0.75)
+## NEW 2026-11-11 (roadmap WP3): the floor-level box in front of the machine that empties carts of gems.
+const CART_BAY_SIZE: Vector3 = Vector3(1.4, 0.9, 0.9)
 const BUTTON_SIZE: Vector3 = Vector3(0.18, 0.18, 0.08)
 const REFUND_HOLD_SECONDS: float = 1.0
 ## Credit that belongs to nobody (gems rolled in that nobody held).
@@ -36,6 +38,7 @@ var _screen: Label3D
 var _buttons: Array[Interactable] = []
 var _button_labels: Array[Label3D] = []
 var _slot: Area3D
+var _cart_bay: Area3D
 var _rolled: bool = false
 var _run_seed_override: int = -1
 
@@ -170,6 +173,24 @@ func _physics_process(_delta: float) -> void:
 		return
 	for body: Node3D in _slot.get_overlapping_bodies():
 		_on_slot_body_entered(body)
+	if _cart_bay != null:
+		for body: Node3D in _cart_bay.get_overlapping_bodies():
+			_empty_cart(body as Cart)
+
+
+## Host (NEW 2026-11-11, roadmap WP3): a cart in the cart bay hands over its gems. The pusher pays; a cart that
+## rolled in on its own credits each gem's last holder, like a gem rolling into the slot.
+func _empty_cart(cart: Cart) -> void:
+	if cart == null or cart.is_queued_for_deletion():
+		return
+	var pusher: int = cart.get_pusher_id()
+	for prop: NetProp in cart.get_contents():
+		if prop.data == null or prop.data.gem_value <= 0 or prop.is_queued_for_deletion():
+			continue
+		var player_id: int = pusher if pusher != NOBODY else prop.last_holder_id
+		cart.remove_prop(prop)
+		Props.despawn(prop)
+		add_credit(player_id, prop.data.gem_value)
 
 
 ## Host: a gem in the coin slot.
@@ -267,6 +288,19 @@ func _build() -> void:
 	_slot.body_entered.connect(_on_slot_body_entered)
 	add_child(_slot)
 	_add_label("SlotLabel", "GEMS IN", Vector3(0.42, 1.36, BODY_SIZE.z / 2.0 + 0.01), 20)
+	# NEW 2026-11-11 (roadmap WP3): the cart bay, low in front of the machine. A cart pushed into it is emptied of
+	# gems, credited to whoever is pushing it (gems in a cart are fixed in place, so they never reach the coin slot).
+	_cart_bay = Area3D.new()
+	_cart_bay.name = "CartBay"
+	_cart_bay.collision_layer = 0
+	_cart_bay.collision_mask = PhysicsLayers.bit(PhysicsLayers.CARTS)
+	var bay_shape := CollisionShape3D.new()
+	var bay_box := BoxShape3D.new()
+	bay_box.size = CART_BAY_SIZE
+	bay_shape.shape = bay_box
+	bay_shape.position = Vector3(0.0, CART_BAY_SIZE.y / 2.0, BODY_SIZE.z / 2.0 + CART_BAY_SIZE.z / 2.0)
+	_cart_bay.add_child(bay_shape)
+	add_child(_cart_bay)
 	_screen = _add_label("Screen", "", Vector3(0.0, 1.8, BODY_SIZE.z / 2.0 + 0.01), 26)
 	# Tray marker (where items and change come out).
 	add_child(_box_mesh(Vector3(0.6, 0.05, 0.3), TRAY_OFFSET - Vector3(0, 0.12, 0.1), Color(0.15, 0.15, 0.15)))

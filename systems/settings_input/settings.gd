@@ -219,6 +219,18 @@ func get_binding_text(action: StringName) -> String:
 	return event_text(events[0]) if not events.is_empty() else ""
 
 
+## NEW 2026-11-11 (roadmap WP3): the other rebindable actions bound to the same key or mouse button as this one.
+func get_conflicts(action: StringName) -> Array[StringName]:
+	var conflicts: Array[StringName] = []
+	var mine: String = get_binding_text(action)
+	if mine.is_empty():
+		return conflicts
+	for other: StringName in rebindable_actions():
+		if other != action and get_binding_text(other) == mine:
+			conflicts.append(other)
+	return conflicts
+
+
 static func event_text(event: InputEvent) -> String:
 	var key := event as InputEventKey
 	if key != null:
@@ -277,6 +289,7 @@ func _apply(section: StringName) -> void:
 		AUDIO:
 			_apply_volumes()
 			Voice.set_push_to_talk(is_push_to_talk())
+			Voice.set_reduce_effects(get_bool(AUDIO, &"reduce_voice_effects"))
 			Voice.set_mic_sensitivity(get_float(AUDIO, &"mic_sensitivity"))
 			_apply_mic_device()
 		VIDEO:

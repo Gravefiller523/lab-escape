@@ -375,3 +375,17 @@ func test_speaker_freed_with_its_body_is_no_error() -> void:
 	await wait_process_frames(5)
 	assert_eq(_voice.get_voice_volume(22), 1.0, "a freed speaker is skipped (no 'cast a freed object' error)")
 	assert_true(_voice.feed_voice(22, _tone()), "and the voice carries on (flat until they get a new body)")
+
+
+## NEW 2026-11-11 (roadmap WP3): "quieter voice effects" halves every mutation effect this PC hears, at once.
+func test_reduce_effects_halves_the_preset_strength() -> void:
+	var strengths: Array[float] = []
+	_voice.register_preset(&"test_record_strength", func(_bus: int, strength: float) -> void: strengths.append(strength))
+	var effect: VoiceEffectData = _fly(1.5, &"test_record_strength")
+	effect.effect_strength = 0.8
+	_voice.set_voice_effect(11, &"mutation_fly", effect)
+	assert_almost_eq(strengths[strengths.size() - 1], 0.8, 0.001, "full strength by default")
+	_voice.set_reduce_effects(true)
+	assert_almost_eq(strengths[strengths.size() - 1], 0.4, 0.001, "half strength with the setting on")
+	_voice.set_reduce_effects(false)
+	assert_almost_eq(strengths[strengths.size() - 1], 0.8, 0.001, "back to full")

@@ -154,7 +154,9 @@ func _floor_entry(floor_number: int) -> Dictionary:
 			waiting.append(player_id)
 	return {"floor": floor_number, "department": String(run.get_department_id()), "boss_floor": run.is_boss_floor,
 		"players": Net.get_player_ids(), "bodies": bodies, "waiting": waiting,
-		"enemies": Enemies.get_alive().size()}
+		"enemies": Enemies.get_alive().size(),
+		"printers": get_tree().get_nodes_in_group(Printer3D.GROUP).size(),
+		"vendors": get_tree().get_nodes_in_group(Vendor.GROUP).size()}
 
 
 ## The late joiner connects while this floor is running: it must wait (a ghost camera, no body) until the next.

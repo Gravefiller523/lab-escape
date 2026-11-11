@@ -27,6 +27,8 @@ func register_preset(preset: StringName, builder: Callable) -> void   # builder:
 func set_loopback(enabled: bool, anchor: Node3D = null) -> void   # CHANGED: with an anchor, your voice plays from that spot (echo dummy)
 func is_loopback() -> bool
 func set_push_to_talk(enabled: bool) -> void        # STUB until settings_input; default Config.game.voice_push_to_talk_default
+func set_reduce_effects(on: bool) -> void          # NEW 2026-11-11: settings_input; halves mutation presets for this listener
+func is_reduce_effects() -> bool
 func is_push_to_talk() -> bool
 func is_transmitting() -> bool                      # the local mic is being sent right now
 func would_send(level: float, push_to_talk_held: bool) -> bool   # the push-to-talk / open-mic gate
@@ -189,6 +191,8 @@ label yet (delay is judged by ear on 2 PCs).
   so it is freed at every scene change, and casting the freed node was a script error (which pauses the game
   in the editor). Freed speakers are now skipped. Test: `test_speaker_freed_with_its_body_is_no_error`.
 - 2026-10-24 (settings_input): push-to-talk, mic sensitivity and the mic device are now saved by settings_input and set through `set_push_to_talk` / `set_mic_sensitivity` at startup and on change (no voice code changed). The MicSensitivityPanel lives in Settings > Audio. OPEN: `audio/reduce_voice_effects` is saved but voice does not read it yet.
+
+- 2026-11-11 (roadmap WP3): NEW `set_reduce_effects(on)` / `is_reduce_effects()`: settings_input's "quieter voice effects" halves mutation voice presets for this listener (pitch is unchanged), and rebuilds every bus at once. Test `test_reduce_effects_halves_the_preset_strength`.
 
 ## HANDOFF
 **Done (Phase 1a proof):** the `Voice` autoload: one bus per player (`Voice_<slot>`) with pitch,

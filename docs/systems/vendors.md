@@ -94,6 +94,8 @@ GUT tests: `test_gem_credits_last_holder`, `test_buy_with_exact_credit`, `test_c
 
 - 2026-11-11 (roadmap WP1): a mid-floor joiner's vending machines ask the host for their offers and credit once the connection is open (`HostLink`); they used to ask too early and showed no offers.
 
+- 2026-11-11 (roadmap WP3): NEW cart bay: a floor-level box in front of the machine (`CART_BAY_SIZE`). A cart pushed into it hands over all its gems, credited to the pusher (a cart that rolled in alone credits each gem's last holder). Note: change or a refund that pops out while a cart stands in the bay lands in the cart and is credited again; push the cart away to collect gems. Test `test_a_cart_pushed_into_the_bay_pays_the_pusher`.
+
 ## HANDOFF
 **Built (2026-10-23):** `VendorOffer`, `Vendor` (coin slot credit to the last holder, buying, change as gems via
 `LootService.gems_for_value`, refunds, synced offers and credits, toasts for "not enough gems"), the `Vendors` autoload,

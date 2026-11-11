@@ -301,6 +301,20 @@ func is_push_to_talk() -> bool:
 	return _push_to_talk
 
 
+## NEW 2026-11-11 (roadmap WP3): this listener's "quieter voice effects" setting (settings_input sets it). Mutation
+## voice effects (not the pitch) play at half strength for every voice this PC hears.
+func set_reduce_effects(on: bool) -> void:
+	if _reduce_effects == on:
+		return
+	_reduce_effects = on
+	for player_id: int in _effects.keys():
+		_rebuild_bus(player_id)
+
+
+func is_reduce_effects() -> bool:
+	return _reduce_effects
+
+
 ## Makes sure every player in the roster has a bus, and removes buses of players who left.
 ## Runs by itself when the roster changes.
 func sync_players() -> void:

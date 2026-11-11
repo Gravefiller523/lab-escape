@@ -23,6 +23,7 @@ func get_reduce_motion() -> bool                     # head bob and camera shake
 func get_camera_shake_scale() -> float
 # Rebinding:
 func rebind(action: StringName, event: InputEvent) -> void
+func get_conflicts(action: StringName) -> Array[StringName]   # NEW 2026-11-11: other actions on the same key
 func reset_bindings() -> void
 func get_binding_text(action: StringName) -> String  # "E", "Mouse 1"
 # NEW 2026-10-24 (built):
@@ -88,6 +89,8 @@ GUT tests: `test_defaults_when_no_file`, `test_set_value_saves_and_reloads`, `te
   press a key or mouse button, Esc cancels) and Accessibility, and a Reset button per tab and for keys. Voice's
   MicSensitivityPanel moved from the pause menu to Settings > Audio; Back saves its value.
 - 2026-10-29 (HL2 feel step 1.3): defaults closer to HL2: FOV 74 (vertical; about 106 degrees wide on 16:9, like HL2's 90 on 4:3), mouse sensitivity 0.066 degrees per pixel (Source sensitivity 3). Players who changed these keep their own values.
+
+- 2026-11-11 (roadmap WP3): NEW `get_conflicts(action) -> Array[StringName]`: other actions on the same key. Two actions may still share a key, but the rebinding screen now shows it on both buttons ("E (also: Drop)"). "Quieter voice effects" now reaches voice (`Voice.set_reduce_effects`). Test `test_a_shared_key_is_shown_on_both_buttons`.
 
 ## HANDOFF
 

@@ -6,12 +6,22 @@ extends Control
 ##   Prompt          "E: Pick up crate" for whatever you look at (InteractionController.get_prompt())
 ##   HoldBar         fills up while you hold E on a hold-to-use object
 ##   LiftPanel       what the cargo lift still needs this floor (top right)
-##   HealthSlot / InventorySlot   empty spots for the health bar (damage) and inventory bar (inventory)
+##   HealthSlot / InventorySlot   bottom-left and bottom-middle spots, holding the HealthBar and InventoryBar
+## NEW 2026-11-11 (roadmap WP5): HealthBar, InventoryBar, BossBar (top middle), PlayerList (bottom right), GhostPanel
+## and RunSummary (middle), each in its own script in systems/ui/hud/.
 ## Local only: it reads other systems' public APIs. Spec: docs/systems/ui.md.
 
 const LIFT_REFRESH_SECONDS: float = 0.2
 const FONT_SIZE: int = 22
 const MARGIN: float = 16.0
+
+## NEW 2026-11-11 (roadmap WP5): the HUD's widgets (each hides itself when it has nothing to show).
+var health_bar: HealthBar
+var inventory_bar: InventoryBar
+var boss_bar: BossBar
+var player_list: PlayerList
+var ghost_panel: GhostPanel
+var run_summary: RunSummaryPanel
 
 var _crosshair: ColorRect
 var _prompt: Label
@@ -114,6 +124,41 @@ func _ready() -> void:
 		spot.set_anchors_preset(spots[spot_name])
 		spot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(spot)
+
+	# NEW 2026-11-11 (roadmap WP5, mock-up approved by Zachary): the rest of the HUD. Each widget reads other systems'
+	# public APIs and hides itself when there's nothing to show.
+	health_bar = HealthBar.new()
+	_place(health_bar, get_node(^"HealthSlot") as Control, Vector2(MARGIN, -MARGIN), Control.GROW_DIRECTION_END,
+		Control.GROW_DIRECTION_BEGIN)
+	inventory_bar = InventoryBar.new()
+	_place(inventory_bar, get_node(^"InventorySlot") as Control, Vector2(0, -MARGIN), Control.GROW_DIRECTION_BOTH,
+		Control.GROW_DIRECTION_BEGIN)
+	boss_bar = BossBar.new()
+	boss_bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_place(boss_bar, self, Vector2(0, MARGIN), Control.GROW_DIRECTION_BOTH, Control.GROW_DIRECTION_END)
+	player_list = PlayerList.new()
+	player_list.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_place(player_list, self, Vector2(-MARGIN, -MARGIN), Control.GROW_DIRECTION_BEGIN, Control.GROW_DIRECTION_BEGIN)
+	ghost_panel = GhostPanel.new()
+	ghost_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_place(ghost_panel, self, Vector2.ZERO, Control.GROW_DIRECTION_BOTH, Control.GROW_DIRECTION_BOTH)
+	run_summary = RunSummaryPanel.new()
+	run_summary.set_anchors_preset(Control.PRESET_CENTER)
+	_place(run_summary, self, Vector2.ZERO, Control.GROW_DIRECTION_BOTH, Control.GROW_DIRECTION_BOTH)
+
+
+## A widget pinned to one point of `parent` (its anchors), `offset` away, growing the given ways to fit itself.
+func _place(widget: Control, parent: Control, offset: Vector2, grow_h: Control.GrowDirection,
+		grow_v: Control.GrowDirection) -> void:
+	if parent != self:
+		widget.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	widget.offset_left = offset.x
+	widget.offset_right = offset.x
+	widget.offset_top = offset.y
+	widget.offset_bottom = offset.y
+	widget.grow_horizontal = grow_h
+	widget.grow_vertical = grow_v
+	parent.add_child(widget)
 
 
 func _process(delta: float) -> void:

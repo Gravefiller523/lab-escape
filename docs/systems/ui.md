@@ -134,6 +134,8 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
 
 - 2026-11-11 (roadmap WP2): ghosts (dead players) have no nameplate; it comes back when they are reprinted. Test `test_ghosts_have_no_plate`.
 
+- 2026-11-11 (roadmap WP5, mock-up approved by Zachary): the rest of the HUD, one script each in `systems/ui/hud/`: `HealthBar` (bottom left, in HealthSlot: health and status chips), `InventoryBar` (bottom middle, in InventorySlot: one box per slot, the selected one outlined, what you hold and its uses above), `BossBar` (top middle while a boss lives: name, phase, health), `PlayerList` (bottom right: everyone, with speaking / ghost / joining), `GhostPanel` (middle, while dead or waiting to spawn: who you watch, the reprint cost), `RunSummaryPanel` (middle during the run summary: result, floors, minutes, and per player deaths, gems spent and upgrades). `HudStyle` holds the shared look until the UI theme. NEW Hud fields `health_bar`, `inventory_bar`, `boss_bar`, `player_list`, `ghost_panel`, `run_summary`. Kills are not in the summary yet: `enemy_killed` only fires on the host. Tests in `tests/unit/ui/test_hud.gd`.
+
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and
 "Join game", Join by lobby id for testing, a "Testing on one PC" section with address, port, Host

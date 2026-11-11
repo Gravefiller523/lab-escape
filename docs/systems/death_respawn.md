@@ -19,6 +19,7 @@ func get_reprint_cost() -> int                  # meat needed for the next repri
 func get_free_reprints_left() -> int            # solo only
 func kill(player_id: int, info: DamageInfo = null) -> void    # host (cheats, kill zones)
 func reprint(player_id: int, xform: Transform3D) -> void      # host
+func get_watched_player_id() -> int   # NEW 2026-11-11: your ghost camera's player, 0 if none (your PC)
 func next_to_reprint() -> int                   # NEW 2026-10-23, host: dead longest and waited reprint_min_wait (0 = nobody)
 func longest_dead() -> int                      # NEW
 func place_printers() -> Array[Printer3D]       # NEW, every PC on floor_ready: one per `printer` marker
@@ -97,6 +98,8 @@ GUT tests: `test_death_drops_all_items`, `test_death_releases_held_prop`, `test_
 - 2026-11-11 (roadmap WP1): a mid-floor joiner's printers ask the host for their state once the connection is open (`HostLink`).
 
 - 2026-11-11 (roadmap WP2): ghosts ride in the lift. When it leaves, the host moves every dead player's body to the lift's spawn points, so they arrive on the next floor inside it instead of floating where they died. Test `test_ghosts_board_the_lift_when_it_leaves`. Also checked in `tests/integration/test_full_run.gd`: a client who quits mid-floor drops its items, and a lift part it was holding stays on the floor, let go.
+
+- 2026-11-11 (roadmap WP5): NEW `get_watched_player_id() -> int`: the player your ghost camera follows (0 when not watching), for the HUD's ghost screen.
 
 ## HANDOFF
 **Built (2026-10-23):** the `Death` autoload (`DeathService`), `Printer3D` (`printer_3d.tscn`: a hopper for meat, a print

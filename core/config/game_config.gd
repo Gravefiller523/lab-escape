@@ -32,8 +32,9 @@ extends Resource
 @export var debug_run_seed: int = 0
 ## Seconds the elevator rides down from the Break Room before the first floor loads.
 @export var elevator_ride_seconds: float = 2.0
-## Seconds the run summary shows before everyone goes back to the Break Room.
-@export var run_summary_seconds: float = 5.0
+## Seconds the run summary shows before everyone goes back to the Break Room. CHANGED 2026-11-11 (roadmap WP5): 5 -> 12,
+## so there is time to read the summary screen.
+@export var run_summary_seconds: float = 12.0
 ## Seconds the host waits for every PC to finish building a floor before starting it anyway.
 @export var floor_load_timeout: float = 20.0
 ## Shortest cargo lift ride between floors (seconds); longer if a PC is still building the next floor.

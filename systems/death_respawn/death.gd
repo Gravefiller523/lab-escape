@@ -313,15 +313,24 @@ func _living_others() -> Array[PlayerCharacter]:
 	return others
 
 
-func _process(_delta: float) -> void:
+## NEW 2026-11-11 (roadmap WP5): the player your ghost camera follows (your PC), 0 when you aren't watching anyone
+## (alive, or nobody else is alive). The HUD's ghost screen names them.
+func get_watched_player_id() -> int:
+	var watched: PlayerCharacter = _watched_body()
+	return watched.player_id if watched != null and watched.player_id != Net.local_player_id() else 0
+
+
+func _watched_body() -> PlayerCharacter:
 	if _ghost_camera == null or not _ghost_camera.current:
-		return
+		return null
 	var others: Array[PlayerCharacter] = _living_others()
-	var watched: Node3D = null
 	if not others.is_empty():
-		watched = others[posmod(_watch_index, others.size())]
-	else:
-		watched = PlayerCharacter.find(Net.local_player_id())
+		return others[posmod(_watch_index, others.size())]
+	return PlayerCharacter.find(Net.local_player_id())
+
+
+func _process(_delta: float) -> void:
+	var watched: PlayerCharacter = _watched_body()
 	if watched == null:
 		return
 	var behind: Vector3 = watched.global_basis.z * GHOST_DISTANCE + Vector3.UP * GHOST_HEIGHT

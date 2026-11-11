@@ -243,7 +243,7 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Test it:** take damage, switch slots, die, beat or lose a run.
 - **Gaps:** G12, G13.
 - **Built:** everything in the mock-up, plus a player list in the bottom right (names with speaking / ghost / joining; the Tab list with ping, mute and kick is still WP6). The run summary shows deaths, gems spent and upgrades per player. Kills are left out for now because only the host hears about them (a later package can send them). `run_summary_seconds` went from 5 to 12 so the summary can be read.
-- **Status: waiting for your play test.** Mock-up approved 2026-11-11. Branch `wp/05-hud` (stacked on `wp/03-leftovers`).
+- **Status: done.** Mock-up approved and merged into main 2026-11-11.
 
 #### WP6: Player list and pause menu
 - **What:** Tab shows every player with ping, a mute button and (host) kick; the pause menu gets a controls page.

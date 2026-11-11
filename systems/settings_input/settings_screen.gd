@@ -14,7 +14,7 @@ const ACTION_NAMES: Dictionary[StringName, String] = {
 	&"move_right": "Move right", &"jump": "Jump", &"crouch": "Crouch", &"sprint": "Sprint",
 	&"use": "Use / grab", &"drop": "Drop", &"primary": "Attack / throw", &"secondary": "Item's second action",
 	&"slot_next": "Next slot", &"slot_prev": "Previous slot", &"holster": "Holster", &"equip": "Put in inventory",
-	&"push_to_talk": "Push to talk", &"pause": "Pause menu", &"debug_console": "Debug console",
+	&"push_to_talk": "Push to talk", &"pause": "Pause menu", &"player_list": "Player list", &"debug_console": "Debug console",
 }
 
 var _settings: SettingsService
@@ -296,6 +296,11 @@ func _binding_label(action: StringName) -> String:
 
 
 func _action_name(action: StringName) -> String:
+	return action_name(action)
+
+
+## NEW 2026-11-11 (roadmap WP6): the readable name of an action ("Use / grab"); the pause menu's controls page uses it.
+static func action_name(action: StringName) -> String:
 	if ACTION_NAMES.has(action):
 		return ACTION_NAMES[action]
 	return String(action).capitalize()

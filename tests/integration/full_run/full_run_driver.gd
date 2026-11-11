@@ -276,6 +276,8 @@ func _run_client() -> void:
 	EventBus.floor_ready.connect(_on_client_floor_ready)
 	SteamSession.connection_lost.connect(func() -> void: _note("connection lost"))
 	SteamSession.lobby_joined.connect(func(_lobby_id: int) -> void: GameFlow.go_to_break_room())
+	if _args.has("join_delay"):
+		await _seconds(_arg("join_delay").to_float())
 	SteamSession.join_local("127.0.0.1", _int_arg("port", 18300))
 	var in_roster: Callable = func() -> bool:
 		return Net.is_online() and Net.get_player_ids().has(Net.local_player_id())

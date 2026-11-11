@@ -102,6 +102,7 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G51 | When the host leaves a local (no Steam) game, ENet prints one "Unable to send packet on channel 0" error while saying goodbye. Harmless; found by WP1. | reliability | S | |
 | G52 | ~~A player who joins mid-floor built the floor before their connection opened, so its vending machines, printers, mutation machine, doors, buttons, boss arena and plants asked the host for their state too early and never heard back (no shop offers, wrong door states).~~ Fixed in WP1. | reliability | S | |
 | G53 | ~~Prop snapshot messages reached 1,900 bytes, over one network packet, so on real connections they'd be lost more often (jumpy props).~~ Fixed in WP1. | reliability | S | |
+| G56 | Once, in a full test run, the full-run test's client got 300 "spawner is null" errors and no body (the client wasn't in the game world when the host's spawns arrived). It passed 3 times in a row alone and joining during the first ride works, so it may be a rare join race, or the run starting while Godot was importing new files. Watch for it; the driver now has `--join_delay` to try joins at other moments. | reliability | S | |
 | G55 | The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
 | G54 | Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors. Harmless, but noisy. Found by WP2's test. | reliability | S | |
 
@@ -247,7 +248,9 @@ can play. Every package follows the Working rules (section i). Status values: **
 
 #### WP6: Player list and pause menu
 - **What:** Tab shows every player with ping, a mute button and (host) kick; the pause menu gets a controls page.
-- **Gaps:** G21, G31. **Status: not started.**
+- **Gaps:** G21, G31.
+- **Built:** Tab opens a list of every player with their ping, Mute / Unmute (only what you hear) and, for the host, Kick; Tab or Esc closes it. The pause menu has a Controls button listing every action and its key. Ping shows "-" over Steam for now (Steam's relay doesn't report it the same way); it works in local tests.
+- **Status: done.** Merged into main 2026-11-11.
 
 #### WP7: Hits you can feel (needs your OK on a mock-up first)
 - **What:** hit flash on enemies and players, a 40 to 60 ms hit pause on melee hits, camera kick when hurt (honours

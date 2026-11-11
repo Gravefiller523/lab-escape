@@ -1,13 +1,17 @@
 extends Control
-## The small Esc menu: Resume, Settings, Leave game, Quit. The game keeps running for everyone else.
+## The small Esc menu: Resume, Controls (NEW 2026-11-11: the key for every action), Settings, Leave game, Quit.
+## The game keeps running for everyone else.
 ## When you play solo (not connected) it also shows "Testing on one PC": Host local and Join local, so
 ## a test scene opened with F6 can become a 2-window test without the main menu.
 
 const DEFAULT_PORT: int = 7777
 const DEFAULT_ADDRESS: String = "127.0.0.1"
+## NEW 2026-11-11 (roadmap WP6): how tall the controls list is (it scrolls).
+const CONTROLS_HEIGHT: float = 260.0
 
 var _address_edit: LineEdit
 var _port_edit: LineEdit
+var _controls: ScrollContainer
 
 
 func _ready() -> void:
@@ -31,9 +35,48 @@ func _ready() -> void:
 	if not Net.is_online():
 		_add_local_testing(column)
 	_add_button(column, "Resume", UI.close_screen)
+	_add_button(column, "Controls", _toggle_controls)
+	_controls = _controls_list()
+	column.add_child(_controls)
 	_add_button(column, "Settings", func() -> void: Settings.open(UI.SCREEN_PAUSE))
 	_add_button(column, "Leave game", UI.leave_game)
 	_add_button(column, "Quit", func() -> void: get_tree().quit())
+
+
+## NEW 2026-11-11 (roadmap WP6): every action and the key it's on now (your rebinds included). Hidden until the
+## Controls button is pressed; change keys in Settings > Controls.
+func get_controls_text() -> String:
+	var lines := PackedStringArray()
+	for row: Node in _controls.get_node(^"Rows").get_children():
+		lines.append((row as Label).text)
+	return "\n".join(lines)
+
+
+func is_controls_open() -> bool:
+	return _controls.visible
+
+
+func _toggle_controls() -> void:
+	_controls.visible = not _controls.visible
+
+
+func _controls_list() -> ScrollContainer:
+	var scroll := ScrollContainer.new()
+	scroll.name = "Controls"
+	scroll.custom_minimum_size = Vector2(0, CONTROLS_HEIGHT)
+	scroll.visible = false
+	var rows := VBoxContainer.new()
+	rows.name = "Rows"
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(rows)
+	for action: StringName in SettingsService.rebindable_actions():
+		var key: String = Settings.get_binding_text(action)
+		if key.is_empty():
+			continue
+		var row := Label.new()
+		row.text = "%s: %s" % [SettingsScreen.action_name(action), key]
+		rows.add_child(row)
+	return scroll
 
 
 func _add_button(parent: Control, text: String, action: Callable) -> void:

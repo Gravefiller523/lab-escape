@@ -215,6 +215,22 @@ func clear_run_records() -> void:
 	roster_changed.emit()
 
 
+## NEW 2026-11-11 (roadmap WP6): the round trip time (ms) to that player as this PC knows it: the host sees each
+## client's, a client sees only the host's (its own connection). -1 when unknown: yourself, solo, or a connection
+## type that doesn't report it (Steam's relay for now).
+func get_ping_msec(player_id: int) -> int:
+	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	var peer_id: int = get_peer_id(player_id)
+	if enet == null or peer_id == 0 or peer_id == multiplayer.get_unique_id():
+		return -1
+	if not is_host() and peer_id != 1:
+		return -1
+	var packet_peer: ENetPacketPeer = enet.get_peer(peer_id)
+	if packet_peer == null:
+		return -1
+	return int(packet_peer.get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME))
+
+
 ## Host only. Removes a player from the game.
 func kick(player_id: int) -> void:
 	if not is_host() or player_id == local_player_id():

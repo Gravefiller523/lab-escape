@@ -145,3 +145,43 @@ func test_main_menu_closes_once_you_are_in_the_game() -> void:
 	SteamSession.lobby_joined.emit(1)
 	assert_false(UI.is_screen_open(), "nor when 'lobby joined' comes after the scene changed")
 	assert_eq(_flow.break_room_calls, 0, "and it doesn't load the Break Room again")
+
+
+## NEW 2026-11-11 (roadmap WP6): the pause menu's controls page lists the current key for each action.
+func test_pause_menu_lists_the_controls() -> void:
+	_flow.in_main_menu = false
+	UI.show_screen(UIService.SCREEN_PAUSE)
+	await wait_process_frames(2)
+	var menu: Node = UI.get_child(UI.get_child_count() - 2)
+	assert_false(menu.call("is_controls_open"), "hidden at first")
+	for button: Node in menu.find_children("*", "Button", true, false):
+		if (button as Button).text == "Controls":
+			(button as Button).pressed.emit()
+	assert_true(menu.call("is_controls_open"), "the Controls button shows it")
+	var text: String = menu.call("get_controls_text")
+	assert_string_contains(text, "Jump: %s" % Settings.get_binding_text(InputActions.JUMP))
+	assert_string_contains(text, "Use / grab: %s" % Settings.get_binding_text(InputActions.USE))
+	assert_string_contains(text, "Player list: Tab")
+
+
+## NEW 2026-11-11 (roadmap WP6): Tab shows every player, with Mute for others and Kick for the host.
+func test_tab_shows_the_player_list() -> void:
+	_flow.in_main_menu = false
+	var body := PLAYER_SCENE.instantiate() as PlayerCharacter
+	body.player_id = Net.local_player_id()
+	add_child_autofree(body)
+	await wait_process_frames(2)
+	var tab := InputEventAction.new()
+	tab.action = InputActions.PLAYER_LIST
+	tab.pressed = true
+	Input.parse_input_event(tab)
+	await wait_process_frames(3)
+	assert_eq(UI.get_open_screen(), UIService.SCREEN_PLAYERS, "Tab opens the player list")
+	var screen: Node = UI.get_child(UI.get_child_count() - 2)
+	var rows: PackedStringArray = screen.call("get_row_texts")
+	assert_eq(rows.size(), Net.get_player_ids().size(), "a row per player")
+	assert_string_contains(rows[0], "(you)")
+	assert_null(screen.call("find_button", Net.local_player_id(), "Mute"), "no Mute button for yourself")
+	Input.parse_input_event(tab)
+	await wait_process_frames(3)
+	assert_false(UI.is_screen_open(), "Tab again closes it")

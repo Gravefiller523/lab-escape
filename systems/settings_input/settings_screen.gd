@@ -99,10 +99,10 @@ func _input(event: InputEvent) -> void:
 	var action: StringName = _rebinding_action
 	_rebinding_action = &""
 	if key != null and key.physical_keycode == KEY_ESCAPE and action != InputActions.PAUSE:
-		_bind_buttons[action].text = _settings.get_binding_text(action)
+		_bind_buttons[action].text = _binding_label(action)
 		return
 	_settings.rebind(action, event)
-	_bind_buttons[action].text = _settings.get_binding_text(action)
+	_refresh_bind_buttons()
 
 
 # --- Tabs ------------------------------------------------------------------------------------
@@ -157,7 +157,7 @@ func _build_controls(rows: VBoxContainer) -> void:
 		var row := _row(rows, _action_name(action))
 		var button := Button.new()
 		button.name = "Bind_%s" % action
-		button.text = _settings.get_binding_text(action)
+		button.text = _binding_label(action)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(start_rebind.bind(action))
 		row.add_child(button)
@@ -278,8 +278,21 @@ func _add_refresher(section: StringName, refresh: Callable) -> void:
 
 func _on_reset_keys() -> void:
 	_settings.reset_bindings()
+	_refresh_bind_buttons()
+
+
+func _refresh_bind_buttons() -> void:
 	for action: StringName in _bind_buttons:
-		_bind_buttons[action].text = _settings.get_binding_text(action)
+		_bind_buttons[action].text = _binding_label(action)
+
+
+## The key on an action's button. CHANGED 2026-11-11 (roadmap WP3): a key two actions share says so ("E (also: Drop)").
+func _binding_label(action: StringName) -> String:
+	var text: String = _settings.get_binding_text(action)
+	var names: PackedStringArray = []
+	for other: StringName in _settings.get_conflicts(action):
+		names.append(_action_name(other))
+	return text if names.is_empty() else "%s (also: %s)" % [text, ", ".join(names)]
 
 
 func _action_name(action: StringName) -> String:

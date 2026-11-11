@@ -23,6 +23,8 @@ signal noticed(player: PlayerCharacter)
 
 const GROUP: StringName = &"enemies"
 const SYNC_INTERVAL: float = 0.05
+## NEW 2026-11-11 (roadmap WP3): the first position update waits this many update intervals after spawning.
+const FIRST_SYNC_DELAY_UPDATES: float = 4.0
 ## NEW 2026-10-30: this close (m, flat) to where it's going counts as "got there".
 const ARRIVE_DISTANCE: float = 1.0
 ## NEW 2026-10-30: the states in which it's calm (it listens for noises and can be startled).
@@ -78,7 +80,9 @@ var _behaviours: Array[EnemyBehaviour] = []
 var _perception: Perception
 var _agent: NavigationAgent3D
 var _attack_ready_at: float = 0.0
-var _sync_left: float = 0.0
+## CHANGED 2026-11-11 (roadmap WP3, G54): starts a few updates in, so the first position update doesn't reach clients
+## before the spawn message that creates the enemy there (they travel separately and the update could win).
+var _sync_left: float = SYNC_INTERVAL * FIRST_SYNC_DELAY_UPDATES
 var _synced_position: Vector3 = Vector3.ZERO
 var _synced_yaw: float = 0.0
 var _has_sync: bool = false
@@ -556,7 +560,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0 if is_on_floor() and velocity.y < 0.0 else velocity.y - _gravity() * delta
 	move_and_slide()
 	_sync_left -= delta
-	if _sync_left <= 0.0 and multiplayer.has_multiplayer_peer():
+	if _sync_left <= 0.0 and multiplayer.has_multiplayer_peer() and not is_queued_for_deletion():
 		_sync_left = SYNC_INTERVAL
 		_sync_rpc.rpc(global_position, rotation.y, _state_name)
 

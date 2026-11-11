@@ -25,15 +25,7 @@ const SOAK_TIMEOUT: float = 1200.0
 const EXIT_NOISE: PackedStringArray = ["leaked at exit", "resources still in use at exit", "Pages in use exist at exit"]
 ## Known problems with a roadmap work package of their own. They are still printed in the test's output; delete a line
 ## here when its package fixes it.
-const KNOWN: PackedStringArray = [
-	# Roadmap G50 / WP3: enemy navigation reads the blockout rooms' visual meshes.
-	"Source geometry parsing for navigation mesh baking had to parse RenderingServer meshes at runtime",
-	# Roadmap G54 / WP3: now and then an enemy's position update reaches a client just before the enemy appears there
-	# (or just after it is gone), so the client can't find it. Harmless, but it fills the log.
-	"Node not found: \"Enemies/Spawner/Enemy",
-	"Failed to get path from RPC: Enemies/Spawner/Enemy",
-	"Invalid packet received. Requested node was not found.",
-]
+const KNOWN: PackedStringArray = []
 ## The same, but only allowed after the process has finished its run and is leaving.
 const KNOWN_WHILE_LEAVING: PackedStringArray = [
 	# Roadmap G51 / WP2: the host leaving a local (no Steam) game prints one ENet error while it says goodbye.
@@ -155,6 +147,8 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 		var floor_entry: Dictionary = entry
 		var number: int = int(floor_entry["floor"])
 		assert_true(floor_entry.get("departed", false), "the lift left floor %d" % number)
+		# NEW (roadmap WP3, G5): a dead player can be reprinted on every floor, boss floors too.
+		assert_gt(int(floor_entry.get("printers", 0)), 0, "floor %d has a 3D printer" % number)
 		if floor_entry.get("boss_floor", false):
 			assert_true((floor_entry.get("boss", {}) as Dictionary).get("defeated", false),
 				"the boss on floor %d was beaten" % number)
@@ -165,16 +159,16 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 			assert_eq((floor_entry["bodies"] as Array).size(), 3, "all 3 players have bodies on floor %d" % number)
 	if total < DEATH_FLOOR:
 		return
-	assert_true(floors[total - 1].get("boss_floor", false), "the last floor is a boss floor")
+	assert_true((floors[total - 1] as Dictionary).get("boss_floor", false), "the last floor is a boss floor")
 
 	# The late joiner waited as a spectator, then spawned on the next floor.
-	var late_join: Dictionary = floors[LATE_FLOOR - 1].get("late_join", {})
+	var late_join: Dictionary = (floors[LATE_FLOOR - 1] as Dictionary).get("late_join", {})
 	assert_true(late_join.get("joined", false), "the late joiner connected mid-floor")
 	assert_true(late_join.get("waiting", false), "the late joiner waits for the next floor")
 	assert_false(late_join.get("has_body", true), "the late joiner has no body until then")
 
 	# A client died and was reprinted.
-	var death: Dictionary = floors[DEATH_FLOOR - 1].get("death", {})
+	var death: Dictionary = (floors[DEATH_FLOOR - 1] as Dictionary).get("death", {})
 	assert_eq(int(death.get("player_id", 0)), int(client.get("player_id", -1)), "the client was the one who died")
 	assert_true(death.get("died", false), "the client died")
 	assert_true(death.get("ghost", false), "and became a ghost")
@@ -184,8 +178,8 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 	assert_true(client.get("ok", false), "the client finished: %s" % str(client.get("notes", [])))
 	assert_eq(_floor_numbers(client.get("floors", [])), expected, "the client reached every floor")
 	for index: int in mini((client.get("floors", []) as Array).size(), total):
-		var seen: Dictionary = client["floors"][index]
-		assert_eq(seen["department"], floors[index]["department"], "same department on floor %d" % (index + 1))
+		var seen: Dictionary = (client["floors"] as Array)[index]
+		assert_eq(seen["department"], (floors[index] as Dictionary)["department"], "same department on floor %d" % (index + 1))
 		assert_true(seen.get("has_body", false), "the client has a body on floor %d" % (index + 1))
 	assert_eq(client.get("result", ""), "escaped", "the client saw the escape")
 	assert_eq(client.get("final_state", ""), "BREAK_ROOM", "the client is back in the Break Room")

@@ -166,3 +166,21 @@ func test_screen_rebinds_with_the_next_key() -> void:
 	screen.start_rebind(InputActions.DROP)
 	get_viewport().push_input(_key(KEY_ESCAPE))
 	assert_eq(settings.get_binding_text(InputActions.DROP), "G", "Esc cancels")
+
+
+## NEW 2026-11-11 (roadmap WP3): two actions on one key are allowed, but both buttons say so.
+func test_a_shared_key_is_shown_on_both_buttons() -> void:
+	var settings := _settings()
+	var screen := (load("res://systems/settings_input/settings_screen.tscn") as PackedScene).instantiate() as SettingsScreen
+	screen.use_settings(settings)
+	add_child_autofree(screen)
+	settings.reset_bindings()
+	assert_eq(settings.get_conflicts(InputActions.DROP).size(), 0, "no clashes with the default keys")
+	screen.start_rebind(InputActions.DROP)
+	get_viewport().push_input(_key(KEY_E))
+	assert_eq(settings.get_conflicts(InputActions.DROP), [InputActions.USE] as Array[StringName], "Drop now clashes with Use")
+	var drop := screen.find_child("Bind_%s" % InputActions.DROP, true, false) as Button
+	var use := screen.find_child("Bind_%s" % InputActions.USE, true, false) as Button
+	assert_string_contains(drop.text, "also:", "the Drop button warns")
+	assert_string_contains(use.text, "also:", "and so does Use")
+	settings.reset_bindings()

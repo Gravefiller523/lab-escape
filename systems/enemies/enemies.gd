@@ -202,10 +202,28 @@ func _parse_source(mesh: NavigationMesh, root: Node3D) -> NavigationMeshSourceGe
 			skipped.append(body)
 			layers.append(body.collision_layer)
 			body.collision_layer = 0
+	# CHANGED 2026-11-11 (roadmap WP3, G50): solid CSG shapes (the blockout rooms) are read from their collision faces
+	# here. Left to the parser, a CSG shape is read from its visual mesh, which Godot warns is slow (the mesh is copied
+	# back from the graphics card). Their layer is cleared just while the parser runs, so it skips them.
+	var csgs: Array[CSGShape3D] = []
+	var csg_layers: Array[int] = []
+	for node: Node in root.find_children("*", "CSGShape3D", true, false):
+		var csg := node as CSGShape3D
+		if csg != null and csg.is_root_shape() and csg.use_collision \
+				and csg.collision_layer & mesh.geometry_collision_mask != 0:
+			csgs.append(csg)
+			csg_layers.append(csg.collision_layer)
+			csg.collision_layer = 0
 	var source := NavigationMeshSourceGeometryData3D.new()
 	NavigationServer3D.parse_source_geometry_data(mesh, source, root)
 	for index: int in skipped.size():
 		skipped[index].collision_layer = layers[index]
+	for index: int in csgs.size():
+		csgs[index].collision_layer = csg_layers[index]
+		var shape: ConcavePolygonShape3D = csgs[index].bake_collision_shape()
+		var faces: PackedVector3Array = shape.get_faces() if shape != null else PackedVector3Array()
+		if not faces.is_empty():
+			source.add_faces(faces, csgs[index].global_transform)
 	return source
 
 

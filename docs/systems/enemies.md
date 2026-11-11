@@ -220,6 +220,8 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
   CSG blockout tiles prints Godot's "had to parse RenderingServer meshes" performance warning (the CSG parser reads
   the render meshes even for static colliders); the fix would be to give tiles baked collision shapes (level_gen).
 
+- 2026-11-11 (roadmap WP3): navigation baking reads solid CSG shapes (the blockout rooms) from their collision faces (`CSGShape3D.bake_collision_shape`) instead of letting Godot read their visual meshes, which it warned is slow. An enemy's first position update now waits 4 update intervals after it spawns, so it no longer reaches a client before the enemy exists there ("Node not found: Enemies/Spawner/EnemyN").
+
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and
 `SwoopBehaviour`, `Perception`, `EnemySpawner`, the `Enemies` autoload (floor spawning on `floor_ready`, navmesh baking,

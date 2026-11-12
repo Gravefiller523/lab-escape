@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="CyberneticData" format=3]
+
+[ext_resource type="Script" path="res://core/data/upgrades/cybernetic_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/upgrade_effect_data.gd" id="2_base"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/behaviour_effect_data.gd" id="3_behaviour"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/visual_attachment_effect_data.gd" id="4_visual"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/movement_effect_data.gd" id="5_move"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/behaviours/night_vision.tscn" id="6_rule"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/visuals/eye.tscn" id="7_look"]
+
+[sub_resource type="Resource" id="Rule"]
+script = ExtResource("3_behaviour")
+behaviour_scene = ExtResource("6_rule")
+params = {"range": 14.0, "energy": 0.8}
+
+[sub_resource type="Resource" id="Look"]
+script = ExtResource("4_visual")
+scene = ExtResource("7_look")
+attach_point = &"face"
+
+[resource]
+script = ExtResource("1_data")
+id = &"cybernetic_night_vision_eye"
+display_name = "Night-Vision Eye"
+description = "A green robot eye. You see in the dark: dark, damaged rooms light up for you (only you)."
+tags = PackedStringArray("robotics")
+effects = Array[ExtResource("2_base")]([SubResource("Rule"), SubResource("Look")])
+department_ids = Array[StringName]([&"department_robotics"])
+glow_color = Color(0.3, 1, 0.4, 1)
+body_part = &"eyes"

@@ -8,6 +8,9 @@ extends CharacterBody3D
 ## other PCs smoothly slide their copy of the body toward them. The host also checks nobody moves
 ## faster than possible.
 
+## NEW 2026-11-12 (roadmap WP11): the body landed, falling at `fall_speed` m/s (on the PC that moves it: its owner).
+signal landed(fall_speed: float)
+
 const GROUP: StringName = &"players"
 ## Height above the feet (metres) of the "did I just go through a wall" check. Below a crouching head.
 const WALL_CHECK_HEIGHT: float = 0.5
@@ -266,6 +269,7 @@ func has_legroom_to_stand() -> bool:
 ## The body just landed, falling at `fall_speed` m/s: the local camera dips, and jolts on a hard landing
 ## (NEW 2026-10-29). Movement modes call it.
 func notify_landed(fall_speed: float) -> void:
+	landed.emit(fall_speed)
 	if is_local():
 		_camera_feel.landed(tuning, fall_speed, Settings.get_camera_shake_scale())
 

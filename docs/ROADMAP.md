@@ -294,8 +294,8 @@ can play. Every package follows the Working rules (section i). Status values: **
   Robotics loot and stock. 3 new cybernetics (decision D4 list).
 - **Gaps:** G15, G16.
 - **Built (part 1 of 2):** the four enemies, `loot_robotics_small` / `loot_robotics_medium`, `stock_robotics_vending` (more crowbars and coffee), and the Robotics department now uses them instead of Zoology's rats and bats. The flock camera is its own small enemy (spawned like the others), not the floor plan's security cameras; joining the two can come with the security room work later. The roomba knocks players back hard; knocking props over comes from its body bumping them.
-- **Still to do (part 2):** the 3 cybernetics from decision D4 (Magnet Hand, Spring Legs, Night-Vision Eye).
-- **Status: part 1 waiting for your play test.** Branch `wp/11-robotics` (stacked on `wp/08-teaching`).
+- **Built (part 2):** the 3 cybernetics from decision D4. Magnet Hand tugs loose gems within 6 m towards you. Spring Legs give a higher jump and a stomp when you land hard (there is no fall damage in the game, so "fall immunity" has nothing to protect against yet). Night-Vision Eye gives you, and only you, a soft green light. All three only come from Robotics data drives.
+- **Status: waiting for your play test.** Branch `wp/11-robotics` (stacked on `wp/08-teaching`).
 
 #### WP12: Profile saves (save_load)
 - **What:** the profile file from the spec, versioned, autosaved on run end and quit. Lifetime stats.

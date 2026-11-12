@@ -219,6 +219,8 @@ launch options `-- host` / `-- join`.
 
 - 2026-11-11 (roadmap WP7): your camera kicks up when you lose health (`CameraFeel.hurt`, `Config.feel.hits.hurt_kick_degrees`, scaled by the camera shake setting, so reduce motion turns it off). Test `test_getting_hurt_kicks_the_view_up`.
 
+- 2026-11-12 (roadmap WP11): NEW signal `landed(fall_speed)` on PlayerCharacter (on the PC that moves the body), emitted from `notify_landed`. Spring Legs uses it.
+
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,
 crouch (with headroom check), gravity, mouse look, camera, a grey capsule body with a blue visor so

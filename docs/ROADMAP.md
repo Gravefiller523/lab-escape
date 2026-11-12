@@ -7,6 +7,29 @@ test-build notes, a full GUT run and play sessions (see "How the audit was done"
 **A fresh session can pick up from this file alone.** Read "Working rules" (section i) first, then find the first
 work package whose status is not "done" and isn't waiting on Zachary.
 
+## Where things stand (keep this box up to date; last updated 2026-11-12)
+
+- **Merged into main:** WP1 to WP7, WP9, and WP10 part 1 (Botany's enemies, loot and shop stock).
+- **Waiting on Zachary.** Each branch below sits on top of the one above it, so a merge phrase for one also
+  merges everything above it in this table. "push and merge wp/12-profile into main" merges all four.
+
+  | Branch | Package | What to try in the game |
+  |---|---|---|
+  | `wp/10-botany` | WP10 part 2 | On a Botany floor, DNA vials now give plant mutations (Photosynthesis, Thorns, Spore Cough, Vine Arm). |
+  | `wp/08-teaching` | WP8 | The Break Room whiteboard and how-to boards, a PA line a few seconds into each floor, and first-time hints. |
+  | `wp/11-robotics` | WP11 | Robotics floors have roombas, turrets, drones and cameras; data drives give Magnet Hand, Spring Legs and Night-Vision Eye. |
+  | `wp/12-profile` | WP12 | Play a run, quit, and open the profile file; `hints reset` in the console shows the hints again. |
+
+- **Next for Claude:** WP13 (Mushroom Man and Robobrain).
+- **On hold until Zachary says so:** D8 (Steam fee and App ID) and D9 (name check). They block WP18's real test,
+  WP32 and WP33.
+- **Other threads working in this repo:** the floor generator thread owns `systems/level_gen`,
+  `config/floor_gen_tuning.tres`, and the run length numbers `run_floor_count` and `boss_every_floors` (decision D1
+  is approved but not applied yet: today they are still 18 and 6). It works in its own folder, `../lab-escape-6a`.
+- **Pace so far:** 12 packages built in the first 2 days. The code packages went much faster than the estimate in
+  section a. The art, sound and launch phases (WP20 on) depend on Zachary's time, tools and play tests, and are
+  still the long part.
+
 Words used a lot here:
 - **Work package (WP):** one chunk of work of 1 to 3 Claude Code sessions that ends in something you can play.
 - **Session:** one sitting with Claude Code, roughly 1 to 2 hours.
@@ -105,7 +128,8 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G56 | ~~Twice, in full test runs, the full-run test's client got about 300 "spawner is null" errors and no body.~~ Found in WP7: the client asked to join while the host was still loading the Break Room, was told "nothing yet", and missed the host's "come into the world" message. Fixed in WP7 (game_flow sends a joiner straight to the Break Room while the host loads it). The full-run driver also has `--join_delay` to try joins at other moments. | reliability | S | |
 | G57 | `test_thrown_crate_barely_hurts_a_heavy_enemy` (physics_props) failed once in a full run: the thrown crate hit the 50 kg test enemy twice (it bounced), leaving 6.6 health where the test wants more than 9. It passed 3 times in a row alone. Physics bounce timing; worth making the test count only the first hit. Found in WP11. | reliability | S | ||
 | G55 | The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
-| G54 | Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors. Harmless, but noisy. Found by WP2's test. | reliability | S | |
+| G54 | ~~Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors.~~ Fixed in WP3. | reliability | S | |
+| G58 | **Nothing checks that the host and a joining player run the same version of the game.** Two different builds can join each other, and the result is confusing bugs on one PC only (missing enemies, things out of step). Needs a build number shown in the main menu and a clear "your game is a different version" message on join. Found in the 2026-11-12 review. | reliability | S | |
 
 ### Fun and clarity
 | # | Gap | Tag | Size | You |
@@ -163,6 +187,25 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G46 | Steam Cloud for the profile file isn't set up. | release | S | You |
 | G47 | No performance target or check on a modest PC; no LODs. | release | M | You |
 | G48 | Export presets must leave out `tests/` and `addons/gut`. | release | S | |
+
+### Promised later (small things packages left behind, kept here so they aren't lost)
+Added 2026-11-12. Each line names where it is picked up.
+| What | From | Picked up in |
+|---|---|---|
+| Kills in the run summary and the lifetime stats only count the host's kills (only the host's game hears about kills). | WP5, WP12 | WP15b |
+| Ping shows "-" over Steam in the Tab player list. | WP6 | WP15b (needs a real-Steam check) |
+| A rejoining player gets their mutations back: can only be checked with real Steam accounts. | WP2 | Section f checklist |
+| The spore shooter leaves no cloud on the floor (its puffball gives the spores status instead). | WP10 | WP13, if the Mushroom Man's slam needs a real cloud; otherwise Update 1 |
+| Photosynthesis heals "when nothing has hurt you for a while", not "in the light". | WP10 | WP26 (lighting) |
+| Spring Legs' "fall immunity" protects against nothing, because the game has no fall damage. Adding fall damage is a design choice. | WP11 | WP16 (ask Zachary with the balance pass) |
+| The flock camera is its own enemy, not the security cameras the floor plan places. | WP11 | Update 1, with the security room |
+| Steam Cloud for the profile file. | WP12 | WP32 |
+| Octo can climb other players and crates (G22): tune it or keep it as comedy. | audit | WP16 (ask Zachary) |
+| Hazards have no data files of their own (G27). | audit | WP15b |
+| The lift ride has no rumble or arrival jolt (G40). | audit | WP26 |
+| One harmless network error when the host leaves a local game (G51). | WP1 | WP15b |
+| About 130 typing warnings in existing code (G55); level_gen's share belongs to the floor generator thread. | WP3 | WP15b |
+| A physics test that failed once in a full run (G57). | WP11 | WP15b |
 
 ---
 
@@ -265,7 +308,7 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **What:** Break Room orientation boards (controls, "the lift is broken, find the part"), hints that show once
   per profile on the first floor (first gem, first vendor, first vial, first death), the PA text lines and
   whiteboard premise from decision D5.
-- **Needs:** WP12 (save_load) for "show once"; until then hints show once per session.
+- **Needs:** WP12 (save_load) for "show once" (done: the hints moved into the profile in WP12).
 - **Gaps:** G28, G30.
 - **Built:** the whiteboard premise, three how-to boards by the lift, 8 PA lines (2 for each department plus general ones, as content files) shown a few seconds after each floor starts, and 7 first-time hints (content files). Hints are remembered in a small file on the PC (once ever, not once per session), which moves into the profile with WP12.
 - **Status: waiting for your play test.** Branch `wp/08-teaching` (stacked on `wp/10-botany`).
@@ -317,6 +360,16 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **What:** the floor task framework from the objectives spec and one task: running in a hamster wheel charges a
   fuse box that powers a locked area or the lift. More players run it faster.
 - **Gaps:** G18, G23. **Status: not started.**
+
+#### WP15b: Clean-up sweep (added 2026-11-12, in the review)
+- **What:** the gaps and leftovers that had no package: a version check on join with the build number in the main
+  menu (G58), every player's kills in the run summary and stats, ping over Steam, hazard data files (G27), the
+  typing warnings outside level_gen (G55), the flaky crate test (G57), the host-leaving network error (G51).
+- **Why here:** it's the last stop before friends play the game for the balance pass, and a version check matters
+  the moment two PCs can hold different test builds.
+- **Test it:** the main menu shows a build number; the run summary shows kills for everyone; the Output panel has
+  no typing warnings from the systems this package touched.
+- **Gaps:** G27, G51, G55, G57, G58, and the "Promised later" lines marked WP15b. **Status: not started.**
 
 #### WP16: Balance pass 1
 - **What:** with telemetry from at least 3 of your play sessions: run length (D1), prices, gem drops, vial chance,
@@ -500,6 +553,9 @@ Do these on two or more PCs with different Steam accounts, using a test build. T
 - [ ] A client quits mid-floor while carrying a lift part: the part comes back.
 - [ ] **The host quits mid-floor:** every client returns to the menu with a message, nobody crashes.
 - [ ] Die, get reprinted with meat, keep mutations; team wipe ends the run.
+- [ ] A friend quits and rejoins the same run: they get their mutations back (can't be tested without real Steam accounts).
+- [ ] The Tab player list shows a real ping for each friend (it shows "-" over Steam until WP15b).
+- [ ] After WP15b: a friend on an older test build is told their version is different instead of joining.
 - [ ] Beat a boss; the whole team rides on.
 - [ ] Achievements pop on Steam (needs the real App ID).
 - [ ] Cloud save: unlock a cosmetic on one PC, see it on another PC with the same account.
@@ -571,6 +627,26 @@ Do these on two or more PCs with different Steam accounts, using a test build. T
   chosen, and keep going.
 - **Don't change `systems/level_gen` or `config/floor_gen_tuning.tres`** while the floor generator's step 6 tuning
   pass is open in its own thread. Write needs from level_gen here instead (see below).
+
+Added 2026-11-12 from what the first 12 packages taught us:
+- **What a merge phrase covers.** Branches are stacked, so "push and merge <name> into main" merges that branch and
+  every unmerged branch beneath it. Merge only what the branch held when Zachary sent the phrase; if more was
+  committed after, say so and ask for a new phrase for the rest. After a merge, update the status lines and the
+  "Where things stand" box, and carry that commit up to the top branch.
+- **Check for answers first.** At the start of a session and between packages, read the thread for merge phrases
+  and OKs Zachary has already sent, and handle those before new work.
+- **You are not alone in the repo.** The floor generator thread works in `../lab-escape-6a` (never touch that
+  folder) and owns `run_floor_count` and `boss_every_floors` as well as level_gen. Tell the coordinator before
+  editing a department file.
+- **Look at `git diff --stat project.godot` before every commit.** An editor left open from before a change can
+  rewrite it (it reordered the autoloads once).
+- **A test that fails once and passes on a second run is not a pass.** Write it in the gap list with what was seen.
+- **What counts as "a change to how the game looks":** the HUD, menus and screens, effects, lighting and final art
+  need a mock-up and an OK. Grey-box stand-ins for new content (a new enemy as coloured boxes) don't.
+- **Stopping mid-package** (a pause, or usage running out): commit what works, and put a "Next step:" line in that
+  package's status so the next session knows where to pick up.
+- **Leftovers go in "Promised later"** (end of section b) with the package that will pick them up, not only in a
+  "Built" note.
 
 ### Needs from level_gen (for the step 6 thread, not changed here)
 - Botany and Robotics will need `enemy_spawn` markers that suit stationary enemies (turrets, flytraps): a wall or

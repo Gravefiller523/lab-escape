@@ -226,6 +226,8 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
 
 - 2026-11-11 (roadmap WP7, mock-up approved by Zachary): on every PC, an enemy that loses health flashes white, holds still for a blink at the impact (the hit pause) and jerks back (`is_reacting_to_hit()`); a dead enemy pops into a puff of cubes (`Effects.burst`). Looks only: the AI is not paused. Tests in `tests/unit/enemies/test_hit_feedback.gd`.
 
+- 2026-11-12 (roadmap WP10): Botany's own enemies (grey box): `enemy_mushroom_zombie` (swarming shambler, also the future Mushroom Man's minion), `enemy_flytrap` (rooted: `move_speed` 0, idle + attack_melee; it lurks and bites whoever comes into reach), `enemy_spore_shooter` (ranged: lobbed puffballs that give `status_spores`), `enemy_vine_creeper` (slow and tough, a 3 m lash that drags you in: NEW `PullBehaviour`). NEW: a rooted enemy waits in attack_melee for you to come close (it used to give up its attack ticket every frame and never bite); `pursuit_state()` is attack_melee for an enemy with no chase, swarm or attack_ranged state; lobbed shots aim above you by how far they will fall. Tests in `tests/unit/enemies/test_botany_enemies.gd`.
+
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and
 `SwoopBehaviour`, `Perception`, `EnemySpawner`, the `Enemies` autoload (floor spawning on `floor_ready`, navmesh baking,

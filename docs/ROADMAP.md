@@ -280,7 +280,10 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **What:** flytrap (hides, snaps at whoever comes close), spore shooter (ranged, leaves a spore cloud that
   burns slowly), vine creeper (slow, tough, pulls you towards it), mushroom zombie (minion, also used by the boss).
   Botany loot table and vendor stock. 4 plant mutations (decision D4 list). Remove the Zoology stand-ins.
-- **Gaps:** G15, G16. **Status: not started.**
+- **Gaps:** G15, G16.
+- **Built (part 1 of 2):** the four enemies, `status_spores` (poison over time), `loot_botany_small` / `loot_botany_medium`, `stock_botany_vending` (more energy drinks and potted plants), and the Botany department now uses them instead of Zoology's. Grey box until the art pass. The spore shooter's "cloud" is a spores status on whoever its puffball hits, not a cloud left on the floor (a lingering cloud is a hazard job for later).
+- **Still to do (part 2):** the 4 plant mutations from decision D4 (Photosynthesis, Thorns, Spore Cough, Vine Arm).
+- **Status: part 1 waiting for your play test.** Branch `wp/10-botany` (stacked on `wp/07-hit-feedback`).
 
 #### WP11: Robotics roster (2 to 3 sessions)
 - **What:** roomba (fast, knocks props and players over), turret (stationary ranged, turns slowly), drone (flying

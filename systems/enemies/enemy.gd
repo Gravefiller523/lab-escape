@@ -242,11 +242,14 @@ func has_state(state: StringName) -> bool:
 
 ## The state used to go after a player: "swarm" if this enemy has it, else "chase". CHANGED 2026-11-11 (roadmap
 ## WP9): an enemy that can only shoot (a turret: no swarm or chase state) goes straight to "attack_ranged".
+## CHANGED 2026-11-12 (roadmap WP10): one that can't move but bites (a flytrap) waits in "attack_melee".
 func pursuit_state() -> StringName:
 	if _states.has(&"swarm"):
 		return &"swarm"
 	if not _states.has(&"chase") and _states.has(&"attack_ranged"):
 		return &"attack_ranged"
+	if not _states.has(&"chase") and _states.has(&"attack_melee"):
+		return &"attack_melee"
 	return &"chase"
 
 
@@ -877,7 +880,12 @@ func fire_at(point: Vector3) -> void:
 		return
 	var attack: RangedAttackData = data.ranged_attack
 	var from: Vector3 = global_position + Vector3.UP * MUZZLE_HEIGHT
-	var direction: Vector3 = (point - from).normalized()
+	# CHANGED 2026-11-12 (roadmap WP10): a lobbed shot (gravity_scale > 0) aims above you by how far it will fall on
+	# the way, so it lands on you instead of short.
+	var flight_seconds: float = from.distance_to(point) / maxf(attack.projectile_speed, 0.1)
+	var gravity: float = float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)) * attack.gravity_scale
+	var aim: Vector3 = point + Vector3.UP * 0.5 * gravity * flight_seconds * flight_seconds
+	var direction: Vector3 = (aim - from).normalized()
 	if direction.is_zero_approx():
 		direction = -global_basis.z
 	var spread: float = deg_to_rad(attack.spread_degrees)

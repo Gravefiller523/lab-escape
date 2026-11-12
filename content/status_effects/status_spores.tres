@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="StatusEffectData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/data/items/status_effect_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"status_spores"
+display_name = "Spores"
+description = "Coughing up spores: 2 poison damage every second for 5 seconds. Botany's spore shooter gives it (roadmap WP10)."
+tags = PackedStringArray("botany")
+duration = 5.0
+tick_damage = 2.0
+tick_interval = 1.0
+damage_type = &"poison"
+refresh_on_reapply = true

@@ -600,6 +600,8 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   with a broken enclosure hazard also gets its enemy spawn spots switched on (never the calm part room). Not done:
   the plan's "broken skylights and dark corners" damage look. Tests `test_zoology.gd`.
 
+- 2026-11-12 (roadmap WP10, content only): `department_botany` now spawns its own enemies (mushroom zombie, flytrap, spore shooter, vine creeper) and uses `loot_botany_small` and `stock_botany_vending`. Its boss floors stay off until the Mushroom Man (WP13).
+
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,
 `RoomMarker`, `RoomDoorway`, `RoomShape`, `GreyboxRoom`, the floor scene `level_floor.tscn` (`LevelFloor`),

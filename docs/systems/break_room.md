@@ -97,6 +97,8 @@ GUT tests (`tests/unit/break_room/test_break_room.gd`): `test_enough_spawn_point
   `get_lift_spot()`; `use_net` takes the prop spawner for tests. The whiteboard reads
   `GameFlow.get_last_run_result()`. Tests: `test_the_lift_bay_fits_the_cargo_lift`; the start tests moved to cargo_lift.
 
+- 2026-11-12 (roadmap WP8, decision D5): the whiteboard (now 4.6 x 2 m) shows the premise (`WHITEBOARD_NOTICE`: the night-shift notice) with the last run underneath; NEW `get_whiteboard_text()`. Three how-to boards by the lift (`HowToBoards`: fix the lift, gems are money, died?). Test `test_the_room_tells_the_story_and_how_to_play`.
+
 ## HANDOFF
 **Done (Phase 1a grey box):** `break_room.tscn`: floor, walls, a table, 8 spawn points (more are
 added in a ring if `max_players` is bigger), an elevator with sliding doors, a green start button,

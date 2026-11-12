@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="HintData" format=3]
+
+[ext_resource type="Script" path="res://core/data/story/hint_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"hint_gems"
+display_name = "Hint: gems"
+trigger = &"gem_grabbed"
+text = "That's a gem. Carry it to a vending machine to spend it."

@@ -265,7 +265,9 @@ can play. Every package follows the Working rules (section i). Status values: **
   per profile on the first floor (first gem, first vendor, first vial, first death), the PA text lines and
   whiteboard premise from decision D5.
 - **Needs:** WP12 (save_load) for "show once"; until then hints show once per session.
-- **Gaps:** G28, G30. **Status: not started.**
+- **Gaps:** G28, G30.
+- **Built:** the whiteboard premise, three how-to boards by the lift, 8 PA lines (2 for each department plus general ones, as content files) shown a few seconds after each floor starts, and 7 first-time hints (content files). Hints are remembered in a small file on the PC (once ever, not once per session), which moves into the profile with WP12.
+- **Status: waiting for your play test.** Branch `wp/08-teaching` (stacked on `wp/10-botany`).
 
 ### Phase C: each department its own
 

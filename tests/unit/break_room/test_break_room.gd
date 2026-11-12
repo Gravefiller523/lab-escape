@@ -156,3 +156,17 @@ func test_room_has_props_to_play_with() -> void:
 	await wait_until(func() -> bool: return _props(pc).get_props().size() > 0, WAIT)
 	assert_eq(_props(pc).get_props().size(), 4, "one prop per FunProps marker")
 	assert_eq(_props(pc).get_props(&"prop_crate_heavy").size(), 1)
+
+
+## NEW 2026-11-12 (roadmap WP8): the whiteboard tells the premise, with the last run underneath; three how-to boards
+## stand by the lift.
+func test_the_room_tells_the_story_and_how_to_play() -> void:
+	var room: BreakRoom = _room(_make_pc(_config()))
+	assert_string_contains(room.get_whiteboard_text(), "NIGHT SHIFT NOTICE")
+	assert_string_contains(room.get_whiteboard_text(), "Last run:")
+	EventBus.run_ended.emit(&"escaped")
+	assert_string_contains(room.get_whiteboard_text(), "Last run: Escaped", "the result goes under the notice")
+	assert_string_contains(room.get_whiteboard_text(), "NIGHT SHIFT NOTICE", "and the notice stays")
+	var boards: Node = room.get_node(^"HowToBoards")
+	assert_eq(boards.get_child_count(), 3, "three how-to boards")
+	assert_string_contains((boards.get_child(0) as Label3D).text, "FIX THE LIFT")

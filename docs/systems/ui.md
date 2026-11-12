@@ -140,6 +140,8 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
 
 - 2026-11-11 (roadmap WP7): NEW HUD widget `HurtVignette` (`hud.hurt_vignette`): red screen edges when you lose health, fading out (`Config.feel.hits`). Test `test_hurt_vignette_flashes_and_fades`.
 
+- 2026-11-12 (roadmap WP8, mock-up approved by Zachary): NEW HUD widgets `Announcer` (`hud.announcer`: a "PA: ..." line near the top `announcement_delay_seconds` after the lift reaches a floor, picked from AnnouncementData with SeededRng stream "announcement" and the floor number, so every PC shows the same one; `Announcer.pick()`, `announce()`, `get_line()`) and `Hints` (`hud.hints`: first-time tips from HintData, each shown once per PC and remembered in `user://hints_seen.cfg`; only in the game world; triggers first_floor, gem_grabbed, vial_grabbed, lift_part_grabbed, vendor_near, someone_died, boss_floor; `trigger()`, `has_seen()`, `use_file()`). GameConfig `announcement_delay_seconds`, `announcement_seconds`, `hint_seconds`. Tests in `tests/unit/ui/test_hud.gd`.
+
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and
 "Join game", Join by lobby id for testing, a "Testing on one PC" section with address, port, Host

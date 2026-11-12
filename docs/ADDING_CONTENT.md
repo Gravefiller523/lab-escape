@@ -45,6 +45,8 @@ new building block is needed (see the end of this guide) or something is wrong.
 | Achievement | `content/achievements/` | AchievementData | `achievement_` |
 | Loot table | `content/loot_tables/` | LootTableData | `loot_` |
 | Vendor stock | `content/vendor_stock/` | VendorStockData | `stock_` |
+| PA announcement (NEW 2026-11-12) | `content/announcements/` | AnnouncementData | `announcement_` |
+| First-time hint (NEW 2026-11-12) | `content/hints/` | HintData | `hint_` |
 
 ---
 
@@ -236,3 +238,13 @@ Files in `core/data/` are foundation files: you may add new ones, but follow CLA
 2. A line in `ContentRegistry.TYPE_FOLDERS` and a folder in `content/`.
 3. Reference fields named `<type>_id` / `<type>_ids` so the validator checks them.
 4. A section in this guide, and a note in `docs/systems/foundation.md`.
+
+## PA announcement (NEW 2026-11-12)
+**Copy:** any file in `content/announcements/`. **Fill in:** `text` (one cheerful corporate line; the tone is the
+night-shift premise), `department_ids` (empty = any floor), `weight`. One is picked per floor, a few seconds after the
+lift arrives. No code needed.
+
+## First-time hint (NEW 2026-11-12)
+**Copy:** any file in `content/hints/`. **Fill in:** `trigger` (one of `first_floor`, `gem_grabbed`, `vial_grabbed`,
+`lift_part_grabbed`, `vendor_near`, `someone_died`, `boss_floor`) and `text`. Each hint shows once per player. A new
+trigger needs a small change in `systems/ui/hud/hints.gd`.

@@ -12,6 +12,14 @@ extends Node3D
 ## the host). STUBS until other systems exist: cosmetics / voice: they only show a message.
 
 const SPAWN_RING_RADIUS: float = 3.0
+## NEW 2026-11-12 (roadmap WP8, decision D5): the whiteboard notice that tells the premise.
+const WHITEBOARD_NOTICE: String = """NIGHT SHIFT NOTICE
+To save money, staff are now reprinted from meat
+by the Lab Assistant AI.
+The experiments have escaped. Please do not.
+The cargo lift is out of order. Again.
+
+(scrawled underneath:) fix lift, go UP, get out"""
 
 var _net: NetService
 var _config: GameConfig
@@ -47,7 +55,7 @@ func _ready() -> void:
 	_mirror_use.used.connect(_show_note_to.bind("Mirror voice test: coming with the voice system."))
 	EventBus.run_ended.connect(_on_run_ended)
 	var last: StringName = GameFlow.get_last_run_result()
-	_whiteboard.text = "Last run:\n%s" % (String(last).capitalize() if last != &"" else "(no runs yet)")
+	_show_whiteboard(String(last).capitalize() if last != &"" else "(no runs yet)")
 	_message.text = ""
 	if multiplayer.is_server():
 		_spawn_fun_props.call_deferred()
@@ -76,8 +84,19 @@ func get_lift_spot() -> Node3D:
 	return _lift_spot
 
 
+## NEW 2026-11-12 (roadmap WP8): the whiteboard text (the game's premise, decision D5).
+func get_whiteboard_text() -> String:
+	return _whiteboard.text
+
+
 func _on_run_ended(result: StringName) -> void:
-	_whiteboard.text = "Last run:\n%s" % String(result).capitalize()
+	_show_whiteboard(String(result).capitalize())
+
+
+## CHANGED 2026-11-12 (roadmap WP8, mock-up approved by Zachary): the board tells the premise, with the last run's
+## result at the bottom.
+func _show_whiteboard(last_run: String) -> void:
+	_whiteboard.text = "%s\n\nLast run: %s" % [WHITEBOARD_NOTICE, last_run]
 
 
 ## Host: show a short message to the player who used something (closet, mirror placeholders).

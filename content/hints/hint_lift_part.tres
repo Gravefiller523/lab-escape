@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="HintData" format=3]
+
+[ext_resource type="Script" path="res://core/data/story/hint_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"hint_lift_part"
+display_name = "Hint: lift_part"
+trigger = &"lift_part_grabbed"
+text = "A lift part. Carry it back to the lift and slot it in with E."

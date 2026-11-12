@@ -293,3 +293,38 @@ func test_hurt_vignette_flashes_and_fades() -> void:
 	assert_gt(vignette.get_strength(), 0.0, "red edges after a hit")
 	await wait_seconds(Config.feel.hits.hurt_vignette_seconds + 0.2)
 	assert_eq(vignette.get_strength(), 0.0, "faded out")
+
+
+# --- NEW 2026-11-12 (roadmap WP8): PA announcements and first-time hints ---------------------------------------
+
+func test_the_pa_picks_the_same_line_on_every_pc_and_fits_the_department() -> void:
+	var first: String = Announcer.pick(42, 3, &"department_zoology")
+	assert_ne(first, "", "a line was picked")
+	assert_eq(Announcer.pick(42, 3, &"department_zoology"), first, "same run and floor: same line on every PC")
+	for floor_number: int in range(1, 30):
+		var line: String = Announcer.pick(42, floor_number, &"department_zoology")
+		assert_false(line.contains("vine creepers"), "no Botany-only lines on Zoology floors")
+	var announcer := Announcer.new()
+	_world.add_child(announcer)
+	announcer.announce("Testing, testing.")
+	assert_eq(announcer.get_line(), "PA: Testing, testing.")
+
+
+func test_a_hint_shows_once_and_is_remembered() -> void:
+	var path: String = "user://test_hints_seen.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	var hints := Hints.new()
+	hints.use_file(path)
+	_world.add_child(hints)
+	assert_false(hints.trigger(&"gem_grabbed"), "outside the game world: no hints (tests and test scenes)")
+	hints.pretend_in_game_world()
+	assert_true(hints.trigger(&"gem_grabbed"), "the first gem: its hint shows")
+	assert_string_contains(hints.get_text(), "gem")
+	assert_false(hints.trigger(&"gem_grabbed"), "the second gem: not again")
+	var later := Hints.new()
+	later.use_file(path)
+	later.pretend_in_game_world()
+	_world.add_child(later)
+	assert_true(later.has_seen(&"hint_gems"), "remembered after a restart")
+	assert_false(later.trigger(&"gem_grabbed"), "so it never shows again")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

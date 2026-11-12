@@ -46,6 +46,8 @@ func _ready() -> void:
 		var parts: PackedStringArray = arg.trim_prefix("--").split("=", true, 1)
 		_args[parts[0]] = parts[1] if parts.size() > 1 else "true"
 	_report["role"] = _arg("role", "host")
+	# Game copies started by the test never use up the real player's first-time hints.
+	UI.get_hud().hints.use_file("user://full_run_test/hints_%s.cfg" % _report["role"])
 	EventBus.boss_defeated.connect(func(_boss_id: StringName) -> void: _boss_defeated = true)
 	EventBus.run_ended.connect(func(result: StringName) -> void: _run_result = result)
 	get_tree().create_timer(TOTAL_TIMEOUT).timeout.connect(func() -> void: _finish("timed out"))

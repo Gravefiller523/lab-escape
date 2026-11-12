@@ -282,8 +282,8 @@ can play. Every package follows the Working rules (section i). Status values: **
   Botany loot table and vendor stock. 4 plant mutations (decision D4 list). Remove the Zoology stand-ins.
 - **Gaps:** G15, G16.
 - **Built (part 1 of 2):** the four enemies, `status_spores` (poison over time), `loot_botany_small` / `loot_botany_medium`, `stock_botany_vending` (more energy drinks and potted plants), and the Botany department now uses them instead of Zoology's. Grey box until the art pass. The spore shooter's "cloud" is a spores status on whoever its puffball hits, not a cloud left on the floor (a lingering cloud is a hazard job for later).
-- **Still to do (part 2):** the 4 plant mutations from decision D4 (Photosynthesis, Thorns, Spore Cough, Vine Arm).
-- **Status: part 1 waiting for your play test.** Branch `wp/10-botany` (stacked on `wp/07-hit-feedback`).
+- **Built (part 2):** the 4 plant mutations from decision D4. Photosynthesis heals you once nothing has hurt you for 4 seconds (true "in the light" waits for real lighting in the art pass). Spore Cough coughs by itself every 8 seconds, making enemies within 4 m stop to sneeze. Vine Arm is the punt arm's pull without the punt. Botany vials now hold only plant mutations, and Zoology vials only animal ones.
+- **Status: waiting for your play test.** Branch `wp/10-botany` (stacked on `wp/07-hit-feedback`).
 
 #### WP11: Robotics roster (2 to 3 sessions)
 - **What:** roomba (fast, knocks props and players over), turret (stationary ranged, turns slowly), drone (flying

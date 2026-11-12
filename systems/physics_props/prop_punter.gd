@@ -24,6 +24,10 @@ const PULL_SEND_RATE: float = 20.0
 ## A pulled prop is drawn towards this point: this far in front of the eyes (metres).
 const PULL_HOLD_DISTANCE: float = 1.6
 
+## NEW 2026-11-12 (roadmap WP10, Vine Arm mutation): false = this arm only pulls (holding E on a far prop); right click
+## does nothing here, so it goes on to the item in your hand.
+@export var can_punt: bool = true
+
 var _body: PlayerCharacter
 var _ready_at_msec: int = 0
 var _pulling: NetProp
@@ -72,7 +76,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Local: punt what we hold, or else what we aim at. False if there is nothing to punt or it is too soon.
 func try_punt() -> bool:
-	if _body == null or Time.get_ticks_msec() < _ready_at_msec:
+	if not can_punt or _body == null or Time.get_ticks_msec() < _ready_at_msec:
 		return false
 	var spawner: PropSpawner = Props.spawner_for(_body)
 	if spawner == null:

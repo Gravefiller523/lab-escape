@@ -26,6 +26,7 @@ id = &"mutation_frog"
 display_name = "Frog"
 description = "Huge hops on frog legs."
 tags = PackedStringArray("zoology")
+department_ids = Array[StringName]([&"department_zoology"])
 effects = Array[ExtResource("2_base")]([SubResource("Move"), SubResource("Legs")])
 clash_tags = PackedStringArray("legs")
 glow_color = Color(0.35, 0.95, 0.3, 1)

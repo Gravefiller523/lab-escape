@@ -346,6 +346,8 @@ Playtest: F6 in `systems/player/test/feel_playtest.tscn` gives everyone the punt
 
 - 2026-11-11 (roadmap WP1): prop snapshot batches bigger than GameConfig `prop_snapshot_max_bytes` are sent in halves, so each message fits in one network packet (a 1,900-byte batch was seen in the full-run test; Godot warned it would be lost more often).
 
+- 2026-11-12 (roadmap WP10): NEW `PropPunter.can_punt` (default true). The Vine Arm mutation uses a punter with it off, so it only pulls.
+
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,
 net ids, near/far snapshot batches of moving props only, host spring holding, grab rules, throw,

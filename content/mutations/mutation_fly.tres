@@ -33,6 +33,7 @@ id = &"mutation_fly"
 display_name = "Fly"
 description = "Light as a fly: floaty jumps, a buzzing high voice, and wings."
 tags = PackedStringArray("zoology")
+department_ids = Array[StringName]([&"department_zoology"])
 effects = Array[ExtResource("2_base")]([SubResource("Move"), SubResource("Voice"), SubResource("Wings")])
 clash_tags = PackedStringArray()
 glow_color = Color(0.55, 0.9, 1, 1)

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MutationData" format=3]
+
+[ext_resource type="Script" path="res://core/data/upgrades/mutation_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/upgrade_effect_data.gd" id="2_base"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/behaviour_effect_data.gd" id="3_behaviour"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/visual_attachment_effect_data.gd" id="4_visual"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/voice_effect_data.gd" id="5_voice"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/behaviours/photosynthesis.tscn" id="6_rule"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/visuals/leaves.tscn" id="7_look"]
+
+[sub_resource type="Resource" id="Rule"]
+script = ExtResource("3_behaviour")
+behaviour_scene = ExtResource("6_rule")
+params = {"calm_seconds": 4.0, "heal_per_second": 1.0}
+
+[sub_resource type="Resource" id="Look"]
+script = ExtResource("4_visual")
+scene = ExtResource("7_look")
+attach_point = &"head"
+
+[resource]
+script = ExtResource("1_data")
+id = &"mutation_photosynthesis"
+display_name = "Photosynthesis"
+description = "Leaves sprout from your head. When nothing has hurt you for a few seconds, you slowly heal."
+tags = PackedStringArray("botany")
+effects = Array[ExtResource("2_base")]([SubResource("Rule"), SubResource("Look")])
+clash_tags = PackedStringArray()
+department_ids = Array[StringName]([&"department_botany"])
+glow_color = Color(0.5, 0.9, 0.3, 1)

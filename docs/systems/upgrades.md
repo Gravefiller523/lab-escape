@@ -121,6 +121,8 @@ GUT tests: `test_grant_applies_every_effect_piece`, `test_unique_does_not_stack`
 
 - 2026-11-11 (roadmap WP1): a mid-floor joiner's mutation machine asks the host for its state once the connection is open (`HostLink`).
 
+- 2026-11-12 (roadmap WP10, decision D4): Botany's plant mutations, each a combination of existing effect pieces plus a small behaviour node in `systems/upgrades/behaviours/`: `mutation_photosynthesis` (leaves; heals `heal_per_second` once nothing has hurt you for `calm_seconds`), `mutation_thorns` (thorns; an enemy that hurts you within `range` takes `damage` back), `mutation_spore_cough` (mushroom cap, a deeper raspy voice; every `interval` seconds enemies within `radius` get `status_sneezing` and stop moving), `mutation_vine_arm` (a vine arm: the punt arm's pull with punting switched off). All numbers are params in the content files. The plant mutations are `department_ids = [department_botany]` and the five animal ones are now `[department_zoology]`, so each department's DNA vials hold its own kind. NEW `UpgradeBehaviourParams` (reads a behaviour's params with defaults). Tests in `tests/unit/upgrades/test_plant_mutations.gd`.
+
 ## HANDOFF
 **Built (2026-10-23):** the `Upgrades` autoload (`UpgradesService`), `UpgradeCarrier`, `UpgradeEffect` + six runtime pieces
 (movement, voice, slot, stat, visual attachment, behaviour), the five launch mutations and the test arm, the test scene

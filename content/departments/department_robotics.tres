@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DepartmentData" load_steps=30 format=3]
+[gd_resource type="Resource" script_class="DepartmentData" load_steps=32 format=3]
 
 [ext_resource type="Script" path="res://core/data/levels/department_data.gd" id="1_data"]
 [ext_resource type="Script" path="res://core/data/shared/weighted_id_data.gd" id="2_weighted"]
@@ -11,14 +11,24 @@
 [ext_resource type="Material" path="res://assets/materials/robotics/robotics_accent.tres" id="9_accent"]
 [ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_robotics_welcome_center.tscn" id="10_welcome"]
 
-[sub_resource type="Resource" id="Enemy_rat"]
+[sub_resource type="Resource" id="Enemy_roomba"]
 script = ExtResource("2_weighted")
-content_id = &"enemy_rat"
+content_id = &"enemy_roomba"
 weight = 3.0
 
-[sub_resource type="Resource" id="Enemy_bat"]
+[sub_resource type="Resource" id="Enemy_turret"]
 script = ExtResource("2_weighted")
-content_id = &"enemy_bat"
+content_id = &"enemy_turret"
+weight = 1.5
+
+[sub_resource type="Resource" id="Enemy_drone"]
+script = ExtResource("2_weighted")
+content_id = &"enemy_drone"
+weight = 1.5
+
+[sub_resource type="Resource" id="Enemy_flock_camera"]
+script = ExtResource("2_weighted")
+content_id = &"enemy_flock_camera"
 weight = 1.0
 
 [sub_resource type="Resource" id="Prop_crate"]
@@ -135,13 +145,13 @@ hazard_kinds = PackedStringArray("sparks")
 script = ExtResource("1_data")
 id = &"department_robotics"
 display_name = "Robotics"
-description = "Industrial grey, safety yellow, cold strip lights. Robot assembly, test bays and server rooms. Built first (floor generation step 4a). Its enemies, loot, vendor stock and boss are stand-ins until Robotics gets its own."
+description = "Industrial grey, safety yellow, cold strip lights. Robot assembly, test bays and server rooms. Built first (floor generation step 4a). Its own enemies, loot and vendor stock since roadmap WP11 (roomba, turret, drone, flock camera). Its boss is still a stand-in, so its boss floors stay off until Robobrain (WP13)."
 tags = PackedStringArray("robotics")
 room_ids = Array[StringName]([&"room_tile_robotics_welcome_center", &"room_tile_robotics_assembly_floor", &"room_tile_robotics_test_bay", &"room_tile_robotics_server_room", &"room_tile_robotics_machine_shop", &"room_tile_robotics_parts_storage", &"room_tile_robotics_charging_bay", &"room_tile_robotics_electronics_lab"])
-enemy_spawns = Array[ExtResource("2_weighted")]([SubResource("Enemy_rat"), SubResource("Enemy_bat")])
+enemy_spawns = Array[ExtResource("2_weighted")]([SubResource("Enemy_roomba"), SubResource("Enemy_turret"), SubResource("Enemy_drone"), SubResource("Enemy_flock_camera")])
 boss_id = &"boss_giant_rat"
-loot_id = &"loot_zoology_small"
-stock_id = &"stock_zoology_vending"
+loot_id = &"loot_robotics_small"
+stock_id = &"stock_robotics_vending"
 upgrade_type = &"cybernetic"
 required_room_kinds = PackedStringArray("lift", "assembly_floor", "robot_test_bay", "server_room")
 ambient_color = Color(0.55, 0.58, 0.62, 1)

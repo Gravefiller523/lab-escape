@@ -602,6 +602,8 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 
 - 2026-11-12 (roadmap WP10, content only): `department_botany` now spawns its own enemies (mushroom zombie, flytrap, spore shooter, vine creeper) and uses `loot_botany_small` and `stock_botany_vending`. Its boss floors stay off until the Mushroom Man (WP13).
 
+- 2026-11-12 (roadmap WP11, content only): `department_robotics` now spawns its own enemies (roomba, turret, drone, flock camera) and uses `loot_robotics_small` and `stock_robotics_vending`. Its boss floors stay off until Robobrain (WP13).
+
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,
 `RoomMarker`, `RoomDoorway`, `RoomShape`, `GreyboxRoom`, the floor scene `level_floor.tscn` (`LevelFloor`),

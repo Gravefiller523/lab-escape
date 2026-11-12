@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/enemies/scenes/flock_camera.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"enemy_flock_camera"
+display_name = "Flock camera"
+description = "A watchful security camera. It can't hurt you, but when it spots you every robot nearby comes running. Smash it. Robotics (roadmap WP11)."
+tags = PackedStringArray("robotics")
+scene = ExtResource("2_scene")
+max_health = 10.0
+move_speed = 0.0
+attack_damage = 0.0
+sight_range = 16.0
+sight_cone_degrees = 90.0
+spawn_cost = 1
+min_floor = 2
+loot_id = &"loot_robotics_small"
+impact_mass = 5.0

@@ -103,6 +103,7 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G52 | ~~A player who joins mid-floor built the floor before their connection opened, so its vending machines, printers, mutation machine, doors, buttons, boss arena and plants asked the host for their state too early and never heard back (no shop offers, wrong door states).~~ Fixed in WP1. | reliability | S | |
 | G53 | ~~Prop snapshot messages reached 1,900 bytes, over one network packet, so on real connections they'd be lost more often (jumpy props).~~ Fixed in WP1. | reliability | S | |
 | G56 | ~~Twice, in full test runs, the full-run test's client got about 300 "spawner is null" errors and no body.~~ Found in WP7: the client asked to join while the host was still loading the Break Room, was told "nothing yet", and missed the host's "come into the world" message. Fixed in WP7 (game_flow sends a joiner straight to the Break Room while the host loads it). The full-run driver also has `--join_delay` to try joins at other moments. | reliability | S | |
+| G57 | `test_thrown_crate_barely_hurts_a_heavy_enemy` (physics_props) failed once in a full run: the thrown crate hit the 50 kg test enemy twice (it bounced), leaving 6.6 health where the test wants more than 9. It passed 3 times in a row alone. Physics bounce timing; worth making the test count only the first hit. Found in WP11. | reliability | S | ||
 | G55 | The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
 | G54 | Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors. Harmless, but noisy. Found by WP2's test. | reliability | S | |
 
@@ -291,7 +292,10 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **What:** roomba (fast, knocks props and players over), turret (stationary ranged, turns slowly), drone (flying
   ranged), flock camera (spots you and calls nearby robots; uses the security cameras the floor plan places).
   Robotics loot and stock. 3 new cybernetics (decision D4 list).
-- **Gaps:** G15, G16. **Status: not started.**
+- **Gaps:** G15, G16.
+- **Built (part 1 of 2):** the four enemies, `loot_robotics_small` / `loot_robotics_medium`, `stock_robotics_vending` (more crowbars and coffee), and the Robotics department now uses them instead of Zoology's rats and bats. The flock camera is its own small enemy (spawned like the others), not the floor plan's security cameras; joining the two can come with the security room work later. The roomba knocks players back hard; knocking props over comes from its body bumping them.
+- **Still to do (part 2):** the 3 cybernetics from decision D4 (Magnet Hand, Spring Legs, Night-Vision Eye).
+- **Status: part 1 waiting for your play test.** Branch `wp/11-robotics` (stacked on `wp/08-teaching`).
 
 #### WP12: Profile saves (save_load)
 - **What:** the profile file from the spec, versioned, autosaved on run end and quit. Lifetime stats.

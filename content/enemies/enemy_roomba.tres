@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/enemies/scenes/roomba.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"enemy_roomba"
+display_name = "Roomba"
+description = "A robot vacuum with a grudge. Fast and low, it rams your ankles and knocks you flying. Robotics (roadmap WP11)."
+tags = PackedStringArray("robotics")
+scene = ExtResource("2_scene")
+max_health = 14.0
+move_speed = 5.5
+attack_damage = 4.0
+attack_damage_type = &"blunt"
+attack_range = 0.9
+attack_cooldown = 1.0
+sight_range = 12.0
+sight_cone_degrees = 220.0
+spawn_cost = 1
+min_floor = 1
+loot_id = &"loot_robotics_small"
+impact_mass = 8.0

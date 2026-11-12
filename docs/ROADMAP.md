@@ -258,7 +258,7 @@ can play. Every package follows the Working rules (section i). Status values: **
   feel tuning.
 - **Gaps:** G14.
 - **Built:** all six effects from the approved mock-up. The hit pause holds the enemy you hit still for a blink rather than freezing the whole game, because a real freeze on the host would pause everyone's game. Every number is in `config/feel_tuning.tres` under Hits, and `tune` works on them live.
-- **Status: waiting for your play test.** Branch `wp/07-hit-feedback` (stacked on `wp/09-ranged-attacks`).
+- **Status: done.** Merged into main 2026-11-12.
 
 #### WP8: First-run teaching and the premise
 - **What:** Break Room orientation boards (controls, "the lift is broken, find the part"), hints that show once
@@ -285,7 +285,7 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Gaps:** G15, G16.
 - **Built (part 1 of 2):** the four enemies, `status_spores` (poison over time), `loot_botany_small` / `loot_botany_medium`, `stock_botany_vending` (more energy drinks and potted plants), and the Botany department now uses them instead of Zoology's. Grey box until the art pass. The spore shooter's "cloud" is a spores status on whoever its puffball hits, not a cloud left on the floor (a lingering cloud is a hazard job for later).
 - **Built (part 2):** the 4 plant mutations from decision D4. Photosynthesis heals you once nothing has hurt you for 4 seconds (true "in the light" waits for real lighting in the art pass). Spore Cough coughs by itself every 8 seconds, making enemies within 4 m stop to sneeze. Vine Arm is the punt arm's pull without the punt. Botany vials now hold only plant mutations, and Zoology vials only animal ones.
-- **Status: waiting for your play test.** Branch `wp/10-botany` (stacked on `wp/07-hit-feedback`).
+- **Status: part 1 (enemies, loot, stock) merged into main 2026-11-12; part 2 (plant mutations) waiting for your OK.** Branch `wp/10-botany`.
 
 #### WP11: Robotics roster (2 to 3 sessions)
 - **What:** roomba (fast, knocks props and players over), turret (stationary ranged, turns slowly), drone (flying

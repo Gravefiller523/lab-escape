@@ -35,6 +35,18 @@ func physics_update(enemy: Enemy, delta: float) -> StringName:
 			return &"flee"
 		if target == null:
 			return enemy.lose_target()
+		# NEW 2026-11-12 (roadmap WP10): a rooted enemy (a flytrap, move_speed 0) lurks: it faces you and waits for
+		# you to come into reach, then takes an attack ticket and bites. It never gives up and wanders off.
+		if enemy.move_speed() <= 0.0:
+			var rooted_reach: float = enemy.data.attack_range if enemy.data != null else 1.5
+			enemy.stop()
+			enemy.face(target.global_position, delta)
+			if enemy.flat_distance_to_target() > rooted_reach or not enemy.claim_attack_ticket():
+				return &""
+			_step = Step.WINDUP
+			_left = Config.feel.ai.attack_windup
+			enemy.begin_windup()
+			return &""
 		_left -= delta
 		if _left <= 0.0 or not AttackTickets.holds(enemy, target):
 			# Took too long to get there (or lost its tickets): let someone else have a go.

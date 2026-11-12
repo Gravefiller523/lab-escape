@@ -102,7 +102,7 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G51 | When the host leaves a local (no Steam) game, ENet prints one "Unable to send packet on channel 0" error while saying goodbye. Harmless; found by WP1. | reliability | S | |
 | G52 | ~~A player who joins mid-floor built the floor before their connection opened, so its vending machines, printers, mutation machine, doors, buttons, boss arena and plants asked the host for their state too early and never heard back (no shop offers, wrong door states).~~ Fixed in WP1. | reliability | S | |
 | G53 | ~~Prop snapshot messages reached 1,900 bytes, over one network packet, so on real connections they'd be lost more often (jumpy props).~~ Fixed in WP1. | reliability | S | |
-| G56 | Once, in a full test run, the full-run test's client got 300 "spawner is null" errors and no body (the client wasn't in the game world when the host's spawns arrived). It passed 3 times in a row alone and joining during the first ride works, so it may be a rare join race, or the run starting while Godot was importing new files. Watch for it; the driver now has `--join_delay` to try joins at other moments. | reliability | S | |
+| G56 | ~~Twice, in full test runs, the full-run test's client got about 300 "spawner is null" errors and no body.~~ Found in WP7: the client asked to join while the host was still loading the Break Room, was told "nothing yet", and missed the host's "come into the world" message. Fixed in WP7 (game_flow sends a joiner straight to the Break Room while the host loads it). The full-run driver also has `--join_delay` to try joins at other moments. | reliability | S | |
 | G55 | The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
 | G54 | Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors. Harmless, but noisy. Found by WP2's test. | reliability | S | |
 
@@ -256,7 +256,9 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **What:** hit flash on enemies and players, a 40 to 60 ms hit pause on melee hits, camera kick when hurt (honours
   "reduce motion"), enemy flinch, a pop of debris and a squeak on death, a sparkle on gem pickup. All numbers in
   feel tuning.
-- **Gaps:** G14. **Status: not started.**
+- **Gaps:** G14.
+- **Built:** all six effects from the approved mock-up. The hit pause holds the enemy you hit still for a blink rather than freezing the whole game, because a real freeze on the host would pause everyone's game. Every number is in `config/feel_tuning.tres` under Hits, and `tune` works on them live.
+- **Status: waiting for your play test.** Branch `wp/07-hit-feedback` (stacked on `wp/09-ranged-attacks`).
 
 #### WP8: First-run teaching and the premise
 - **What:** Break Room orientation boards (controls, "the lift is broken, find the part"), hints that show once
@@ -278,7 +280,10 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **What:** flytrap (hides, snaps at whoever comes close), spore shooter (ranged, leaves a spore cloud that
   burns slowly), vine creeper (slow, tough, pulls you towards it), mushroom zombie (minion, also used by the boss).
   Botany loot table and vendor stock. 4 plant mutations (decision D4 list). Remove the Zoology stand-ins.
-- **Gaps:** G15, G16. **Status: not started.**
+- **Gaps:** G15, G16.
+- **Built (part 1 of 2):** the four enemies, `status_spores` (poison over time), `loot_botany_small` / `loot_botany_medium`, `stock_botany_vending` (more energy drinks and potted plants), and the Botany department now uses them instead of Zoology's. Grey box until the art pass. The spore shooter's "cloud" is a spores status on whoever its puffball hits, not a cloud left on the floor (a lingering cloud is a hazard job for later).
+- **Still to do (part 2):** the 4 plant mutations from decision D4 (Photosynthesis, Thorns, Spore Cough, Vine Arm).
+- **Status: part 1 waiting for your play test.** Branch `wp/10-botany` (stacked on `wp/07-hit-feedback`).
 
 #### WP11: Robotics roster (2 to 3 sessions)
 - **What:** roomba (fast, knocks props and players over), turret (stationary ranged, turns slowly), drone (flying

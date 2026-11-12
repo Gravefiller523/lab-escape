@@ -448,6 +448,10 @@ func _all_built() -> bool:
 ## and players only appear once every PC has the world.
 func _host_enter_world() -> void:
 	var level: Dictionary = {"kind": LEVEL_BREAK_ROOM}
+	# CHANGED 2026-11-11 (roadmap WP7, G56): a PC that joins while the world is still loading here is sent straight
+	# to the Break Room by the join handshake (_join_info). It used to be told "nothing yet", miss the world message
+	# below (it wasn't connected yet), and stay outside the world while players and props were sent to it.
+	_level_data = level
 	_ride_id += 1
 	var id: int = _ride_id
 	await _enter_world(level)
@@ -600,9 +604,11 @@ func _run_ended_rpc(result: StringName) -> void:
 
 ## Host: what a joining PC needs before Godot sends it anything (Net.set_join_handlers).
 func _join_info() -> Dictionary:
-	if _state in [State.BOOT, State.MAIN_MENU] or _level_data.is_empty():
+	if _level_data.is_empty():
 		return {}
-	return {"state": int(_state), "run": _run.to_dict() if _run != null else {}, "level": _level_data}
+	# Still loading into the world (see _host_enter_world): the joiner goes to the Break Room too.
+	var state: State = State.BREAK_ROOM if _state in [State.BOOT, State.MAIN_MENU] else _state
+	return {"state": int(state), "run": _run.to_dict() if _run != null else {}, "level": _level_data}
 
 
 ## Joining PC, before the connection opens: load the game world and the host's level (on a floor, you

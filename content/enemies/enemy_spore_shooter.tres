@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://core/data/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/enemies/scenes/spore_shooter.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://core/data/enemies/ranged_attack_data.gd" id="3_ranged"]
+
+[sub_resource type="Resource" id="Ranged_1"]
+script = ExtResource("3_ranged")
+shots = 1
+projectile_speed = 9.0
+gravity_scale = 0.35
+spread_degrees = 5.0
+damage = 4.0
+damage_type = &"poison"
+status_id = &"status_spores"
+min_range = 5.0
+max_range = 15.0
+projectile_radius = 0.22
+projectile_color = Color(0.75, 0.7, 0.35, 1)
+
+[resource]
+script = ExtResource("1_data")
+id = &"enemy_spore_shooter"
+display_name = "Spore shooter"
+description = "A walking puffball that keeps its distance and lobs spore clouds. Being hit makes you cough spores (poison over time). Botany (roadmap WP10)."
+tags = PackedStringArray("botany")
+scene = ExtResource("2_scene")
+max_health = 18.0
+move_speed = 2.2
+attack_cooldown = 3.0
+sight_range = 16.0
+sight_cone_degrees = 220.0
+flee_health_fraction = 0.0
+spawn_cost = 2
+min_floor = 2
+loot_id = &"loot_botany_small"
+impact_mass = 6.0
+dodge_chance = 0.15
+ranged_attack = SubResource("Ranged_1")

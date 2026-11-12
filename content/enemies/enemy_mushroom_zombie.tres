@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/enemies/scenes/mushroom_zombie.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"enemy_mushroom_zombie"
+display_name = "Mushroom zombie"
+description = "A lab worker with mushrooms for brains. Shambles at you in groups. Also the Mushroom Man's minion. Botany (roadmap WP10)."
+tags = PackedStringArray("botany")
+scene = ExtResource("2_scene")
+max_health = 25.0
+move_speed = 2.4
+attack_damage = 7.0
+attack_damage_type = &"blunt"
+attack_range = 1.2
+attack_cooldown = 1.2
+sight_range = 13.0
+sight_cone_degrees = 160.0
+spawn_cost = 1
+min_floor = 1
+loot_id = &"loot_botany_small"
+impact_mass = 20.0
+dodge_chance = 0.05

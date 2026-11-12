@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/enemies/scenes/flytrap.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"enemy_flytrap"
+display_name = "Flytrap"
+description = "Sits still among the plants and snaps at anyone who walks too close. Hits hard, never moves. Botany (roadmap WP10)."
+tags = PackedStringArray("botany")
+scene = ExtResource("2_scene")
+max_health = 30.0
+move_speed = 0.0
+attack_damage = 14.0
+attack_damage_type = &"sharp"
+attack_range = 1.8
+attack_cooldown = 1.6
+sight_range = 5.0
+sight_cone_degrees = 360.0
+spawn_cost = 1
+min_floor = 1
+loot_id = &"loot_botany_small"
+impact_mass = 30.0

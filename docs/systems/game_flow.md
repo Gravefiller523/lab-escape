@@ -188,6 +188,8 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
 
 - 2026-11-11 (roadmap WP5): GameConfig `run_summary_seconds` default 5 -> 12, so the new run summary screen can be read.
 
+- 2026-11-11 (roadmap WP7, G56): a PC that joins while the host is still loading into the Break Room is sent to the Break Room by the join handshake (`_join_info` now answers as soon as the host starts entering the world). It used to be told "nothing yet", miss the host's world message and stay outside the world, getting hundreds of "spawner is null" errors and no body. Seen twice in full test runs.
+
 ## HANDOFF
 **Built (2026-10-18):** autoload `GameFlow` (`GameFlowService`, `systems/game_flow/game_flow.gd`),
 `RunState`, `RunDifficulty`, a loading screen, the stub floor and the test scene. Breaks a run into

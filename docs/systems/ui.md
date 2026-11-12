@@ -138,6 +138,8 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
 
 - 2026-11-11 (roadmap WP6): NEW screen `SCREEN_PLAYERS` (`systems/ui/screens/player_list_screen.tscn`), opened with Tab (`InputActions.PLAYER_LIST`) while you have a body, closed with Tab or Esc: every player with their ping (`Net.get_ping_msec`), a Mute / Unmute button for the others (`Voice.set_player_muted`, only what you hear) and, for the host, Kick (`Net.kick`). The pause menu has a Controls button that shows every action with its current key (scrolls). Tests `test_tab_shows_the_player_list`, `test_pause_menu_lists_the_controls`.
 
+- 2026-11-11 (roadmap WP7): NEW HUD widget `HurtVignette` (`hud.hurt_vignette`): red screen edges when you lose health, fading out (`Config.feel.hits`). Test `test_hurt_vignette_flashes_and_fades`.
+
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and
 "Join game", Join by lobby id for testing, a "Testing on one PC" section with address, port, Host

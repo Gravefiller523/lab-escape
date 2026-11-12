@@ -278,3 +278,18 @@ func test_run_summary_counts_the_run() -> void:
 	var rows: PackedStringArray = summary.get_rows()
 	assert_gt(rows.size(), 0, "a row for you")
 	assert_string_contains(rows[0], "| 1 | 3 |", "1 death, 3 gems spent")
+
+
+## NEW 2026-11-11 (roadmap WP7): getting hurt reddens the screen edges, then they fade.
+func test_hurt_vignette_flashes_and_fades() -> void:
+	var target: Node3D = _target_with_health(100.0)
+	var vignette := HurtVignette.new()
+	vignette.use_body(target)
+	add_child_autofree(vignette)
+	await wait_process_frames(2)
+	assert_eq(vignette.get_strength(), 0.0, "nothing before a hit")
+	HealthComponent.of(target).apply_damage(DamageInfo.make(10.0, &"blunt"))
+	await wait_process_frames(2)
+	assert_gt(vignette.get_strength(), 0.0, "red edges after a hit")
+	await wait_seconds(Config.feel.hits.hurt_vignette_seconds + 0.2)
+	assert_eq(vignette.get_strength(), 0.0, "faded out")

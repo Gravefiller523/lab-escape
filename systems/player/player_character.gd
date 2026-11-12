@@ -37,6 +37,9 @@ var _trusted_speed: float = 0.0
 var _ghost: bool = false
 ## Local camera: landing dip and punch, bob and roll (NEW 2026-10-29).
 var _camera_feel := CameraFeel.new()
+## NEW 2026-11-11 (roadmap WP7): your own health, watched for the hurt kick, and the last value seen.
+var _watched_health: HealthComponent
+var _last_health: float = 0.0
 ## Local camera: how far it is below (negative) or above where it should be after a stair step. Shrinks to 0.
 var _camera_step: float = 0.0
 ## Footstep, jump and landing sounds (NEW 2026-10-29), for every body, local or not.
@@ -315,6 +318,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	if is_local():
+		_watch_own_health()
 		_camera_step *= exp(-delta / maxf(tuning.camera_step_smooth_seconds, 0.001))
 		_camera_feel.update(tuning, delta, is_on_floor(), Vector3(velocity.x, 0.0, velocity.z), global_basis.x,
 			Settings.get_camera_shake_scale())
@@ -462,3 +466,18 @@ func _stay_out_of_walls(before: Vector3) -> void:
 		return
 	global_position = before
 	velocity = Vector3(0.0, velocity.y, 0.0)
+
+
+## NEW 2026-11-11 (roadmap WP7): your own body: when you lose health, the camera kicks (CameraFeel.hurt). The
+## damage system gives bodies their health after they spawn, so this connects the first time it finds it.
+func _watch_own_health() -> void:
+	if _watched_health != null:
+		return
+	_watched_health = HealthComponent.of(self)
+	if _watched_health == null:
+		return
+	_last_health = _watched_health.get_current()
+	_watched_health.health_changed.connect(func(current: float, _maximum: float) -> void:
+		if current < _last_health and current > 0.0:
+			_camera_feel.hurt(Config.feel.hits.hurt_kick_degrees, Settings.get_camera_shake_scale())
+		_last_health = current)

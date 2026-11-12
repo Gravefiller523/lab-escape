@@ -16,6 +16,9 @@ const MERGE_CHECK_SECONDS: float = 2.0
 ## Gems this close together merge into one.
 const MERGE_RADIUS: float = 1.5
 
+## NEW 2026-11-11 (roadmap WP7): the colour of the sparkle and "+N" when you pick up a gem.
+const GEM_SPARKLE_COLOR: Color = Color(1.0, 0.85, 0.3)
+
 var _run_seed: int = 0
 var _drop_counter: int = 0
 var _merge_left: float = MERGE_CHECK_SECONDS
@@ -26,6 +29,7 @@ var _use_department_override: bool = false
 
 func _ready() -> void:
 	EventBus.enemy_killed.connect(_on_enemy_killed)
+	EventBus.prop_grabbed.connect(_on_prop_grabbed)
 	EventBus.run_started.connect(func(run_seed: int) -> void: _run_seed = run_seed)
 	EventBus.floor_ready.connect(func(_floor_number: int, _department_id: StringName) -> void: _drop_counter = 0)
 	DebugConsole.register_command(&"gems", _cmd_gems, "gems <amount>: drop that much gem value in front of you")
@@ -239,3 +243,17 @@ func _cmd_loot(args: PackedStringArray, player_id: int) -> String:
 		return "No loot table called '%s'." % loot_id
 	var spawned: Array[NetProp] = roll_and_spawn(loot_id, _spot_in_front(player_id), &"console")
 	return "Rolled %s: %d things." % [loot_id, spawned.size()]
+
+
+## NEW 2026-11-11 (roadmap WP7): you picked up a gem: a little sparkle, its value floating up ("+5") and a tick.
+## Only on the PC of the player who grabbed it.
+func _on_prop_grabbed(player_id: int, prop: Node3D) -> void:
+	var gem := prop as NetProp
+	if player_id != Net.local_player_id() or gem == null or gem.data == null or gem.data.gem_value <= 0:
+		return
+	var feel: HitFeelTuning = Config.feel.hits
+	var at: Vector3 = gem.global_position
+	Effects.burst(gem.get_parent(), at, GEM_SPARKLE_COLOR, feel.gem_sparkle_count, feel.gem_sparkle_speed, 0.04, 0.5)
+	Effects.float_text(gem.get_parent(), at + Vector3.UP * 0.2, "+%d" % gem.data.gem_value, GEM_SPARKLE_COLOR,
+		feel.gem_text_rise, feel.gem_text_seconds)
+	Sound.play_3d(Sound.event_sound(&"gem_pickup"), at, -6.0, 0.1)

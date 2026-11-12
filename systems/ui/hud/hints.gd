@@ -1,20 +1,19 @@
 class_name Hints
 extends PanelContainer
 ## First-time hints (NEW 2026-11-12, roadmap WP8, mock-up approved by Zachary): the first time something happens to
-## you, its HintData tip shows for Config.game.hint_seconds, and never again on this PC. Which hints were seen is kept
-## in user://hints_seen.cfg (moves into the profile when save_load is built, WP12). Spec: docs/systems/ui.md.
+## you, its HintData tip shows for Config.game.hint_seconds, and never again for this player. Which hints were seen is
+## kept in the player's profile (SaveSystem, CHANGED 2026-11-12 in WP12). Spec: docs/systems/ui.md.
 ##
 ## Triggers (HintData.trigger): first_floor (the first floor of a run), gem_grabbed, vial_grabbed (a DNA vial or data
 ## drive), lift_part_grabbed, vendor_near (within VENDOR_NEAR_DISTANCE of a vending machine), someone_died,
 ## boss_floor.
 
-const DEFAULT_FILE: String = "user://hints_seen.cfg"
 const SECTION: String = "seen"
 const VENDOR_NEAR_DISTANCE: float = 4.0
 const VENDOR_CHECK_SECONDS: float = 0.5
 
 var _label: Label
-var _file_path: String = DEFAULT_FILE
+var _file_path: String = ""
 var _seen: ConfigFile = ConfigFile.new()
 var _left: float = 0.0
 var _vendor_check_left: float = 0.0
@@ -35,6 +34,8 @@ func get_text() -> String:
 
 
 func has_seen(hint_id: StringName) -> bool:
+	if _file_path.is_empty():
+		return SaveSystem.has_seen_hint(hint_id)
 	_load()
 	return bool(_seen.get_value(SECTION, String(hint_id), false))
 
@@ -48,8 +49,7 @@ func trigger(trigger_name: StringName) -> bool:
 		var hint := content as HintData
 		if hint == null or hint.trigger != trigger_name or has_seen(hint.id):
 			continue
-		_seen.set_value(SECTION, String(hint.id), true)
-		_seen.save(_file_path)
+		_mark_seen(hint.id)
 		_label.text = hint.text
 		visible = true
 		_left = Config.game.hint_seconds
@@ -71,6 +71,7 @@ func _ready() -> void:
 		if floor_number == 1:
 			trigger(&"first_floor"))
 	EventBus.prop_grabbed.connect(_on_prop_grabbed)
+	DebugConsole.register_command(&"hints", _cmd_hints, "hints reset: show every first-time hint again", false)
 	EventBus.player_died.connect(func(_player_id: int, _at: Vector3) -> void: trigger(&"someone_died"))
 	EventBus.boss_floor_started.connect(func(_boss_id: StringName) -> void: trigger(&"boss_floor"))
 
@@ -121,3 +122,24 @@ func _load() -> void:
 	_loaded = true
 	_seen = ConfigFile.new()
 	_seen.load(_file_path)
+
+
+func _mark_seen(hint_id: StringName) -> void:
+	if _file_path.is_empty():
+		SaveSystem.mark_hint_seen(hint_id)
+		return
+	_load()
+	_seen.set_value(SECTION, String(hint_id), true)
+	_seen.save(_file_path)
+
+
+## Console: `hints reset` forgets which hints this player has seen.
+func _cmd_hints(args: PackedStringArray, _player_id: int) -> String:
+	if args.is_empty() or args[0] != "reset":
+		return "Usage: hints reset"
+	if _file_path.is_empty():
+		SaveSystem.reset_seen_hints()
+	else:
+		_seen = ConfigFile.new()
+		_seen.save(_file_path)
+	return "Every first-time hint will show again."

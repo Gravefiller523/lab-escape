@@ -71,3 +71,15 @@ GUT tests: `test_new_profile_defaults`, `test_round_trip`, `test_migration_from_
 
 ## Changelog
 - 2026-10-07: spec created.
+- 2026-11-12 (roadmap WP12): built. `SaveService` (`systems/save_load/save_system.gd`, autoload `SaveSystem`, right after
+  ContentRegistry) and `PlayerProfile` (`player_profile.gd`). Version 1 adds `seen_hint_ids` (ui's first-time hints) to
+  the spec's fields; `migrate()` upgrades version 0 files. NEW: `has_seen_hint`, `mark_hint_seen`, `reset_seen_hints`,
+  `get_profile_path`; tests only: `use_folder`, `count_everywhere`. Stats only count inside game_flow's game world, so
+  unit tests and systems' test scenes never change the real profile. `enemies_killed` only counts on the host (the
+  `enemy_killed` event is host-only). The file is read with `JSON.new().parse` so a broken file logs one warning, not an
+  engine error. Tests in `tests/unit/save_load/test_save_load.gd` (the spec's six plus two).
+
+## HANDOFF
+**Built (2026-11-12, roadmap WP12):** see the Changelog. **Not yet:** Steam Cloud (set up on the Steamworks site once the
+game has its own App ID, decision D8); kills for clients (needs the host to send them); cosmetics read the profile when
+the cosmetics system is built (WP17).

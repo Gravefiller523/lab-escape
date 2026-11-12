@@ -299,7 +299,9 @@ can play. Every package follows the Working rules (section i). Status values: **
 
 #### WP12: Profile saves (save_load)
 - **What:** the profile file from the spec, versioned, autosaved on run end and quit. Lifetime stats.
-- **Gaps:** G24 (half). **Status: not started.**
+- **Gaps:** G24 (half).
+- **Built:** `SaveSystem` and `PlayerProfile`: `user://profile_<steam id>.json` ("local" without Steam), version 1 with an upgrade step for older files, a broken file renamed `.broken`. Stats: runs started and escaped, best floor, deaths, reprints, bosses beaten, mutations and cybernetics gained, and kills (host only for now). The first-time hints moved into the profile; the console's `hints reset` shows them again. Steam Cloud waits for the App ID (D8).
+- **Status: waiting for your play test.** Branch `wp/12-profile` (stacked on `wp/11-robotics`).
 
 #### WP13: Mushroom Man and Robobrain (2 to 3 sessions)
 - **What:** Mushroom Man: spore phases, mushroom zombie waves, a spore cloud slam. Robobrain: laser sweep,

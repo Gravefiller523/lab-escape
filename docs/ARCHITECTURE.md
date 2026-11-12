@@ -259,7 +259,7 @@ Things that look like dependencies but are **not**, because they go through Even
 | `Config` | foundation | `Config.game` is the GameConfig (rules, network rates). `Config.feel` is the FeelTuning (movement, prop and enemy feel; added 2026-10-29). `Config.floor_gen` is the FloorGenTuning (floor generation numbers; added 2026-10-30). Registers default input actions. |
 | `EventBus` | foundation | Signals only. |
 | `ContentRegistry` | foundation | Scans `res://content/`. |
-| `SaveSystem` | save_load | |
+| `SaveSystem` | save_load | Built 2026-11-12 (roadmap WP12): the profile (cosmetics, outfit, lifetime stats, hints seen). |
 | `Settings` | settings_input | |
 | `SteamSession` | steam_session | |
 | `Net` | net_core | |

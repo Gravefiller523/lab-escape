@@ -9,7 +9,8 @@ extends Node3D
 ## and a few props to play with.
 ##
 ## The jacket closet and the mirror are Interactables: look at one and press E (their `used` fires on
-## the host). STUBS until other systems exist: cosmetics / voice: they only show a message.
+## the host). CHANGED 2026-11-13 (roadmap WP17): the closet opens the jacket closet screen for whoever used it. STUB
+## until voice exists: the mirror only shows a message.
 
 const SPAWN_RING_RADIUS: float = 3.0
 ## NEW 2026-11-12 (roadmap WP8, decision D5): the whiteboard notice that tells the premise.
@@ -24,6 +25,8 @@ The cargo lift is out of order. Again.
 var _net: NetService
 var _config: GameConfig
 var _props: PropSpawner
+## What opening the closet does on the PC of the player who used it (tests swap it; default Cosmetics.open_closet).
+var _closet_opener: Callable
 
 @onready var _spawns: Node3D = %Spawns
 @onready var _lift_spot: Node3D = %LiftSpot
@@ -42,6 +45,11 @@ func use_net(net: NetService, config: GameConfig, prop_spawner: PropSpawner = nu
 	_props = prop_spawner
 
 
+## NEW 2026-11-13 (roadmap WP17), for tests only: what opening the closet does on the user's PC.
+func use_closet_opener(opener: Callable) -> void:
+	_closet_opener = opener
+
+
 func _ready() -> void:
 	if _net == null:
 		_net = Net
@@ -51,7 +59,9 @@ func _ready() -> void:
 		var body := use.get_anchor() as CollisionObject3D
 		body.collision_layer = PhysicsLayers.bit(PhysicsLayers.INTERACTABLES)
 		body.collision_mask = 0
-	_closet_use.used.connect(_show_note_to.bind("Jacket closet: coming with the cosmetics system."))
+	if not _closet_opener.is_valid():
+		_closet_opener = Cosmetics.open_closet
+	_closet_use.used.connect(_open_closet_for)
 	_mirror_use.used.connect(_show_note_to.bind("Mirror voice test: coming with the voice system."))
 	EventBus.run_ended.connect(_on_run_ended)
 	var last: StringName = GameFlow.get_last_run_result()
@@ -99,7 +109,20 @@ func _show_whiteboard(last_run: String) -> void:
 	_whiteboard.text = "%s\n\nLast run: %s" % [WHITEBOARD_NOTICE, last_run]
 
 
-## Host: show a short message to the player who used something (closet, mirror placeholders).
+## NEW 2026-11-13 (roadmap WP17). Host: open the jacket closet on the PC of the player who used it.
+func _open_closet_for(player_id: int) -> void:
+	var peer_id: int = _net.get_peer_id(player_id)
+	if peer_id != 0:
+		_open_closet.rpc_id(peer_id)
+
+
+@rpc("authority", "call_local", "reliable")
+func _open_closet() -> void:
+	if is_inside_tree() and _closet_opener.is_valid():
+		_closet_opener.call()
+
+
+## Host: show a short message to the player who used something (the mirror placeholder).
 func _show_note_to(player_id: int, text: String) -> void:
 	var peer_id: int = _net.get_peer_id(player_id)
 	if peer_id != 0:

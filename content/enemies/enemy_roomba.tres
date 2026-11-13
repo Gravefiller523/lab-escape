@@ -22,3 +22,4 @@ spawn_cost = 1
 min_floor = 1
 loot_id = &"loot_robotics_small"
 impact_mass = 8.0
+lure_kinds = PackedStringArray("laser", "trash")

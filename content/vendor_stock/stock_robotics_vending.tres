@@ -38,10 +38,24 @@ price = 3
 weight = 2.0
 stock_count = 1
 
+[sub_resource type="Resource" id="E_laser"]
+script = ExtResource("2_entry")
+item_id = &"item_laser_pointer"
+price = 4
+weight = 1.0
+stock_count = 1
+
+[sub_resource type="Resource" id="E_sandwich"]
+script = ExtResource("2_entry")
+item_id = &"item_sandwich"
+price = 3
+weight = 1.5
+stock_count = 2
+
 [resource]
 script = ExtResource("1_data")
 id = &"stock_robotics_vending"
 display_name = "Robotics vending machine"
 tags = PackedStringArray("robotics")
 slots_shown = 3
-entries = Array[ExtResource("2_entry")]([SubResource("E1"), SubResource("E2"), SubResource("E3"), SubResource("E4"), SubResource("E5")])
+entries = Array[ExtResource("2_entry")]([SubResource("E1"), SubResource("E2"), SubResource("E3"), SubResource("E4"), SubResource("E5"), SubResource("E_laser"), SubResource("E_sandwich")])

@@ -31,6 +31,11 @@ script = ExtResource("2_weighted")
 content_id = &"enemy_flock_camera"
 weight = 1.0
 
+[sub_resource type="Resource" id="Prop_trash_bag"]
+script = ExtResource("2_weighted")
+content_id = &"prop_trash_bag"
+weight = 0.6
+
 [sub_resource type="Resource" id="Prop_crate"]
 script = ExtResource("2_weighted")
 content_id = &"prop_crate"
@@ -166,6 +171,6 @@ palette = {
 "wall": ExtResource("6_wall")
 }
 lighting = SubResource("Lighting")
-prop_pool = Array[ExtResource("2_weighted")]([SubResource("Prop_crate"), SubResource("Prop_crate_heavy")])
+prop_pool = Array[ExtResource("2_weighted")]([SubResource("Prop_crate"), SubResource("Prop_crate_heavy"), SubResource("Prop_trash_bag")])
 hazard_kinds = PackedStringArray("sparks", "fire", "malfunction")
 incidents = Array[ExtResource("4_incident")]([SubResource("Incident_fabrication_fire"), SubResource("Incident_test_bay_malfunction"), SubResource("Incident_server_overload")])

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/props/prop_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/physics_props/scenes/trash_bag.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"prop_trash_bag"
+display_name = "Trash bag"
+description = "A full bin bag. Flies and robot vacuums can't leave it alone, so throw it where you want them to go. Fly players feel better near it (roadmap WP14)."
+tags = PackedStringArray("trash", "lure_trash")
+scene = ExtResource("2_scene")
+mass = 4.0
+is_key_object = false

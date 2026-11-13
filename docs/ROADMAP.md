@@ -11,7 +11,7 @@ work package whose status is not "done" and isn't waiting on Zachary.
 
 - **Merged into main:** WP1 to WP7, WP9, and WP10 part 1 (Botany's enemies, loot and shop stock).
 - **Waiting on Zachary.** Each branch below sits on top of the one above it, so a merge phrase for one also
-  merges everything above it in this table. "push and merge wp/13b-version-check into main" merges all six.
+  merges everything above it in this table. "push and merge wp/14-items into main" merges all seven.
 
   | Branch | Package | What to try in the game |
   |---|---|---|
@@ -21,16 +21,17 @@ work package whose status is not "done" and isn't waiting on Zachary.
   | `wp/12-profile` | WP12 | Play a run, quit, and open the profile file; `hints reset` in the console shows the hints again. |
   | `wp/13-bosses` | WP13 | Console: `spawn boss_mushroom_man` or `spawn boss_robobrain` on any floor. Boss floors on Botany and Robotics now have their own boss. |
   | `wp/13b-version-check` | WP13b | Console: `version` shows your build. Two game windows from the editor still join each other. |
+  | `wp/14-items` | WP14 | Buy a laser pointer from a Zoology vending machine and point it near rats. Console: `spawn item_laser_pointer`, `spawn prop_trash_bag`, `spawn item_sandwich`. |
 
 - **Also waiting on Zachary: PT1, the first real-Steam session** with one friend, together with fun check 1 (both
   in section c, after WP13). It needs a test build: merge the stack first, then say "make a test build".
-- **Next for Claude:** WP14. Anything PT1 finds jumps the queue.
+- **Next for Claude:** WP15 (the hamster wheel). Anything PT1 finds jumps the queue.
 - **On hold until Zachary says so:** D8 (Steam fee and App ID) and D9 (name check). They block WP18's real test,
   WP32 and WP33.
 - **Other threads working in this repo:** the floor generator thread owns `systems/level_gen`,
   `config/floor_gen_tuning.tres`, and the run length numbers `run_floor_count` and `boss_every_floors` (decision D1
   is approved but not applied yet: today they are still 18 and 6). It works in its own folder, `../lab-escape-6a`.
-- **Pace so far:** 14 packages built in the first 2 days. The code packages went much faster than the estimate in
+- **Pace so far:** 15 packages built in the first 2 days. The code packages went much faster than the estimate in
   section a. The art, sound and launch phases (WP20 on) depend on Zachary's time, tools and play tests, and are
   still the long part.
 
@@ -399,7 +400,9 @@ The five questions, the same every time:
 #### WP14: Items and brainstorm leftovers
 - **What:** laser pointer (a "lure" behaviour piece: some enemies chase the dot), 1 or 2 more items, Fly drawn to
   trash props and flies drawn to Fly players, Giraffe crouches through doors.
-- **Gaps:** G19. **Status: not started.**
+- **Gaps:** G19.
+- **Built:** a new building block, the **lure**: something certain enemies can't resist. The **laser pointer** (4 gems in Zoology and Robotics vending machines) puts a red dot where you point for 3 seconds; rats, bats and robot vacuums drop what they're doing and run to it. They get bored after 6 seconds and ignore dots for 8, and hurting one snaps it out. **Trash bags** (a new prop on Zoology and Robotics floors) draw flies and robot vacuums, so you can throw one to move them. **Fly players:** enemy flies smell you from far away and go for you first, and you heal near trash (my reading of the brainstorm's "drawn to trash": a reason to go there, not a pull). **Giraffe:** it already had to crouch through doorways; a test now guards it. One more item: the **vending machine sandwich** (3 gems, heals 35), the game's first healing item.
+- **Status: waiting for your play test.** Branch `wp/14-items` (stacked on `wp/13b-version-check`).
 
 #### WP15: The hamster wheel (objectives)
 - **What:** the floor task framework from the objectives spec and one task: running in a hamster wheel charges a

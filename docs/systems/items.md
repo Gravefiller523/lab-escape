@@ -50,7 +50,7 @@ static func held_of(body: Node) -> HeldItemController
 ```
 Behaviour data → runtime, found by file name: `MeleeBehaviourData` → `behaviours/melee_behaviour.gd`,
 `ThrowBehaviourData` → `throw_behaviour.gd`, `ConsumeBehaviourData` → `consume_behaviour.gd`,
-`UseOnObjectBehaviourData` → `use_on_object_behaviour.gd`.
+`UseOnObjectBehaviourData` → `use_on_object_behaviour.gd`, NEW 2026-11-12 `LureBehaviourData` → `lure_behaviour.gd`.
 Example use target: `systems/items/world/mutated_plant.tscn`: accepts `water`; when watered, grows a
 climbable ladder (synced state `grown: bool`). Laser pointer: needs a new `LureBehaviourData` piece that
 enemies' perception listens to (marked as a new building block for Phase 2).
@@ -121,6 +121,7 @@ all of the above plus `test_fists_do_damage_too`, `test_melee_does_not_hurt_team
 - 2026-10-29 (HL2 feel step 2.7): thrown items check for hurtboxes along their whole path each frame (`ThrownItem._hurtbox_along`), so a fast throw can't skip through an enemy between two frames. While a throw counts, its prop's `own_hit_damage` is on, so the physics impact damage doesn't hurt the same target again.
 
 - 2026-11-11 (roadmap WP1): use targets (the mutated plant) built by a mid-floor joiner ask the host for their state once the connection is open (`HostLink`).
+- 2026-11-12 (roadmap WP14): NEW behaviour piece `LureBehaviourData` (`lure_kind`, `reach`, `seconds`, `radius`, `dot_color`) with `behaviours/lure_behaviour.gd`: the host finds the first wall, floor or prop along the aim and calls `Enemies.place_lure` (one lure per player and kind; clicking again moves it). NEW items: `item_laser_pointer` (a tool, unlimited uses; the dot lasts 3 s and draws rats, bats and roombas within 12 m; sold in Zoology and Robotics vending machines for 4 gems) and `item_sandwich` ("Vending machine sandwich": eat it to heal 35; the first healing item, data only; sold in all three vending machines for 3 gems). Tests: `test_the_laser_pointer_puts_a_dot_where_you_point` (in `tests/unit/enemies/test_lures.gd`), `test_eating_the_sandwich_heals_and_uses_it_up`.
 
 ## HANDOFF
 **Built (2026-10-19):** `HeldItemController`, `ItemBehaviour` + the melee, throw, consume and use-on-object runtime pieces,

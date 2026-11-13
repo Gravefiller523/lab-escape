@@ -124,6 +124,7 @@ GUT tests: `test_grant_applies_every_effect_piece`, `test_unique_does_not_stack`
 - 2026-11-12 (roadmap WP10, decision D4): Botany's plant mutations, each a combination of existing effect pieces plus a small behaviour node in `systems/upgrades/behaviours/`: `mutation_photosynthesis` (leaves; heals `heal_per_second` once nothing has hurt you for `calm_seconds`), `mutation_thorns` (thorns; an enemy that hurts you within `range` takes `damage` back), `mutation_spore_cough` (mushroom cap, a deeper raspy voice; every `interval` seconds enemies within `radius` get `status_sneezing` and stop moving), `mutation_vine_arm` (a vine arm: the punt arm's pull with punting switched off). All numbers are params in the content files. The plant mutations are `department_ids = [department_botany]` and the five animal ones are now `[department_zoology]`, so each department's DNA vials hold its own kind. NEW `UpgradeBehaviourParams` (reads a behaviour's params with defaults). Tests in `tests/unit/upgrades/test_plant_mutations.gd`.
 
 - 2026-11-12 (roadmap WP11, decision D4): Robotics' cybernetics (data drives, `department_ids = [department_robotics]`): `cybernetic_magnet_hand` (host: loose gems within `radius` are tugged towards you), `cybernetic_spring_legs` (jump x1.25; a landing faster than `stomp_speed` stomps enemies within `radius` for `damage`: your PC sees the landing and asks the host), `cybernetic_night_vision_eye` (a green light only on your own PC). Behaviour nodes in `systems/upgrades/behaviours/`, visuals springs.tscn and eye.tscn. Tests in `tests/unit/upgrades/test_robotics_cybernetics.gd`.
+- 2026-11-12 (roadmap WP14): the Fly mutation's instincts from the brainstorm. NEW behaviour `behaviours/fly_instincts.gd` / `.tscn` on `mutation_fly` (params `fly_radius` 14, `trash_radius` 4, `heal_per_second` 1.5), host only: it keeps a `fly_player` lure on the player (`Enemies.attach_lure`), so enemy flies notice them from afar, seen or not, and go for them first; and the player heals while within `trash_radius` of anything that is a `trash` lure (a trash bag). "Drawn to trash" is built as a reason to go there (healing), not as a pull on the player: a design choice made in WP14. Tests: `tests/unit/upgrades/test_fly_instincts.gd` (5, with the Giraffe doorway tests).
 
 ## HANDOFF
 **Built (2026-10-23):** the `Upgrades` autoload (`UpgradesService`), `UpgradeCarrier`, `UpgradeEffect` + six runtime pieces
@@ -140,8 +141,8 @@ Checked with 2 game copies: a client ate a Fly gem; both PCs showed it in the re
 an UpgradeCarrier), tests/unit/loot (its test cybernetic got its own id).
 
 **STUBS / not yet:** the movement modes `hover`, `hop`, `wall_climb`, `slide` don't exist in the player system yet (bodies
-walk; the speed, jump, gravity, height and can_jump numbers do work); Fly's "attracted to trash" behaviour and flies being
-drawn to Fly players aren't made; no eating sound (audio); grey-box body models.
+walk; the speed, jump, gravity, height and can_jump numbers do work); no eating sound (audio); grey-box body models.
+(Fly's trash and fly instincts were made on 2026-11-12, see the changelog.)
 - 2026-10-23 (Zachary, branch system/upgrade_machine): CHANGED how upgrades are gained. No more eating glowing gems or
   installing robot parts: a **mutation machine** (`UpgradeMachine`, `upgrade_machine.tscn`, a booth made in code) spawns
   at one `upgrade_machine` marker per floor (picked with `SeededRng(run_seed, &"upgrade_machine_spot", floor)`, every PC

@@ -35,6 +35,9 @@ const DEATH_POOF_COLOR: Color = Color(0.85, 0.85, 0.8)
 const CALM_STATES: Array[StringName] = [&"idle", &"patrol", &"search"]
 ## NEW 2026-10-30: how long (s) a jump aside lasts.
 const DODGE_SECONDS: float = 0.4
+## NEW 2026-11-12 (roadmap WP14): the state an enemy with EnemyData.lure_kinds gets by itself.
+const LURED_STATE: Script = preload("res://systems/enemies/states/lured_state.gd")
+const LURED_STATE_NAME: StringName = &"lured"
 ## NEW 2026-10-30 (punt): how long a shove lasts, and how fast it slows down meanwhile (m/s per second).
 const KNOCK_SECONDS: float = 0.6
 const KNOCK_FRICTION: float = 12.0
@@ -114,6 +117,10 @@ var _knock_left: float = 0.0
 ## NEW 2026-10-30 (doors): the way move_towards last wanted to go, and on which physics frame.
 var _walk_intent: Vector3 = Vector3.ZERO
 var _walk_intent_frame: int = -100
+## NEW 2026-11-12 (roadmap WP14): the lure it is drawn to, when it next looks for one, and until when it ignores them.
+var _lure: Lure
+var _lure_check_left: float = 0.0
+var _lure_ignore_until: float = 0.0
 
 
 ## The enemy a node belongs to (a hitbox, a mesh), or null.
@@ -164,6 +171,12 @@ func _ready() -> void:
 			var state := child as EnemyState
 			if state != null:
 				_states[StringName(child.name)] = state
+		# NEW 2026-11-12 (roadmap WP14): an enemy that falls for lures gets the "lured" state without a scene edit.
+		if data != null and not data.lure_kinds.is_empty() and not _states.has(LURED_STATE_NAME):
+			var lured := LURED_STATE.new() as EnemyState
+			lured.name = String(LURED_STATE_NAME)
+			states_node.add_child(lured)
+			_states[LURED_STATE_NAME] = lured
 	for child: Node in get_children():
 		var behaviour := child as EnemyBehaviour
 		if behaviour != null:
@@ -323,10 +336,55 @@ func on_hurt_by(player: PlayerCharacter) -> void:
 	if _dead or not _perception.is_valid_target(player):
 		return
 	_perception.remember_hurt_by(player)
+	# NEW 2026-11-12 (roadmap WP14): pain beats any lure for a while.
+	ignore_lures_for(Config.feel.ai.lure_hurt_ignore_seconds)
 	if get_target() == null:
 		set_target(player)
 		_on_noticed(player)
 		interrupt(pursuit_state())
+
+
+## NEW 2026-11-12 (roadmap WP14): the lure it is drawn to right now, or null (gone, out of reach, or none).
+func get_lure() -> Lure:
+	if _lure != null and (not is_instance_valid(_lure) or not _lure.draws(self)):
+		_lure = null
+	return _lure
+
+
+func clear_lure() -> void:
+	_lure = null
+
+
+## NEW 2026-11-12 (roadmap WP14), host: pay no attention to lures for this long (it got bored, or it was hurt).
+func ignore_lures_for(seconds: float) -> void:
+	_lure_ignore_until = maxf(_lure_ignore_until, _now() + seconds)
+
+
+## Host, every lure_check_seconds: is there something it can't resist? A spot (laser dot, trash): go there
+## ("lured"). A player (a Fly player to a fly): notice them from afar and prefer them over everyone else.
+func _look_for_lures(delta: float) -> void:
+	if data == null or data.lure_kinds.is_empty():
+		return
+	_lure_check_left -= delta
+	if _lure_check_left > 0.0:
+		return
+	_lure_check_left = Config.feel.ai.lure_check_seconds
+	if _now() < _lure_ignore_until:
+		return
+	var found: Lure = Lure.nearest_for(self)
+	if found == null:
+		return
+	if found.player != null:
+		if _perception.is_valid_target(found.player):
+			_perception.know(found.player)
+			_perception.remember_hurt_by(found.player)
+			if get_target() == null:
+				alert_to(found.player)
+		return
+	if _state_name != LURED_STATE_NAME:
+		_lure = found
+		if not interrupt(LURED_STATE_NAME):
+			_lure = null
 
 
 ## NEW 2026-10-30 (step 3.3): host: switch state now because something happened (a noise, a hit), unless the
@@ -574,6 +632,7 @@ func _physics_process(delta: float) -> void:
 			if flying:
 				velocity.y = move_toward(velocity.y, 0.0, KNOCK_FRICTION * delta)
 	elif _state != null:
+		_look_for_lures(delta)
 		var next: StringName = _state.physics_update(self, delta)
 		if next != &"" and next != _state_name and _states.has(next) and _states[next].can_enter(self):
 			_change_state(next)

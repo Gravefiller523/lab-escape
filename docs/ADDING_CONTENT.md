@@ -76,6 +76,7 @@ pickup lying on the floor: copy an existing pickup scene; its root uses `NetProp
 inventory slot; 1 = no stacking, like drinks and weapons), `world_mass` (kg of the pickup lying in the world), and `behaviours`:
 - `MeleeBehaviourData`: damage, damage_type (`blunt`, `sharp`, `fire`...), reach, knockback, status_id.
 - `ThrowBehaviourData`: throw_force, damage, damage_type, status_id, breaks_on_impact.
+- NEW 2026-11-12 `LureBehaviourData`: lure_kind (`laser`), reach, seconds, radius, dot_color: leaves a lure where you point (copy `item_laser_pointer.tres`).
 - `ConsumeBehaviourData`: heal_amount, status_id.
 - `UseOnObjectBehaviourData`: interaction_tag (`water`, `pry`, `cut`...), reach, spends_use.
 Each behaviour has a `trigger` (PRIMARY = left mouse, SECONDARY = right mouse) and `cooldown`.
@@ -100,7 +101,7 @@ m/s), `needs_charge_seconds` (above 0: must sit on the lift charger this long be
 markers it fits) and `part_category` (`mechanical`, `electrical`, `electronic`, `power`, `structural`: which
 rooms it turns up in). NEW 2026-11-10 (step 4d): a new lift part is just a new file like these: the floor generator
 picks it and places it on a `lift_part` marker it fits; check some room tiles have a marker with a big enough
-`max_size` and a room type with its `part_category`. rooms it turns up in). **Tags that systems look for:** `meat`, `lift_part`,
+`max_size` and a room type with its `part_category`. rooms it turns up in). **Tags that systems look for:** NEW 2026-11-12 `lure_<kind>` (enemies whose `lure_kinds` list that kind come to the prop, e.g. `lure_trash` on the trash bag), `meat`, `lift_part`,
 `keycard`, `glowing_gem`, `robot_part`. **Test:** `spawn prop_<name>`.
 
 ## Enemy
@@ -113,6 +114,8 @@ department's `enemy_spawns` (with a weight) so it appears. **Test:** `spawn enem
 `attack_ranged` state, and its file a `ranged_attack` (a RangedAttackData: shots per burst, speed, gravity, spread,
 damage, status, min and max range, projectile size and colour). `attack_cooldown` is the time between bursts. A
 turret: `move_speed` 0 and only the idle, search and attack_ranged states.
+**Lures (NEW 2026-11-12):** `lure_kinds` lists what the enemy can't resist: `laser` (the laser pointer's dot), `trash`
+(props tagged `lure_trash`), `fly_player` (players with the Fly mutation). Nothing to add to its scene.
 
 ## Boss
 **Fill in:** `scene`, `max_health`, `phases` (each: `starts_at_health_fraction`, `attack_names` from

@@ -37,6 +37,9 @@ extends ContentData
 ## NEW 2026-11-11 (roadmap WP9): how it shoots, if it does. Needs an "attack_ranged" state in its scene. Its
 ## attack_cooldown is the time between bursts.
 @export var ranged_attack: RangedAttackData
+## NEW 2026-11-12 (roadmap WP14): the kinds of lure it can't resist (see Lure): "laser" (a laser pointer's dot),
+## "trash" (props tagged lure_trash), "fly_player" (a player with the Fly mutation). Empty = none.
+@export var lure_kinds: PackedStringArray = PackedStringArray()
 
 
 func get_type_key() -> StringName:

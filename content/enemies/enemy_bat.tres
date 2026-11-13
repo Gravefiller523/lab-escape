@@ -22,3 +22,4 @@ spawn_cost = 2
 min_floor = 1
 loot_id = &"loot_zoology_medium"
 impact_mass = 2.0
+lure_kinds = PackedStringArray("laser")

@@ -234,3 +234,17 @@ func test_item_used_event() -> void:
 	watch_signals(EventBus)
 	_held().use(PRIMARY)
 	assert_signal_emitted_with_parameters(EventBus, "item_used", [_body.player_id, &"item_fists"])
+
+
+## NEW 2026-11-12 (roadmap WP14): the vending machine sandwich is the first item that heals (only data and two
+## little scenes: ConsumeBehaviourData.heal_amount already existed).
+func test_eating_the_sandwich_heals_and_uses_it_up() -> void:
+	DamageService.give_components(_body, 100.0)
+	var health: HealthComponent = HealthComponent.of(_body)
+	health.apply_damage(DamageInfo.make(60.0, &"blunt"))
+	var hurt: float = health.get_current()
+	_hold(&"item_sandwich")
+	_held().use(PRIMARY)
+	await wait_physics_frames(3)
+	assert_almost_eq(health.get_current(), hurt + 35.0, 0.01, "it heals 35")
+	assert_eq(_inventory().find_item(&"item_sandwich"), -1, "and it's eaten")

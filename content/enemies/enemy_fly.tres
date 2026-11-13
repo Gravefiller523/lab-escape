@@ -22,3 +22,4 @@ spawn_cost = 1
 min_floor = 1
 loot_id = &"loot_zoology_small"
 impact_mass = 0.5
+lure_kinds = PackedStringArray("trash", "fly_player")

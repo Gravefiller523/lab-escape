@@ -89,6 +89,18 @@ extends Resource
 @export var spacing_gap: float = 0.3
 @export var spacing_check_seconds: float = 0.2
 
+@export_group("Lures")
+## NEW 2026-11-12 (roadmap WP14): how often (s) an enemy looks for something it can't resist (EnemyData.lure_kinds).
+@export var lure_check_seconds: float = 0.4
+## It stays with one lure this long (s), then gets bored and ignores every lure for lure_bored_seconds.
+@export var lure_attention_seconds: float = 6.0
+@export var lure_bored_seconds: float = 8.0
+## Being hurt snaps it out of it; it then ignores lures for this long (s).
+@export var lure_hurt_ignore_seconds: float = 5.0
+## Host: how often (s) props tagged lure_<kind> are looked up, and how far (m) such a prop draws enemies.
+@export var lure_prop_refresh_seconds: float = 1.0
+@export var lure_prop_radius: float = 9.0
+
 @export_group("Death")
 ## Seconds a dead enemy lies there before it's removed.
 @export var corpse_seconds: float = 2.0

@@ -8,6 +8,8 @@
 [ext_resource type="Script" path="res://core/data/upgrades/effects/slot_effect_data.gd" id="6_slot"]
 [ext_resource type="Script" path="res://core/data/upgrades/effects/stat_effect_data.gd" id="7_stat"]
 [ext_resource type="PackedScene" path="res://systems/upgrades/visuals/wings.tscn" id="9_wings"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/behaviour_effect_data.gd" id="10_behaviour"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/behaviours/fly_instincts.tscn" id="11_instincts"]
 
 [sub_resource type="Resource" id="Move"]
 script = ExtResource("3_move")
@@ -27,13 +29,18 @@ script = ExtResource("5_visual")
 scene = ExtResource("9_wings")
 attach_point = &"back"
 
+[sub_resource type="Resource" id="Instincts"]
+script = ExtResource("10_behaviour")
+behaviour_scene = ExtResource("11_instincts")
+params = {"fly_radius": 14.0, "heal_per_second": 1.5, "trash_radius": 4.0}
+
 [resource]
 script = ExtResource("1_data")
 id = &"mutation_fly"
 display_name = "Fly"
-description = "Light as a fly: floaty jumps, a buzzing high voice, and wings."
+description = "Light as a fly: floaty jumps, a buzzing high voice, and wings. Trash makes you feel better (you heal near it), and real flies can't leave you alone."
 tags = PackedStringArray("zoology")
 department_ids = Array[StringName]([&"department_zoology"])
-effects = Array[ExtResource("2_base")]([SubResource("Move"), SubResource("Voice"), SubResource("Wings")])
+effects = Array[ExtResource("2_base")]([SubResource("Move"), SubResource("Voice"), SubResource("Wings"), SubResource("Instincts")])
 clash_tags = PackedStringArray()
 glow_color = Color(0.55, 0.9, 1, 1)

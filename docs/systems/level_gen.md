@@ -620,6 +620,11 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   airlock's max_per_floor). An airlock nothing fits behind is taken back out (`_unplace_last`). Connectors get doors
   like rooms, so an airlock has a door at each end. NEW tuning `airlock_room_kinds`, `airlock_chance`,
   `airlock_kind`. Test `test_airlocks_sit_between_a_hallway_and_a_lab`.
+- 2026-11-13 (step 6b, Zoology's damage look): NEW `DamageLooks` (`systems/level_gen/tiles/damage_looks.gd`), picked per
+  department in NEW tuning `damage_looks_by_department` (Zoology: "skylights"): heavy and destroyed tiles get 1-2
+  holes cut in the ceiling (CSG) with a pale shaft and a dim downlight through each and a ceiling panel hanging
+  down, plus 2-4 dark corners (a shadowy volume and a dead light fitting). Looks only, seeded. Test
+  `test_damaged_zoology_rooms_get_skylights_and_dark_corners`.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

@@ -703,6 +703,8 @@ func _register_console_commands() -> void:
 		"floor <n> [department_id]: jump to floor n (of the run, or of that department)")
 	DebugConsole.register_command(&"end_run", _cmd_end_run, "end_run [escaped|wiped|abandoned]: end the run now")
 	DebugConsole.register_command(&"flow", _cmd_flow, "flow: game_flow's state and run", false)
+	# NEW 2026-11-12 (roadmap WP13b).
+	DebugConsole.register_command(&"version", _cmd_version, "version: which build of the game this is", false)
 
 
 func _cmd_seed(_args: PackedStringArray, _player_id: int) -> String:
@@ -723,6 +725,10 @@ func _cmd_end_run(args: PackedStringArray, _player_id: int) -> String:
 	var result := StringName(args[0]) if not args.is_empty() else RESULT_ABANDONED
 	end_run(result)
 	return "Run ended (%s)." % result
+
+
+func _cmd_version(_args: PackedStringArray, _player_id: int) -> String:
+	return "%s. Everyone in a game must have the same build." % BuildInfo.get_label()
 
 
 func _cmd_flow(_args: PackedStringArray, _player_id: int) -> String:

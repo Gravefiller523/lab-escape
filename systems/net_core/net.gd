@@ -19,6 +19,11 @@ const REFUSE_CLOSED: String = "The host isn't letting anyone join right now."
 const REFUSE_DUPLICATE: String = "You are already in this game."
 const REFUSE_UNKNOWN: String = "The host couldn't check who you are."
 const REFUSE_KICKED: String = "You were removed from the game."
+## NEW 2026-11-12 (roadmap WP13b): the joiner's build of the game isn't the host's. The reason sent to the joiner
+## starts with this and then names both builds (see version_reason).
+const REFUSE_VERSION: String = "Your game is a different version from the host's."
+## The key the host's build id travels under in the pre-join handshake.
+const JOIN_INFO_BUILD: String = "_net_build_id"
 ## Seconds between telling a refused peer why and disconnecting them, so the message arrives first.
 const REFUSE_DISCONNECT_DELAY: float = 0.5
 
@@ -43,9 +48,29 @@ var _join_info_provider: Callable
 var _join_preparer: Callable
 
 
+## This PC's build of the game (BuildInfo.get_build_id()), sent when joining and checked by the host.
+var _build_id: String = BuildInfo.get_build_id()
+
+
 ## For tests only: use a custom config. Call before adding the node to the tree.
 func use_config(config: GameConfig) -> void:
 	_config = config
+
+
+## For tests only: pretend this PC runs another build of the game.
+func use_build_id(build_id: String) -> void:
+	_build_id = build_id
+
+
+## NEW 2026-11-12 (roadmap WP13b): this PC's build id, the one a host compares.
+func get_build_id() -> String:
+	return _build_id
+
+
+## The message a joiner on the wrong build gets: what is wrong, both builds, and what to do.
+static func version_reason(joiner_build_id: String, host_build_id: String) -> String:
+	return "%s You have %s and the host has %s. Ask the host for the same build." % [REFUSE_VERSION,
+		BuildInfo.label_for(joiner_build_id), BuildInfo.label_for(host_build_id)]
 
 
 func _ready() -> void:
@@ -290,16 +315,21 @@ func _on_connected_to_server() -> void:
 	if _local_identity == 0:
 		_local_identity = multiplayer.get_unique_id()
 	var player_id: int = local_player_id()
-	_hello.rpc_id(1, player_id, SteamSession.get_persona_name(player_id))
+	_hello.rpc_id(1, player_id, SteamSession.get_persona_name(player_id), _build_id)
 
 
 # --- Host: joining, leaving, reconnecting -----------------------------------------------------
 
 ## Client -> host, once connected: "this is who I am".
+## CHANGED 2026-11-12 (roadmap WP13b): it also says which build of the game it runs. A different build (or none:
+## a build from before this check) is turned away before anything else is decided.
 @rpc("any_peer", "call_local", "reliable")
-func _hello(claimed_player_id: int, claimed_name: String) -> void:
+func _hello(claimed_player_id: int, claimed_name: String, build_id: String = "") -> void:
 	var sender: int = multiplayer.get_remote_sender_id()
 	if not is_host() or sender == multiplayer.get_unique_id() or _player_by_peer.has(sender):
+		return
+	if build_id != _build_id:
+		_refuse(sender, version_reason(build_id, _build_id))
 		return
 	var player_id: int = claimed_player_id
 	var display_name: String = claimed_name
@@ -518,6 +548,11 @@ func _player_left_remote(player_id: int, keep_record: bool) -> void:
 func _refused(reason: String) -> void:
 	if is_host():
 		return
+	_turned_away(reason)
+
+
+## Client: we can't be in this game. Tell whoever listens why, and leave.
+func _turned_away(reason: String) -> void:
 	join_refused.emit(reason)
 	SteamSession.leave_lobby()
 	if is_online():
@@ -545,6 +580,10 @@ func _on_peer_authenticating(peer_id: int) -> void:
 	if not is_inside_tree() or not multiplayer.is_server():
 		return
 	var info: Dictionary = _join_info_provider.call() if _join_info_provider.is_valid() else {}
+	# NEW 2026-11-12 (roadmap WP13b): the host's build goes first, so a joiner on another build stops before it
+	# loads anything.
+	info = info.duplicate()
+	info[JOIN_INFO_BUILD] = _build_id
 	(multiplayer as SceneMultiplayer).send_auth(peer_id, var_to_bytes(info))
 
 
@@ -556,6 +595,13 @@ func _on_auth_data(peer_id: int, data: PackedByteArray) -> void:
 		return
 	var raw: Variant = bytes_to_var(data)
 	var info: Dictionary = raw if raw is Dictionary else {}
+	var host_build_id: String = str(info.get(JOIN_INFO_BUILD, ""))
+	if host_build_id != _build_id:
+		# Another build of the game: don't load its floor, leave with the reason (a frame later: we are inside the
+		# connection's own callback here).
+		_turned_away.call_deferred(version_reason(_build_id, host_build_id))
+		return
+	info.erase(JOIN_INFO_BUILD)
 	if _join_preparer.is_valid():
 		await _join_preparer.call(info)
 	if multiplayer.multiplayer_peer == null or scene_multiplayer.get_authenticating_peers().find(peer_id) < 0:

@@ -86,6 +86,7 @@ func _open_file() -> void:
 		push_warning("Telemetry: can't write %s" % _path)
 		return
 	_write({"event": "telemetry_started", "data": {"version": ProjectSettings.get_setting("application/config/version", ""),
+		"build": BuildInfo.get_build_id(),
 		"player_id": Net.local_player_id(), "host": Net.is_host()}})
 
 

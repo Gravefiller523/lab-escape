@@ -86,6 +86,12 @@ static func SeededRng.pick_weighted(rng: RandomNumberGenerator, weights: PackedF
 # NEW 2026-11-11 (roadmap WP1). Client: call send() now if the connection to the host is open, else once it opens.
 # Use it for "ask the host for my state" requests in _ready of anything built with a floor. send = a method of node.
 static func HostLink.when_connected(node: Node, send: Callable) -> void
+# NEW 2026-11-12 (roadmap WP13b): which build of the game this is (core/util/build_info.gd)
+static func BuildInfo.get_version() -> String     # Project Settings > Application > Config > Version, e.g. "0.1.0"
+static func BuildInfo.get_stamp() -> String       # a fingerprint: exported = first 7 letters of the .pck's MD5; editor = "dev-" + git commit
+static func BuildInfo.get_build_id() -> String    # "<version>+<stamp>": what net_core compares on join
+static func BuildInfo.get_label() -> String       # for people: "v0.1.0 build 3fa9c1d"
+static func BuildInfo.label_for(build_id: String) -> String
 ```
 
 ## EventBus
@@ -159,3 +165,4 @@ None. Everything else depends on this.
 - 2026-11-11 (roadmap WP9): NEW `RangedAttackData` (`core/data/enemies/ranged_attack_data.gd`: shots, interval, speed, gravity, spread, damage, status, min/max range, projectile size and colour, lifetime) and `EnemyData.ranged_attack`.
 - 2026-11-11 (roadmap WP7): NEW `HitFeelTuning` (`core/config/hit_feel_tuning.gd`), `FeelTuning.hits` (`Config.feel.hits`, a section in `config/feel_tuning.tres`): flash, hit pause, flinch, death poof, hurt kick and vignette, gem sparkle numbers. NEW `Effects` (`core/util/effects.gd`): `burst()` (a puff of little cubes) and `float_text()` (text that rises and fades); local, they free themselves.
 - 2026-11-12 (roadmap WP8): NEW content types `announcement` (AnnouncementData, `content/announcements/`: text, department_ids, weight) and `hint` (HintData, `content/hints/`: trigger, text), in `core/data/story/`.
+- 2026-11-12 (roadmap WP13b): NEW `BuildInfo` (`core/util/build_info.gd`): the version number plus a fingerprint that is different for every build and needs no build step (an exported game hashes its own `.pck`; the editor reads the git commit from `.git`). project.godot: NEW `application/config/version` = "0.1.0" (raise it by hand for builds that go to players). net_core refuses joiners whose build id differs; telemetry logs it; console `version` prints it. Tests: `tests/unit/core/test_build_info.gd` (5).

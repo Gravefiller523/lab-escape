@@ -11,7 +11,7 @@ work package whose status is not "done" and isn't waiting on Zachary.
 
 - **Merged into main:** WP1 to WP7, WP9, and WP10 part 1 (Botany's enemies, loot and shop stock).
 - **Waiting on Zachary.** Each branch below sits on top of the one above it, so a merge phrase for one also
-  merges everything above it in this table. "push and merge wp/13-bosses into main" merges all five.
+  merges everything above it in this table. "push and merge wp/13b-version-check into main" merges all six.
 
   | Branch | Package | What to try in the game |
   |---|---|---|
@@ -20,17 +20,17 @@ work package whose status is not "done" and isn't waiting on Zachary.
   | `wp/11-robotics` | WP11 | Robotics floors have roombas, turrets, drones and cameras; data drives give Magnet Hand, Spring Legs and Night-Vision Eye. |
   | `wp/12-profile` | WP12 | Play a run, quit, and open the profile file; `hints reset` in the console shows the hints again. |
   | `wp/13-bosses` | WP13 | Console: `spawn boss_mushroom_man` or `spawn boss_robobrain` on any floor. Boss floors on Botany and Robotics now have their own boss. |
+  | `wp/13b-version-check` | WP13b | Console: `version` shows your build. Two game windows from the editor still join each other. |
 
 - **Also waiting on Zachary: PT1, the first real-Steam session** with one friend, together with fun check 1 (both
   in section c, after WP13). It needs a test build: merge the stack first, then say "make a test build".
-- **Next for Claude:** WP13b (the same-version check, so two PCs can't mix builds), then WP14. Anything PT1 finds
-  jumps the queue.
+- **Next for Claude:** WP14. Anything PT1 finds jumps the queue.
 - **On hold until Zachary says so:** D8 (Steam fee and App ID) and D9 (name check). They block WP18's real test,
   WP32 and WP33.
 - **Other threads working in this repo:** the floor generator thread owns `systems/level_gen`,
   `config/floor_gen_tuning.tres`, and the run length numbers `run_floor_count` and `boss_every_floors` (decision D1
   is approved but not applied yet: today they are still 18 and 6). It works in its own folder, `../lab-escape-6a`.
-- **Pace so far:** 13 packages built in the first 2 days. The code packages went much faster than the estimate in
+- **Pace so far:** 14 packages built in the first 2 days. The code packages went much faster than the estimate in
   section a. The art, sound and launch phases (WP20 on) depend on Zachary's time, tools and play tests, and are
   still the long part.
 
@@ -133,7 +133,7 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G57 | `test_thrown_crate_barely_hurts_a_heavy_enemy` (physics_props) failed once in a full run: the thrown crate hit the 50 kg test enemy twice (it bounced), leaving 6.6 health where the test wants more than 9. It passed 3 times in a row alone. Physics bounce timing; worth making the test count only the first hit. Found in WP11. | reliability | S | ||
 | G55 | The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
 | G54 | ~~Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors.~~ Fixed in WP3. | reliability | S | |
-| G58 | (WP13b) **Nothing checks that the host and a joining player run the same version of the game.** Two different builds can join each other, and the result is confusing bugs on one PC only (missing enemies, things out of step). Needs a build number shown in the main menu and a clear "your game is a different version" message on join. Found in the 2026-11-12 review. | reliability | S | |
+| G58 | ~~(WP13b) Nothing checks that the host and a joining player run the same version of the game.~~ Fixed in WP13b. Was: **no check.** Two different builds can join each other, and the result is confusing bugs on one PC only (missing enemies, things out of step). Needs a build number shown in the main menu and a clear "your game is a different version" message on join. Found in the 2026-11-12 review. | reliability | S | |
 
 ### Fun and clarity
 | # | Gap | Tag | Size | You |
@@ -363,7 +363,9 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Why now:** PT1 puts test builds on two PCs. Without this, an old build joining a new one gives bugs on one PC
   only, and nobody can tell why.
 - **Test it:** the main menu shows the build number; two local windows still join each other.
-- **Gaps:** G58. **Status: not started.**
+- **Gaps:** G58.
+- **Built:** every build now has an id: the version number (0.1.0, in the project settings) plus a short fingerprint the game works out by itself. Two people who unzipped the same test build always match; any two different builds never do. A joiner on another build is stopped before loading anything and lands in the main menu with a message naming both builds. The console's `version` command prints yours, and the playtest log records it. **Not done, waiting for your OK (it changes a screen):** one small line of grey text with the build in a corner of the main menu.
+- **Status: waiting for your play test.** Branch `wp/13b-version-check` (stacked on `wp/13-bosses`).
 
 #### PT1: First real-Steam session (Zachary and one friend; added 2026-11-12, Zachary's choice)
 - **What:** the first time the game runs on two PCs over real Steam. Everything so far is only proven with game
@@ -611,7 +613,7 @@ Do these on two or more PCs with different Steam accounts, using a test build. T
 - [ ] Die, get reprinted with meat, keep mutations; team wipe ends the run.
 - [ ] A friend quits and rejoins the same run: they get their mutations back (can't be tested without real Steam accounts).
 - [ ] The Tab player list shows a real ping for each friend (it shows "-" over Steam until WP15b).
-- [ ] After WP15b: a friend on an older test build is told their version is different instead of joining.
+- [ ] A friend on a different test build is told their version is different instead of joining (built in WP13b).
 - [ ] Beat a boss; the whole team rides on.
 - [ ] Achievements pop on Steam (needs the real App ID).
 - [ ] Cloud save: unlock a cosmetic on one PC, see it on another PC with the same account.

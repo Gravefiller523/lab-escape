@@ -210,8 +210,11 @@ the start, or an UnlockRuleData: `runs_completed`, `floors_reached`, `boss_defea
 
 ## Achievement
 First create it on the Steamworks site. **Fill in:** `steam_api_name`, `trigger_event` (an EventBus
-signal name, e.g. `boss_defeated`), `match_id` (e.g. `boss_giant_rat`, or empty), `local_player_only`,
-`required_count`, `steam_stat_name` (for counted ones).
+signal name, e.g. `boss_defeated`), `match_id` (e.g. `boss_giant_rat`, or empty), NEW 2026-11-13 `match_text` (a
+plain word instead, e.g. `escaped` for `run_ended`), `local_player_only` (the event's first whole number must be you),
+`required_count`, `steam_stat_name` (for counted ones), and `display_name` / `description`. Names must be original:
+no other games' characters or brands. **Copy:** `achievement_beat_giant_rat.tres`. **Test:** `achievements` in the
+console lists progress.
 
 ## Loot table
 **Fill in:** `rolls`, `nothing_weight`, `entries` (each: `prop_id` or `item_id`, `weight`, `min_count`,

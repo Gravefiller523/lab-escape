@@ -278,6 +278,7 @@ Things that look like dependencies but are **not**, because they go through Even
 | `UI` | ui | Screens, HUD and toasts. |
 | `Achievements` | achievements | |
 | `Objectives` | objectives | NEW 2026-11-13 (roadmap WP15): co-op floor tasks (the hamster wheel): the host picks and places them each floor and tells every PC. |
+| `Achievements` | achievements | NEW 2026-11-13 (roadmap WP18): counts EventBus events named in achievement files, keeps progress in the profile and unlocks on Steam. |
 | `Telemetry` | telemetry | Built 2026-11-11 (roadmap WP4): the playtest log, off unless `--telemetry` or `telemetry on`. |
 | `DebugConsole` | debug_console | Last, so every system can register commands in `_ready`. |
 

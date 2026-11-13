@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/data/steam/achievement_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"achievement_first_reprint"
+display_name = "Printed Fresh"
+description = "Come back from the 3D printer."
+steam_api_name = "ACH_FIRST_REPRINT"
+trigger_event = &"player_reprinted"
+match_id = &""
+local_player_only = true
+required_count = 1
+steam_stat_name = ""

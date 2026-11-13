@@ -96,6 +96,17 @@ func _build() -> void:
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.modulate = Color(0.7, 0.7, 0.75)
 	column.add_child(_status)
+	# NEW 2026-11-13 (roadmap WP13b, OK'd by Zachary): which build this is, small and grey in the bottom-right corner,
+	# so two friends can check they have the same one.
+	var build := Label.new()
+	build.name = "BuildLabel"
+	build.text = BuildInfo.get_label()
+	build.modulate = Color(0.55, 0.55, 0.6)
+	build.add_theme_font_size_override("font_size", 14)
+	build.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 12)
+	build.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	build.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	add_child(build)
 
 
 func _add_button(parent: Control, text: String, action: Callable) -> Button:

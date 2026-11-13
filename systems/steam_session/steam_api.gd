@@ -109,6 +109,21 @@ func clear_rich_presence() -> void:
 	Steam.clearRichPresence()
 
 
+## NEW 2026-11-13 (roadmap WP18): unlock an achievement by its Steamworks API name. False if Steam refused.
+func set_achievement(api_name: String) -> bool:
+	return Steam.setAchievement(api_name)
+
+
+## NEW 2026-11-13 (roadmap WP18): set a whole-number Steam stat (progress towards a counted achievement).
+func set_stat_int(stat_name: String, value: int) -> bool:
+	return Steam.setStatInt(stat_name, value)
+
+
+## NEW 2026-11-13 (roadmap WP18): send the achievements and stats set so far to Steam (it shows the popup).
+func store_stats() -> bool:
+	return Steam.storeStats()
+
+
 ## The text after the game's .exe when Steam launched it (holds "+connect_lobby <id>").
 func get_launch_command_line() -> String:
 	return Steam.getLaunchCommandLine()

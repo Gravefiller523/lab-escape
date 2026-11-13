@@ -10,6 +10,9 @@ extends ContentData
 ## Only count events whose first StringName argument equals this, e.g. "boss_giant_rat".
 ## Empty = any.
 @export var match_id: StringName = &""
+## NEW 2026-11-13 (roadmap WP18): the same, for a word that isn't a content id (run_ended's "escaped"). The content
+## test checks match_id points at real content, so words go here instead.
+@export var match_text: StringName = &""
 ## For events whose first argument is a player_id: only count the local player's events.
 @export var local_player_only: bool = false
 ## How many matching events are needed.

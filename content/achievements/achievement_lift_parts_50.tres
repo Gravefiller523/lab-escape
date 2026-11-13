@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/data/steam/achievement_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"achievement_lift_parts_50"
+display_name = "Maintenance Crew"
+description = "Fit 50 parts into the cargo lift, across all your runs."
+steam_api_name = "ACH_LIFT_PARTS_50"
+trigger_event = &"lift_part_delivered"
+match_id = &""
+local_player_only = false
+required_count = 50
+steam_stat_name = "STAT_LIFT_PARTS"

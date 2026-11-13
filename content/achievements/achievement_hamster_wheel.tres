@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/data/steam/achievement_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"achievement_hamster_wheel"
+display_name = "Cardio Day"
+description = "Fill a hamster wheel with your team."
+steam_api_name = "ACH_HAMSTER_WHEEL"
+trigger_event = &"floor_task_completed"
+match_id = &"task_hamster_wheel"
+local_player_only = false
+required_count = 1
+steam_stat_name = ""

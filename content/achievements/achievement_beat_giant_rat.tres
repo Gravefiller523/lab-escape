@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/data/steam/achievement_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"achievement_beat_giant_rat"
+display_name = "Pest Control"
+description = "Beat the Giant Rat."
+steam_api_name = "ACH_BEAT_GIANT_RAT"
+trigger_event = &"boss_defeated"
+match_id = &"boss_giant_rat"
+local_player_only = false
+required_count = 1
+steam_stat_name = ""

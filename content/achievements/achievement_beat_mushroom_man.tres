@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/data/steam/achievement_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"achievement_beat_mushroom_man"
+display_name = "Weed Killer"
+description = "Beat the Mushroom Man."
+steam_api_name = "ACH_BEAT_MUSHROOM_MAN"
+trigger_event = &"boss_defeated"
+match_id = &"boss_mushroom_man"
+local_player_only = false
+required_count = 1
+steam_stat_name = ""

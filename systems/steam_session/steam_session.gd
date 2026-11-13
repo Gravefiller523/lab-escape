@@ -231,6 +231,26 @@ func set_rich_presence(key: String, value: String) -> void:
 		_api.set_rich_presence(key, value)
 
 
+## NEW 2026-11-13 (roadmap WP18): unlock a Steam achievement (its Steamworks API name). Does nothing without Steam.
+func unlock_achievement(api_name: String) -> void:
+	if _steam_ok and not api_name.is_empty():
+		_api.set_achievement(api_name)
+		_api.store_stats()
+
+
+## NEW 2026-11-13 (roadmap WP18): a whole-number Steam stat (progress towards an achievement). Does nothing without
+## Steam. Sent to Steam with the next unlock or store_stats().
+func set_stat(stat_name: String, value: int) -> void:
+	if _steam_ok and not stat_name.is_empty():
+		_api.set_stat_int(stat_name, value)
+
+
+## NEW 2026-11-13 (roadmap WP18): send stats set so far to Steam. Does nothing without Steam.
+func store_stats() -> void:
+	if _steam_ok:
+		_api.store_stats()
+
+
 ## Testing without Steam: become the host of a local game on this PC.
 func host_local(port: int = 7777) -> void:
 	if not _can_start():

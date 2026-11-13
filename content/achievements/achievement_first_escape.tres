@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/data/steam/achievement_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"achievement_first_escape"
+display_name = "Clocking Out"
+description = "Escape the lab for the first time."
+steam_api_name = "ACH_FIRST_ESCAPE"
+trigger_event = &"run_ended"
+match_id = &""
+match_text = &"escaped"
+local_player_only = false
+required_count = 1
+steam_stat_name = ""

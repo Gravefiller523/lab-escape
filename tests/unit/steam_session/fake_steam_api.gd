@@ -9,6 +9,10 @@ var created_lobby_max_members: int = -1
 var create_lobby_calls: int = 0
 var joined_lobby_id: int = 0
 var presence: Dictionary[String, String] = {}
+## NEW 2026-11-13 (roadmap WP18): what was sent to Steam's achievements and stats.
+var achievements_set: Array[String] = []
+var stats_set: Dictionary[String, int] = {}
+var stores: int = 0
 
 
 func init(_app_id: int) -> bool:
@@ -62,6 +66,21 @@ func set_rich_presence(key: String, value: String) -> void:
 
 func clear_rich_presence() -> void:
 	presence.clear()
+
+
+func set_achievement(api_name: String) -> bool:
+	achievements_set.append(api_name)
+	return true
+
+
+func set_stat_int(stat_name: String, value: int) -> bool:
+	stats_set[stat_name] = value
+	return true
+
+
+func store_stats() -> bool:
+	stores += 1
+	return true
 
 
 func get_launch_command_line() -> String:

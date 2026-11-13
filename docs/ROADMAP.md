@@ -11,7 +11,7 @@ work package whose status is not "done" and isn't waiting on Zachary.
 
 - **Merged into main:** WP1 to WP7, WP9, and WP10 part 1 (Botany's enemies, loot and shop stock).
 - **Waiting on Zachary.** Each branch below sits on top of the one above it, so a merge phrase for one also
-  merges everything above it in this table. "push and merge wp/15-hamster-wheel into main" merges all nine.
+  merges everything above it in this table. "push and merge wp/18-achievements into main" merges all ten.
 
   | Branch | Package | What to try in the game |
   |---|---|---|
@@ -24,16 +24,17 @@ work package whose status is not "done" and isn't waiting on Zachary.
   | `wp/14-items` | WP14 | Buy a laser pointer from a Zoology vending machine and point it near rats. Console: `spawn item_laser_pointer`, `spawn prop_trash_bag`, `spawn item_sandwich`. |
   | `wp/15b-cleanup` | WP15b | Play a short run with two game windows: the run summary shows kills for both players. The Tab list shows each ping. |
   | `wp/15-hamster-wheel` | WP15 | Console: `spawn task_hamster_wheel`, step on the belt and keep running forward. On a floor, look for a big ring in a room. |
+  | `wp/18-achievements` | WP18 | Console: `achievements` lists them. Escape a run (or `end_run escaped`) and a toast says "Achievement: Clocking Out". |
 
 - **Also waiting on Zachary: PT1, the first real-Steam session** with one friend, together with fun check 1 (both
   in section c, after WP13). It needs a test build: merge the stack first, then say "make a test build".
-- **Next for Claude:** WP16 (balance) needs your play sessions, and WP17 (cosmetics) needs your OK on a closet mock-up, so next is WP18 (achievements). Anything PT1 finds jumps the queue.
+- **Next for Claude:** WP19 (the ending and credits). WP16 (balance) needs your play sessions, and WP17 (cosmetics) needs your OK on a closet mock-up. Anything PT1 finds jumps the queue.
 - **On hold until Zachary says so:** D8 (Steam fee and App ID) and D9 (name check). They block WP18's real test,
   WP32 and WP33.
 - **Other threads working in this repo:** the floor generator thread owns `systems/level_gen`,
   `config/floor_gen_tuning.tres`, and the run length numbers `run_floor_count` and `boss_every_floors` (decision D1
   is approved but not applied yet: today they are still 18 and 6). It works in its own folder, `../lab-escape-6a`.
-- **Pace so far:** 17 packages built in the first 3 days. The code packages went much faster than the estimate in
+- **Pace so far:** 18 packages built in the first 3 days. The code packages went much faster than the estimate in
   section a. The art, sound and launch phases (WP20 on) depend on Zachary's time, tools and play tests, and are
   still the long part.
 
@@ -443,7 +444,10 @@ The five questions, the same every time:
 #### WP18: Achievements
 - **What:** the achievements system and about 15 achievements with original names (G32).
 - **Needs:** your App ID (D8) to test on Steam for real; built and unit-tested against Spacewar before that.
-- **Gaps:** G25, G32. **Status: not started.**
+- **Gaps:** G25, G32.
+- **Built:** 15 achievements, all data files, all with original names: Clocking Out (escape), Overtime Champion (escape 5 times), Pest Control, Weed Killer and Unplugged (one per boss), Workplace Accident (die), Printed Fresh (be reprinted), Side Effects May Vary (first upgrade), Science Project (10 upgrades), Animal Control (100 kills), Employee Discount (buy something), Cardio Day (fill a hamster wheel), Maintenance Crew (fit 50 lift parts), Mass Layoff (team wipe) and Red Dot Special (use the laser pointer 20 times). Each PC counts its own player's; progress is saved in the profile, a toast says when one unlocks, and Steam is told when it's running. Console `achievements` lists your progress.
+- **Not yet:** they can only pop on Steam for real once the game has its own App ID (decision D8); the list of names to create in Steamworks is in `docs/systems/achievements.md`. Two achievements are meant to unlock cosmetics (decision D6); that comes with WP17.
+- **Status: waiting for your play test.** Branch `wp/18-achievements` (stacked on `wp/15-hamster-wheel`).
 
 #### WP19: The ending and credits
 - **What:** the last boss opens the way up; the lift breaks out into daylight, a short "you escaped" scene with the
@@ -648,7 +652,7 @@ Do these on two or more PCs with different Steam accounts, using a test build. T
 - [ ] Every AI tool's licence checked for the plan used, and saved as a note in the log.
 - [ ] Credits screen and `docs/CREDITS.md`: Godot (MIT licence notice), GodotSteam (MIT), CC0 packs (optional
       thanks), Meshy and ElevenLabs if used, Mixamo, friends who playtested.
-- [ ] Achievements created in Steamworks, matching `content/achievements/`.
+- [ ] Achievements created in Steamworks, matching `content/achievements/` (the 15 names and 5 stats are listed in `docs/systems/achievements.md`).
 - [ ] Steam Cloud set up for the profile file (`user://profile...`); settings stay local.
 - [ ] Performance check on a modest PC (section f). Graphics settings (shadows, fog, render scale) work.
 - [ ] Export presets leave out `tests/`, `addons/gut` and debug-only tools; cheats off in release.

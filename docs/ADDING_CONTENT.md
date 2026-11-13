@@ -196,8 +196,11 @@ then F3.
 
 ## Floor task
 **Fill in:** `scene` (built from `FloorTask` and `TaskStation` pieces), `min_players`,
-`max_participants`, `reward` (`lift_part`, `fuse`, `keycard`, `door_open`), `weight`, `room_kind`.
-Add its id to departments' `task_ids`. **Test:** `spawn task_<name>`.
+`max_participants`, `reward` (NEW 2026-11-13: `loot`, which rolls `reward_loot_id`; `lift_part`, `fuse`, `keycard`,
+`door_open` aren't made yet), `weight`, `room_kind`, NEW `work_seconds` (seconds of one player's work to finish it),
+NEW `params` (numbers only its scene uses, e.g. the wheel's `belt_speed`). The scene's root must be a `FloorTask`
+(or a script that extends it). **Copy:** `task_hamster_wheel.tres` and `systems/objectives/tasks/hamster_wheel.tscn`.
+Add its id to departments' `task_ids` (a department with none gets every task). **Test:** `spawn task_<name>`.
 
 ## Cosmetic
 **Fill in:** `slot` (`hat`, `glasses`, `coat`, `gloves`, `shoes`), `scene`, `mutation_variants`

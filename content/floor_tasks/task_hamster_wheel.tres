@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="FloorTaskData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/levels/floor_task_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/objectives/tasks/hamster_wheel.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"task_hamster_wheel"
+display_name = "Hamster wheel"
+description = "A giant running wheel from an old experiment. Its floor carries you out of the back, so keep running to stay on. Each runner fills it; full, it pays out gems (and maybe a sandwich). Roadmap WP15."
+scene = ExtResource("2_scene")
+min_players = 1
+max_participants = 4
+reward = &"loot"
+work_seconds = 24.0
+reward_loot_id = &"loot_task_hamster_wheel"
+params = {"belt_speed": 3.2}

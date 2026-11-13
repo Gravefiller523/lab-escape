@@ -40,6 +40,8 @@ var _finished: bool = false
 var _boss_defeated: bool = false
 ## NEW 2026-11-13 (roadmap WP15b): kills this PC was told about (EventBus.kill_credited), per killer's player id.
 var _kills_credited: Dictionary = {}
+## NEW 2026-11-13 (roadmap WP15): floor tasks this PC saw finished (EventBus.floor_task_completed).
+var _tasks_completed: int = 0
 var _run_result: StringName = &""
 
 
@@ -52,6 +54,7 @@ func _ready() -> void:
 	UI.get_hud().hints.use_file("user://full_run_test/hints_%s.cfg" % _report["role"])
 	SaveSystem.use_folder("user://full_run_test/profile_%s" % _report["role"])
 	EventBus.boss_defeated.connect(func(_boss_id: StringName) -> void: _boss_defeated = true)
+	EventBus.floor_task_completed.connect(func(_task_id: StringName) -> void: _tasks_completed += 1)
 	EventBus.kill_credited.connect(func(_enemy_id: StringName, killer_player_id: int) -> void:
 		if killer_player_id != 0:
 			_kills_credited[str(killer_player_id)] = int(_kills_credited.get(str(killer_player_id), 0)) + 1)
@@ -128,6 +131,12 @@ func _run_host() -> void:
 		if run.is_boss_floor:
 			entry["boss"] = await _beat_boss()
 		else:
+			# NEW 2026-11-13 (roadmap WP15): finish one floor task, as if the team had run the wheel.
+			for task: FloorTask in Objectives.get_tasks():
+				if not task.is_done():
+					task.complete()
+					entry["task_finished"] = String(task.task_data.id)
+					break
 			entry["lift_fixed"] = await _fix_lift()
 		entry["departed"] = await _press_go()
 		(_report["floors"] as Array).append(entry)
@@ -164,7 +173,15 @@ func _floor_entry(floor_number: int) -> Dictionary:
 		"players": Net.get_player_ids(), "bodies": bodies, "waiting": waiting,
 		"enemies": Enemies.get_alive().size(),
 		"printers": get_tree().get_nodes_in_group(Printer3D.GROUP).size(),
-		"vendors": get_tree().get_nodes_in_group(Vendor.GROUP).size()}
+		"vendors": get_tree().get_nodes_in_group(Vendor.GROUP).size(), "tasks": _task_ids()}
+
+
+## NEW 2026-11-13 (roadmap WP15): the floor tasks on this PC, as "<id>@<x>,<z>" (every PC should list the same).
+func _task_ids() -> Array[String]:
+	var found: Array[String] = []
+	for task: FloorTask in Objectives.get_tasks():
+		found.append("%s@%d,%d" % [task.task_data.id, roundi(task.global_position.x), roundi(task.global_position.z)])
+	return found
 
 
 ## The late joiner connects while this floor is running: it must wait (a ghost camera, no body) until the next.
@@ -342,7 +359,7 @@ func _on_client_floor_ready(floor_number: int, department_id: StringName) -> voi
 	await _seconds(CLIENT_SETTLE_SECONDS)
 	var body: PlayerCharacter = PlayerCharacter.find(Net.local_player_id())
 	(_report["floors"] as Array).append({"floor": floor_number, "department": String(department_id),
-		"has_body": body != null and not body.is_ghost(), "players": Net.get_player_ids()})
+		"has_body": body != null and not body.is_ghost(), "players": Net.get_player_ids(), "tasks": _task_ids()})
 
 
 # --- Helpers ----------------------------------------------------------------------------------------------------
@@ -389,6 +406,7 @@ func _finish(failure: String = "") -> void:
 		_report["ok"] = false
 		_note(failure)
 	_report["kills_credited"] = _kills_credited
+	_report["tasks_completed"] = _tasks_completed
 	_report["my_player_id"] = str(Net.local_player_id())
 	var path: String = _arg("out")
 	if not path.is_empty():

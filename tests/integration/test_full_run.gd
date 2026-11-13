@@ -182,6 +182,25 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 		assert_true(seen.get("has_body", false), "the client has a body on floor %d" % (index + 1))
 	assert_eq(client.get("result", ""), "escaped", "the client saw the escape")
 	assert_eq(client.get("final_state", ""), "BREAK_ROOM", "the client is back in the Break Room")
+	# NEW 2026-11-13 (roadmap WP15): every PC has the same floor tasks in the same places, and hears they're done.
+	var tasks_finished: int = 0
+	var tasks_seen: int = 0
+	for index: int in floors.size():
+		var host_floor: Dictionary = floors[index]
+		tasks_seen += (host_floor.get("tasks", []) as Array).size()
+		if host_floor.has("task_finished"):
+			tasks_finished += 1
+		if index < (client.get("floors", []) as Array).size():
+			assert_eq(((client["floors"] as Array)[index] as Dictionary).get("tasks", []), host_floor.get("tasks", []),
+				"the client has the same tasks on floor %d" % (index + 1))
+	assert_gt(tasks_seen, 0, "floor tasks turned up (the hamster wheel)")
+	assert_eq(host.get("tasks_completed", -1) as int, tasks_finished, "the host heard about each finished task")
+	assert_eq(client.get("tasks_completed", -1) as int, tasks_finished, "so did the client")
+	for seen: Variant in late.get("floors", []):
+		var late_floor: Dictionary = seen as Dictionary
+		var host_floor: Dictionary = floors[(late_floor["floor"] as int) - 1]
+		assert_eq(late_floor.get("tasks", []), host_floor.get("tasks", []),
+			"the late joiner has the same tasks on floor %d" % (late_floor["floor"] as int))
 	# NEW 2026-11-13 (roadmap WP15b): every PC is told who made each kill (the host beat every boss).
 	var boss_floors: int = 0
 	for entry: Variant in floors:

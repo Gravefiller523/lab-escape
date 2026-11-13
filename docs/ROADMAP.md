@@ -11,7 +11,7 @@ work package whose status is not "done" and isn't waiting on Zachary.
 
 - **Merged into main:** WP1 to WP7, WP9, and WP10 part 1 (Botany's enemies, loot and shop stock).
 - **Waiting on Zachary.** Each branch below sits on top of the one above it, so a merge phrase for one also
-  merges everything above it in this table. "push and merge wp/15b-cleanup into main" merges all eight.
+  merges everything above it in this table. "push and merge wp/15-hamster-wheel into main" merges all nine.
 
   | Branch | Package | What to try in the game |
   |---|---|---|
@@ -23,16 +23,17 @@ work package whose status is not "done" and isn't waiting on Zachary.
   | `wp/13b-version-check` | WP13b | Console: `version` shows your build. Two game windows from the editor still join each other. |
   | `wp/14-items` | WP14 | Buy a laser pointer from a Zoology vending machine and point it near rats. Console: `spawn item_laser_pointer`, `spawn prop_trash_bag`, `spawn item_sandwich`. |
   | `wp/15b-cleanup` | WP15b | Play a short run with two game windows: the run summary shows kills for both players. The Tab list shows each ping. |
+  | `wp/15-hamster-wheel` | WP15 | Console: `spawn task_hamster_wheel`, step on the belt and keep running forward. On a floor, look for a big ring in a room. |
 
 - **Also waiting on Zachary: PT1, the first real-Steam session** with one friend, together with fun check 1 (both
   in section c, after WP13). It needs a test build: merge the stack first, then say "make a test build".
-- **Next for Claude:** WP15 (the hamster wheel; WP15b was done first so the PT1 build is tidier). Anything PT1 finds jumps the queue.
+- **Next for Claude:** WP16 (balance) needs your play sessions, and WP17 (cosmetics) needs your OK on a closet mock-up, so next is WP18 (achievements). Anything PT1 finds jumps the queue.
 - **On hold until Zachary says so:** D8 (Steam fee and App ID) and D9 (name check). They block WP18's real test,
   WP32 and WP33.
 - **Other threads working in this repo:** the floor generator thread owns `systems/level_gen`,
   `config/floor_gen_tuning.tres`, and the run length numbers `run_floor_count` and `boss_every_floors` (decision D1
   is approved but not applied yet: today they are still 18 and 6). It works in its own folder, `../lab-escape-6a`.
-- **Pace so far:** 16 packages built in the first 3 days. The code packages went much faster than the estimate in
+- **Pace so far:** 17 packages built in the first 3 days. The code packages went much faster than the estimate in
   section a. The art, sound and launch phases (WP20 on) depend on Zachary's time, tools and play tests, and are
   still the long part.
 
@@ -133,6 +134,7 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G53 | ~~Prop snapshot messages reached 1,900 bytes, over one network packet, so on real connections they'd be lost more often (jumpy props).~~ Fixed in WP1. | reliability | S | |
 | G56 | ~~Twice, in full test runs, the full-run test's client got about 300 "spawner is null" errors and no body.~~ Found in WP7: the client asked to join while the host was still loading the Break Room, was told "nothing yet", and missed the host's "come into the world" message. Fixed in WP7 (game_flow sends a joiner straight to the Break Room while the host loads it). The full-run driver also has `--join_delay` to try joins at other moments. | reliability | S | |
 | G57 | (Fixed in WP15b: each hit is judged on its own.) `test_thrown_crate_barely_hurts_a_heavy_enemy` (physics_props) failed once in a full run: the thrown crate hit the 50 kg test enemy twice (it bounced), leaving 6.6 health where the test wants more than 9. It passed 3 times in a row alone. Physics bounce timing; worth making the test count only the first hit. Found in WP11. | reliability | S | ||
+| G60 | Once, in WP15, the leaving test's leaver logged "Node not found: Enemies/Spawner/Enemy5" (an enemy update reaching a client that never had that enemy, the old G54 shape) and the test failed on it. The next three full runs were clean. Worth a look at how a client that quits mid-floor handles enemy updates in its last moments. | reliability | S | |
 | G59 | The test files (tests/unit and tests/integration) have about 100 typing warnings outside level_gen's tests (mostly a Variant from a Dictionary handed to assert_true or int()). Found in WP15b with a checker that loads every script with typing warnings raised to errors (a temporary `override.cfg`; see the WP15b notes). | reliability | S | |
 | G55 | (Systems outside level_gen fixed in WP15b; level_gen's ~90 are the floor generator thread's.) The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
 | G54 | ~~Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors.~~ Fixed in WP3. | reliability | S | |
@@ -409,7 +411,11 @@ The five questions, the same every time:
 #### WP15: The hamster wheel (objectives)
 - **What:** the floor task framework from the objectives spec and one task: running in a hamster wheel charges a
   fuse box that powers a locked area or the lift. More players run it faster.
-- **Gaps:** G18, G23. **Status: not started.**
+- **Gaps:** G18, G23.
+- **Built:** the floor task framework (a task, a station players stand in, and the Objectives autoload that places tasks each floor the same way on every PC and for late joiners) and the **hamster wheel**: a running belt inside a big ring. The belt carries you out of the back, so you have to keep running forward into the panel at its front. Each runner fills it (2 runners take half as long; up to 4 count); about 24 seconds for one player. Full, it pays out gems and maybe a large gem or a sandwich. One wheel per floor (more with 5+ players), never on boss floors. It's grey box until the art pass.
+- **My choices:** the roadmap said it "charges a fuse box that powers a locked area or the lift". Nothing on a floor needs power from a task yet (the floor generator already places a power cell for every power door), so for now the wheel pays out gems instead. Powering a locked bonus room can come when level_gen has one. The wheel is a belt inside a ring rather than a real turning wheel, because a turning floor under several players would be a big physics job for little gain.
+- **Stub:** level_gen has no `task` markers yet, so the wheel goes on a prop spot outside the lift room that has room for it (2.8 by 4.6 m). Some floors may have no wheel when no spot has room.
+- **Status: waiting for your play test.** Branch `wp/15-hamster-wheel` (stacked on `wp/15b-cleanup`).
 
 #### WP15b: Clean-up sweep (added 2026-11-12, in the review)
 - **What:** the gaps and leftovers that had no package (the version check moved up to WP13b): every player's kills in the run summary and stats, ping over Steam, hazard data files (G27), the
@@ -719,7 +725,8 @@ Added 2026-11-12 from what the first 12 packages taught us:
 ### Needs from level_gen (for the step 6 thread, not changed here)
 - Botany and Robotics will need `enemy_spawn` markers that suit stationary enemies (turrets, flytraps): a wall or
   corner spot with a view down a room.
-- A `task` marker in some medium rooms for the hamster wheel (WP15).
+- A `task` marker in some medium rooms for the hamster wheel (WP15). Until then it uses a prop spot with 2.8 x 4.6 m of
+  clear floor (see objectives.md). A locked bonus room a task could power would make the wheel's reward better.
 - Boss arenas per department. Since WP13 all three departments have boss floors, and all three bosses fight in
   `room_arena_grey`. An arena with a few pillars or crates would give cover from Robobrain's laser and rockets.
 - The Zoology "broken skylights and dark corners" damage look (with art).

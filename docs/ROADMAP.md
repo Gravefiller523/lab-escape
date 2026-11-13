@@ -21,7 +21,10 @@ work package whose status is not "done" and isn't waiting on Zachary.
   | `wp/12-profile` | WP12 | Play a run, quit, and open the profile file; `hints reset` in the console shows the hints again. |
   | `wp/13-bosses` | WP13 | Console: `spawn boss_mushroom_man` or `spawn boss_robobrain` on any floor. Boss floors on Botany and Robotics now have their own boss. |
 
-- **Next for Claude:** WP14 (laser pointer and brainstorm leftovers).
+- **Also waiting on Zachary: PT1, the first real-Steam session** with one friend, together with fun check 1 (both
+  in section c, after WP13). It needs a test build: merge the stack first, then say "make a test build".
+- **Next for Claude:** WP13b (the same-version check, so two PCs can't mix builds), then WP14. Anything PT1 finds
+  jumps the queue.
 - **On hold until Zachary says so:** D8 (Steam fee and App ID) and D9 (name check). They block WP18's real test,
   WP32 and WP33.
 - **Other threads working in this repo:** the floor generator thread owns `systems/level_gen`,
@@ -130,7 +133,7 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G57 | `test_thrown_crate_barely_hurts_a_heavy_enemy` (physics_props) failed once in a full run: the thrown crate hit the 50 kg test enemy twice (it bounced), leaving 6.6 health where the test wants more than 9. It passed 3 times in a row alone. Physics bounce timing; worth making the test count only the first hit. Found in WP11. | reliability | S | ||
 | G55 | The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
 | G54 | ~~Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors.~~ Fixed in WP3. | reliability | S | |
-| G58 | **Nothing checks that the host and a joining player run the same version of the game.** Two different builds can join each other, and the result is confusing bugs on one PC only (missing enemies, things out of step). Needs a build number shown in the main menu and a clear "your game is a different version" message on join. Found in the 2026-11-12 review. | reliability | S | |
+| G58 | (WP13b) **Nothing checks that the host and a joining player run the same version of the game.** Two different builds can join each other, and the result is confusing bugs on one PC only (missing enemies, things out of step). Needs a build number shown in the main menu and a clear "your game is a different version" message on join. Found in the 2026-11-12 review. | reliability | S | |
 
 ### Fun and clarity
 | # | Gap | Tag | Size | You |
@@ -354,6 +357,43 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Built:** both bosses as content files with grey-box bodies, and two new attack pieces any later boss can reuse. **Mushroom Man** (700 health): lobs fans of spores, slams the ground in a spore cloud that leaves you coughing, and wakes mushroom zombies; under 60% health it adds a ring of spores in every direction, under 25% it lobs faster. **Robobrain** (800 health): sweeps a low laser across the room (jump over it, or stand on a crate), fires rocket pairs from its arms and stomps anyone hugging it; under 60% it calls drones, under 30% everything speeds up. Botany and Robotics boss floors are on, so a run's boss floors are now rolled among all three departments. Each boss drops gems, meat and its department's upgrade (a DNA vial or a data drive). All three bosses still fight in the same grey arena room; arenas per department are a level_gen need.
 - **Status: waiting for your play test.** Branch `wp/13-bosses` (stacked on `wp/12-profile`).
 
+#### WP13b: Same-version check (moved up from WP15b on 2026-11-12, for PT1)
+- **What:** a build number shown in the main menu, and a clear "your game is a different version from the host's"
+  message instead of joining when the two don't match (G58).
+- **Why now:** PT1 puts test builds on two PCs. Without this, an old build joining a new one gives bugs on one PC
+  only, and nobody can tell why.
+- **Test it:** the main menu shows the build number; two local windows still join each other.
+- **Gaps:** G58. **Status: not started.**
+
+#### PT1: First real-Steam session (Zachary and one friend; added 2026-11-12, Zachary's choice)
+- **What:** the first time the game runs on two PCs over real Steam. Everything so far is only proven with game
+  windows on one PC, and voice and the Steam connection are the riskiest untested parts.
+- **How:** type the merge phrase for the stack, then "make a test build". Both of you unzip the same build. Go
+  through section f's checklist from the top (the first 11 boxes fit in one sitting) and tell Claude which boxes
+  failed and what you saw. Turn the playtest log on first (console: `telemetry on`) and send the file it names.
+- **After it:** Claude fixes what failed before starting the next content package.
+- **Status: waiting on Zachary** (a friend, a time, and the two phrases above).
+
+#### Fun checks (added 2026-11-12, Zachary's choice)
+Tests can say the game works. Only people playing can say it's fun. At the end of each phase Zachary (with a
+friend when possible) plays for 30 minutes and answers five questions in the thread. Claude turns every "annoying"
+or "confusing" answer into a gap line and fixes the cheap ones before the next phase.
+
+The five questions, the same every time:
+1. In the first two minutes, was there a moment you didn't know what to do next? Where?
+2. What was the best moment, the one you'd tell a friend about?
+3. What was the most annoying or boring moment?
+4. When you died or took damage, did it feel fair? Could you tell what hit you?
+5. When the 30 minutes were up, did you want one more floor? (1 = no, 5 = yes)
+
+| Check | When | 30-minute play script | Status |
+|---|---|---|---|
+| Fun check 1 | Now (phases R, U and C are built). Do it in the same session as PT1 if you can. | Read the Break Room boards. Play floors 1 to 3 without the console: fix the lift, buy one thing, use the mutation machine, die once and get reprinted. Then jump to a boss floor with the console's `floor` command and fight whichever boss it is. | waiting on Zachary |
+| Fun check 2 | After WP16 (first balance pass) | A whole run from floor 1 with no console, 2 or more players. | not yet |
+| Fun check 3 | After WP19 (cosmetics, achievements, ending) | Two short runs in a row: is there a reason to start the second one? | not yet |
+| Fun check 4 | After the art rollout (WP27) | A run in the new look: can you still read enemies, pickups and exits at a glance? | not yet |
+| Fun check 5 | After music (WP30), before launch work | A whole run with friends who have never played, and you say nothing. | not yet |
+
 #### WP14: Items and brainstorm leftovers
 - **What:** laser pointer (a "lure" behaviour piece: some enemies chase the dot), 1 or 2 more items, Fly drawn to
   trash props and flies drawn to Fly players, Giraffe crouches through doors.
@@ -365,14 +405,12 @@ can play. Every package follows the Working rules (section i). Status values: **
 - **Gaps:** G18, G23. **Status: not started.**
 
 #### WP15b: Clean-up sweep (added 2026-11-12, in the review)
-- **What:** the gaps and leftovers that had no package: a version check on join with the build number in the main
-  menu (G58), every player's kills in the run summary and stats, ping over Steam, hazard data files (G27), the
+- **What:** the gaps and leftovers that had no package (the version check moved up to WP13b): every player's kills in the run summary and stats, ping over Steam, hazard data files (G27), the
   typing warnings outside level_gen (G55), the flaky crate test (G57), the host-leaving network error (G51).
-- **Why here:** it's the last stop before friends play the game for the balance pass, and a version check matters
-  the moment two PCs can hold different test builds.
-- **Test it:** the main menu shows a build number; the run summary shows kills for everyone; the Output panel has
+- **Why here:** it's the last stop before friends play the game for the balance pass.
+- **Test it:** the run summary shows kills for everyone; the Output panel has
   no typing warnings from the systems this package touched.
-- **Gaps:** G27, G51, G55, G57, G58, and the "Promised later" lines marked WP15b. **Status: not started.**
+- **Gaps:** G27, G51, G55, G57, and the "Promised later" lines marked WP15b. **Status: not started.**
 
 #### WP16: Balance pass 1
 - **What:** with telemetry from at least 3 of your play sessions: run length (D1), prices, gem drops, vial chance,
@@ -402,6 +440,20 @@ can play. Every package follows the Working rules (section i). Status values: **
 #### WP21: Look target (needs your OK on screenshots before anything rolls out)
 - One Zoology animal holding room, the lift, the rat, a crate, gem, meat and DNA vial at final quality.
   **Status: not started.**
+#### WP21b: Performance budget check (added 2026-11-12, Zachary's choice; before the art rollout)
+- **What:** measure before the art multiplies: frames per second, the time a floor takes to load, and how much the
+  graphics card is asked to draw, on Zachary's PC, in the busiest grey-box floor and in the look-target room, alone
+  and with 4 local players. A `perf` console command shows the numbers live. The result sets the real budgets in
+  the art bible (triangles, lights that cast shadows, effects), replacing section d's estimates.
+- **Why here:** if the look target is too heavy, it's far cheaper to find out with one room than after sixty.
+- **Test it:** type `perf` in the console on a busy floor and read the numbers against the budget.
+- **Gaps:** G47 (first half). **Status: not started.**
+#### WP21c: The Steam "Coming soon" page (added 2026-11-12, Zachary's choice; waits on D8 and D9)
+- **What:** the store page goes up as soon as the look target gives real screenshots, not at the end: capsule
+  images, 5 screenshots, a short description, tags, system requirements and the AI-content disclosure. Wishlists
+  take months to build, and Steam reviews a new page before it can go live.
+- **Needs:** the name check (D9), then the Steam fee and App ID (D8). Both are on hold until Zachary says so.
+- **Gaps:** G42, G43 (first half). **Status: waiting on Zachary** (D8 and D9).
 #### WP22 to WP27: Art rollout
 - WP22 modular kit (walls, floors, ceilings, doors, hallway pieces) for all three palettes; WP23 shared props;
   WP24 player body and mutation parts; WP25 enemies and bosses with animation; WP26 effects and lighting per
@@ -417,12 +469,13 @@ can play. Every package follows the Working rules (section i). Status values: **
 
 ### Phase L: launch
 #### WP31: Performance and 8-player stress
-- LODs, light and shadow limits, a frame-time budget on a modest PC, 8 local instances. **Status: not started.**
+- The final pass against WP21b's budget: LODs, light and shadow limits, a modest PC, 8 local instances. **Status: not started.**
 #### WP32: Steam setup and builds
 - App ID, achievements in Steamworks, Steam Cloud for the profile, export presets without tests and GUT, depot
   upload, playtest branch. **Status: not started.**
-#### WP33: Store page and launch
-- Capsules, screenshots, trailer, description, AI disclosure, release checklist (section g). **Status: not started.**
+#### WP33: Trailer, final store page and launch
+- The page itself goes up early (WP21c). Here: the trailer, final screenshots and capsules, and the release
+  checklist (section g). **Status: not started.**
 
 ---
 
@@ -650,6 +703,8 @@ Added 2026-11-12 from what the first 12 packages taught us:
   package's status so the next session knows where to pick up.
 - **Leftovers go in "Promised later"** (end of section b) with the package that will pick them up, not only in a
   "Built" note.
+- **Fun checks and play tests come before more of the same.** When a phase ends, post its fun check (section c)
+  and keep its row up to date. When Zachary reports a play test, fix what it found before the next content package.
 
 ### Needs from level_gen (for the step 6 thread, not changed here)
 - Botany and Robotics will need `enemy_spawn` markers that suit stationary enemies (turrets, flytraps): a wall or

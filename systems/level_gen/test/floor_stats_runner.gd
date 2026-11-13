@@ -6,6 +6,9 @@ extends Node
 ##
 ## Run it headless from a terminal (options after "--", all optional):
 ##   godot --headless --path . res://systems/level_gen/test/floor_stats_runner.tscn -- count=20 builds=2 players=1 out=C:/some/folder label=before
+## `budget=department` works the enemy budget out the old way (from the floor's place in its department block,
+## as the spawner did before step 6c) instead of from the run's floor.
+## `enemy_budget_per_floor=0.17` tries that value for this run only (config/game_config.tres is not changed).
 ## The seeds are fixed (from the department, floor and sample number), so a run before and after a tuning
 ## change compares the same floors. Without `out` the files go to user://floorgen/stats/.
 
@@ -18,7 +21,7 @@ const EARLY_HAZARDS_MAX: int = 2
 const GROWTH_STEP_RANGE: Vector2 = Vector2(0.5, 3.0)
 
 var _options: Dictionary[String, String] = {"count": "20", "builds": "2", "players": "1",
-	"out": "user://floorgen/stats", "label": ""}
+	"out": "user://floorgen/stats", "label": "", "budget": "run"}
 
 
 func _ready() -> void:
@@ -32,6 +35,9 @@ func _run() -> void:
 	var count: int = maxi(_options["count"].to_int(), 1)
 	var builds: int = maxi(_options["builds"].to_int(), 0)
 	var players: int = maxi(_options["players"].to_int(), 1)
+	# Trying a value without editing config/game_config.tres (this run only).
+	if _options.has("enemy_budget_per_floor"):
+		Config.game.enemy_budget_per_floor = _options["enemy_budget_per_floor"].to_float()
 	var floors: int = Config.game.run_floor_count
 	var tuning: FloorGenTuning = Config.floor_gen
 	var rows: Array[Dictionary] = []
@@ -44,7 +50,7 @@ func _run() -> void:
 				var floor_seed: int = absi(hash("stats|%s|%d|%d" % [department.id, floor_number, sample])) % 2147483646 + 1
 				var started: int = Time.get_ticks_usec()
 				var layout: FloorLayout = FloorGenerator.generate_from_seed(department, floor_number, floor_seed, tuning, players)
-				var row: Dictionary = FloorStats.measure(layout, tuning)
+				var row: Dictionary = FloorStats.measure(layout, tuning, players, _options["budget"] != "department")
 				row["plan_ms"] = float(Time.get_ticks_usec() - started) / 1000.0
 				if sample < builds:
 					started = Time.get_ticks_usec()
@@ -81,6 +87,9 @@ func _summary(rows: Array[Dictionary], count: int, players: int) -> String:
 	text.append("")
 	text.append("%d floors: %d per department per floor number, %d player(s), tuning config/floor_gen_tuning.tres. "
 		% [rows.size(), count, players] + "Boss floors (every %d) are generated as normal floors here." % Config.game.boss_every_floors)
+	text.append("Enemy budget: +%d%% a floor (enemy_budget_per_floor %.2f), worked out from the %s floor." % [
+		roundi(Config.game.enemy_budget_per_floor * 100.0), Config.game.enemy_budget_per_floor,
+		"department block's" if _options["budget"] == "department" else "run's"])
 	text.append("Times are on this PC (plan = generate the layout, build = Level.build without the navigation bake).")
 	text.append("")
 	text.append("## Checks against the plan")
@@ -151,6 +160,11 @@ func _checks(rows: Array[Dictionary]) -> PackedStringArray:
 	for floor_number: int in floor_numbers:
 		density.append("%.2f" % FloorStats.average(by_floor[floor_number], "enemies_per_room"))
 	lines.append("Enemy spawn spots per room (floors 1 to %d): %s." % [floor_numbers.size(), ", ".join(density)])
+	var crowding := PackedStringArray()
+	for floor_number: int in floor_numbers:
+		crowding.append("%.2f" % FloorStats.average(by_floor[floor_number], "enemies_spawned_per_room"))
+	lines.append("Enemies spawned per room (floors 1 to %d, budget from the %s floor): %s." % [floor_numbers.size(),
+		"department block's" if _options["budget"] == "department" else "run's", ", ".join(crowding)])
 	return lines
 
 

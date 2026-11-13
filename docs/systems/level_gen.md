@@ -634,6 +634,8 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   summary). NEW `FloorLayout.stats["longest_path_m"]` (the walk from the elevator to the farthest tile). Tuning:
   `floor_brackets` (1, 3, 6, 8) -> (1, 4, 6, 9) so floors 1-3 are all the gentlest bracket (floor 3 had a jump in parts,
   keycard doors and loops). Report with before and after tables: `docs/design/floor-stats-6c.md`.
+  Also (Zachary's OK) the enemies' spawner budget follows the run's floor and `enemy_budget_per_floor` is 0.2 in
+  `config/game_config.tres`, so enemies per room stay about 0.5 on every floor. `FloorStats` counts spawned enemies too.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

@@ -11,16 +11,20 @@ extends RefCounted
 const COLUMNS: PackedStringArray = ["department", "floor", "seed", "boss_floor", "attempt", "fallback", "tiles",
 	"rooms", "hall_tiles", "longest_path_m", "branch_depth", "loops", "parts", "part_path_min_m", "part_path_mean_m",
 	"part_path_max_m", "part_path_min_share", "doors", "door_broken", "door_pry", "door_power", "door_debris",
-	"door_keycard", "locks", "keycards", "enemies", "enemies_per_room", "hazards", "damaged_share", "heavy_share",
-	"cameras", "cameras_broken", "plan_ms", "build_ms"]
+	"door_keycard", "locks", "keycards", "enemies", "enemies_per_room", "enemy_budget", "enemies_spawned",
+	"enemies_spawned_per_room", "hazards", "damaged_share", "heavy_share", "cameras", "cameras_broken", "plan_ms", "build_ms"]
 ## Columns averaged in the summary tables.
 const SUMMARY_COLUMNS: PackedStringArray = ["rooms", "tiles", "longest_path_m", "parts", "part_path_mean_m",
 	"part_path_min_share", "locks", "door_pry", "door_power", "door_debris", "door_keycard", "keycards", "enemies",
-	"enemies_per_room", "hazards", "damaged_share", "heavy_share", "cameras", "loops", "attempt", "plan_ms", "build_ms"]
+	"enemies_per_room", "enemies_spawned", "enemies_spawned_per_room", "hazards", "damaged_share", "heavy_share",
+	"cameras", "loops", "attempt", "plan_ms", "build_ms"]
 
 
 ## One floor's numbers. plan_ms and build_ms are filled in by whoever timed them (-1 = not measured).
-static func measure(layout: FloorLayout, tuning: FloorGenTuning) -> Dictionary:
+## `player_count` sets the enemy budget; `budget_from_run_floor` false works the budget out from the floor's place in
+## its department block, as the spawner did before step 6c (for "before" numbers).
+static func measure(layout: FloorLayout, tuning: FloorGenTuning, player_count: int = 1,
+		budget_from_run_floor: bool = true) -> Dictionary:
 	var row: Dictionary = {}
 	row["department"] = String(layout.department_id)
 	row["floor"] = layout.floor_number
@@ -72,6 +76,10 @@ static func measure(layout: FloorLayout, tuning: FloorGenTuning) -> Dictionary:
 	var enemies: int = layout.active_markers.get(&"enemy_spawn", PackedStringArray()).size()
 	row["enemies"] = enemies
 	row["enemies_per_room"] = float(enemies) / float(rooms) if rooms > 0 else 0.0
+	var spawned: Array[int] = spawned_enemies(layout, player_count, budget_from_run_floor)
+	row["enemy_budget"] = spawned[0]
+	row["enemies_spawned"] = spawned[1]
+	row["enemies_spawned_per_room"] = float(spawned[1]) / float(rooms) if rooms > 0 else 0.0
 	row["hazards"] = layout.active_markers.get(&"hazard", PackedStringArray()).size()
 	var damaged: int = 0
 	var heavy: int = 0
@@ -92,6 +100,21 @@ static func measure(layout: FloorLayout, tuning: FloorGenTuning) -> Dictionary:
 	row["plan_ms"] = -1.0
 	row["build_ms"] = -1.0
 	return row
+
+
+## The enemies the spawner would put on this floor, worked out the way it does (Enemies.spawn_floor on floor_ready):
+## [budget, how many enemies]. The enemy types allowed follow the floor's place in its department block.
+static func spawned_enemies(layout: FloorLayout, player_count: int, budget_from_run_floor: bool = true) -> Array[int]:
+	var block: int = Config.game.boss_every_floors
+	var floor_in_department: int = (layout.floor_number - 1) % block + 1 if block > 0 else layout.floor_number
+	var budget_floor: int = layout.floor_number if budget_from_run_floor else floor_in_department
+	var budget: int = RunDifficulty.enemy_budget(budget_floor, player_count)
+	var department := ContentRegistry.get_content(layout.department_id) as DepartmentData
+	var rng: RandomNumberGenerator = SeededRng.make(layout.floor_seed, &"enemy_spawns", floor_in_department)
+	var plan: Array[StringName] = EnemiesService.plan_spawns(EnemiesService.pool_for(department), floor_in_department,
+		budget, rng)
+	var result: Array[int] = [budget, plan.size()]
+	return result
 
 
 ## Walking distance (metres) along a path of placements, through the tiles' centres (as the generator measures).

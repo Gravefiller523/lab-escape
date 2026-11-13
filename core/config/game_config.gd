@@ -40,6 +40,11 @@ extends Resource
 ## Seconds the run summary shows before everyone goes back to the Break Room. CHANGED 2026-11-11 (roadmap WP5): 5 -> 12,
 ## so there is time to read the summary screen.
 @export var run_summary_seconds: float = 12.0
+## NEW 2026-11-13 (roadmap WP19): the ending. Seconds in the car park before the credits start, how long the credits
+## roll takes, and how long "YOU ESCAPED" stays up.
+@export var ending_car_park_seconds: float = 15.0
+@export var credits_seconds: float = 40.0
+@export var escape_banner_seconds: float = 3.0
 ## Seconds the host waits for every PC to finish building a floor before starting it anyway.
 @export var floor_load_timeout: float = 20.0
 ## Shortest cargo lift ride between floors (seconds); longer if a PC is still building the next floor.

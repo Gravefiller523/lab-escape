@@ -26,6 +26,9 @@ signal run_ended(result: StringName)
 signal floor_loading(floor_number: int, department_id: StringName)
 ## Fires on: all, when the floor is built and every player is placed.
 signal floor_ready(floor_number: int, department_id: StringName)
+## NEW 2026-11-13 (roadmap WP19). Fires on: all, when the lift comes out in the car park after the last boss (the
+## ending). The run summary and the credits follow. [game_flow]
+signal surface_reached()
 ## Fires on: all, when the players step out of the lift onto a boss floor.
 signal boss_floor_started(boss_id: StringName)
 

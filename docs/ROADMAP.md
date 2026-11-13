@@ -9,25 +9,24 @@ work package whose status is not "done" and isn't waiting on Zachary.
 
 ## Where things stand (keep this box up to date; last updated 2026-11-13)
 
-- **Merged into main (pushed 2026-11-13):** WP1 to WP15, WP13b and WP15b. That is everything up to the hamster
-  wheel; PT1's test build can be made from main now.
+- **Merged into main (pushed 2026-11-13):** WP1 to WP15, WP13b, WP15b and WP18, and the build number in the main
+  menu. PT1's test build can be made from main now.
 - **Waiting on Zachary.** Each branch below sits on top of the one above it, so a merge phrase for one also
-  merges everything above it in this table. "push and merge wp/13c-build-label into main" merges both.
+  merges everything above it in this table. "push and merge wp/19-ending into main" merges it.
 
   | Branch | Package | What to try in the game |
   |---|---|---|
-  | `wp/18-achievements` | WP18 | Console: `achievements` lists them. Escape a run (or `end_run escaped`) and a toast says "Achievement: Clocking Out". |
-  | `wp/13c-build-label` | WP13b (extra) | The main menu's bottom-right corner shows the build, e.g. "v0.1.0 build dev-4ffc6b1". |
+  | `wp/19-ending` | WP19 | Console: `floor 12` (or the last floor), beat the boss, press Go: the car park, "YOU ESCAPED", the summary, the credits, then the Break Room. |
 
 - **Also waiting on Zachary: PT1, the first real-Steam session** with one friend, together with fun check 1 (both
-  in section c, after WP13). It needs a test build: say "make a test build" (main has everything up to WP15).
-- **Next for Claude:** WP19 (the ending and credits). WP16 (balance) needs your play sessions, and WP17 (cosmetics) needs your OK on a closet mock-up. Anything PT1 finds jumps the queue.
+  in section c, after WP13). It needs a test build: say "make a test build" (main has everything up to WP18).
+- **Next for Claude:** WP17 (cosmetics and the jacket closet; mock-up approved). WP16 (balance) needs your play sessions. Anything PT1 finds jumps the queue.
 - **On hold until Zachary says so:** D8 (Steam fee and App ID) and D9 (name check). They block WP18's real test,
   WP32 and WP33.
 - **Other threads working in this repo:** the floor generator thread owns `systems/level_gen`,
   `config/floor_gen_tuning.tres`, and the run length numbers `run_floor_count` and `boss_every_floors` (decision D1
   is approved but not applied yet: today they are still 18 and 6). It works in its own folder, `../lab-escape-6a`.
-- **Pace so far:** 18 packages built in the first 3 days. The code packages went much faster than the estimate in
+- **Pace so far:** 19 packages built in the first 3 days. The code packages went much faster than the estimate in
   section a. The art, sound and launch phases (WP20 on) depend on Zachary's time, tools and play tests, and are
   still the long part.
 
@@ -364,7 +363,7 @@ can play. Every package follows the Working rules (section i). Status values: **
   only, and nobody can tell why.
 - **Test it:** the main menu shows the build number; two local windows still join each other.
 - **Gaps:** G58.
-- **Built:** every build now has an id: the version number (0.1.0, in the project settings) plus a short fingerprint the game works out by itself. Two people who unzipped the same test build always match; any two different builds never do. A joiner on another build is stopped before loading anything and lands in the main menu with a message naming both builds. The console's `version` command prints yours, and the playtest log records it. Zachary OK'd it on 2026-11-13, so the main menu now shows the build in small grey text in its bottom-right corner (branch `wp/13c-build-label`, stacked on `wp/18-achievements`).
+- **Built:** every build now has an id: the version number (0.1.0, in the project settings) plus a short fingerprint the game works out by itself. Two people who unzipped the same test build always match; any two different builds never do. A joiner on another build is stopped before loading anything and lands in the main menu with a message naming both builds. The console's `version` command prints yours, and the playtest log records it. Zachary OK'd it on 2026-11-13, so the main menu now shows the build in small grey text in its bottom-right corner (merged into main 2026-11-13).
 - **Status: done.** Merged into main 2026-11-13 (the main menu's build label is on `wp/13c-build-label`).
 
 #### PT1: First real-Steam session (Zachary and one friend; added 2026-11-12, Zachary's choice)
@@ -441,12 +440,14 @@ The five questions, the same every time:
 - **Gaps:** G25, G32.
 - **Built:** 15 achievements, all data files, all with original names: Clocking Out (escape), Overtime Champion (escape 5 times), Pest Control, Weed Killer and Unplugged (one per boss), Workplace Accident (die), Printed Fresh (be reprinted), Side Effects May Vary (first upgrade), Science Project (10 upgrades), Animal Control (100 kills), Employee Discount (buy something), Cardio Day (fill a hamster wheel), Maintenance Crew (fit 50 lift parts), Mass Layoff (team wipe) and Red Dot Special (use the laser pointer 20 times). Each PC counts its own player's; progress is saved in the profile, a toast says when one unlocks, and Steam is told when it's running. Console `achievements` lists your progress.
 - **Not yet:** they can only pop on Steam for real once the game has its own App ID (decision D8); the list of names to create in Steamworks is in `docs/systems/achievements.md`. Two achievements are meant to unlock cosmetics (decision D6); that comes with WP17.
-- **Status: waiting for your play test.** Branch `wp/18-achievements` (stacked on `wp/15-hamster-wheel`).
+- **Status: done.** Merged into main 2026-11-13.
 
 #### WP19: The ending and credits
 - **What:** the last boss opens the way up; the lift breaks out into daylight, a short "you escaped" scene with the
   run summary, then credits from `docs/CREDITS.md`.
-- **Gaps:** G29, G45. **Status: not started.**
+- **Gaps:** G29, G45.
+- **Built (mock-up approved):** after the last boss the lift rides up into white light (with a PA line) and bursts out in the lab's car park, in daylight, with parked cars and the lab behind. "YOU ESCAPED" shows for 3 seconds, then the run summary, and everyone can walk around. After 15 seconds the credits roll (40 seconds, Esc skips them on your own PC), then the lift takes everyone down to the Break Room. The credits come from `docs/CREDITS.md` (copied into `config/credits.tres`) plus Godot's own licence notices. Wipes end as before. Grey box until the art pass.
+- **Status: waiting for your play test.** Branch `wp/19-ending` (stacked on `wp/13c-build-label`).
 
 ### Phase A: art (see section d)
 #### WP20: Art bible, tools and import pipeline

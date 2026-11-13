@@ -32,6 +32,10 @@ const RESULT_ABANDONED: StringName = &"abandoned"
 ## Level kinds (the "kind" of a level dictionary).
 const LEVEL_BREAK_ROOM: String = "break_room"
 const LEVEL_FLOOR: String = "floor"
+## NEW 2026-11-13 (roadmap WP19): the car park (the ending), and what the lift's panel says while it waits there.
+const LEVEL_SURFACE: String = "surface"
+const CAR_PARK_SCENE: String = "res://systems/game_flow/ending/car_park.tscn"
+const CAR_PARK_HOLD_NOTE: String = "Going back down after the credits"
 ## Most frames to wait for a new scene to appear after changing to it.
 const SCENE_WAIT_FRAMES: int = 10
 ## Seconds of waiting for a slow PC before the host is told who it is waiting for.
@@ -143,6 +147,8 @@ func start_run(run_seed: int = 0) -> void:
 
 ## Host: end the run. result: &"escaped", &"wiped" or &"abandoned". The lift takes everyone back down
 ## to the Break Room (players outside it are brought in first).
+## CHANGED 2026-11-13 (roadmap WP19, mock-up approved by Zachary): an escape rides up to the car park instead: a few
+## seconds there ("YOU ESCAPED", the run summary), the credits, then the lift takes everyone down to the Break Room.
 func end_run(result: StringName) -> void:
 	if not _net.is_host() or not is_in_run() or _state == State.RUN_SUMMARY:
 		return
@@ -150,7 +156,7 @@ func end_run(result: StringName) -> void:
 	var lift: CargoLift = CargoLift.current()
 	if lift != null:
 		lift.gather_players()
-	_ride_to({"kind": LEVEL_BREAK_ROOM})
+	_ride_to({"kind": LEVEL_SURFACE if result == RESULT_ESCAPED else LEVEL_BREAK_ROOM})
 
 
 ## Host (and solo): go to the game world's Break Room from the menu. A client calls it after joining;
@@ -389,9 +395,10 @@ func _host_arrive(level: Dictionary) -> void:
 	var world: GameWorld = GameWorld.current()
 	var lift: CargoLift = CargoLift.current()
 	var to_break_room: bool = str(level.get("kind", "")) == LEVEL_BREAK_ROOM
+	var to_surface: bool = str(level.get("kind", "")) == LEVEL_SURFACE
 	if lift != null:
-		if to_break_room:
-			lift.arrive(0, true)
+		if to_break_room or to_surface:
+			lift.arrive(0, to_break_room)
 		elif _run != null and _run.is_boss_floor:
 			lift.arrive(0, false, true)
 		else:
@@ -400,6 +407,25 @@ func _host_arrive(level: Dictionary) -> void:
 		# Players who join from now on (or waited for this floor) appear here.
 		world.get_player_spawner().spawn_points = _spawn_points_for(level, world)
 	_arrived_rpc.rpc(level)
+	if to_surface:
+		_play_ending()
+
+
+## NEW 2026-11-13 (roadmap WP19), host: in the car park: wait, roll the credits on every PC, then take everyone down
+## to the Break Room. Stops if something else moved the lift meanwhile.
+func _play_ending() -> void:
+	var ride: int = _ride_id
+	await get_tree().create_timer(_config.ending_car_park_seconds).timeout
+	if ride != _ride_id or _state != State.RUN_SUMMARY:
+		return
+	_credits_rpc.rpc()
+	await get_tree().create_timer(_config.credits_seconds).timeout
+	if ride != _ride_id or _state != State.RUN_SUMMARY:
+		return
+	var lift: CargoLift = CargoLift.current()
+	if lift != null:
+		lift.gather_players()
+	_ride_to({"kind": LEVEL_BREAK_ROOM})
 
 
 ## Host: how many of the lift's slots break on this floor: the department's lift_breaks_min to max,
@@ -481,6 +507,10 @@ func _spawn_points_for(level: Dictionary, world: GameWorld) -> Array[Node3D]:
 		var room: BreakRoom = _break_room_in(world)
 		if room != null:
 			return room.get_spawn_points()
+	if str(level.get("kind", "")) == LEVEL_SURFACE:
+		for child: Node in world.get_node("LevelRoot").get_children():
+			if child is CarPark:
+				return (child as CarPark).get_spawn_points()
 	return world.get_lift().get_spawn_points()
 
 
@@ -515,6 +545,10 @@ func _enter_world(level: Dictionary) -> void:
 func _show_level(level: Dictionary) -> void:
 	_level_data = level
 	_build_level.call(level)
+	# NEW 2026-11-13 (roadmap WP19): in the car park the lift waits for the credits; anywhere else it doesn't.
+	var lift: CargoLift = CargoLift.current()
+	if lift != null:
+		lift.set_hold_note(CAR_PARK_HOLD_NOTE if str(level.get("kind", "")) == LEVEL_SURFACE else "")
 
 
 ## The real level builder: the Break Room scene, or a floor from its layout, in the game world.
@@ -524,6 +558,8 @@ func _build_level_in_world(level: Dictionary) -> void:
 		return
 	if str(level.get("kind", "")) == LEVEL_BREAK_ROOM:
 		world.build_break_room(load(BREAK_ROOM_SCENE) as PackedScene)
+	elif str(level.get("kind", "")) == LEVEL_SURFACE:
+		world.build_surface(load(CAR_PARK_SCENE) as PackedScene)
 	else:
 		var layout_data: Dictionary = level.get("layout", {})
 		world.build_floor(FloorLayout.from_dict(layout_data))
@@ -584,6 +620,9 @@ func _arrived_rpc(level: Dictionary) -> void:
 		_run = null
 		_set_state(State.BREAK_ROOM)
 		return
+	if str(level.get("kind", "")) == LEVEL_SURFACE:
+		EventBus.surface_reached.emit()
+		return
 	if _run == null:
 		return
 	_set_state(State.BOSS_FIGHT if _run.is_boss_floor else State.ON_FLOOR)
@@ -591,6 +630,12 @@ func _arrived_rpc(level: Dictionary) -> void:
 	if _run.is_boss_floor:
 		var department: DepartmentData = get_current_department()
 		EventBus.boss_floor_started.emit(department.boss_id if department != null else &"")
+
+
+## NEW 2026-11-13 (roadmap WP19): host -> everyone: roll the credits.
+@rpc("authority", "call_local", "reliable")
+func _credits_rpc() -> void:
+	UI.show_screen(UIService.SCREEN_CREDITS)
 
 
 @rpc("authority", "call_local", "reliable")

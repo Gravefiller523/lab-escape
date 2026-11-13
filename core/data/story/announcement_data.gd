@@ -10,6 +10,9 @@ extends ContentData
 @export var department_ids: Array[StringName] = []
 ## How likely it is to be picked compared with the others that fit.
 @export var weight: float = 1.0
+## NEW 2026-11-13 (roadmap WP19): when it is read: &"floor" (a few seconds into a floor; empty means the same) or
+## &"escape_ride" (on the last ride up, after the last boss).
+@export var moment: StringName = &"floor"
 
 
 func get_type_key() -> StringName:

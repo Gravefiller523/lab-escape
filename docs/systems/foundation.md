@@ -170,3 +170,4 @@ None. Everything else depends on this.
 - 2026-11-13 (roadmap WP15b): NEW EventBus signal `kill_credited` (see event_bus.md).
 - 2026-11-13 (roadmap WP15): FloorTaskData NEW `work_seconds`, `reward_loot_id`, `params`; reward kind `loot`. project.godot: NEW autoload `Objectives` (after Security).
 - 2026-11-13 (roadmap WP18): AchievementData NEW `match_text`. project.godot: NEW autoload `Achievements` (after Telemetry).
+- 2026-11-13 (roadmap WP19): NEW EventBus signal `surface_reached`. NEW GameConfig `ending_car_park_seconds`, `credits_seconds`, `escape_banner_seconds`. AnnouncementData NEW `moment` (`floor` or `escape_ride`). NEW data class `CreditsData` (`core/data/story/credits_data.gd`) and its file `config/credits.tres`.

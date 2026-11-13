@@ -9,6 +9,8 @@ const SCREEN_MAIN_MENU: StringName = &"main_menu"
 const SCREEN_PAUSE: StringName = &"pause"
 ## NEW 2026-11-11 (roadmap WP6): Tab: everyone with their ping, Mute and (host) Kick.
 const SCREEN_PLAYERS: StringName = &"players"
+## NEW 2026-11-13 (roadmap WP19): the credits roll at the end of an escaped run.
+const SCREEN_CREDITS: StringName = &"credits"
 ## Above the game, below debug overlays.
 const LAYER: int = 10
 const TOAST_GAP_SECONDS: float = 0.2
@@ -17,6 +19,7 @@ var _screens: Dictionary[StringName, PackedScene] = {
 	SCREEN_MAIN_MENU: preload("res://systems/ui/screens/main_menu.tscn"),
 	SCREEN_PAUSE: preload("res://systems/ui/screens/pause_menu.tscn"),
 	SCREEN_PLAYERS: preload("res://systems/ui/screens/player_list_screen.tscn"),
+	SCREEN_CREDITS: preload("res://systems/ui/screens/credits_screen.tscn"),
 }
 var _open_screen: Control
 var _open_name: StringName = &""

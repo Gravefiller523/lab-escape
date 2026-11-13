@@ -12,11 +12,19 @@ extends Node3D
 
 const LIFT_SCENE: PackedScene = preload("res://systems/cargo_lift/cargo_lift.tscn")
 const DEFAULT_PROP_ID: StringName = &"prop_crate"
+## NEW 2026-11-13 (roadmap WP19): the light in the lab and in the car park.
+const NIGHT_BACKGROUND: Color = Color(0.12, 0.13, 0.15)
+const NIGHT_AMBIENT: Color = Color(0.55, 0.55, 0.6)
+const DAY_SKY: Color = Color(0.55, 0.75, 0.95)
+const DAY_AMBIENT: Color = Color(0.8, 0.82, 0.85)
+const DAY_SUN_ENERGY: float = 1.6
 
 var _level_root: Node3D
 var _lift: CargoLift
 var _players: PlayerSpawner
 var _props: PropSpawner
+var _environment: WorldEnvironment
+var _sun: DirectionalLight3D
 
 
 const GROUP: StringName = &"game_world"
@@ -37,13 +45,15 @@ static func current() -> GameWorld:
 func _ready() -> void:
 	add_to_group(GROUP)
 	var environment := WorldEnvironment.new()
+	_environment = environment
 	environment.environment = Environment.new()
 	environment.environment.background_mode = Environment.BG_COLOR
-	environment.environment.background_color = Color(0.12, 0.13, 0.15)
+	environment.environment.background_color = NIGHT_BACKGROUND
 	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.environment.ambient_light_color = Color(0.55, 0.55, 0.6)
+	environment.environment.ambient_light_color = NIGHT_AMBIENT
 	add_child(environment)
 	var sun := DirectionalLight3D.new()
+	_sun = sun
 	sun.rotation_degrees = Vector3(-60, 25, 0)
 	sun.shadow_enabled = true
 	add_child(sun)
@@ -92,6 +102,29 @@ func build_break_room(scene: PackedScene) -> Array[Node3D]:
 	_level_root.add_child(room)
 	_line_up(room.get_lift_spot())
 	return room.get_spawn_points()
+
+
+## NEW 2026-11-13 (roadmap WP19): every PC: puts the car park in (the ending), lined up with the lift. Returns its
+## spawn points.
+func build_surface(scene: PackedScene) -> Array[Node3D]:
+	clear_level()
+	var car_park := scene.instantiate() as CarPark
+	_level_root.add_child(car_park)
+	_line_up(car_park.get_lift_spot())
+	return car_park.get_spawn_points()
+
+
+## NEW 2026-11-13 (roadmap WP19): daylight (the car park) or the lab's dark (every other level).
+func set_daylight(on: bool) -> void:
+	if _environment == null or _sun == null:
+		return
+	_environment.environment.background_color = DAY_SKY if on else NIGHT_BACKGROUND
+	_environment.environment.ambient_light_color = DAY_AMBIENT if on else NIGHT_AMBIENT
+	_sun.light_energy = DAY_SUN_ENERGY if on else 1.0
+
+
+func is_daylight() -> bool:
+	return _environment != null and _environment.environment.background_color == DAY_SKY
 
 
 ## Every PC: builds a floor from its layout, lined up with the lift (at its lift room's lift marker).

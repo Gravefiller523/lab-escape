@@ -28,6 +28,8 @@ var run_summary: RunSummaryPanel
 var hurt_vignette: HurtVignette
 var announcer: Announcer
 var hints: Hints
+## NEW 2026-11-13 (roadmap WP19): the white light on the last ride up and "YOU ESCAPED".
+var escape_banner: EscapeBanner
 
 var _crosshair: ColorRect
 var _prompt: Label
@@ -163,6 +165,9 @@ func _ready() -> void:
 	hints = Hints.new()
 	hints.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_place(hints, self, Vector2(0, HINTS_TOP), Control.GROW_DIRECTION_BOTH, Control.GROW_DIRECTION_END)
+	escape_banner = EscapeBanner.new()
+	add_child(escape_banner)
+	run_summary.wait_for(escape_banner)
 
 
 ## A widget pinned to one point of `parent` (its anchors), `offset` away, growing the given ways to fit itself.

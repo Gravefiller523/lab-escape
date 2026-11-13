@@ -17,7 +17,16 @@ var _deaths: Dictionary[int, int] = {}
 var _gems_spent: Dictionary[int, int] = {}
 ## NEW 2026-11-13 (roadmap WP15b): kills per player, from EventBus.kill_credited (every PC hears it).
 var _kills: Dictionary[int, int] = {}
+## Filled in for this run's end (the panel shows it while the state allows).
+var _shown: bool = false
 var _force_visible: bool = false
+## NEW 2026-11-13 (roadmap WP19): after an escape the summary waits until "YOU ESCAPED" has shown.
+var _banner: EscapeBanner
+
+
+## NEW 2026-11-13 (roadmap WP19): stay hidden while this banner is busy (the light and "YOU ESCAPED").
+func wait_for(banner: EscapeBanner) -> void:
+	_banner = banner
 
 
 ## For tests only: show the panel now, whatever game_flow's state.
@@ -78,7 +87,8 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if _force_visible:
 		return
-	visible = visible and GameFlow.get_state() == GameFlowService.State.RUN_SUMMARY
+	visible = _shown and GameFlow.get_state() == GameFlowService.State.RUN_SUMMARY and not UI.get_open_screen() == UIService.SCREEN_CREDITS \
+		and (_banner == null or not _banner.is_busy())
 
 
 func _reset() -> void:
@@ -87,6 +97,7 @@ func _reset() -> void:
 	_deaths.clear()
 	_gems_spent.clear()
 	_kills.clear()
+	_shown = false
 
 
 func _on_run_ended(result: StringName) -> void:
@@ -111,6 +122,7 @@ func _on_run_ended(result: StringName) -> void:
 		_add_cell(str(_deaths.get(player_id, 0)), Color.WHITE)
 		_add_cell(str(_gems_spent.get(player_id, 0)), Color.WHITE)
 		_add_cell(", ".join(upgrades) if not upgrades.is_empty() else "-", Color.WHITE)
+	_shown = true
 	visible = true
 
 

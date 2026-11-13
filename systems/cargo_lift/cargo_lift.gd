@@ -61,6 +61,7 @@ var _broken_slots: Array[StringName] = []
 var _fixed_slots: Array[StringName] = []
 var _in_break_room: bool = true
 var _waiting_for_boss: bool = false
+var _hold_note: String = ""
 var _doors_open: bool = true
 var _riding: bool = false
 ## Batteries (net ids) that have been charged.
@@ -186,7 +187,18 @@ func is_charged(prop: NetProp) -> bool:
 
 ## Fixed (or never broken), not riding and not waiting for a boss: Go works once everyone is inside.
 func is_ready() -> bool:
-	return not is_broken() and not _riding and not _waiting_for_boss
+	return not is_broken() and not _riding and not _waiting_for_boss and _hold_note.is_empty()
+
+
+## NEW 2026-11-13 (roadmap WP19), every PC: keep the lift where it is and say why on its panel (the car park: it
+## goes back down by itself after the credits). "" lets it go again. game_flow sets it on every PC.
+func set_hold_note(note: String) -> void:
+	_hold_note = note
+	_refresh_panel()
+
+
+func get_hold_note() -> String:
+	return _hold_note
 
 
 func is_broken() -> bool:
@@ -210,6 +222,8 @@ func get_spawn_points() -> Array[Node3D]:
 func depart_blocker() -> String:
 	if _riding:
 		return ""
+	if not _hold_note.is_empty():
+		return _hold_note
 	if _waiting_for_boss:
 		return MSG_BOSS
 	if is_broken():
@@ -627,6 +641,8 @@ func _refresh_panel() -> void:
 	var broken: Array[StringName] = get_broken_slots()
 	if _riding:
 		_panel_label.text = "Going up..."
+	elif not _hold_note.is_empty():
+		_panel_label.text = _hold_note
 	elif _waiting_for_boss:
 		_panel_label.text = "Beat the boss"
 	elif not broken.is_empty():

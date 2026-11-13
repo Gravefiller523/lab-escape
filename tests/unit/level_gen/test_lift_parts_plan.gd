@@ -220,7 +220,6 @@ func test_the_lift_breaks_the_planned_parts_and_spawns_them_at_their_markers() -
 	assert_eq(broken, planned, "the plan's parts are the broken slots (not the lift's own roll)")
 	EventBus.floor_ready.emit(9, layout.department_id)
 	await wait_physics_frames(3)
-	_allow_navigation_warning()
 	for part: Array in layout.lift_parts:
 		var spawned: Array[NetProp] = props.get_props(StringName(str(part[0])))
 		assert_eq(spawned.size(), 1, "the %s was spawned" % part[0])
@@ -240,11 +239,3 @@ func test_the_lift_breaks_the_planned_parts_and_spawns_them_at_their_markers() -
 	# floor_ready started the enemies' navigation bake on a background thread: let it finish before the floor goes.
 	await wait_until(func() -> bool: return not Enemies.is_baking_navigation(), WAIT)
 	Level.clear()
-
-
-## floor_ready also makes the enemies bake their navigation, and the first bake in a run warns that it parsed
-## the CSG tiles' meshes (an enemies matter, not this test's): that warning doesn't fail the test.
-func _allow_navigation_warning() -> void:
-	for error: GutTrackedError in get_errors():
-		if error.contains_text("Source geometry parsing"):
-			error.handled = true

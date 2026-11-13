@@ -625,6 +625,10 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   holes cut in the ceiling (CSG) with a pale shaft and a dim downlight through each and a ceiling panel hanging
   down, plus 2-4 dark corners (a shadowy volume and a dead light fitting). Looks only, seeded. Test
   `test_damaged_zoology_rooms_get_skylights_and_dark_corners`.
+- 2026-11-13 (step 6b, navigation warning): checked that the enemies' bake no longer reads the blockout tiles' visual
+  meshes (it reads their collision faces since roadmap WP3, 2026-11-11), so Godot's "slow parse" warning is gone: the
+  walkable area matches the old way within 0.4% and bake time is the same (about 20-50 ms a floor). NEW test
+  `test_navigation_bake.gd` locks that in for every department; the two level_gen tests no longer excuse the warning.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

@@ -226,6 +226,25 @@ func _on_boss_died(_info: DamageInfo) -> void:
 			enemy.queue_free()
 
 
+## NEW 2026-11-12 (roadmap WP13), host: fire one projectile of an attack for everyone. How it flies and what it
+## does on a hit come from the attack's get_projectile().
+func fire_attack_projectile(attack: BossAttack, from: Vector3, shot_velocity: Vector3) -> void:
+	if multiplayer.is_server() and attack != null and attack.get_projectile() != null:
+		_attack_fire_rpc.rpc(attack.attack_name, from, shot_velocity)
+
+
+## Host -> everyone: a boss attack's shot leaves.
+@rpc("authority", "call_local", "reliable")
+func _attack_fire_rpc(attack_name: StringName, from: Vector3, shot_velocity: Vector3) -> void:
+	if not is_inside_tree():
+		return
+	var attack: BossAttack = get_attack(attack_name)
+	if attack == null or attack.get_projectile() == null:
+		return
+	Enemies.add_projectile(from, shot_velocity, attack.get_projectile(), self)
+	Sound.play_3d(Sound.event_sound(&"enemy_shoot"), from, -2.0, 0.1)
+
+
 ## Host -> everyone: the phase changed.
 @rpc("authority", "call_local", "reliable")
 func _phase_rpc(phase: int) -> void:

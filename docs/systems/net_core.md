@@ -21,6 +21,9 @@ spawning are done by player, death_respawn and game_flow (see Handoff).
 signal roster_changed()
 signal record_changed(player_id: int, field: StringName)   # NEW 2026-10-17: on every PC when a synced record field changes
 signal join_refused(reason: String)                        # NEW 2026-10-17: on a client the host turned away
+const REFUSE_VERSION: String                                # NEW 2026-11-12: how the reason starts when the builds differ
+func get_build_id() -> String                              # NEW 2026-11-12: this PC's build (BuildInfo.get_build_id())
+static func version_reason(joiner_build_id: String, host_build_id: String) -> String   # NEW 2026-11-12: the whole message
 
 func is_host() -> bool                     # true in solo too
 func is_online() -> bool                   # false in solo (no clients and no lobby)
@@ -152,6 +155,8 @@ game_flow's EventBus signals on that PC only; press them in the host window), "G
 - 2026-11-11 (roadmap WP1): CHANGED timing: a disconnect is handled one frame after the network reports it, so `player_left` (EventBus and `roster_changed`) now comes a frame later. While the signal runs the leaving peer is still on the network's list, so everything the host sent everyone in reaction also went to the closed connection and printed "Unable to send packet" errors. No API change.
 
 - 2026-11-11 (roadmap WP6): NEW `get_ping_msec(player_id) -> int`: round trip time to that player as this PC knows it (host: every client; client: the host only); -1 for yourself, solo, or Steam (not reported yet). Test `test_ping_to_other_players`.
+- 2026-11-12 (roadmap WP13b, gap G58): **same-build check on join.** The host puts its build id (`BuildInfo.get_build_id()`: version plus a fingerprint of the build) into the pre-join handshake; a joiner whose own id differs stops before loading anything, gets `join_refused` with a reason naming both builds ("Your game is a different version from the host's. You have v0.1.0 build 1a2b3c4 and the host has ...") and leaves, landing in the main menu with that message. The host checks again at the hello (`_hello` gained a third, optional `build_id`), so a build from before the check is turned away too. NEW `REFUSE_VERSION`, `get_build_id()`, `version_reason()`; tests-only `use_build_id()`. Tests: `test_join_refused_when_builds_differ`, `test_the_host_checks_the_build_again_at_hello`, `test_the_same_build_joins_as_before`.
+- 2026-11-13 (roadmap WP15b): `get_ping_msec` works on every connection type. Where the connection doesn't report a ping itself (Steam), a client times a round trip to the host every `PING_INTERVAL` (2 s) and tells the host the result, so the host knows each client's ping and each client knows the host's. NEW tests-only `use_measured_ping(on)`. Test: `test_ping_the_game_times_itself`.
 
 ## HANDOFF
 **Done:** the `Net` autoload: roster, slot indexes (lowest free slot, reused), PlayerRecords synced

@@ -14,6 +14,11 @@ extends Resource
 @export var nameplate_range: float = 5.0
 ## NEW 2026-10-19 (ui): how long a nameplate takes to fade in or out as you cross that distance (seconds).
 @export var nameplate_fade_seconds: float = 0.4
+## NEW 2026-11-12 (roadmap WP8, ui): a PA announcement shows this long after the lift arrives on a floor, for
+## announcement_seconds. A first-time hint stays up for hint_seconds.
+@export var announcement_delay_seconds: float = 6.0
+@export var announcement_seconds: float = 7.0
+@export var hint_seconds: float = 8.0
 ## NEW 2026-10-19 (damage): a player's health before upgrades.
 @export var player_max_health: float = 100.0
 

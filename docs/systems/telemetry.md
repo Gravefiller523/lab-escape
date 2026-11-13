@@ -57,6 +57,7 @@ GUT tests: `test_disabled_writes_nothing`, `test_every_signal_connected`, `test_
   `run_summary` line: result, floors reached, minutes, seconds per floor, deaths, gems spent, upgrades found, players.
   Signals with up to 5 arguments are logged (EventBus's longest has 4); a longer one prints a warning. Tests: the spec's
   four plus `test_run_summary_is_written_when_a_run_ends`.
+- 2026-11-12 (roadmap WP13b): the `telemetry_started` line now carries `build` (`BuildInfo.get_build_id()`), so a playtest log says which build wrote it.
 
 ## HANDOFF
 **Built (2026-11-11, roadmap WP4):** see the Changelog. **How to use it in a playtest:** start the game with `--telemetry`

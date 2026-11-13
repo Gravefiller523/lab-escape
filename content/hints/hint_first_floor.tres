@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="HintData" format=3]
+
+[ext_resource type="Script" path="res://core/data/story/hint_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"hint_first_floor"
+display_name = "Hint: first_floor"
+trigger = &"first_floor"
+text = "The lift is broken. The panel in the corner lists the parts it needs: find them and slot them in."

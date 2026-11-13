@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="MutationData" format=3]
+
+[ext_resource type="Script" path="res://core/data/upgrades/mutation_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/upgrade_effect_data.gd" id="2_base"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/behaviour_effect_data.gd" id="3_behaviour"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/visual_attachment_effect_data.gd" id="4_visual"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/voice_effect_data.gd" id="5_voice"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/behaviours/spore_cough.tscn" id="6_rule"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/visuals/mushroom_cap.tscn" id="7_look"]
+
+[sub_resource type="Resource" id="Rule"]
+script = ExtResource("3_behaviour")
+behaviour_scene = ExtResource("6_rule")
+params = {"interval": 8.0, "radius": 4.0, "status_id": "status_sneezing"}
+
+[sub_resource type="Resource" id="Look"]
+script = ExtResource("4_visual")
+scene = ExtResource("7_look")
+attach_point = &"head"
+
+[sub_resource type="Resource" id="Voice"]
+script = ExtResource("5_voice")
+pitch_scale = 0.9
+effect_preset = &"deep"
+effect_strength = 0.3
+
+[resource]
+script = ExtResource("1_data")
+id = &"mutation_spore_cough"
+display_name = "Spore Cough"
+description = "A mushroom cap and a raspy voice. Every few seconds you cough spores, and enemies close by stop to sneeze."
+tags = PackedStringArray("botany")
+effects = Array[ExtResource("2_base")]([SubResource("Rule"), SubResource("Look"), SubResource("Voice")])
+clash_tags = PackedStringArray()
+department_ids = Array[StringName]([&"department_botany"])
+glow_color = Color(0.8, 0.5, 0.35, 1)

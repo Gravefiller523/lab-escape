@@ -22,7 +22,7 @@ func launch(from: Vector3, start_velocity: Vector3, data: RangedAttackData, by: 
 
 
 func _ready() -> void:
-	_gravity = float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8))
+	_gravity = (ProjectSettings.get_setting("physics/3d/default_gravity", 9.8) as float)
 	var ball := MeshInstance3D.new()
 	ball.name = "Ball"
 	var sphere := SphereMesh.new()

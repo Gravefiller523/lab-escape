@@ -231,3 +231,65 @@ func test_ping_to_other_players() -> void:
 	assert_gte(host.get_ping_msec(client.local_player_id()), 0, "the host knows the client's ping")
 	assert_gte(client.get_ping_msec(host.local_player_id()), 0, "the client knows the host's")
 	assert_eq(host.get_ping_msec(host.local_player_id()), -1, "no ping to yourself")
+
+
+## NEW 2026-11-13 (roadmap WP15b): on a connection that reports no ping of its own (Steam), the game times round
+## trips itself: the client learns the host's, and tells the host, so the host knows the client's.
+func test_ping_the_game_times_itself() -> void:
+	var host := _host(_config())
+	var client := _client(_config())
+	host.use_measured_ping(true)
+	client.use_measured_ping(true)
+	await wait_until(_count_is(client, 2), WAIT)
+	assert_eq(host.get_ping_msec(client.local_player_id()), -1, "nothing measured yet")
+	await wait_until(func() -> bool: return client.get_ping_msec(host.local_player_id()) >= 0, WAIT)
+	var to_host: int = client.get_ping_msec(host.local_player_id())
+	assert_between(to_host, 0, 500, "the client timed a round trip to the host")
+	await wait_until(func() -> bool: return host.get_ping_msec(client.local_player_id()) >= 0, WAIT)
+	assert_between(host.get_ping_msec(client.local_player_id()), 0, 500, "and told the host, which now knows it too")
+	assert_eq(client.get_ping_msec(client.local_player_id()), -1, "still none to yourself")
+
+
+## NEW 2026-11-12 (roadmap WP13b): a joiner on another build of the game is turned away with both builds named,
+## before it gets ready (loads the host's floor).
+func test_join_refused_when_builds_differ() -> void:
+	var host: NetService = _host(_config())
+	var client: NetService = _make_pc(_config())
+	client.use_build_id("0.0.9+0ldbu1d")
+	var got_ready: Array[bool] = []
+	client.set_join_handlers(Callable(), func(_info: Dictionary) -> void: got_ready.append(true))
+	var reasons: Array[String] = []
+	client.join_refused.connect(func(reason: String) -> void: reasons.append(reason))
+	_join(client)
+	await wait_until(func() -> bool: return not reasons.is_empty(), WAIT)
+	assert_eq(reasons.size(), 1, "told once")
+	assert_true(reasons[0].begins_with(NetService.REFUSE_VERSION), "the reason says it's the version")
+	assert_string_contains(reasons[0], "v0.0.9 build 0ldbu1d", "it names the joiner's build")
+	assert_string_contains(reasons[0], BuildInfo.label_for(host.get_build_id()), "and the host's")
+	assert_eq(got_ready, [] as Array[bool], "it never started loading the host's floor")
+	assert_eq(host.get_player_count(), 1, "and it isn't in the game")
+
+
+## A joiner that gets past the first check anyway (a build from before the check, which doesn't look) is still
+## turned away by the host when it says hello.
+func test_the_host_checks_the_build_again_at_hello() -> void:
+	var host: NetService = _host(_config())
+	var client: NetService = _make_pc(_config())
+	# It matches during the handshake, then claims another build in its hello.
+	client.set_join_handlers(Callable(), func(_info: Dictionary) -> void: client.use_build_id(""))
+	var reasons: Array[String] = []
+	client.join_refused.connect(func(reason: String) -> void: reasons.append(reason))
+	_join(client)
+	await wait_until(func() -> bool: return not reasons.is_empty(), WAIT)
+	assert_eq(reasons.size(), 1)
+	assert_true(reasons[0].begins_with(NetService.REFUSE_VERSION))
+	assert_string_contains(reasons[0], "an older build", "no build id at all reads as an older build")
+	assert_eq(host.get_player_count(), 1)
+
+
+func test_the_same_build_joins_as_before() -> void:
+	var host: NetService = _host(_config())
+	var client: NetService = _client(_config())
+	await wait_until(_count_is(host, 2), WAIT)
+	assert_eq(client.get_build_id(), host.get_build_id(), "two copies of this build")
+	assert_eq(host.get_player_count(), 2)

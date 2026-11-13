@@ -219,6 +219,9 @@ launch options `-- host` / `-- join`.
 
 - 2026-11-11 (roadmap WP7): your camera kicks up when you lose health (`CameraFeel.hurt`, `Config.feel.hits.hurt_kick_degrees`, scaled by the camera shake setting, so reduce motion turns it off). Test `test_getting_hurt_kicks_the_view_up`.
 
+- 2026-11-12 (roadmap WP11): NEW signal `landed(fall_speed)` on PlayerCharacter (on the PC that moves the body), emitted from `notify_landed`. Spring Legs uses it.
+- 2026-11-12 (roadmap WP14): the Giraffe doorway rule is now guarded by tests (`test_the_giraffe_has_to_crouch_through_a_doorway`, `test_someone_of_normal_height_walks_straight_through` in `tests/unit/upgrades/test_fly_instincts.gd`): with `mutation_giraffe` (height x1.6 = 2.88 m) the top of a 2.8 m doorway stops a standing player and lets a crouching one through. No code change was needed.
+
 ## HANDOFF
 **Done (Phase 1a, walking):** `PlayerCharacter` (`player.tscn`): walk, sprint (forward only), jump,
 crouch (with headroom check), gravity, mouse look, camera, a grey capsule body with a blue visor so

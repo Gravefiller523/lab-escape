@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AnnouncementData" format=3]
+
+[ext_resource type="Script" path="res://core/data/story/announcement_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"announcement_greenhouse_hugs"
+display_name = "PA: greenhouse_hugs"
+text = "Botany staff: please do not hug the vine creepers. They are not hugging back."
+department_ids = Array[StringName]([&"department_botany"])

@@ -24,6 +24,7 @@ id = &"mutation_giraffe"
 display_name = "Giraffe"
 description = "Tall: see over things (mind the doorways) and a long neck."
 tags = PackedStringArray("zoology")
+department_ids = Array[StringName]([&"department_zoology"])
 effects = Array[ExtResource("2_base")]([SubResource("Move"), SubResource("Neck")])
 clash_tags = PackedStringArray()
 glow_color = Color(1, 0.8, 0.35, 1)

@@ -11,6 +11,7 @@ config_version=5
 [application]
 
 config/name="Lab Escape"
+config/version="0.1.0"
 run/main_scene="res://systems/ui/main_menu_background.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
@@ -24,6 +25,7 @@ driver/enable_input=true
 Config="*res://core/autoload/config.gd"
 EventBus="*res://core/autoload/event_bus.gd"
 ContentRegistry="*res://core/autoload/content_registry.gd"
+SaveSystem="*res://systems/save_load/save_system.gd"
 SteamSession="*res://systems/steam_session/steam_session.gd"
 Net="*res://systems/net_core/net.gd"
 Sound="*res://systems/audio/sound.gd"
@@ -45,6 +47,7 @@ Carts="*res://systems/carts/carts.gd"
 Level="*res://systems/level_gen/level.gd"
 Hazards="*res://systems/hazards/hazards.gd"
 Security="*res://systems/security/security.gd"
+Objectives="*res://systems/objectives/objectives.gd"
 Telemetry="*res://systems/telemetry/telemetry.gd"
 GameFlow="*res://systems/game_flow/game_flow.gd"
 Settings="*res://systems/settings_input/settings.gd"

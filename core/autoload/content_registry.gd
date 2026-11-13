@@ -29,6 +29,8 @@ const TYPE_FOLDERS: Dictionary = {
 	&"achievement": "achievements",
 	&"loot": "loot_tables",
 	&"stock": "vendor_stock",
+	&"announcement": "announcements",
+	&"hint": "hints",
 }
 
 ## Problems found while loading (duplicate ids, wrong folder, unreadable file).

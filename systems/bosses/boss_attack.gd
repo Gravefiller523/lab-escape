@@ -46,9 +46,16 @@ func play_effect(_boss: Boss) -> void:
 	pass
 
 
+## NEW 2026-11-12 (roadmap WP13): the projectile this attack fires through Boss.fire_attack_projectile, or null
+## if it fires none.
+func get_projectile() -> RangedAttackData:
+	return null
+
+
 ## Shared helper: hurt every living player within `radius` of a point (host). Returns who was hit.
+## NEW 2026-11-12 (roadmap WP13): `status_id` gives everyone it hits that status effect too.
 static func hit_players_near(boss: Boss, point: Vector3, radius: float, damage: float, damage_type: StringName,
-		knockback: float, lift: float, already_hit: Array[int] = []) -> Array[int]:
+		knockback: float, lift: float, already_hit: Array[int] = [], status_id: StringName = &"") -> Array[int]:
 	var hit: Array[int] = []
 	for node: Node in boss.get_tree().get_nodes_in_group(PlayerCharacter.GROUP):
 		var player := node as PlayerCharacter
@@ -64,6 +71,7 @@ static func hit_players_near(boss: Boss, point: Vector3, radius: float, damage: 
 		var info := DamageInfo.make(damage, damage_type, boss)
 		info.hit_position = player.global_position
 		info.knockback = flat.normalized() * knockback + Vector3.UP * lift
+		info.status_id = status_id
 		var hurtbox: Node = player.get_node_or_null(NodePath(Hurtbox.NODE_NAME))
 		Damage.hit(hurtbox if hurtbox != null else player, info)
 		hit.append(player.player_id)

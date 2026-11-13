@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MutationData" format=3]
+
+[ext_resource type="Script" path="res://core/data/upgrades/mutation_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/upgrade_effect_data.gd" id="2_base"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/behaviour_effect_data.gd" id="3_behaviour"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/visual_attachment_effect_data.gd" id="4_visual"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/voice_effect_data.gd" id="5_voice"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/behaviours/vine_arm.tscn" id="6_rule"]
+[ext_resource type="PackedScene" path="res://systems/upgrades/visuals/vine_arm.tscn" id="7_look"]
+
+[sub_resource type="Resource" id="Rule"]
+script = ExtResource("3_behaviour")
+behaviour_scene = ExtResource("6_rule")
+params = {}
+
+[sub_resource type="Resource" id="Look"]
+script = ExtResource("4_visual")
+scene = ExtResource("7_look")
+attach_point = &"right_arm"
+
+[resource]
+script = ExtResource("1_data")
+id = &"mutation_vine_arm"
+display_name = "Vine Arm"
+description = "A vine for an arm. Hold E on something too far to reach and the vine drags it to you."
+tags = PackedStringArray("botany")
+effects = Array[ExtResource("2_base")]([SubResource("Rule"), SubResource("Look")])
+clash_tags = PackedStringArray("arm")
+department_ids = Array[StringName]([&"department_botany"])
+glow_color = Color(0.3, 0.7, 0.25, 1)

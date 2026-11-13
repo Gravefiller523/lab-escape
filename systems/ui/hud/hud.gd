@@ -14,6 +14,9 @@ extends Control
 const LIFT_REFRESH_SECONDS: float = 0.2
 const FONT_SIZE: int = 22
 const MARGIN: float = 16.0
+## NEW 2026-11-12 (roadmap WP8): how far down the screen the PA line and the hints sit (below the boss bar and toasts).
+const ANNOUNCER_TOP: float = 112.0
+const HINTS_TOP: float = 160.0
 
 ## NEW 2026-11-11 (roadmap WP5): the HUD's widgets (each hides itself when it has nothing to show).
 var health_bar: HealthBar
@@ -23,6 +26,8 @@ var player_list: PlayerList
 var ghost_panel: GhostPanel
 var run_summary: RunSummaryPanel
 var hurt_vignette: HurtVignette
+var announcer: Announcer
+var hints: Hints
 
 var _crosshair: ColorRect
 var _prompt: Label
@@ -151,6 +156,13 @@ func _ready() -> void:
 	run_summary = RunSummaryPanel.new()
 	run_summary.set_anchors_preset(Control.PRESET_CENTER)
 	_place(run_summary, self, Vector2.ZERO, Control.GROW_DIRECTION_BOTH, Control.GROW_DIRECTION_BOTH)
+	# NEW 2026-11-12 (roadmap WP8): the PA line near the top, and first-time hints under it.
+	announcer = Announcer.new()
+	announcer.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_place(announcer, self, Vector2(0, ANNOUNCER_TOP), Control.GROW_DIRECTION_BOTH, Control.GROW_DIRECTION_END)
+	hints = Hints.new()
+	hints.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_place(hints, self, Vector2(0, HINTS_TOP), Control.GROW_DIRECTION_BOTH, Control.GROW_DIRECTION_END)
 
 
 ## A widget pinned to one point of `parent` (its anchors), `offset` away, growing the given ways to fit itself.

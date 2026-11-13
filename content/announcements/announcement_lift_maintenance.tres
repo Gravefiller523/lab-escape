@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="AnnouncementData" format=3]
+
+[ext_resource type="Script" path="res://core/data/story/announcement_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"announcement_lift_maintenance"
+display_name = "PA: lift_maintenance"
+text = "The cargo lift is undergoing scheduled unscheduled maintenance."

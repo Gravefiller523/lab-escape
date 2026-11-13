@@ -28,8 +28,7 @@ const EXIT_NOISE: PackedStringArray = ["leaked at exit", "resources still in use
 const KNOWN: PackedStringArray = []
 ## The same, but only allowed after the process has finished its run and is leaving.
 const KNOWN_WHILE_LEAVING: PackedStringArray = [
-	# Roadmap G51 / WP2: the host leaving a local (no Steam) game prints one ENet error while it says goodbye.
-	"Unable to send packet on channel 0, max channels: 0",
+	# (empty since 2026-11-13: G51, the ENet error when the host left a local game, was fixed in roadmap WP15b)
 ]
 
 var _dir: String = ""
@@ -183,6 +182,34 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 		assert_true(seen.get("has_body", false), "the client has a body on floor %d" % (index + 1))
 	assert_eq(client.get("result", ""), "escaped", "the client saw the escape")
 	assert_eq(client.get("final_state", ""), "BREAK_ROOM", "the client is back in the Break Room")
+	# NEW 2026-11-13 (roadmap WP15): every PC has the same floor tasks in the same places, and hears they're done.
+	var tasks_finished: int = 0
+	var tasks_seen: int = 0
+	for index: int in floors.size():
+		var host_floor: Dictionary = floors[index]
+		tasks_seen += (host_floor.get("tasks", []) as Array).size()
+		if host_floor.has("task_finished"):
+			tasks_finished += 1
+		if index < (client.get("floors", []) as Array).size():
+			assert_eq(((client["floors"] as Array)[index] as Dictionary).get("tasks", []), host_floor.get("tasks", []),
+				"the client has the same tasks on floor %d" % (index + 1))
+	assert_gt(tasks_seen, 0, "floor tasks turned up (the hamster wheel)")
+	assert_eq(host.get("tasks_completed", -1) as int, tasks_finished, "the host heard about each finished task")
+	assert_eq(client.get("tasks_completed", -1) as int, tasks_finished, "so did the client")
+	for seen: Variant in late.get("floors", []):
+		var late_floor: Dictionary = seen as Dictionary
+		var host_floor: Dictionary = floors[(late_floor["floor"] as int) - 1]
+		assert_eq(late_floor.get("tasks", []), host_floor.get("tasks", []),
+			"the late joiner has the same tasks on floor %d" % (late_floor["floor"] as int))
+	# NEW 2026-11-13 (roadmap WP15b): every PC is told who made each kill (the host beat every boss).
+	var boss_floors: int = 0
+	for entry: Variant in floors:
+		if (entry as Dictionary).get("boss_floor", false):
+			boss_floors += 1
+	var host_id: String = str(host.get("my_player_id", ""))
+	assert_eq(int((host.get("kills_credited", {}) as Dictionary).get(host_id, 0)), boss_floors, "the host counted its boss kills")
+	assert_eq(int((client.get("kills_credited", {}) as Dictionary).get(host_id, 0)), boss_floors,
+		"the client was told about every one of the host's kills")
 
 	# The late joiner joined during a floor and played the rest.
 	assert_true(late.get("ok", false), "the late joiner finished: %s" % str(late.get("notes", [])))

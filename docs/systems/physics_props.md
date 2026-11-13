@@ -346,6 +346,10 @@ Playtest: F6 in `systems/player/test/feel_playtest.tscn` gives everyone the punt
 
 - 2026-11-11 (roadmap WP1): prop snapshot batches bigger than GameConfig `prop_snapshot_max_bytes` are sent in halves, so each message fits in one network packet (a 1,900-byte batch was seen in the full-run test; Godot warned it would be lost more often).
 
+- 2026-11-12 (roadmap WP10): NEW `PropPunter.can_punt` (default true). The Vine Arm mutation uses a punter with it off, so it only pulls.
+- 2026-11-12 (roadmap WP14, content only): NEW prop `prop_trash_bag` (`scenes/trash_bag.tscn`, 4 kg, tags `trash` and `lure_trash`), in the Zoology and Robotics prop pools (weight 0.6). The `lure_trash` tag makes the enemies system keep a lure on it (flies and roombas come to it).
+- 2026-11-13 (roadmap WP15b, gap G57): `test_thrown_crate_barely_hurts_a_heavy_enemy` judges each hit on its own (reports closer than `impact_report_cooldown` are one hit), since a crate that bounces back onto the enemy is a fair second hit. Typing warnings fixed in net_prop and prop_spawner.
+
 ## HANDOFF
 **Done (Phase 1a proof, approach A):** `NetProp`, `PropSpawner` (spawning through a MultiplayerSpawner,
 net ids, near/far snapshot batches of moving props only, host spring holding, grab rules, throw,

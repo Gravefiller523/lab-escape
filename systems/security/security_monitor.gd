@@ -74,7 +74,7 @@ func get_camera_label() -> String:
 
 ## Is the camera it shows broken (static)?
 func is_showing_static() -> bool:
-	return cameras.is_empty() or (_index < cameras.size() and bool(cameras[_index][2]))
+	return cameras.is_empty() or (_index < cameras.size() and (cameras[_index][2] as bool))
 
 
 ## Is its picture being redrawn now (someone is near the security room)?
@@ -122,7 +122,7 @@ func get_state() -> Array:
 func _apply_state(state: Array) -> void:
 	if state.is_empty():
 		return
-	_index = posmod(int(state[0]), maxi(cameras.size(), 1))
+	_index = posmod(state[0] as int, maxi(cameras.size(), 1))
 	_show()
 
 

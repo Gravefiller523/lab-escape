@@ -31,6 +31,11 @@ script = ExtResource("2_weighted")
 content_id = &"enemy_kangaroo"
 weight = 0.5
 
+[sub_resource type="Resource" id="Prop_trash_bag"]
+script = ExtResource("2_weighted")
+content_id = &"prop_trash_bag"
+weight = 0.6
+
 [sub_resource type="Resource" id="Prop_crate"]
 script = ExtResource("2_weighted")
 content_id = &"prop_crate"
@@ -176,6 +181,6 @@ palette = {
 "wall": ExtResource("6_wall")
 }
 lighting = SubResource("Lighting")
-prop_pool = Array[ExtResource("2_weighted")]([SubResource("Prop_crate"), SubResource("Prop_meat"), SubResource("Prop_feed_sack"), SubResource("Prop_hay")])
+prop_pool = Array[ExtResource("2_weighted")]([SubResource("Prop_crate"), SubResource("Prop_meat"), SubResource("Prop_feed_sack"), SubResource("Prop_hay"), SubResource("Prop_trash_bag")])
 hazard_kinds = PackedStringArray("broken_enclosure", "water")
 incidents = Array[ExtResource("4_incident")]([SubResource("Incident_enclosure_breakout"), SubResource("Incident_tank_rupture")])

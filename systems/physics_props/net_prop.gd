@@ -641,7 +641,7 @@ func _report_victim(change: Vector3, speed_lost: float) -> void:
 	var contact: Dictionary = _touch_info(PhysicsLayers.bit(PhysicsLayers.ENEMIES) | PhysicsLayers.bit(PhysicsLayers.PLAYERS))
 	if contact.is_empty():
 		return
-	var victim := instance_from_id(contact["collider_id"]) as Node3D
+	var victim := instance_from_id(contact["collider_id"] as int) as Node3D
 	var toward: Vector3 = (contact["point"] as Vector3) - global_position
 	if victim == null or toward.normalized().dot(change.normalized()) < HIT_DIRECTION_MIN_DOT:
 		return
@@ -651,12 +651,12 @@ func _report_victim(change: Vector3, speed_lost: float) -> void:
 	# so a crate doesn't do less damage just because it took two steps to stop.
 	# What it has lost is measured from its speed just before the hit, so a bounce isn't counted twice.
 	if _hit_gather.has(key):
-		var total: float = float(_hit_gather[key][0]) - linear_velocity.length()
-		if total > float(_hit_gather[key][2]):
+		var total: float = (_hit_gather[key][0] as float) - linear_velocity.length()
+		if total > (_hit_gather[key][2] as float):
 			_hit_gather[key][2] = total
 			_spawner.report_hit(self, victim, total)
 		return
-	if now - int(_hit_msec.get(key, -100000)) < int(_tuning().impact_report_cooldown * 1000.0):
+	if now - (_hit_msec.get(key, -100000) as int) < int(_tuning().impact_report_cooldown * 1000.0):
 		return
 	_hit_msec[key] = now
 	_hit_gather[key] = [linear_velocity.length() + speed_lost, HIT_GATHER_STEPS, speed_lost]
@@ -666,8 +666,8 @@ func _report_victim(change: Vector3, speed_lost: float) -> void:
 ## One physics step passed: hits being added up have a step less left.
 func _age_hits() -> void:
 	for key: int in _hit_gather.keys():
-		_hit_gather[key][1] = int(_hit_gather[key][1]) - 1
-		if int(_hit_gather[key][1]) < 0:
+		_hit_gather[key][1] = (_hit_gather[key][1] as int) - 1
+		if (_hit_gather[key][1] as int) < 0:
 			_hit_gather.erase(key)
 
 

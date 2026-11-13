@@ -32,6 +32,7 @@ id = &"mutation_slug"
 display_name = "Slug"
 description = "Slow and slimy, but tough. Slides on one big foot."
 tags = PackedStringArray("zoology")
+department_ids = Array[StringName]([&"department_zoology"])
 effects = Array[ExtResource("2_base")]([SubResource("Move"), SubResource("Tough"), SubResource("Foot")])
 clash_tags = PackedStringArray("legs")
 glow_color = Color(0.6, 0.8, 0.35, 1)

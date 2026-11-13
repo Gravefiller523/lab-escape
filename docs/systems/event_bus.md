@@ -46,6 +46,7 @@ public API instead), or storing state.
 | `player_reprinted(player_id: int)` | death_respawn | all |
 | `team_wiped()` | death_respawn | all |
 | `enemy_killed(enemy_id: StringName, death_position: Vector3, killer_player_id: int)` | enemies | host |
+| `kill_credited(enemy_id: StringName, killer_player_id: int)` (NEW 2026-11-13) | enemies | all |
 | `boss_phase_changed(boss_id: StringName, phase_index: int)` | bosses | all |
 | `boss_defeated(boss_id: StringName)` | bosses | all |
 | `noise_made(noise_position: Vector3, radius: float, source_player_id: int)` | player, physics_props, enemies | host |
@@ -97,3 +98,4 @@ None.
 - 2026-10-07: created with the initial signal list.
 - 2026-10-30 (HL2 feel step 3.3): NEW signal `noise_made(noise_position, radius, source_player_id)`, host only: a noise enemies within `radius` metres can hear. Three systems emit it, each for its own noises: player (footsteps and landings), physics_props (prop knocks) and enemies (a death squeal). The Enemies autoload listens and sends calm enemies in range to look. Foundation change: adding only.
 - 2026-10-30 (HL2 feel step 4.1): NEW signal `use_denied(player_id)`, on the PC of the player who pressed use when nothing took it, or whom the host turned away (a locked door). Audio plays the "can't use" buzz. Foundation change: adding only.
+- 2026-11-13 (roadmap WP15b): NEW signal `kill_credited(enemy_id, killer_player_id)`, fires on all: the host's `enemy_killed` told to every PC (by the Enemies autoload), for things every PC counts (the run summary's Kills column, each player's lifetime kills). `enemy_killed` stays host only. Foundation change: adding only.

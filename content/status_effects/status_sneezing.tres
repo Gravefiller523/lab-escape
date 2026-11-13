@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="StatusEffectData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://core/data/items/status_effect_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/upgrades/effects/stat_effect_data.gd" id="2_stat"]
+
+[sub_resource type="Resource" id="Stop"]
+script = ExtResource("2_stat")
+stat = &"move_speed_multiplier"
+multiply = 0.0
+
+[resource]
+script = ExtResource("1_data")
+id = &"status_sneezing"
+display_name = "Sneezing"
+description = "A sneezing fit: an enemy can't move for 1.5 seconds. The Spore Cough mutation gives it (roadmap WP10)."
+tags = PackedStringArray("botany")
+duration = 1.5
+stat_modifiers = Array[ExtResource("2_stat")]([SubResource("Stop")])
+refresh_on_reapply = false

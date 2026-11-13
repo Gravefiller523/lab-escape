@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://core/data/enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/enemies/scenes/turret.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://core/data/enemies/ranged_attack_data.gd" id="3_ranged"]
+
+[sub_resource type="Resource" id="Ranged_1"]
+script = ExtResource("3_ranged")
+shots = 4
+shot_interval = 0.12
+projectile_speed = 28.0
+spread_degrees = 2.5
+damage = 3.0
+damage_type = &"electric"
+min_range = 0.0
+max_range = 18.0
+projectile_radius = 0.08
+projectile_color = Color(1, 0.25, 0.2, 1)
+
+[resource]
+script = ExtResource("1_data")
+id = &"enemy_turret"
+display_name = "Turret"
+description = "Bolted to the floor. It turns slowly, beeps, then fires quick bursts of laser bolts. Robotics (roadmap WP11)."
+tags = PackedStringArray("robotics")
+scene = ExtResource("2_scene")
+max_health = 40.0
+move_speed = 0.0
+attack_cooldown = 2.0
+sight_range = 18.0
+sight_cone_degrees = 110.0
+spawn_cost = 2
+min_floor = 1
+loot_id = &"loot_robotics_medium"
+impact_mass = 60.0
+ranged_attack = SubResource("Ranged_1")

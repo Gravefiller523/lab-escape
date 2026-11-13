@@ -86,6 +86,7 @@ func _open_file() -> void:
 		push_warning("Telemetry: can't write %s" % _path)
 		return
 	_write({"event": "telemetry_started", "data": {"version": ProjectSettings.get_setting("application/config/version", ""),
+		"build": BuildInfo.get_build_id(),
 		"player_id": Net.local_player_id(), "host": Net.is_host()}})
 
 
@@ -103,7 +104,7 @@ static func _plain(value: Variant) -> Variant:
 		TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING:
 			return value
 		TYPE_STRING_NAME:
-			return String(value)
+			return str(value)
 		TYPE_VECTOR2:
 			var v2: Vector2 = value
 			return [snappedf(v2.x, 0.01), snappedf(v2.y, 0.01)]

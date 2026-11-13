@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AnnouncementData" format=3]
+
+[ext_resource type="Script" path="res://core/data/story/announcement_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"announcement_rodent_promoted"
+display_name = "PA: rodent_promoted"
+text = "A rodent has been promoted to department head. Please be supportive."
+department_ids = Array[StringName]([&"department_zoology"])

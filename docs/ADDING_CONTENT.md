@@ -45,6 +45,8 @@ new building block is needed (see the end of this guide) or something is wrong.
 | Achievement | `content/achievements/` | AchievementData | `achievement_` |
 | Loot table | `content/loot_tables/` | LootTableData | `loot_` |
 | Vendor stock | `content/vendor_stock/` | VendorStockData | `stock_` |
+| PA announcement (NEW 2026-11-12) | `content/announcements/` | AnnouncementData | `announcement_` |
+| First-time hint (NEW 2026-11-12) | `content/hints/` | HintData | `hint_` |
 
 ---
 
@@ -74,6 +76,7 @@ pickup lying on the floor: copy an existing pickup scene; its root uses `NetProp
 inventory slot; 1 = no stacking, like drinks and weapons), `world_mass` (kg of the pickup lying in the world), and `behaviours`:
 - `MeleeBehaviourData`: damage, damage_type (`blunt`, `sharp`, `fire`...), reach, knockback, status_id.
 - `ThrowBehaviourData`: throw_force, damage, damage_type, status_id, breaks_on_impact.
+- NEW 2026-11-12 `LureBehaviourData`: lure_kind (`laser`), reach, seconds, radius, dot_color: leaves a lure where you point (copy `item_laser_pointer.tres`).
 - `ConsumeBehaviourData`: heal_amount, status_id.
 - `UseOnObjectBehaviourData`: interaction_tag (`water`, `pry`, `cut`...), reach, spends_use.
 Each behaviour has a `trigger` (PRIMARY = left mouse, SECONDARY = right mouse) and `cooldown`.
@@ -98,7 +101,7 @@ m/s), `needs_charge_seconds` (above 0: must sit on the lift charger this long be
 markers it fits) and `part_category` (`mechanical`, `electrical`, `electronic`, `power`, `structural`: which
 rooms it turns up in). NEW 2026-11-10 (step 4d): a new lift part is just a new file like these: the floor generator
 picks it and places it on a `lift_part` marker it fits; check some room tiles have a marker with a big enough
-`max_size` and a room type with its `part_category`. rooms it turns up in). **Tags that systems look for:** `meat`, `lift_part`,
+`max_size` and a room type with its `part_category`. rooms it turns up in). **Tags that systems look for:** NEW 2026-11-12 `lure_<kind>` (enemies whose `lure_kinds` list that kind come to the prop, e.g. `lure_trash` on the trash bag), `meat`, `lift_part`,
 `keycard`, `glowing_gem`, `robot_part`. **Test:** `spawn prop_<name>`.
 
 ## Enemy
@@ -111,11 +114,19 @@ department's `enemy_spawns` (with a weight) so it appears. **Test:** `spawn enem
 `attack_ranged` state, and its file a `ranged_attack` (a RangedAttackData: shots per burst, speed, gravity, spread,
 damage, status, min and max range, projectile size and colour). `attack_cooldown` is the time between bursts. A
 turret: `move_speed` 0 and only the idle, search and attack_ranged states.
+**Lures (NEW 2026-11-12):** `lure_kinds` lists what the enemy can't resist: `laser` (the laser pointer's dot), `trash`
+(props tagged `lure_trash`), `fly_player` (players with the Fly mutation). Nothing to add to its scene.
 
 ## Boss
 **Fill in:** `scene`, `max_health`, `phases` (each: `starts_at_health_fraction`, `attack_names` from
 the boss scene's attack nodes, `minion_enemy_ids`, `minions_per_wave`, `minion_wave_interval`),
 `arena_room_id`, `loot_id`, `music`. Set the department's `boss_id`. **Test:** `boss` in the console.
+**Copy (NEW 2026-11-12):** `boss_mushroom_man.tres` and `systems/bosses/scenes/mushroom_man.tscn` (or `boss_robobrain`).
+A boss scene's `Attacks` node holds its attack pieces, each with an `attack_name` that the phases list. The pieces so
+far: `charge_attack.gd`, `slam_attack.gd` (optional `status_id` and `puff_color`), `projectile_burst_attack.gd` (a fan
+or ring of shots; give it a RangedAttackData as `projectile`) and `laser_sweep_attack.gd` (a low beam swept across
+the room). The same piece can be used twice with different numbers (`rocket_volley` and `rocket_volley_fast`). Turn the
+department's `boss_floors` on once it has its own boss. **Test:** `spawn boss_<name>` in the console.
 
 ## Room
 **Copy:** a similar room scene and its `.tres`. **Scene must have:** floor/walls, a baked
@@ -185,8 +196,11 @@ then F3.
 
 ## Floor task
 **Fill in:** `scene` (built from `FloorTask` and `TaskStation` pieces), `min_players`,
-`max_participants`, `reward` (`lift_part`, `fuse`, `keycard`, `door_open`), `weight`, `room_kind`.
-Add its id to departments' `task_ids`. **Test:** `spawn task_<name>`.
+`max_participants`, `reward` (NEW 2026-11-13: `loot`, which rolls `reward_loot_id`; `lift_part`, `fuse`, `keycard`,
+`door_open` aren't made yet), `weight`, `room_kind`, NEW `work_seconds` (seconds of one player's work to finish it),
+NEW `params` (numbers only its scene uses, e.g. the wheel's `belt_speed`). The scene's root must be a `FloorTask`
+(or a script that extends it). **Copy:** `task_hamster_wheel.tres` and `systems/objectives/tasks/hamster_wheel.tscn`.
+Add its id to departments' `task_ids` (a department with none gets every task). **Test:** `spawn task_<name>`.
 
 ## Cosmetic
 **Fill in:** `slot` (`hat`, `glasses`, `coat`, `gloves`, `shoes`), `scene`, `mutation_variants`
@@ -236,3 +250,13 @@ Files in `core/data/` are foundation files: you may add new ones, but follow CLA
 2. A line in `ContentRegistry.TYPE_FOLDERS` and a folder in `content/`.
 3. Reference fields named `<type>_id` / `<type>_ids` so the validator checks them.
 4. A section in this guide, and a note in `docs/systems/foundation.md`.
+
+## PA announcement (NEW 2026-11-12)
+**Copy:** any file in `content/announcements/`. **Fill in:** `text` (one cheerful corporate line; the tone is the
+night-shift premise), `department_ids` (empty = any floor), `weight`. One is picked per floor, a few seconds after the
+lift arrives. No code needed.
+
+## First-time hint (NEW 2026-11-12)
+**Copy:** any file in `content/hints/`. **Fill in:** `trigger` (one of `first_floor`, `gem_grabbed`, `vial_grabbed`,
+`lift_part_grabbed`, `vendor_near`, `someone_died`, `boss_floor`) and `text`. Each hint shows once per player. A new
+trigger needs a small change in `systems/ui/hud/hints.gd`.

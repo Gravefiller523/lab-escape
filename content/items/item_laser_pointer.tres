@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://core/data/items/item_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/items/behaviours/item_behaviour_data.gd" id="9_base"]
+[ext_resource type="PackedScene" path="res://systems/items/world/laser_pointer.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://systems/items/held/laser_pointer.tscn" id="3_held"]
+[ext_resource type="Script" path="res://core/data/items/behaviours/lure_behaviour_data.gd" id="4_lure"]
+
+[sub_resource type="Resource" id="Lure_1"]
+script = ExtResource("4_lure")
+trigger = 0
+cooldown = 0.2
+lure_kind = &"laser"
+reach = 30.0
+seconds = 3.0
+radius = 12.0
+dot_color = Color(1, 0.1, 0.1, 1)
+
+[resource]
+script = ExtResource("1_data")
+id = &"item_laser_pointer"
+display_name = "Laser pointer"
+description = "Left click: put a red dot where you point. Rats, bats and robot vacuums can't help chasing it, for a few seconds."
+category = 1
+world_scene = ExtResource("2_world")
+held_scene = ExtResource("3_held")
+behaviours = Array[ExtResource("9_base")]([SubResource("Lure_1")])
+world_mass = 0.2

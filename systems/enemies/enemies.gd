@@ -38,9 +38,17 @@ const NAV_UPDATE_DELAY: float = 1.0
 const NAV_MAP_RETRY_FRAMES: int = 5
 ## NEW 2026-11-11: and give up (with a warning) after this many tries.
 const NAV_MAP_RETRIES: int = 6
+## NEW 2026-11-12 (roadmap WP14): a prop with a tag that starts like this is a lure of the kind that follows
+## (lure_trash -> "trash").
+const PROP_LURE_TAG_PREFIX: String = "lure_"
 
 var _spawner: EnemySpawner
 var _projectiles: Node3D
+## NEW 2026-11-12 (roadmap WP14): every lure (laser dots, trash props, Fly players), and the host's look-up of
+## props tagged lure_<kind>: prop instance id -> its lure.
+var _lures: Node3D
+var _prop_lures: Dictionary[int, Lure] = {}
+var _prop_lure_left: float = 0.0
 var _nav_region: NavigationRegion3D
 ## NEW 2026-10-30 (doors): what was baked last (baked again by update_navigation), and regions a newer bake is
 ## replacing (in use until it is ready).
@@ -64,6 +72,9 @@ func _ready() -> void:
 	_projectiles = Node3D.new()
 	_projectiles.name = "Projectiles"
 	add_child(_projectiles)
+	_lures = Node3D.new()
+	_lures.name = "Lures"
+	add_child(_lures)
 	EventBus.floor_ready.connect(_on_floor_ready)
 	# NEW 2026-11-10 (floor generation step 4f, Q20): the host bakes the navigation as soon as the floor is built;
 	# game_flow waits for that bake before floor_ready, so enemies, props and parts spawn on a ready navmesh.
@@ -73,6 +84,10 @@ func _ready() -> void:
 	EventBus.noise_made.connect(func(at: Vector3, radius: float, _source_player_id: int) -> void:
 		Enemy.hear_noise(get_tree(), at, radius))
 	EventBus.damage_dealt.connect(_on_damage_dealt)
+	# NEW 2026-11-13 (roadmap WP15b): the host tells every PC who made each kill (EventBus.kill_credited).
+	EventBus.enemy_killed.connect(func(enemy_id: StringName, _at: Vector3, killer_player_id: int) -> void:
+		if multiplayer.is_server():
+			_kill_credited_rpc.rpc(enemy_id, killer_player_id))
 	EventBus.prop_released.connect(_on_prop_released)
 	DebugConsole.register_spawner(&"enemy", _console_spawn)
 	DebugConsole.register_command(&"killall", _cmd_killall, "killall: kill every enemy")
@@ -95,6 +110,100 @@ func despawn_all() -> void:
 ## NEW: the spawner node (tests).
 func get_spawner() -> EnemySpawner:
 	return _spawner
+
+
+## NEW 2026-11-12 (roadmap WP14), host: put a lure of `kind` at `at` for `seconds`, for everyone. Enemies that fall
+## for that kind and are within `radius` go to it. Placing again with the same `key` moves that lure (one laser dot
+## per player). `color` is the dot everyone sees (see-through = nothing to see).
+func place_lure(key: String, kind: StringName, at: Vector3, radius: float, seconds: float,
+		color: Color = Color(0, 0, 0, 0)) -> void:
+	if multiplayer.is_server():
+		_place_lure_rpc.rpc(key, kind, at, radius, seconds, color)
+
+
+## NEW 2026-11-12 (roadmap WP14), host: a lure that stays on `node` until it is gone (a Fly player). If `node`
+## is a player's body, enemies that fall for it go after that player. Null on clients.
+func attach_lure(node: Node3D, kind: StringName, radius: float, needs_sight: bool = false) -> Lure:
+	if node == null or not multiplayer.is_server():
+		return null
+	var lure := Lure.new()
+	lure.kind = kind
+	lure.radius = radius
+	lure.needs_sight = needs_sight
+	lure.player = node as PlayerCharacter
+	_lures.add_child(lure)
+	lure.follow(node)
+	return lure
+
+
+## NEW 2026-11-12 (roadmap WP14): the lures there are now (of one kind, or all with &"").
+func get_lures(kind: StringName = &"") -> Array[Lure]:
+	var found: Array[Lure] = []
+	for child: Node in _lures.get_children():
+		var lure := child as Lure
+		if lure != null and not lure.is_queued_for_deletion() and (kind == &"" or lure.kind == kind):
+			found.append(lure)
+	return found
+
+
+## Host -> everyone: an enemy died and this player made the kill (0 = nobody).
+@rpc("authority", "call_local", "reliable")
+func _kill_credited_rpc(enemy_id: StringName, killer_player_id: int) -> void:
+	EventBus.kill_credited.emit(enemy_id, killer_player_id)
+
+
+## Host -> everyone: a placed lure (and its dot) appears or moves.
+@rpc("authority", "call_local", "reliable")
+func _place_lure_rpc(key: String, kind: StringName, at: Vector3, radius: float, seconds: float, color: Color) -> void:
+	var node_name: String = "Placed_" + key.validate_node_name()
+	var lure := _lures.get_node_or_null(NodePath(node_name)) as Lure
+	if lure == null or lure.is_queued_for_deletion():
+		lure = Lure.new()
+		lure.name = node_name
+		_lures.add_child(lure)
+		if color.a > 0.0:
+			lure.add_child(_make_dot(color))
+	lure.kind = kind
+	lure.radius = radius
+	lure.seconds_left = seconds
+	lure.global_position = at
+
+
+## The little glowing ball everyone sees where a lure was placed (grey box until the art pass).
+func _make_dot(color: Color) -> MeshInstance3D:
+	var dot := MeshInstance3D.new()
+	dot.name = "Dot"
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.06
+	sphere.height = 0.12
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = 3.0
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sphere.material = material
+	dot.mesh = sphere
+	dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return dot
+
+
+## Host, every lure_prop_refresh_seconds: every loose prop tagged lure_<kind> (a trash bag: lure_trash) gets a
+## lure that follows it. The lure frees itself when the prop is gone.
+func _refresh_prop_lures() -> void:
+	for id: int in _prop_lures.keys():
+		if not is_instance_valid(_prop_lures[id]) or _prop_lures[id].is_queued_for_deletion():
+			_prop_lures.erase(id)
+	for prop: NetProp in Props.get_props():
+		if prop == null or prop.data == null or _prop_lures.has(prop.get_instance_id()):
+			continue
+		for tag: String in prop.data.tags:
+			if tag.begins_with(PROP_LURE_TAG_PREFIX):
+				var lure: Lure = attach_lure(prop, StringName(tag.trim_prefix(PROP_LURE_TAG_PREFIX)),
+					Config.feel.ai.lure_prop_radius, true)
+				if lure != null:
+					_prop_lures[prop.get_instance_id()] = lure
+				break
 
 
 ## NEW 2026-11-11 (roadmap WP9): every PC: start a shot here (Enemy.fire_at sends it to everyone).
@@ -358,13 +467,19 @@ func _physics_process(delta: float) -> void:
 		_nav_update_left -= delta
 		if _nav_update_left < 0.0:
 			update_navigation()
+	# NEW 2026-11-12 (roadmap WP14): the host keeps a lure on every prop tagged lure_<kind>.
+	if multiplayer.is_server():
+		_prop_lure_left -= delta
+		if _prop_lure_left <= 0.0:
+			_prop_lure_left = Config.feel.ai.lure_prop_refresh_seconds
+			_refresh_prop_lures()
 	if _thrown.is_empty():
 		return
 	var now: float = Time.get_ticks_msec() / 1000.0
 	var kept: Array[Dictionary] = []
 	for entry: Dictionary in _thrown:
 		var prop := (entry["prop"] as WeakRef).get_ref() as NetProp
-		if prop == null or not prop.is_inside_tree() or float(entry["until"]) < now or prop.is_held():
+		if prop == null or not prop.is_inside_tree() or (entry["until"] as float) < now or prop.is_held():
 			continue
 		kept.append(entry)
 		var moving: Vector3 = prop.get_estimated_velocity()
@@ -379,6 +494,9 @@ func _physics_process(delta: float) -> void:
 
 func _clear_floor() -> void:
 	despawn_all()
+	for lure: Node in _lures.get_children():
+		lure.queue_free()
+	_prop_lures.clear()
 	for shot: Node in _projectiles.get_children():
 		shot.queue_free()
 	_clear_navigation()

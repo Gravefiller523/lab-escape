@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/objectives/tasks/hamster_wheel.gd" id="1_wheel"]
+[ext_resource type="Script" path="res://systems/objectives/task_station.gd" id="2_station"]
+
+[node name="HamsterWheel" type="Node3D"]
+script = ExtResource("1_wheel")
+
+[node name="Belt" type="Node3D" parent="."]
+script = ExtResource("2_station")
+size = Vector3(2.4, 2, 3.2)

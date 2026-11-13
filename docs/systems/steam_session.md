@@ -121,6 +121,7 @@ GUT tests (`tests/unit/steam_session/test_steam_session.gd`, with `fake_steam_ap
   only checks it worked, and SteamSession runs Steam's callbacks each frame (`SteamApi.run_callbacks`, NEW).
   Editor and test runs are unchanged.
 - 2026-10-24: playtest fix: with 3+ players on Steam, joining players saw each other standing still (the host saw everyone move). `SteamMultiplayerPeer.server_relay` is off by default, so what one client sent to another (player movement, voice) was dropped: clients only connect to the host. Both peers now set `server_relay = true`, so the host passes it on. Local ENet testing always relays, which is why 2-window tests never showed it: check client-to-client things with 3 players on real Steam.
+- 2026-11-13 (roadmap WP15b, gap G51): `_close_peer` lets go of the connection (Offline peer) before saying goodbye on it. Before, while the goodbye went out, Godot heard the first client leave and tried to tell the other clients, whose connections were already closing: one "Unable to send packet on channel 0" error every time the host left a local game. The full-run test no longer lists it as known.
 
 ## HANDOFF
 **Done:** the SteamSession autoload, with Steam lobbies (host, join by id, invites, "Join game" from the

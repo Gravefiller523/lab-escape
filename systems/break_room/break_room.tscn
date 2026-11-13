@@ -97,8 +97,23 @@ size = Vector3(0.1, 2, 1.4)
 material = SubResource("Mat_mirror")
 
 [node name="Whiteboard" type="CSGBox3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 8.95)
-size = Vector3(3, 1.5, 0.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.85, 8.95)
+size = Vector3(4.6, 2, 0.1)
+material = SubResource("Mat_white")
+
+[node name="HowToBoard1" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.25, 1.8, -8.97)
+size = Vector3(3.2, 1.3, 0.06)
+material = SubResource("Mat_white")
+
+[node name="HowToBoard2" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.25, 2.45, -8.97)
+size = Vector3(3.2, 1.0, 0.06)
+material = SubResource("Mat_white")
+
+[node name="HowToBoard3" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.25, 1.25, -8.97)
+size = Vector3(3.2, 1.0, 0.06)
 material = SubResource("Mat_white")
 
 [node name="MessageSign" type="Label3D" parent="."]
@@ -147,9 +162,9 @@ prompt_text = "Test your voice in the mirror"
 
 [node name="WhiteboardText" type="Label3D" parent="."]
 unique_name_in_owner = true
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 1.9, 8.85)
-pixel_size = 0.004
-font_size = 56
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 1.85, 8.85)
+pixel_size = 0.003
+font_size = 44
 modulate = Color(0.1, 0.1, 0.15, 1)
 outline_size = 0
 text = "Last run:"
@@ -203,3 +218,36 @@ metadata/prop_id = &"prop_crate"
 [node name="HeavyCrate" type="Marker3D" parent="FunProps"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.5, 6.5)
 metadata/prop_id = &"prop_crate_heavy"
+
+[node name="HowToBoards" type="Node3D" parent="."]
+
+[node name="Board1Text" type="Label3D" parent="HowToBoards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.25, 1.8, -8.93)
+pixel_size = 0.003
+font_size = 40
+modulate = Color(0.1, 0.1, 0.15, 1)
+outline_size = 0
+text = "1  FIX THE LIFT
+The lift breaks on every floor.
+Find the broken parts (the panel lists them),
+grab them with E and slot them in."
+
+[node name="Board2Text" type="Label3D" parent="HowToBoards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.25, 2.45, -8.93)
+pixel_size = 0.003
+font_size = 40
+modulate = Color(0.1, 0.1, 0.15, 1)
+outline_size = 0
+text = "2  GEMS ARE MONEY
+Carry or throw gems into a vending machine,
+then press a button to buy a tool."
+
+[node name="Board3Text" type="Label3D" parent="HowToBoards"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.25, 1.25, -8.93)
+pixel_size = 0.003
+font_size = 40
+modulate = Color(0.1, 0.1, 0.15, 1)
+outline_size = 0
+text = "3  DIED?
+A teammate puts meat in the 3D printer
+and presses print. You keep your mutations."

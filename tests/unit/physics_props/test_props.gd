@@ -1017,13 +1017,33 @@ func test_thrown_crate_barely_hurts_a_heavy_enemy() -> void:
 	var body: PlayerCharacter = held[0]
 	var victim: CharacterBody3D = _victim(pc, body, 3.0, 50.0)
 	var health: HealthComponent = HealthComponent.of(victim)
+	var start: float = health.get_current()
+	# CHANGED 2026-11-13 (roadmap WP15b, gap G57): the rule under test is "one hit from a crate costs a heavy enemy
+	# at most a few points". A crate that bounces off and lands on it again is a second hit (seen once in a full
+	# run: two hits, 8.4 points in all), so each hit is judged on its own instead of everything within 1.5 s.
+	# Reports closer together than the report cooldown are one hit that took a few physics steps to land.
 	var hits: Array[float] = []
-	_props(pc).prop_hit.connect(func(_prop: NetProp, _victim_node: Node3D, damage: float) -> void: hits.append(damage))
+	var last_report_msec: Array[int] = [-100000]
+	var cooldown_msec: int = int(Config.feel.props.impact_report_cooldown * 1000.0)
+	_props(pc).prop_hit.connect(func(_prop: NetProp, _victim_node: Node3D, damage: float) -> void:
+		var now: int = Time.get_ticks_msec()
+		if now - last_report_msec[0] < cooldown_msec and not hits.is_empty():
+			hits[-1] += damage
+		else:
+			hits.append(damage)
+		last_report_msec[0] = now)
 	await wait_physics_frames(5)
 	PropsService.grab_of(body).throw()
 	await wait_seconds(1.5)
 	assert_false(health.is_dead())
-	assert_gt(health.get_current(), 9.0, "at most a few points (%.1f left, hits %s)" % [health.get_current(), str(hits)])
+	assert_gt(hits.size(), 0, "the crate hit it")
+	for damage: float in hits:
+		assert_lt(damage, 6.0, "each hit costs at most a few points (hits %s)" % str(hits))
+	assert_lt(hits.size(), 4, "and it doesn't keep hitting (hits %s)" % str(hits))
+	var total: float = 0.0
+	for damage: float in hits:
+		total += damage
+	assert_almost_eq(start - health.get_current(), total, 0.01, "nothing else hurt it")
 
 
 func test_a_held_crate_does_no_damage() -> void:

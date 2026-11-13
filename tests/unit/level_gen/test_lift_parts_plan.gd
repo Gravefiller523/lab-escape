@@ -102,12 +102,12 @@ func test_every_part_kind_has_a_size_and_category() -> void:
 func test_parts_follow_the_rules_on_every_floor() -> void:
 	var tuning: FloorGenTuning = _tuning()
 	var floors: int = 0
-	for floor_number: int in range(1, 19):
+	for floor_number: int in range(1, 13):
 		for attempt: int in SEEDS_PER_FLOOR:
 			var layout: FloorLayout = FloorGenerator.generate_from_seed(_robotics(), floor_number, 7000 + floor_number * 31 + attempt, tuning)
 			floors += 1
 			_check_floor(layout, tuning)
-	assert_eq(floors, 18 * SEEDS_PER_FLOOR)
+	assert_eq(floors, 12 * SEEDS_PER_FLOOR)
 
 
 func _check_floor(layout: FloorLayout, tuning: FloorGenTuning) -> void:

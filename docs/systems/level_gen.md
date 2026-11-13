@@ -458,7 +458,8 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   half walls or the generator skips one side.
 - DONE 2026-10-31 (step 4a): a department every floor (game_flow).
 - 2026-10-31 (step 4a): Botany and Zoology are placeholder departments (shared rooms only, stand-in enemies;
-  Botany's boss floors off) until their own rooms come (plan step 5).
+  Botany's boss floors off) until their own rooms come (plan step 5). UPDATED 2026-11-13: all three now have their
+  own rooms (step 5), and boss floors (4, 8 and 12 since 6a) roll among the departments that have a boss.
 - 2026-10-31 (step 3): main hallway T pieces aren't used yet (main hallways don't split); secondary T
   pieces are. `DepartmentData.welcome_center_scene` isn't read: the generator picks a welcome center tile
   (RoomData, `room_kind` "welcome_center") that lists the department, else the generic one.
@@ -603,6 +604,14 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-11-12 (roadmap WP10, content only): `department_botany` now spawns its own enemies (mushroom zombie, flytrap, spore shooter, vine creeper) and uses `loot_botany_small` and `stock_botany_vending`. Its boss floors stay off until the Mushroom Man (WP13).
 
 - 2026-11-12 (roadmap WP11, content only): `department_robotics` now spawns its own enemies (roomba, turret, drone, flock camera) and uses `loot_robotics_small` and `stock_robotics_vending`. Its boss floors stay off until Robobrain (WP13).
+
+- 2026-11-13 (floor generation step 6a: runs of 12 floors, a boss every 4): `config/floor_gen_tuning.tres` re-spreads
+  every floor-number curve over 12 floors (the script's defaults are the old 18-floor ones): `floor_brackets`
+  1, 3, 6, 8 (parts 1-2 on floors 1-2, 2-3 on 3-5, 3-5 from 6; keycard doors, parts behind keycards, smaller
+  incidents, branch depth and loops follow the same brackets); per floor x1.5 for main hallway length, damage
+  intensity, part size bias and hazards; rooms 10 on floor 1, about 27 by floor 11 (`target_rooms_per_floor`
+  1.7). The "from floor 4" rules (a part near the incident, missing power cells) stay at floor 4, the first boss
+  block boundary. Tests over floors 1-18 now cover 1-12; the bulk check covers 1-12.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

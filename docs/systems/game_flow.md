@@ -33,7 +33,7 @@ func floor_departments(run_seed: int) -> Array[StringName]   # NEW 2026-10-31: t
 func get_department(department_id: StringName) -> DepartmentData   # includes the placeholder department
 func floors_in(department: DepartmentData) -> int   # regular floors before its boss floor (@deprecated 2026-10-31)
 func total_floors(run: RunState) -> int    # CHANGED 2026-10-31: department_ids.size() (one per floor)
-func place_on_floor(run: RunState, floor_number: int) -> bool   # moves a RunState to a floor of the whole run. CHANGED 2026-10-31: department_index = floor - 1, floor_in_department = place in the 6-floor block, a boss floor every boss_every_floors
+func place_on_floor(run: RunState, floor_number: int) -> bool   # moves a RunState to a floor of the whole run. CHANGED 2026-10-31: department_index = floor - 1, floor_in_department = place in the block of boss_every_floors floors (4 since 2026-11-13), a boss floor every boss_every_floors
 func use_test_setup(net: NetService, config: GameConfig, scene_loader: Callable) -> void   # tests only
 const RESULT_ESCAPED, RESULT_WIPED, RESULT_ABANDONED   # run_ended results
 const MAIN_MENU_SCENE, BREAK_ROOM_SCENE, FLOOR_SCENE, LOADING_SCENE   # FLOOR_SCENE: CHANGED 2026-10-18, was STUB_FLOOR_SCENE
@@ -190,6 +190,11 @@ GUT tests (`tests/unit/game_flow/`, all pass; NEW ones marked):
 
 - 2026-11-11 (roadmap WP7, G56): a PC that joins while the host is still loading into the Break Room is sent to the Break Room by the join handshake (`_join_info` now answers as soon as the host starts entering the world). It used to be told "nothing yet", miss the host's world message and stay outside the world, getting hundreds of "spawner is null" errors and no body. Seen twice in full test runs.
 - 2026-11-12 (roadmap WP13b): console `version` prints which build of the game this is (`BuildInfo.get_label()`).
+
+- 2026-11-13 (Zachary, roadmap; floor generation step 6a): runs are 12 floors (`run_floor_count` 12) with a boss
+  floor every 4 (`boss_every_floors` 4: floors 4, 8 and 12), set in `config/game_config.tres` (the script's defaults
+  are unchanged). Boss floors still roll among the departments that have a boss. `floor_in_department` now counts
+  1 to 3 in each block, so the enemy budget climbs over 3 floors and resets after each boss.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `GameFlow` (`GameFlowService`, `systems/game_flow/game_flow.gd`),

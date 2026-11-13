@@ -1052,15 +1052,17 @@ class _Builder:
 		var opened: Dictionary[int, bool] = {}
 		var used: Dictionary[String, bool] = {}
 		var pry: Array[int] = _doors_of(FloorGenerator.DOOR_PRY)
+		# FIXED 2026-11-13: a pry door opens only once its approach side (where the pry point is) can be reached, like
+		# the other locks; it used to count as open as soon as the crowbar was placed, so a key could end up behind it.
+		var pending: Array[int] = []
 		if not pry.is_empty():
 			var spot: String = _free_spot(_reachable(links, opened), [&"item_spawn", &"keycard", &"prop_spawn"], used, rng)
 			if spot.is_empty():
 				_downgrade(pry, "no reachable spot for the crowbar")
 			else:
 				layout.door_items.append(["crowbar", spot, pry[0]])
-			for door: int in pry:
-				opened[door] = true
-		var pending: Array[int] = _doors_of(FloorGenerator.DOOR_POWER)
+				pending.append_array(pry)
+		pending.append_array(_doors_of(FloorGenerator.DOOR_POWER))
 		pending.append_array(_doors_of(FloorGenerator.DOOR_KEYCARD))
 		var progress: bool = true
 		while progress and not pending.is_empty():
@@ -1654,7 +1656,8 @@ class _Builder:
 	## doors: their approach side is (the breaker), and their power cell if they need one. Keycard doors: their card.
 	func _can_open(door: int, reach: Dictionary[int, bool]) -> bool:
 		var entry: Array = layout.doors[door]
-		if not reach.has(int(entry[2])) and not reach.has(int(entry[0])):
+		# FIXED 2026-11-13: only from the approach side (the reader, breaker and pry point are there).
+		if not reach.has(int(entry[2])):
 			return false
 		var type: int = entry[3]
 		var wanted: String = ""

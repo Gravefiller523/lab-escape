@@ -6,7 +6,7 @@ extends GutTest
 ## The quick run (always): 4 floors with a boss every 2nd floor and 1 s lift rides. The late joiner connects while
 ## floor 1 is running, a client dies and is reprinted on floor 3, both bosses are beaten and the team escapes.
 ## The long run: set the environment variable LAB_ESCAPE_FULL_RUN=soak before running the tests to play the real
-## run length from config/game_config.tres instead (about 6 minutes for 18 floors).
+## run length from config/game_config.tres instead (12 floors since 2026-11-13; it was about 6 minutes for 18).
 ##
 ## Each process writes a JSON report and a log to user://full_run_test/ (see the Output panel for the folder).
 

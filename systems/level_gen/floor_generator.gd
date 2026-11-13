@@ -771,6 +771,7 @@ class _Builder:
 		for distance: float in from_start:
 			if distance < INF:
 				farthest = maxf(farthest, distance)
+		layout.stats["longest_path_m"] = roundi(farthest)
 		var incident: IncidentData = _pick_incident(rng)
 		layout.incident_id = incident.id if incident != null else &"incident_generic"
 		layout.origin = _pick_origin(incident, from_start, farthest, rng)

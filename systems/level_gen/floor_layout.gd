@@ -62,7 +62,8 @@ var charger_marker: String = ""
 var cameras: Array[Array] = []
 ## The generation log (host only: not sent to other PCs).
 var log_lines: PackedStringArray = PackedStringArray()
-## Numbers about how the floor grew, for tests and the log (host only, not sent): "rooms", "max_depth".
+## Numbers about how the floor grew, for tests and the log (host only, not sent): "rooms", "max_depth",
+## NEW 2026-11-13 (step 6c) "longest_path_m" (the walk from the elevator to the farthest tile, metres).
 var stats: Dictionary[String, int] = {}
 
 

@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="BossData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://core/data/enemies/boss_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://core/data/enemies/boss_phase_data.gd" id="2_phase"]
+[ext_resource type="PackedScene" path="res://systems/bosses/scenes/robobrain.tscn" id="3_scene"]
+
+[sub_resource type="Resource" id="Phase_1"]
+script = ExtResource("2_phase")
+starts_at_health_fraction = 1.0
+attack_names = PackedStringArray("laser_sweep", "rocket_volley", "stomp")
+
+[sub_resource type="Resource" id="Phase_2"]
+script = ExtResource("2_phase")
+starts_at_health_fraction = 0.6
+attack_names = PackedStringArray("laser_sweep", "rocket_volley", "stomp")
+minion_enemy_ids = Array[StringName]([&"enemy_drone"])
+minions_per_wave = 2
+minion_wave_interval = 16.0
+
+[sub_resource type="Resource" id="Phase_3"]
+script = ExtResource("2_phase")
+starts_at_health_fraction = 0.3
+attack_names = PackedStringArray("laser_sweep_fast", "rocket_volley_fast", "stomp")
+minion_enemy_ids = Array[StringName]([&"enemy_drone"])
+minions_per_wave = 3
+minion_wave_interval = 13.0
+
+[resource]
+script = ExtResource("1_data")
+id = &"boss_robobrain"
+display_name = "Robobrain"
+description = "Robotics' boss. A brain in a jar on tank treads. Sweeps a low laser across the room (jump it), fires rocket volleys from both arms and stomps anyone who hugs it. At 60% health it calls drones; at 30% everything speeds up. Roadmap WP13."
+tags = PackedStringArray("robotics")
+scene = ExtResource("3_scene")
+max_health = 800.0
+phases = Array[ExtResource("2_phase")]([SubResource("Phase_1"), SubResource("Phase_2"), SubResource("Phase_3")])
+arena_room_id = &"room_arena_grey"
+loot_id = &"loot_boss_robobrain"
+impact_mass = 400.0

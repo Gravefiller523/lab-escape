@@ -20,6 +20,7 @@ static func current() -> Boss                  # NEW 2026-10-23: the boss in the
 func is_fighting() -> bool                      # NEW
 func get_attack(attack_name: StringName) -> BossAttack   # NEW
 func spawn_wave() -> Array[Enemy]               # NEW, host: one wave of this phase's minions
+func fire_attack_projectile(attack: BossAttack, from: Vector3, shot_velocity: Vector3) -> void   # NEW 2026-11-12, host: one shot of an attack, on every PC
 static func minions_for_players(base: int, player_count: int, config: GameConfig = null) -> int   # NEW
 @export var boss_move_speed: float, attack_gap: float, boss_sight_range: float   # NEW: its numbers (BossData holds health)
 
@@ -30,7 +31,8 @@ func start(boss: Boss, target: PlayerCharacter) -> void
 func update(boss: Boss, delta: float) -> void  # NEW 2026-10-23, host: every frame while it runs; call finish()
 func is_finished() -> bool
 func play_effect(boss: Boss) -> void           # NEW, every PC: the wind-up everyone sees
-static func hit_players_near(boss, point, radius, damage, damage_type, knockback, lift, already_hit = []) -> Array[int]   # NEW helper
+func get_projectile() -> RangedAttackData      # NEW 2026-11-12: what it fires through Boss.fire_attack_projectile (null = nothing)
+static func hit_players_near(boss, point, radius, damage, damage_type, knockback, lift, already_hit = [], status_id = &"") -> Array[int]   # NEW helper
 
 class_name BossArena extends Node3D         # in the boss_arena room scene
 signal fight_started()
@@ -58,6 +60,21 @@ the doorways until the boss dies. Bosses use the shared `boss_fight` state (walk
 a random ready attack from the current phase every `attack_gap` seconds). The boss never leaves its arena. A health
 label floats over it. Beating it: `boss_defeated` on every PC (the cargo lift works again), its minions vanish. Boss health × `RunDifficulty.boss_health_multiplier(player_count)`;
 minions per wave scale with player count too.
+
+NEW 2026-11-12 (roadmap WP13), the Phase 2 attacks, all in `systems/bosses/attacks/`:
+- `projectile_burst_attack.gd` (covers the planned `projectile_burst` and `rocket_volley`): stop, wind up, fire a fan of
+  `shots_per_volley` projectiles `fan_degrees` wide at the target (360 = a ring all round). Its `projectile` is a
+  RangedAttackData (the same resource enemies' ranged attacks use); that resource's `shots` is the number of volleys
+  and `shot_interval` the pause between them. Lobbed shots (gravity_scale above 0) aim to land at the target's distance.
+- `laser_sweep_attack.gd`: a thin aiming line for `windup` seconds, then a low beam (`beam_height` 0.45 m, under a
+  jump) that the boss drags through `sweep_degrees` by turning its whole body, so the synced facing shows the same
+  sweep on every PC. Hits each player at most once per sweep, never through a wall; jumping or standing on a crate dodges it.
+- `slam_attack.gd` gained `status_id` (everyone it hits gets that status) and `puff_color` (a burst of that colour).
+Bosses: **Mushroom Man** (`boss_mushroom_man`, Botany, 700 health, 3 phases: spore volley and spore slam with 2
+zombies at the start; a spore ring and zombie waves under 60%; faster volleys under 25%) and **Robobrain**
+(`boss_robobrain`, Robotics, 800 health, 3 phases: laser sweep, rocket volley and a stomp; drone waves under 60%;
+faster laser and rockets under 30%). Both are grey boxes and fight in `room_arena_grey` until level_gen has arenas
+per department.
 
 ## EventBus
 - Emits: `boss_phase_changed`, `boss_defeated` (all).
@@ -90,6 +107,11 @@ GUT tests: `test_phase_changes_at_threshold`, `test_phase_change_emitted_once`, 
 DONE 2026-10-23: `systems/bosses/test/boss_test.tscn` (a 24 m arena with one doorway; F1 damage the boss 10%, F2 new boss,
 F7 players invisible, F10 crowbar). GUT (`tests/unit/bosses/test_bosses.gd`, 9): all of the above plus
 `test_boss_attacks_close_players`, `test_department_boss_or_the_first_one`.
+NEW 2026-11-12 (roadmap WP13): `tests/unit/bosses/test_new_bosses.gd` (15): every department has its own boss and boss
+floors, every phase of every boss only names attacks and minions that exist, all three departments turn up as boss
+floors, the Mushroom Man's zombies and three phases, the spore volley (a lobbed fan), the spore ring (all round), a
+boss spore hurts and gives spores, the spore slam's status, the laser's reach and height, the sweep hits once and
+turns the boss, standing on a crate dodges it, rocket pairs fly straight, Robobrain's drones, and beating each boss.
 
 ## Acceptance criteria
 - [ ] Giant Rat fight works start to finish on 2 PCs, with its phase 2 minions.
@@ -101,6 +123,7 @@ F7 players invisible, F10 crowbar). GUT (`tests/unit/bosses/test_bosses.gd`, 9):
 - DEFAULT: players who die during a boss fight can be reprinted if a printer is in the arena (the boss arena room has one printer marker).
 
 ## Changelog
+- 2026-11-12 (roadmap WP13): Mushroom Man and Robobrain. NEW attacks `projectile_burst_attack.gd` and `laser_sweep_attack.gd`; `slam_attack.gd` NEW `status_id` and `puff_color`. NEW `Boss.fire_attack_projectile`, `BossAttack.get_projectile`, and a trailing `status_id` on `BossAttack.hit_players_near` (old calls still work). Botany's and Robotics' `boss_id` now point at their own bosses and their `boss_floors` are on, so boss floors are rolled among all three departments.
 - 2026-10-07: spec created.
 - 2026-10-23: built (Phase 1b). Changes marked above. New GameConfig `boss_minions_per_extra_player` (0.5). Content:
   `boss_giant_rat`. game_flow's "Defeat the boss" button stub is gone.
@@ -119,7 +142,7 @@ Enemies). No new EventBus signals (emits `boss_phase_changed`, `boss_defeated` o
 BossData too and re-spawns its enemies when you start hosting or join, like PropSpawner), game_flow (GameWorld's boss
 button stub removed).
 
-**STUBS:** a department without `boss_id` gets the first boss; no boss music or sounds (audio); grey-box model.
+**STUBS:** a department without `boss_id` gets the first boss (every department has its own since 2026-11-12); no boss music or sounds (audio); grey-box models; one shared grey arena for all three bosses.
 
 **For the next systems:**
 - **loot:** `boss_defeated` (and `enemy_killed` for the boss itself) -> roll `BossData.loot_id`.

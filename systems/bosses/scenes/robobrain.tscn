@@ -1,0 +1,186 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/bosses/boss.gd" id="1_boss"]
+[ext_resource type="Script" path="res://systems/bosses/states/boss_fight_state.gd" id="2_fight"]
+[ext_resource type="Script" path="res://systems/bosses/attacks/slam_attack.gd" id="3_slam"]
+[ext_resource type="Script" path="res://systems/bosses/attacks/projectile_burst_attack.gd" id="4_burst"]
+[ext_resource type="Script" path="res://core/data/enemies/ranged_attack_data.gd" id="5_ranged"]
+[ext_resource type="Script" path="res://systems/bosses/attacks/laser_sweep_attack.gd" id="6_laser"]
+
+[sub_resource type="BoxShape3D" id="Shape_1"]
+size = Vector3(2.0, 2.4, 2.4)
+
+[sub_resource type="StandardMaterial3D" id="Mat_treads"]
+albedo_color = Color(0.22, 0.23, 0.26, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_treads"]
+material = SubResource("Mat_treads")
+size = Vector3(2.0, 0.8, 2.4)
+
+[sub_resource type="StandardMaterial3D" id="Mat_body"]
+albedo_color = Color(0.6, 0.62, 0.66, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_body"]
+material = SubResource("Mat_body")
+size = Vector3(1.4, 0.9, 1.4)
+
+[sub_resource type="StandardMaterial3D" id="Mat_dome"]
+transparency = 1
+albedo_color = Color(0.6, 0.85, 1, 0.35)
+
+[sub_resource type="SphereMesh" id="Mesh_dome"]
+material = SubResource("Mat_dome")
+radius = 0.65
+height = 1.3
+radial_segments = 12
+rings = 6
+
+[sub_resource type="StandardMaterial3D" id="Mat_brain"]
+albedo_color = Color(0.95, 0.6, 0.7, 1)
+emission_enabled = true
+emission = Color(0.6, 0.25, 0.35, 1)
+
+[sub_resource type="SphereMesh" id="Mesh_brain"]
+material = SubResource("Mat_brain")
+radius = 0.38
+height = 0.6
+radial_segments = 8
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="Mat_arm"]
+albedo_color = Color(0.95, 0.78, 0.12, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_arm"]
+material = SubResource("Mat_arm")
+size = Vector3(0.35, 0.35, 1.3)
+
+[sub_resource type="StandardMaterial3D" id="Mat_eye"]
+albedo_color = Color(1, 0.15, 0.1, 1)
+emission_enabled = true
+emission = Color(1, 0.15, 0.1, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_eye"]
+material = SubResource("Mat_eye")
+size = Vector3(0.5, 0.18, 0.1)
+
+[sub_resource type="Resource" id="Rockets"]
+script = ExtResource("5_ranged")
+shots = 3
+shot_interval = 0.45
+projectile_speed = 11.0
+spread_degrees = 2.0
+damage = 12.0
+damage_type = &"fire"
+projectile_radius = 0.28
+projectile_color = Color(1, 0.55, 0.1, 1)
+
+[sub_resource type="Resource" id="Rockets_fast"]
+script = ExtResource("5_ranged")
+shots = 4
+shot_interval = 0.35
+projectile_speed = 13.0
+spread_degrees = 2.0
+damage = 12.0
+damage_type = &"fire"
+projectile_radius = 0.28
+projectile_color = Color(1, 0.55, 0.1, 1)
+
+[node name="Robobrain" type="CharacterBody3D"]
+script = ExtResource("1_boss")
+attack_knockback = 6.0
+hurtbox_radius = 1.2
+hurtbox_height = 2.6
+start_state = &"boss_fight"
+boss_move_speed = 3.0
+attack_gap = 1.3
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("Shape_1")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("Mesh_treads")
+
+[node name="Body" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+mesh = SubResource("Mesh_body")
+
+[node name="Dome" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+mesh = SubResource("Mesh_dome")
+
+[node name="Brain" type="MeshInstance3D" parent="Mesh/Dome"]
+mesh = SubResource("Mesh_brain")
+
+[node name="ArmLeft" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.95, -0.3)
+mesh = SubResource("Mesh_arm")
+
+[node name="ArmRight" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.95, 0.95, -0.3)
+mesh = SubResource("Mesh_arm")
+
+[node name="Eye" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, -0.71)
+mesh = SubResource("Mesh_eye")
+
+[node name="HealthLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.3, 0)
+billboard = 1
+font_size = 72
+outline_size = 16
+text = "ROBOBRAIN"
+
+[node name="States" type="Node" parent="."]
+
+[node name="boss_fight" type="Node" parent="States"]
+script = ExtResource("2_fight")
+
+[node name="Attacks" type="Node" parent="."]
+
+[node name="LaserSweep" type="Node" parent="Attacks"]
+script = ExtResource("6_laser")
+attack_name = &"laser_sweep"
+min_range = 2.0
+max_range = 22.0
+
+[node name="LaserSweepFast" type="Node" parent="Attacks"]
+script = ExtResource("6_laser")
+attack_name = &"laser_sweep_fast"
+min_range = 2.0
+max_range = 22.0
+windup = 0.8
+sweep_seconds = 1.7
+sweep_degrees = 170.0
+
+[node name="RocketVolley" type="Node" parent="Attacks"]
+script = ExtResource("4_burst")
+attack_name = &"rocket_volley"
+min_range = 5.0
+max_range = 26.0
+projectile = SubResource("Rockets")
+windup = 0.8
+shots_per_volley = 2
+fan_degrees = 12.0
+muzzle_height = 1.35
+
+[node name="RocketVolleyFast" type="Node" parent="Attacks"]
+script = ExtResource("4_burst")
+attack_name = &"rocket_volley_fast"
+min_range = 5.0
+max_range = 26.0
+projectile = SubResource("Rockets_fast")
+windup = 0.6
+shots_per_volley = 3
+fan_degrees = 24.0
+muzzle_height = 1.35
+
+[node name="Stomp" type="Node" parent="Attacks"]
+script = ExtResource("3_slam")
+attack_name = &"stomp"
+max_range = 3.5
+windup = 0.8
+radius = 4.0
+damage = 14.0
+knockback = 9.0

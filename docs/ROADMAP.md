@@ -11,7 +11,7 @@ work package whose status is not "done" and isn't waiting on Zachary.
 
 - **Merged into main:** WP1 to WP7, WP9, and WP10 part 1 (Botany's enemies, loot and shop stock).
 - **Waiting on Zachary.** Each branch below sits on top of the one above it, so a merge phrase for one also
-  merges everything above it in this table. "push and merge wp/12-profile into main" merges all four.
+  merges everything above it in this table. "push and merge wp/13-bosses into main" merges all five.
 
   | Branch | Package | What to try in the game |
   |---|---|---|
@@ -19,14 +19,15 @@ work package whose status is not "done" and isn't waiting on Zachary.
   | `wp/08-teaching` | WP8 | The Break Room whiteboard and how-to boards, a PA line a few seconds into each floor, and first-time hints. |
   | `wp/11-robotics` | WP11 | Robotics floors have roombas, turrets, drones and cameras; data drives give Magnet Hand, Spring Legs and Night-Vision Eye. |
   | `wp/12-profile` | WP12 | Play a run, quit, and open the profile file; `hints reset` in the console shows the hints again. |
+  | `wp/13-bosses` | WP13 | Console: `spawn boss_mushroom_man` or `spawn boss_robobrain` on any floor. Boss floors on Botany and Robotics now have their own boss. |
 
-- **Next for Claude:** WP13 (Mushroom Man and Robobrain).
+- **Next for Claude:** WP14 (laser pointer and brainstorm leftovers).
 - **On hold until Zachary says so:** D8 (Steam fee and App ID) and D9 (name check). They block WP18's real test,
   WP32 and WP33.
 - **Other threads working in this repo:** the floor generator thread owns `systems/level_gen`,
   `config/floor_gen_tuning.tres`, and the run length numbers `run_floor_count` and `boss_every_floors` (decision D1
   is approved but not applied yet: today they are still 18 and 6). It works in its own folder, `../lab-escape-6a`.
-- **Pace so far:** 12 packages built in the first 2 days. The code packages went much faster than the estimate in
+- **Pace so far:** 13 packages built in the first 2 days. The code packages went much faster than the estimate in
   section a. The art, sound and launch phases (WP20 on) depend on Zachary's time, tools and play tests, and are
   still the long part.
 
@@ -195,7 +196,7 @@ Added 2026-11-12. Each line names where it is picked up.
 | Kills in the run summary and the lifetime stats only count the host's kills (only the host's game hears about kills). | WP5, WP12 | WP15b |
 | Ping shows "-" over Steam in the Tab player list. | WP6 | WP15b (needs a real-Steam check) |
 | A rejoining player gets their mutations back: can only be checked with real Steam accounts. | WP2 | Section f checklist |
-| The spore shooter leaves no cloud on the floor (its puffball gives the spores status instead). | WP10 | WP13, if the Mushroom Man's slam needs a real cloud; otherwise Update 1 |
+| The spore shooter leaves no cloud on the floor (its puffball gives the spores status instead). | WP10 | Update 1 (WP13's spore slam uses the spores status too, so nothing needs a real cloud yet) |
 | Photosynthesis heals "when nothing has hurt you for a while", not "in the light". | WP10 | WP26 (lighting) |
 | Spring Legs' "fall immunity" protects against nothing, because the game has no fall damage. Adding fall damage is a design choice. | WP11 | WP16 (ask Zachary with the balance pass) |
 | The flock camera is its own enemy, not the security cameras the floor plan places. | WP11 | Update 1, with the security room |
@@ -349,7 +350,9 @@ can play. Every package follows the Working rules (section i). Status values: **
 #### WP13: Mushroom Man and Robobrain (2 to 3 sessions)
 - **What:** Mushroom Man: spore phases, mushroom zombie waves, a spore cloud slam. Robobrain: laser sweep,
   rocket volleys, drone waves. Botany and Robotics boss floors turned on.
-- **Gaps:** G15. **Status: not started.**
+- **Gaps:** G15.
+- **Built:** both bosses as content files with grey-box bodies, and two new attack pieces any later boss can reuse. **Mushroom Man** (700 health): lobs fans of spores, slams the ground in a spore cloud that leaves you coughing, and wakes mushroom zombies; under 60% health it adds a ring of spores in every direction, under 25% it lobs faster. **Robobrain** (800 health): sweeps a low laser across the room (jump over it, or stand on a crate), fires rocket pairs from its arms and stomps anyone hugging it; under 60% it calls drones, under 30% everything speeds up. Botany and Robotics boss floors are on, so a run's boss floors are now rolled among all three departments. Each boss drops gems, meat and its department's upgrade (a DNA vial or a data drive). All three bosses still fight in the same grey arena room; arenas per department are a level_gen need.
+- **Status: waiting for your play test.** Branch `wp/13-bosses` (stacked on `wp/12-profile`).
 
 #### WP14: Items and brainstorm leftovers
 - **What:** laser pointer (a "lure" behaviour piece: some enemies chase the dot), 1 or 2 more items, Fly drawn to
@@ -652,7 +655,8 @@ Added 2026-11-12 from what the first 12 packages taught us:
 - Botany and Robotics will need `enemy_spawn` markers that suit stationary enemies (turrets, flytraps): a wall or
   corner spot with a view down a room.
 - A `task` marker in some medium rooms for the hamster wheel (WP15).
-- Boss arenas per department (Botany and Robotics boss floors are off today).
+- Boss arenas per department. Since WP13 all three departments have boss floors, and all three bosses fight in
+  `room_arena_grey`. An arena with a few pillars or crates would give cover from Robobrain's laser and rockets.
 - The Zoology "broken skylights and dark corners" damage look (with art).
 - Lift parts per floor reach 5 by floor 10 in the scripted run. That may be a lot for 1 or 2 players; worth
   checking in the tuning pass against the player count.

@@ -2,11 +2,13 @@ extends Node3D
 ## Test scene for bosses (run alone with F6): a hand-built 24 x 24 m arena with one doorway, two minion
 ## spawn spots and the Giant Rat. Walk in through the doorway: the fight starts, and once everyone is
 ## inside the doorway is barred until the rat is beaten.
-## Keys: F1 damage the boss 10%, F2 a new boss, F7 players invisible, F10 give yourself a crowbar.
+## Keys: F1 damage the boss 10%, F2 the next boss (Giant Rat, Mushroom Man, Robobrain), F7 players invisible, F10 give yourself a crowbar.
 ## Use 2 windows (Esc > Host local / Join local). Launch options after "--": "host", "join", "port=7790".
 
 const BOSS_ID: StringName = &"boss_giant_rat"
 const ARENA_SIZE: float = 24.0
+
+var _boss_index: int = -1
 
 var _overview: Camera3D
 var _prompt: Label
@@ -42,9 +44,23 @@ func _start() -> void:
 		_spawn_boss()
 
 
-func _spawn_boss() -> void:
-	if multiplayer.is_server() and (Boss.current() == null or Boss.current().is_queued_for_deletion()):
-		Bosses.spawn(BOSS_ID, Transform3D(Basis.IDENTITY, Vector3(12, 0.2, -18)))
+## Host: put a boss in the arena if there is none. `next` (F2, CHANGED 2026-11-12 in roadmap WP13) swaps the boss
+## for the next one there is (every boss in the content folder, in id order), so each can be tried here.
+func _spawn_boss(next: bool = false) -> void:
+	if not multiplayer.is_server():
+		return
+	var ids: Array[StringName] = ContentRegistry.get_all_ids(&"boss")
+	ids.sort()
+	if ids.is_empty():
+		return
+	if _boss_index < 0:
+		_boss_index = maxi(ids.find(BOSS_ID), 0)
+	if next:
+		Enemies.despawn_all()
+		_boss_index = (_boss_index + 1) % ids.size()
+	elif Boss.current() != null and not Boss.current().is_queued_for_deletion():
+		return
+	Bosses.spawn(ids[_boss_index], Transform3D(Basis.IDENTITY, Vector3(12, 0.2, -18)))
 
 
 func _run_launch_options() -> void:
@@ -85,7 +101,7 @@ func _request_rpc(action: StringName) -> void:
 				info.source_player_id = player_id
 				boss.get_health().apply_damage(info)
 		&"new_boss":
-			_spawn_boss()
+			_spawn_boss(true)
 		&"invisible":
 			_set_invisible.rpc(not Perception.players_invisible)
 		&"crowbar":
@@ -186,7 +202,7 @@ func _build_ui() -> void:
 	layer.add_child(column)
 	var help := Label.new()
 	help.text = "Walk north through the doorway into the arena.\n" \
-		+ "F1 damage the boss 10%   F2 new boss   F7 players invisible   F10 crowbar   Left click: attack"
+		+ "F1 damage the boss 10%   F2 next boss   F7 players invisible   F10 crowbar   Left click: attack"
 	column.add_child(help)
 	_info = Label.new()
 	column.add_child(_info)

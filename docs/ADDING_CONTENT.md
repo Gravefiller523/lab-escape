@@ -118,6 +118,12 @@ turret: `move_speed` 0 and only the idle, search and attack_ranged states.
 **Fill in:** `scene`, `max_health`, `phases` (each: `starts_at_health_fraction`, `attack_names` from
 the boss scene's attack nodes, `minion_enemy_ids`, `minions_per_wave`, `minion_wave_interval`),
 `arena_room_id`, `loot_id`, `music`. Set the department's `boss_id`. **Test:** `boss` in the console.
+**Copy (NEW 2026-11-12):** `boss_mushroom_man.tres` and `systems/bosses/scenes/mushroom_man.tscn` (or `boss_robobrain`).
+A boss scene's `Attacks` node holds its attack pieces, each with an `attack_name` that the phases list. The pieces so
+far: `charge_attack.gd`, `slam_attack.gd` (optional `status_id` and `puff_color`), `projectile_burst_attack.gd` (a fan
+or ring of shots; give it a RangedAttackData as `projectile`) and `laser_sweep_attack.gd` (a low beam swept across
+the room). The same piece can be used twice with different numbers (`rocket_volley` and `rocket_volley_fast`). Turn the
+department's `boss_floors` on once it has its own boss. **Test:** `spawn boss_<name>` in the console.
 
 ## Room
 **Copy:** a similar room scene and its `.tres`. **Scene must have:** floor/walls, a baked

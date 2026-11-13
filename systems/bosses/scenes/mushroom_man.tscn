@@ -1,0 +1,173 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://systems/bosses/boss.gd" id="1_boss"]
+[ext_resource type="Script" path="res://systems/bosses/states/boss_fight_state.gd" id="2_fight"]
+[ext_resource type="Script" path="res://systems/bosses/attacks/slam_attack.gd" id="3_slam"]
+[ext_resource type="Script" path="res://systems/bosses/attacks/projectile_burst_attack.gd" id="4_burst"]
+[ext_resource type="Script" path="res://core/data/enemies/ranged_attack_data.gd" id="5_ranged"]
+
+[sub_resource type="BoxShape3D" id="Shape_1"]
+size = Vector3(1.6, 2.6, 1.6)
+
+[sub_resource type="StandardMaterial3D" id="Mat_stalk"]
+albedo_color = Color(0.88, 0.84, 0.7, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_stalk"]
+material = SubResource("Mat_stalk")
+size = Vector3(1.4, 2.0, 1.4)
+
+[sub_resource type="StandardMaterial3D" id="Mat_cap"]
+albedo_color = Color(0.6, 0.2, 0.16, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_cap"]
+material = SubResource("Mat_cap")
+size = Vector3(3.0, 0.8, 3.0)
+
+[sub_resource type="StandardMaterial3D" id="Mat_spot"]
+albedo_color = Color(0.95, 0.92, 0.8, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_spot"]
+material = SubResource("Mat_spot")
+size = Vector3(0.7, 0.12, 0.7)
+
+[sub_resource type="StandardMaterial3D" id="Mat_eyes"]
+albedo_color = Color(0.5, 1, 0.3, 1)
+emission_enabled = true
+emission = Color(0.5, 1, 0.3, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_eyes"]
+material = SubResource("Mat_eyes")
+size = Vector3(0.8, 0.16, 0.1)
+
+[sub_resource type="Resource" id="Spore_volley"]
+script = ExtResource("5_ranged")
+shots = 2
+shot_interval = 0.7
+projectile_speed = 9.0
+gravity_scale = 0.35
+spread_degrees = 1.5
+damage = 6.0
+damage_type = &"poison"
+status_id = &"status_spores"
+projectile_radius = 0.26
+projectile_color = Color(0.75, 0.7, 0.35, 1)
+
+[sub_resource type="Resource" id="Spore_volley_fast"]
+script = ExtResource("5_ranged")
+shots = 3
+shot_interval = 0.5
+projectile_speed = 11.0
+gravity_scale = 0.35
+spread_degrees = 1.5
+damage = 6.0
+damage_type = &"poison"
+status_id = &"status_spores"
+projectile_radius = 0.26
+projectile_color = Color(0.75, 0.7, 0.35, 1)
+
+[sub_resource type="Resource" id="Spore_ring"]
+script = ExtResource("5_ranged")
+shots = 2
+shot_interval = 0.9
+projectile_speed = 7.0
+gravity_scale = 0.2
+spread_degrees = 0.0
+damage = 5.0
+damage_type = &"poison"
+status_id = &"status_spores"
+projectile_radius = 0.24
+projectile_color = Color(0.85, 0.8, 0.3, 1)
+
+[node name="MushroomMan" type="CharacterBody3D"]
+script = ExtResource("1_boss")
+attack_knockback = 5.0
+hurtbox_radius = 1.1
+hurtbox_height = 2.8
+start_state = &"boss_fight"
+boss_move_speed = 2.4
+attack_gap = 1.4
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+shape = SubResource("Shape_1")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("Mesh_stalk")
+
+[node name="Cap" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("Mesh_cap")
+
+[node name="SpotA" type="MeshInstance3D" parent="Mesh/Cap"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 0.42, 0.5)
+mesh = SubResource("Mesh_spot")
+
+[node name="SpotB" type="MeshInstance3D" parent="Mesh/Cap"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0.42, -0.6)
+mesh = SubResource("Mesh_spot")
+
+[node name="SpotC" type="MeshInstance3D" parent="Mesh/Cap"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.42, 0.9)
+mesh = SubResource("Mesh_spot")
+
+[node name="Eyes" type="MeshInstance3D" parent="Mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -0.71)
+mesh = SubResource("Mesh_eyes")
+
+[node name="HealthLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 0)
+billboard = 1
+font_size = 72
+outline_size = 16
+text = "MUSHROOM MAN"
+
+[node name="States" type="Node" parent="."]
+
+[node name="boss_fight" type="Node" parent="States"]
+script = ExtResource("2_fight")
+
+[node name="Attacks" type="Node" parent="."]
+
+[node name="SporeSlam" type="Node" parent="Attacks"]
+script = ExtResource("3_slam")
+attack_name = &"spore_slam"
+max_range = 4.5
+windup = 1.0
+radius = 5.0
+damage = 12.0
+knockback = 7.0
+status_id = &"status_spores"
+puff_color = Color(0.75, 0.75, 0.3, 1)
+
+[node name="SporeVolley" type="Node" parent="Attacks"]
+script = ExtResource("4_burst")
+attack_name = &"spore_volley"
+min_range = 4.0
+max_range = 24.0
+projectile = SubResource("Spore_volley")
+windup = 0.9
+shots_per_volley = 5
+fan_degrees = 50.0
+muzzle_height = 2.6
+
+[node name="SporeVolleyFast" type="Node" parent="Attacks"]
+script = ExtResource("4_burst")
+attack_name = &"spore_volley_fast"
+min_range = 4.0
+max_range = 24.0
+projectile = SubResource("Spore_volley_fast")
+windup = 0.6
+shots_per_volley = 5
+fan_degrees = 60.0
+muzzle_height = 2.6
+
+[node name="SporeRing" type="Node" parent="Attacks"]
+script = ExtResource("4_burst")
+attack_name = &"spore_ring"
+max_range = 14.0
+projectile = SubResource("Spore_ring")
+windup = 1.1
+shots_per_volley = 14
+fan_degrees = 360.0
+muzzle_height = 2.6

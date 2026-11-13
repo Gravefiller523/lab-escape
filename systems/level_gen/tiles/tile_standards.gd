@@ -10,7 +10,10 @@ const ROLE_ROOM: StringName = &"room"
 const ROLE_MAIN_HALL: StringName = &"main_hall"
 const ROLE_SECONDARY_HALL: StringName = &"secondary_hall"
 const ROLE_TEMPLATE: StringName = &"template"
-const ROLES: Array[StringName] = [ROLE_ROOM, ROLE_MAIN_HALL, ROLE_SECONDARY_HALL, ROLE_TEMPLATE]
+## NEW 2026-11-13 (step 6b): a short passage between a hallway and a room (Botany's decontamination airlock):
+## exactly two doorways, no size category, no lift parts.
+const ROLE_CONNECTOR: StringName = &"connector"
+const ROLES: Array[StringName] = [ROLE_ROOM, ROLE_MAIN_HALL, ROLE_SECONDARY_HALL, ROLE_TEMPLATE, ROLE_CONNECTOR]
 
 ## Room size categories (RoomData.size_category; the footprints are in Config.floor_gen).
 const SIZE_CATEGORIES: Array[StringName] = [&"small", &"medium", &"large"]

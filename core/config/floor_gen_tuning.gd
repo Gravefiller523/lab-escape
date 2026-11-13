@@ -67,6 +67,11 @@ extends Resource
 @export var main_hall_long_piece_share: float = 0.5
 
 @export_group("Branches (V4)")
+## NEW 2026-11-13 (step 6b): Botany's decontamination airlock (a connector tile): which room kinds may sit behind
+## one when they hang off a hallway, how often they do, and the airlock's room_kind.
+@export var airlock_room_kinds: PackedStringArray = PackedStringArray(["cell_culture_lab", "microscopy_lab", "growth_chamber"])
+@export var airlock_chance: float = 0.5
+@export var airlock_kind: StringName = &"decon_airlock"
 ## CHANGED 2026-10-30 (Zachary): branches only grow from a hallway's side doorways (the walled pieces
 ## decide the spacing), so there is no "branch every few units" number any more. Each side doorway rolls
 ## what grows there (weights, compared with each other); "nothing" leaves it capped.

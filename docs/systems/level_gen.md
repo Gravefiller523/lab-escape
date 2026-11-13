@@ -612,6 +612,14 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   intensity, part size bias and hazards; rooms 10 on floor 1, about 27 by floor 11 (`target_rooms_per_floor`
   1.7). The "from floor 4" rules (a part near the incident, missing power cells) stay at floor 4, the first boss
   block boundary. Tests over floors 1-18 now cover 1-12; the bulk check covers 1-12.
+- 2026-11-13 (step 6b, Botany's airlock): NEW tile role "connector" (`TileStandards.ROLE_CONNECTOR`): a short passage
+  with exactly two doorways, no size category, no lift parts. Botany's decontamination airlock
+  (`room_tile_botany_decon_airlock`, same id) is now one: 1 x 2 units with a doorway at each end. The generator puts
+  it between a hallway and a lab: the required airlock goes at a main hallway doorway with a lab behind it, and labs
+  listed in `airlock_room_kinds` that hang off a hallway sit behind one now and then (`airlock_chance`, within the
+  airlock's max_per_floor). An airlock nothing fits behind is taken back out (`_unplace_last`). Connectors get doors
+  like rooms, so an airlock has a door at each end. NEW tuning `airlock_room_kinds`, `airlock_chance`,
+  `airlock_kind`. Test `test_airlocks_sit_between_a_hallway_and_a_lab`.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

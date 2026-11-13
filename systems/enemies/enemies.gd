@@ -397,8 +397,11 @@ func _on_navigation_baked(mesh: NavigationMesh, region: NavigationRegion3D, numb
 
 
 ## Host: spawn a floor's enemies at its enemy_spawn markers (not in the lift room). Returns them.
+## CHANGED 2026-11-13 (floor generation step 6c, Zachary: keep floor 1's crowding): `budget_floor` is the floor number
+## the enemy budget is worked out from (the run's floor, 1 to 12, so bigger floors get more enemies); 0 = use
+## floor_in_department as before. Which enemies can appear still follows floor_in_department.
 func spawn_floor(floor_in_department: int, department: DepartmentData, run_seed: int,
-		markers: Array[RoomMarker]) -> Array[Enemy]:
+		markers: Array[RoomMarker], budget_floor: int = 0) -> Array[Enemy]:
 	var spawned: Array[Enemy] = []
 	var spots: Array[RoomMarker] = []
 	for marker: RoomMarker in markers:
@@ -408,7 +411,8 @@ func spawn_floor(floor_in_department: int, department: DepartmentData, run_seed:
 	if spots.is_empty():
 		return spawned
 	var rng: RandomNumberGenerator = SeededRng.make(run_seed, &"enemy_spawns", floor_in_department)
-	var budget: int = RunDifficulty.enemy_budget(floor_in_department, Net.get_player_count())
+	var budget: int = RunDifficulty.enemy_budget(budget_floor if budget_floor > 0 else floor_in_department,
+		Net.get_player_count())
 	var plan: Array[StringName] = plan_spawns(pool_for(department), floor_in_department, budget, rng)
 	for index: int in plan.size():
 		var marker: RoomMarker = spots[rng.randi_range(0, spots.size() - 1)]
@@ -433,7 +437,8 @@ func _on_floor_ready(floor_number: int, _department_id: StringName) -> void:
 	if root != null and root != _nav_root:
 		bake_navigation(root)
 	var floor_in_department: int = run.floor_in_department if run != null else floor_number
-	spawn_floor(floor_in_department, GameFlow.get_current_department(), _run_seed(), Level.get_markers(&"enemy_spawn"))
+	spawn_floor(floor_in_department, GameFlow.get_current_department(), _run_seed(), Level.get_markers(&"enemy_spawn"),
+		floor_number)
 
 
 ## Host: an enemy got hurt; whoever did it (a player, or the player who threw the prop) makes it turn on them.

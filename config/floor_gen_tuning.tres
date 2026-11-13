@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_floorgen")
-floor_brackets = PackedInt32Array(1, 3, 6, 8)
+floor_brackets = PackedInt32Array(1, 4, 6, 9)
 main_hall_length_per_floor = 1.5
 target_rooms_per_floor = 1.7
 damage_intensity_per_floor = 0.045

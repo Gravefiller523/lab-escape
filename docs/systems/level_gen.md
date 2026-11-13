@@ -629,6 +629,13 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   meshes (it reads their collision faces since roadmap WP3, 2026-11-11), so Godot's "slow parse" warning is gone: the
   walkable area matches the old way within 0.4% and bake time is the same (about 20-50 ms a floor). NEW test
   `test_navigation_bake.gd` locks that in for every department; the two level_gen tests no longer excuse the warning.
+- 2026-11-13 (step 6c, tuning from data): NEW debug tool `FloorStats` (`systems/level_gen/debug/floor_stats.gd`) and its
+  runner scene `test/floor_stats_runner.tscn` (headless: N floors per department per floor number, a CSV and a markdown
+  summary). NEW `FloorLayout.stats["longest_path_m"]` (the walk from the elevator to the farthest tile). Tuning:
+  `floor_brackets` (1, 3, 6, 8) -> (1, 4, 6, 9) so floors 1-3 are all the gentlest bracket (floor 3 had a jump in parts,
+  keycard doors and loops). Report with before and after tables: `docs/design/floor-stats-6c.md`.
+  Also (Zachary's OK) the enemies' spawner budget follows the run's floor and `enemy_budget_per_floor` is 0.2 in
+  `config/game_config.tres`, so enemies per room stay about 0.5 on every floor. `FloorStats` counts spawned enemies too.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

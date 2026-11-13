@@ -6,3 +6,4 @@
 script = ExtResource("1_l8lsh")
 run_floor_count = 12
 boss_every_floors = 4
+enemy_budget_per_floor = 0.2

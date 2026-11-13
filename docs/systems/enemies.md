@@ -21,7 +21,7 @@ func bake_navigation(root: Node3D) -> NavigationRegion3D             # NEW 2026-
 const NAV_SKIP_GROUP = &"nav_skip"            # bodies left out of the bake (doors enemies can open, or that stand open)
 func request_navigation_update() -> void      # bake again in NAV_UPDATE_DELAY (1 s); several asks make one bake
 func update_navigation(wait: bool = false) -> NavigationRegion3D   # bake again now; the old mesh is used until it's ready
-func spawn_floor(floor_in_department: int, department: DepartmentData, run_seed: int, markers: Array[RoomMarker]) -> Array[Enemy]   # NEW, host
+func spawn_floor(floor_in_department: int, department: DepartmentData, run_seed: int, markers: Array[RoomMarker], budget_floor: int = 0) -> Array[Enemy]   # NEW, host (CHANGED 2026-11-13: budget_floor)
 static func plan_spawns(pool: Array[WeightedIdData], floor_in_department: int, budget: int, rng: RandomNumberGenerator) -> Array[StringName]   # NEW
 static func pool_for(department: DepartmentData) -> Array[WeightedIdData]   # NEW (STUB: empty pool = every enemy)
 
@@ -231,6 +231,12 @@ crowbar). GUT (`tests/unit/enemies/test_enemies.gd`, 15): all of the above plus 
 - 2026-11-12 (roadmap WP11): Robotics' own enemies (grey box): `enemy_roomba` (fast and low, a hard-knockback ram), `enemy_turret` (rooted, idle + attack_ranged: quick bursts of laser bolts), `enemy_drone` (flying, keeps its distance and zaps), `enemy_flock_camera` (rooted, never attacks; NEW `AlarmBehaviour`: when it notices you, every enemy within `alarm_radius` comes for you; it can be smashed). Tests in `tests/unit/enemies/test_robotics_enemies.gd`.
 - 2026-11-12 (roadmap WP14): **lures**, a new building block: things certain enemies can't resist. NEW `Lure` (`systems/enemies/lure.gd`: `kind`, `radius`, `needs_sight`, `player`, `seconds_left`, `follow(node)`, `draws(enemy)`, `seen_by(enemy)`, static `nearest_for(enemy)`). NEW EnemyData `lure_kinds` (which kinds it falls for: `laser`, `trash`, `fly_player`). NEW shared state `lured` (`states/lured_state.gd`), which Enemy adds by itself to any enemy with `lure_kinds` (no scene edit): it forgets its target, goes to the lure and stares at it; being hurt, the lure going, or boredom ends it. A lure that is a player (`Lure.player`) is different: the enemy notices that player from afar and prefers them as its target. NEW Enemy `get_lure()`, `clear_lure()`, `ignore_lures_for(seconds)`. NEW on the Enemies autoload: `place_lure(key, kind, at, radius, seconds, color)` (host; everyone gets the lure and its dot; the same key moves it), `attach_lure(node, kind, radius, needs_sight = false) -> Lure` (host; follows a node, e.g. a Fly player), `get_lures(kind = &"") -> Array[Lure]`. The host also keeps a lure on every loose prop tagged `lure_<kind>` (looked up every `lure_prop_refresh_seconds`). NEW AiTuning group "Lures" (`Config.feel.ai`): `lure_check_seconds` 0.4, `lure_attention_seconds` 6, `lure_bored_seconds` 8, `lure_hurt_ignore_seconds` 5, `lure_prop_refresh_seconds` 1, `lure_prop_radius` 9. Content: rat and bat fall for `laser`; roomba for `laser` and `trash`; fly for `trash` and `fly_player`. Tests: `tests/unit/enemies/test_lures.gd` (10).
 - 2026-11-13 (roadmap WP15b): the Enemies autoload sends every kill to every PC (`_kill_credited_rpc` -> `EventBus.kill_credited`). Typing warnings fixed in attack_tickets, enemies, enemy, enemy_projectile and perception (a Variant handed to float()/int() now says its type with `as`). Test: `test_a_kill_is_credited_to_whoever_made_it`.
+- 2026-11-13 (floor generation step 6c, Zachary OK'd: keep floor 1's crowding): `spawn_floor` takes an optional
+  `budget_floor` (default 0 = floor_in_department, as before); on `floor_ready` the spawner passes the run's floor
+  number, so the enemy budget grows across the whole run instead of starting again after each boss. Which enemy
+  types can appear still follows floor_in_department. With `enemy_budget_per_floor` 0.2 in `config/game_config.tres`
+  this keeps about 0.5 enemies per room on every floor (was 0.52 on floor 1 falling to 0.20 by floor 11; see
+  `docs/design/floor-stats-6c.md`). Test: `tests/unit/enemies/test_run_budget.gd`.
 
 ## HANDOFF
 **Built (2026-10-19):** `Enemy`, `EnemyState` + 6 shared states, `EnemyBehaviour` + `JumpAttackBehaviour` and

@@ -158,7 +158,7 @@ func test_many_seeds_never_crash() -> void:
 	var tuning: FloorGenTuning = Config.floor_gen
 	var fallbacks: int = 0
 	for floor_seed: int in 500:
-		var layout: FloorLayout = _floor(floor_seed * 7919 + 13, 1 + floor_seed % 18)
+		var layout: FloorLayout = _floor(floor_seed * 7919 + 13, 1 + floor_seed % 12)
 		assert_gt(layout.placements.size(), 2)
 		if layout.is_fallback:
 			fallbacks += 1
@@ -227,7 +227,7 @@ func test_hallway_pieces_are_recognised() -> void:
 func test_every_floor_has_room_for_its_lift_parts_and_a_charger() -> void:
 	var tuning: FloorGenTuning = Config.floor_gen
 	for floor_seed: int in 60:
-		var floor_number: int = 1 + floor_seed % 18
+		var floor_number: int = 1 + floor_seed % 12
 		var layout: FloorLayout = _floor(floor_seed * 31 + 7, floor_number)
 		var parts: int = 0
 		var chargers: int = 0
@@ -261,7 +261,7 @@ func test_robotics_floors_have_their_required_rooms() -> void:
 	var department_rooms: int = 0
 	var shared_rooms: int = 0
 	for floor_seed: int in 40:
-		var floor_number: int = 1 + floor_seed % 18
+		var floor_number: int = 1 + floor_seed % 12
 		var layout: FloorLayout = FloorGenerator.generate_from_seed(robotics, floor_number, floor_seed * 13 + 5, Config.floor_gen)
 		assert_false(layout.is_fallback, "floor %d seed %d: a real floor\n%s" % [floor_number, floor_seed, "\n".join(layout.log_lines)])
 		var kinds: Dictionary[StringName, int] = _kinds_on(layout)
@@ -285,7 +285,7 @@ func test_robotics_floors_have_their_required_rooms() -> void:
 func test_room_types_respect_max_per_floor() -> void:
 	var robotics: DepartmentData = _robotics()
 	for floor_seed: int in 20:
-		var kinds: Dictionary[StringName, int] = _kinds_on(FloorGenerator.generate_from_seed(robotics, 18, floor_seed, Config.floor_gen))
+		var kinds: Dictionary[StringName, int] = _kinds_on(FloorGenerator.generate_from_seed(robotics, 12, floor_seed, Config.floor_gen))
 		for room_type: RoomTypeData in robotics.room_types:
 			if room_type.max_per_floor > 0:
 				assert_lte(kinds.get(room_type.room_kind, 0), room_type.max_per_floor, "seed %d: %s" % [floor_seed, room_type.room_kind])
@@ -349,7 +349,7 @@ func test_every_tile_gets_a_damage_level_and_the_start_stays_calm() -> void:
 	var start_cap: int = TileStandards.DAMAGE_LEVELS.find(tuning.start_area_max_damage)
 	var damaged: int = 0
 	for floor_seed: int in 20:
-		var layout: FloorLayout = _robotics_floor(floor_seed, 1 + floor_seed % 18)
+		var layout: FloorLayout = _robotics_floor(floor_seed, 1 + floor_seed % 12)
 		assert_eq(layout.damage.size(), layout.placements.size(), "seed %d: a level for every tile" % floor_seed)
 		assert_ne(layout.incident_id, &"", "seed %d: an incident" % floor_seed)
 		assert_true(layout.origin >= 0 and _room(layout.placements[layout.origin]).tile_role == TileStandards.ROLE_ROOM,
@@ -391,7 +391,7 @@ func test_robotics_incidents_start_in_their_rooms() -> void:
 func test_collapses_never_cut_anything_off() -> void:
 	var collapses: int = 0
 	for floor_seed: int in 40:
-		var layout: FloorLayout = _robotics_floor(floor_seed, 18)
+		var layout: FloorLayout = _robotics_floor(floor_seed, 12)
 		for index: int in layout.collapsed:
 			collapses += 1
 			assert_eq(_room(layout.placements[index]).tile_role, TileStandards.ROLE_SECONDARY_HALL,
@@ -409,7 +409,7 @@ func test_collapses_never_cut_anything_off() -> void:
 					queue.append(index)
 		assert_eq(reached.size(), layout.placements.size() - layout.collapsed.size(),
 			"seed %d: every tile but the collapsed ones can still be reached (and the security room)" % floor_seed)
-	gut.p("collapsed hallway pieces over 40 floor-18 floors: %d" % collapses)
+	gut.p("collapsed hallway pieces over 40 floor-12 floors: %d" % collapses)
 
 
 func test_hazards_only_in_badly_damaged_rooms() -> void:
@@ -417,7 +417,7 @@ func test_hazards_only_in_badly_damaged_rooms() -> void:
 	var min_level: int = TileStandards.DAMAGE_LEVELS.find(tuning.hazard_min_damage)
 	var total: int = 0
 	for floor_seed: int in 20:
-		var floor_number: int = 1 + floor_seed % 18
+		var floor_number: int = 1 + floor_seed % 12
 		var layout: FloorLayout = _robotics_floor(floor_seed, floor_number)
 		var keys: PackedStringArray = layout.active_markers.get(&"hazard", PackedStringArray())
 		total += keys.size()
@@ -515,7 +515,7 @@ func test_smaller_incidents_are_spread_out() -> void:
 	var tuning: FloorGenTuning = Config.floor_gen
 	var at_least_min: int = 0
 	var floors: int = 0
-	for floor_number: int in [1, 5, 10, 18]:
+	for floor_number: int in [1, 5, 10, 12]:
 		for floor_seed: int in 10:
 			var layout: FloorLayout = _robotics_floor(floor_seed * 17 + 3, floor_number)
 			floors += 1
@@ -572,10 +572,10 @@ func _walk(layout: FloorLayout, from: int) -> PackedFloat32Array:
 	return distances
 
 
-## NEW 2026-10-31 (Zachary: higher floors are bigger). Prints the average size of floors 1, 6, 12 and 18.
+## NEW 2026-10-31 (Zachary: higher floors are bigger). Prints the average size of floors 1, 4, 8 and 12 (CHANGED 2026-11-13: runs are 12 floors; were 1, 6, 12, 18).
 func test_floors_grow_with_the_floor_number() -> void:
 	var averages: Array[Vector3] = []
-	for floor_number: int in [1, 6, 12, 18]:
+	for floor_number: int in [1, 4, 8, 12]:
 		var rooms: float = 0.0
 		var tiles: float = 0.0
 		var area: float = 0.0
@@ -603,7 +603,7 @@ func test_floors_grow_with_the_floor_number() -> void:
 	for index: int in range(1, averages.size()):
 		assert_gt(averages[index].x, averages[index - 1].x, "more rooms on each higher floor")
 		assert_gt(averages[index].y, averages[index - 1].y, "more tiles on each higher floor")
-	assert_gt(averages[3].x, averages[0].x * 2.5, "floor 18 has well over twice floor 1's rooms")
+	assert_gt(averages[3].x, averages[0].x * 2.5, "floor 12 (the top) has well over twice floor 1's rooms")
 	assert_gt(averages[3].z, averages[0].z * 2.0, "and covers at least twice the area")
 
 
@@ -661,7 +661,7 @@ func test_doors_go_on_rooms_and_every_lock_can_be_opened() -> void:
 	var tuning: FloorGenTuning = Config.floor_gen
 	var types: Dictionary[int, int] = {}
 	for floor_seed: int in 30:
-		var floor_number: int = 1 + floor_seed % 18
+		var floor_number: int = 1 + floor_seed % 12
 		var layout: FloorLayout = _robotics_floor(floor_seed * 7 + 1, floor_number)
 		assert_gt(layout.doors.size(), 0, "seed %d: the floor has doors" % floor_seed)
 		var colours: Dictionary[int, bool] = {}
@@ -840,3 +840,12 @@ func _check_door(room: Node3D, index: int, socket_name: String, type: int, label
 				mesh_count += 1
 		assert_gt(mesh_count, 0, "%s %s can be seen" % [label, side])
 	return checked
+
+
+## NEW 2026-11-13 (step 6a, found when runs became 12 floors): a pry door used to count as open as soon as the
+## crowbar was placed, so a keycard could end up behind a pry door whose way in was through that keycard's door.
+## These floors (seed, floor) had 2 locks nobody could open.
+func test_keys_never_end_up_behind_a_pry_door_they_open_the_way_to() -> void:
+	for case: Vector2i in [Vector2i(141, 9), Vector2i(190, 4)]:
+		var layout: FloorLayout = _robotics_floor(case.x, case.y)
+		assert_eq(_stuck_locks(layout), 0, "seed %d floor %d: every lock can be opened in some order" % [case.x, case.y])

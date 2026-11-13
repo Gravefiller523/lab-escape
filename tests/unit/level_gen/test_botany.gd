@@ -27,7 +27,7 @@ func test_botany_floors_have_their_required_rooms() -> void:
 	var department_rooms: int = 0
 	var shared_rooms: int = 0
 	for floor_seed: int in 40:
-		var floor_number: int = 1 + floor_seed % 18
+		var floor_number: int = 1 + floor_seed % 12
 		var layout: FloorLayout = FloorGenerator.generate_from_seed(botany, floor_number, floor_seed * 17 + 3, Config.floor_gen)
 		var label: String = "floor %d seed %d" % [floor_number, floor_seed]
 		assert_false(layout.is_fallback, "%s: a real floor" % label)

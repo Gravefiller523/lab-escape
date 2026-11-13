@@ -30,6 +30,7 @@ extends Resource
 ## Departments in one run.
 @export var departments_per_run: int = 3
 ## NEW 2026-10-31 (Zachary, F3): floors in a run, boss floors included.
+## (CHANGED 2026-11-13, Zachary's roadmap: config/game_config.tres sets 12 floors and a boss every 4.)
 @export var run_floor_count: int = 18
 ## NEW 2026-10-31 (Zachary, F1): every this many floors is a boss floor (6 = floors 6, 12, 18). 0 = none.
 @export var boss_every_floors: int = 6

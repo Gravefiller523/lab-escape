@@ -41,6 +41,8 @@ extends Resource
 @export var large_room_sizes: Array[Vector2i] = [Vector2i(5, 6), Vector2i(6, 6), Vector2i(6, 8)]
 
 @export_group("Floor brackets")
+## (CHANGED 2026-11-13, runs of 12 floors: config/floor_gen_tuning.tres re-spreads the brackets and every
+## "per floor" number over 12 floors; the numbers below are the old 18-floor defaults.)
 ## The first floor of each bracket, for the "by bracket" lists below: 1, 4, 8, 12 = floors 1-3, 4-7, 8-11, 12+.
 ## A list with fewer numbers than brackets keeps using its last number. CHANGED 2026-10-31: bracket 12+ added
 ## (Zachary: higher floors bigger).

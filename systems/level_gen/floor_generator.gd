@@ -214,6 +214,8 @@ class _Builder:
 	var shared_rooms: Array[RoomData] = []
 	## NEW 2026-10-31 (step 5): this department's own room tiles, by room_kind.
 	var department_rooms: Dictionary[StringName, Array] = {}
+	## NEW 2026-11-13 (step 6b): the department's connector tiles (e.g. Botany's decontamination airlock), by room_kind.
+	var connectors: Dictionary[StringName, Array] = {}
 	## How many rooms of each room_kind are on the floor (for RoomTypeData.max_per_floor).
 	var kind_counts: Dictionary[StringName, int] = {}
 	var wing_counts: Dictionary[int, int] = {}
@@ -251,6 +253,10 @@ class _Builder:
 					_add_piece(main_pieces, room)
 				TileStandards.ROLE_SECONDARY_HALL:
 					_add_piece(hall_pieces, room)
+				TileStandards.ROLE_CONNECTOR:
+					if not connectors.has(room.room_kind):
+						connectors[room.room_kind] = []
+					connectors[room.room_kind].append(room)
 				TileStandards.ROLE_ROOM:
 					if room.department_ids.is_empty():
 						shared_rooms.append(room)
@@ -466,6 +472,10 @@ class _Builder:
 			if kind == &"lift" or kind == &"start":
 				continue
 			var tiles: Array[RoomData] = _typed(department_rooms.get(kind, []))
+			# NEW 2026-11-13 (step 6b): a required connector (Botany's airlock) goes in with a lab behind it.
+			var connector: bool = tiles.is_empty() and connectors.has(kind)
+			if connector:
+				tiles = _typed(connectors[kind])
 			if tiles.is_empty():
 				_log("required room %s has no tiles: skipped" % kind)
 				continue
@@ -475,7 +485,17 @@ class _Builder:
 				if _is_joined(socket) or occupied.has((socket["cell"] as Vector2i) + (socket["dir"] as Vector2i)):
 					continue
 				var wing: int = _new_wing(String(item["hall"]))
-				if _attach(socket, tiles, 0, wing, rng) >= 0:
+				var index: int = _attach(socket, tiles, 0, wing, rng)
+				if index >= 0 and connector:
+					# The airlock needs a lab behind it; if none fits, take it back out and try the next doorway.
+					var lab: int = _attach_beyond(index, _airlock_labs(), wing, rng)
+					if lab < 0:
+						_unplace_last()
+						index = -1
+					else:
+						var lab_kind: StringName = _room_of(lab).room_kind
+						kind_counts[lab_kind] = kind_counts.get(lab_kind, 0) + 1
+				if index >= 0:
 					rooms += 1
 					kind_counts[kind] = kind_counts.get(kind, 0) + 1
 					placed = true
@@ -505,11 +525,59 @@ class _Builder:
 					break
 				tried.append(room_type.room_kind)
 				var tiles: Array[RoomData] = _tiles_of_type(room_type)
-				var index: int = _attach(socket, tiles, 0, wing, rng) if not tiles.is_empty() else -1
+				var index: int = -1
+				# NEW 2026-11-13 (step 6b): some labs off a hallway sit behind an airlock (Botany's decontamination).
+				if not tiles.is_empty() and _wants_airlock(socket, room_type, rng):
+					index = _attach_through_airlock(socket, tiles, wing, rng)
+				if index < 0 and not _is_joined(socket):
+					index = _attach(socket, tiles, 0, wing, rng) if not tiles.is_empty() else -1
 				if index >= 0:
 					kind_counts[room_type.room_kind] = kind_counts.get(room_type.room_kind, 0) + 1
 					return index
 		return _attach(socket, shared_rooms, 0, wing, rng)
+
+	## NEW 2026-11-13 (step 6b): should this room (a lab off a hallway) sit behind an airlock? Only for the room
+	## kinds in airlock_room_kinds, when the department has the airlock connector, now and then (airlock_chance).
+	func _wants_airlock(socket: Dictionary, room_type: RoomTypeData, rng: RandomNumberGenerator) -> bool:
+		if not connectors.has(tuning.airlock_kind) or not tuning.airlock_room_kinds.has(String(room_type.room_kind)) \
+				or not _under_max(tuning.airlock_kind):
+			return false
+		var role: StringName = _room_of(socket["placement"]).tile_role
+		if role != TileStandards.ROLE_MAIN_HALL and role != TileStandards.ROLE_SECONDARY_HALL:
+			return false
+		return rng.randf() < tuning.airlock_chance
+
+	## NEW 2026-11-13 (step 6b): an airlock at the hallway doorway, then the room on its far side. Returns the
+	## room, or -1 if no airlock fits or nothing fits behind it (then the airlock is taken back out).
+	func _attach_through_airlock(socket: Dictionary, tiles: Array[RoomData], wing: int, rng: RandomNumberGenerator) -> int:
+		var airlock: int = _attach(socket, _typed(connectors[tuning.airlock_kind]), 0, wing, rng)
+		if airlock < 0:
+			return -1
+		var room: int = _attach_beyond(airlock, tiles, wing, rng)
+		if room < 0:
+			_unplace_last()
+			return -1
+		kind_counts[tuning.airlock_kind] = kind_counts.get(tuning.airlock_kind, 0) + 1
+		return room
+
+	## NEW 2026-11-13 (step 6b): one of these rooms at a free doorway of a connector, or -1.
+	func _attach_beyond(connector: int, tiles: Array[RoomData], wing: int, rng: RandomNumberGenerator) -> int:
+		for far: Dictionary in _door_sockets_of(connector):
+			var room: int = _attach(far, tiles, 0, wing, rng)
+			if room >= 0:
+				return room
+		return -1
+
+	## NEW 2026-11-13 (step 6b): the department's tiles of the room kinds that sit behind an airlock.
+	func _airlock_labs() -> Array[RoomData]:
+		var labs: Array[RoomData] = []
+		for kind_text: String in tuning.airlock_room_kinds:
+			if not _under_max(StringName(kind_text)):
+				continue
+			labs.append_array(_typed(department_rooms.get(StringName(kind_text), [])))
+		if labs.is_empty():
+			labs = shared_rooms
+		return labs
 
 	func _pick_room_type(rng: RandomNumberGenerator, skip: Array[StringName] = []) -> RoomTypeData:
 		var types: Array[RoomTypeData] = []
@@ -1010,8 +1078,9 @@ class _Builder:
 	## Which side of a doorway gets the door: a room (the one farther from the elevator if both are rooms), on its
 	## doorway socket. Empty: no room here, so it stays an archway.
 	func _door_side(a: Dictionary, b: Dictionary, from_start: PackedFloat32Array) -> Dictionary:
-		var a_room: bool = _room_of(a["placement"]).tile_role == TileStandards.ROLE_ROOM and not a["open"]
-		var b_room: bool = _room_of(b["placement"]).tile_role == TileStandards.ROLE_ROOM and not b["open"]
+		# CHANGED 2026-11-13 (step 6b): a connector (the airlock) gets doors like a room, so it has one at each end.
+		var a_room: bool = _room_of(a["placement"]).tile_role in [TileStandards.ROLE_ROOM, TileStandards.ROLE_CONNECTOR] and not a["open"]
+		var b_room: bool = _room_of(b["placement"]).tile_role in [TileStandards.ROLE_ROOM, TileStandards.ROLE_CONNECTOR] and not b["open"]
 		if a_room and b_room:
 			return a if from_start[a["placement"]] >= from_start[b["placement"]] else b
 		if a_room:
@@ -1596,7 +1665,8 @@ class _Builder:
 		if department != null:
 			for kind_text: String in department.required_room_kinds:
 				var kind := StringName(kind_text)
-				if kind == &"lift" or kind == &"start" or (department_rooms.get(kind, []) as Array).is_empty():
+				if kind == &"lift" or kind == &"start" or ((department_rooms.get(kind, []) as Array).is_empty()
+						and (connectors.get(kind, []) as Array).is_empty()):
 					continue
 				var found: bool = false
 				for index: int in layout.placements.size():
@@ -1785,6 +1855,29 @@ class _Builder:
 			own.append(socket)
 		placement_sockets.append(own)
 		return index
+
+	## NEW 2026-11-13 (step 6b): takes back the tile placed last (an airlock nothing fitted behind).
+	func _unplace_last() -> void:
+		var index: int = layout.placements.size() - 1
+		if index < 0:
+			return
+		for socket: Variant in placement_sockets[index]:
+			var entry: Dictionary = socket
+			sockets.erase(_edge_key(entry["cell"], entry["dir"]))
+		placement_sockets.remove_at(index)
+		for cell: Vector2i in occupied.keys():
+			if occupied[cell] == index:
+				occupied.erase(cell)
+		layout.placements.remove_at(index)
+
+	## NEW 2026-11-13 (step 6b): is there room for one more of this kind on the floor (its RoomTypeData max_per_floor)?
+	func _under_max(kind: StringName) -> bool:
+		if department == null:
+			return true
+		for room_type: RoomTypeData in department.room_types:
+			if room_type != null and room_type.room_kind == kind and room_type.max_per_floor > 0:
+				return kind_counts.get(kind, 0) < room_type.max_per_floor
+		return true
 
 	func _fits(corner: Vector2i, size: Vector2i) -> bool:
 		for x: int in size.x:

@@ -612,6 +612,23 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   intensity, part size bias and hazards; rooms 10 on floor 1, about 27 by floor 11 (`target_rooms_per_floor`
   1.7). The "from floor 4" rules (a part near the incident, missing power cells) stay at floor 4, the first boss
   block boundary. Tests over floors 1-18 now cover 1-12; the bulk check covers 1-12.
+- 2026-11-13 (step 6b, Botany's airlock): NEW tile role "connector" (`TileStandards.ROLE_CONNECTOR`): a short passage
+  with exactly two doorways, no size category, no lift parts. Botany's decontamination airlock
+  (`room_tile_botany_decon_airlock`, same id) is now one: 1 x 2 units with a doorway at each end. The generator puts
+  it between a hallway and a lab: the required airlock goes at a main hallway doorway with a lab behind it, and labs
+  listed in `airlock_room_kinds` that hang off a hallway sit behind one now and then (`airlock_chance`, within the
+  airlock's max_per_floor). An airlock nothing fits behind is taken back out (`_unplace_last`). Connectors get doors
+  like rooms, so an airlock has a door at each end. NEW tuning `airlock_room_kinds`, `airlock_chance`,
+  `airlock_kind`. Test `test_airlocks_sit_between_a_hallway_and_a_lab`.
+- 2026-11-13 (step 6b, Zoology's damage look): NEW `DamageLooks` (`systems/level_gen/tiles/damage_looks.gd`), picked per
+  department in NEW tuning `damage_looks_by_department` (Zoology: "skylights"): heavy and destroyed tiles get 1-2
+  holes cut in the ceiling (CSG) with a pale shaft and a dim downlight through each and a ceiling panel hanging
+  down, plus 2-4 dark corners (a shadowy volume and a dead light fitting). Looks only, seeded. Test
+  `test_damaged_zoology_rooms_get_skylights_and_dark_corners`.
+- 2026-11-13 (step 6b, navigation warning): checked that the enemies' bake no longer reads the blockout tiles' visual
+  meshes (it reads their collision faces since roadmap WP3, 2026-11-11), so Godot's "slow parse" warning is gone: the
+  walkable area matches the old way within 0.4% and bake time is the same (about 20-50 ms a floor). NEW test
+  `test_navigation_bake.gd` locks that in for every department; the two level_gen tests no longer excuse the warning.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

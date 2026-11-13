@@ -67,6 +67,11 @@ extends Resource
 @export var main_hall_long_piece_share: float = 0.5
 
 @export_group("Branches (V4)")
+## NEW 2026-11-13 (step 6b): Botany's decontamination airlock (a connector tile): which room kinds may sit behind
+## one when they hang off a hallway, how often they do, and the airlock's room_kind.
+@export var airlock_room_kinds: PackedStringArray = PackedStringArray(["cell_culture_lab", "microscopy_lab", "growth_chamber"])
+@export var airlock_chance: float = 0.5
+@export var airlock_kind: StringName = &"decon_airlock"
 ## CHANGED 2026-10-30 (Zachary): branches only grow from a hallway's side doorways (the walled pieces
 ## decide the spacing), so there is no "branch every few units" number any more. Each side doorway rolls
 ## what grows there (weights, compared with each other); "nothing" leaves it capped.
@@ -345,6 +350,9 @@ extends Resource
 ## NEW 2026-10-31 (step 4b): the loose debris props (PropData ids), picked evenly.
 @export var debris_prop_ids: Array[StringName] = [&"prop_debris_chunk", &"prop_debris_panel"]
 ## NEW 2026-11-11 (step 5a): a department's own loose debris instead (e.g. vines in Botany), by department id.
+## NEW 2026-11-13 (step 6b): a department's extra look on heavily damaged and destroyed tiles (DamageLooks):
+## "skylights" = holes in the ceiling with light falling through, and dark corners.
+@export var damage_looks_by_department: Dictionary[StringName, StringName] = {&"department_zoology": &"skylights"}
 @export var debris_prop_ids_by_department: Dictionary[StringName, Array] = {
 	&"department_botany": [&"prop_debris_vines", &"prop_debris_vines", &"prop_debris_chunk"],
 	&"department_zoology": [&"prop_debris_hay", &"prop_debris_feed_sack", &"prop_debris_cage_bars", &"prop_debris_chunk"]}

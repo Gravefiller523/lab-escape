@@ -162,3 +162,48 @@ func test_water_slows_players_and_spores_hurt() -> void:
 	assert_lt(health.get_current(), before, "toxic spores hurt")
 	assert_not_null(spores.get_node_or_null("Mote0"), "spores look like drifting motes")
 	assert_not_null(water.get_node_or_null("Pool"), "water looks like a pool")
+
+
+## NEW 2026-11-13 (step 6b): the decontamination airlock is a two-door passage between a hallway and a lab: every
+## Botany floor has one (it's required), it has a door at each end, and most lead from a hallway into a lab.
+func test_airlocks_sit_between_a_hallway_and_a_lab() -> void:
+	var botany: DepartmentData = _botany()
+	var unit: float = Config.floor_gen.grid_unit
+	var airlocks: int = 0
+	var choke_points: int = 0
+	for floor_seed: int in 30:
+		var layout: FloorLayout = FloorGenerator.generate_from_seed(botany, 1 + floor_seed % 12, 900 + floor_seed * 11, Config.floor_gen)
+		var links: Array[Dictionary] = LevelGenerator.doorway_links(layout, unit)
+		var on_floor: int = 0
+		for index: int in layout.placements.size():
+			var room: RoomData = _room(layout.placements[index])
+			if room.room_kind != &"decon_airlock":
+				continue
+			on_floor += 1
+			airlocks += 1
+			assert_eq(room.tile_role, TileStandards.ROLE_CONNECTOR, "the airlock is a connector")
+			assert_eq(RoomShape.of(room, unit).doorways.size(), 2, "it has exactly two doorways")
+			var neighbours: Array[int] = []
+			for link: Dictionary in links:
+				if link["placement"] != index or not link["connected"]:
+					continue
+				var next: Vector2i = (link["cell"] as Vector2i) + (link["dir"] as Vector2i)
+				for other: Dictionary in links:
+					if other["cell"] == next and other["dir"] == -(link["dir"] as Vector2i):
+						neighbours.append(int(other["placement"]))
+			var doors: int = 0
+			for door: Array in layout.doors:
+				if int(door[0]) == index or int(door[2]) == index:
+					doors += 1
+			assert_eq(doors, neighbours.size(), "seed %d: a door on each of its joined ends" % floor_seed)
+			var hallway: bool = false
+			var lab: bool = false
+			for neighbour: int in neighbours:
+				var other_room: RoomData = _room(layout.placements[neighbour])
+				hallway = hallway or other_room.tile_role in [TileStandards.ROLE_MAIN_HALL, TileStandards.ROLE_SECONDARY_HALL]
+				lab = lab or Config.floor_gen.airlock_room_kinds.has(String(other_room.room_kind))
+			if neighbours.size() == 2 and hallway and lab:
+				choke_points += 1
+		assert_gte(on_floor, 1, "seed %d: every Botany floor has an airlock" % floor_seed)
+	assert_gt(airlocks, 30, "airlocks turn up (%d)" % airlocks)
+	assert_gt(float(choke_points), float(airlocks) * 0.8, "most sit between a hallway and a lab (%d of %d)" % [choke_points, airlocks])

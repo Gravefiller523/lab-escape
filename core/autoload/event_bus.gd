@@ -56,6 +56,9 @@ signal team_wiped()
 # --- Enemies and bosses [enemies] [bosses] ----------------------------------
 ## Fires on: host. killer_player_id is 0 if no player made the kill. [enemies]
 signal enemy_killed(enemy_id: StringName, death_position: Vector3, killer_player_id: int)
+## NEW 2026-11-13 (roadmap WP15b). Fires on: all. The same kill, told to every PC (enemy_killed stays host only,
+## for things only the host does, like loot). For counting kills: the run summary, lifetime stats. [enemies]
+signal kill_credited(enemy_id: StringName, killer_player_id: int)
 ## Fires on: all. [bosses]
 signal boss_phase_changed(boss_id: StringName, phase_index: int)
 ## Fires on: all. [bosses]

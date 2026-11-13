@@ -86,6 +86,11 @@ func test_events_count_stats_for_you_only() -> void:
 	EventBus.player_died.emit(me + 1, Vector3.ZERO)
 	EventBus.boss_defeated.emit(&"boss_giant_rat")
 	assert_eq(SaveSystem.get_stat(&"deaths"), 1, "only your own deaths")
+	# NEW 2026-11-13 (roadmap WP15b): kills come from the kill credit every PC gets, so a client's kills count too.
+	EventBus.kill_credited.emit(&"enemy_rat", me)
+	EventBus.kill_credited.emit(&"enemy_rat", me + 1)
+	EventBus.kill_credited.emit(&"enemy_rat", 0)
+	assert_eq(SaveSystem.get_stat(&"enemies_killed"), 1, "only your own kills")
 	assert_eq(SaveSystem.get_stat(&"boss_defeated:boss_giant_rat"), 1)
 
 

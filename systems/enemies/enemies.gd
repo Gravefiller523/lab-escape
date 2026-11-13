@@ -84,6 +84,10 @@ func _ready() -> void:
 	EventBus.noise_made.connect(func(at: Vector3, radius: float, _source_player_id: int) -> void:
 		Enemy.hear_noise(get_tree(), at, radius))
 	EventBus.damage_dealt.connect(_on_damage_dealt)
+	# NEW 2026-11-13 (roadmap WP15b): the host tells every PC who made each kill (EventBus.kill_credited).
+	EventBus.enemy_killed.connect(func(enemy_id: StringName, _at: Vector3, killer_player_id: int) -> void:
+		if multiplayer.is_server():
+			_kill_credited_rpc.rpc(enemy_id, killer_player_id))
 	EventBus.prop_released.connect(_on_prop_released)
 	DebugConsole.register_spawner(&"enemy", _console_spawn)
 	DebugConsole.register_command(&"killall", _cmd_killall, "killall: kill every enemy")
@@ -140,6 +144,12 @@ func get_lures(kind: StringName = &"") -> Array[Lure]:
 		if lure != null and not lure.is_queued_for_deletion() and (kind == &"" or lure.kind == kind):
 			found.append(lure)
 	return found
+
+
+## Host -> everyone: an enemy died and this player made the kill (0 = nobody).
+@rpc("authority", "call_local", "reliable")
+func _kill_credited_rpc(enemy_id: StringName, killer_player_id: int) -> void:
+	EventBus.kill_credited.emit(enemy_id, killer_player_id)
 
 
 ## Host -> everyone: a placed lure (and its dot) appears or moves.

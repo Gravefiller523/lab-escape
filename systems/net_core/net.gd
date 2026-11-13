@@ -26,6 +26,9 @@ const REFUSE_VERSION: String = "Your game is a different version from the host's
 const JOIN_INFO_BUILD: String = "_net_build_id"
 ## Seconds between telling a refused peer why and disconnecting them, so the message arrives first.
 const REFUSE_DISCONNECT_DELAY: float = 0.5
+## NEW 2026-11-13 (roadmap WP15b): how often (s) a client times a message to the host and back, for
+## get_ping_msec on connections that don't report a ping themselves (Steam).
+const PING_INTERVAL: float = 2.0
 
 var _config: GameConfig
 ## The network connection we last saw, so we notice when steam_session swaps it.
@@ -50,6 +53,11 @@ var _join_preparer: Callable
 
 ## This PC's build of the game (BuildInfo.get_build_id()), sent when joining and checked by the host.
 var _build_id: String = BuildInfo.get_build_id()
+## NEW 2026-11-13 (roadmap WP15b): pings we timed ourselves, in ms, by peer id. A client has the host's (peer 1);
+## the host has each client's (the client tells it). Used when the connection can't report a ping.
+var _measured_ping: Dictionary[int, int] = {}
+var _ping_left: float = 0.0
+var _prefer_measured_ping: bool = false
 
 
 ## For tests only: use a custom config. Call before adding the node to the tree.
@@ -60,6 +68,11 @@ func use_config(config: GameConfig) -> void:
 ## For tests only: pretend this PC runs another build of the game.
 func use_build_id(build_id: String) -> void:
 	_build_id = build_id
+
+
+## For tests only: use the pings we time ourselves even where the connection reports its own (as over Steam).
+func use_measured_ping(on: bool) -> void:
+	_prefer_measured_ping = on
 
 
 ## NEW 2026-11-12 (roadmap WP13b): this PC's build id, the one a host compares.
@@ -85,10 +98,33 @@ func _ready() -> void:
 	_set_up_join_handshake()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# steam_session sets and clears the connection; when it changes, start a fresh roster.
 	if multiplayer.multiplayer_peer != _peer_seen:
 		_reset_session()
+	# NEW 2026-11-13 (roadmap WP15b): a client times a round trip to the host every PING_INTERVAL.
+	if is_online() and not is_host() and get_peer_id(local_player_id()) != 0:
+		_ping_left -= delta
+		if _ping_left <= 0.0:
+			_ping_left = PING_INTERVAL
+			_ping.rpc_id(1, Time.get_ticks_msec(), int(_measured_ping.get(1, -1)))
+
+
+## Client -> host: "send this straight back" (and here is the round trip I measured last time).
+@rpc("any_peer", "call_remote", "unreliable")
+func _ping(sent_msec: int, last_ping_msec: int) -> void:
+	var sender: int = multiplayer.get_remote_sender_id()
+	if not is_host() or not _player_by_peer.has(sender):
+		return
+	if last_ping_msec >= 0:
+		_measured_ping[sender] = mini(last_ping_msec, 60000)
+	_pong.rpc_id(sender, sent_msec)
+
+
+## Host -> that client: the message came back; how long did it take?
+@rpc("authority", "call_remote", "unreliable")
+func _pong(sent_msec: int) -> void:
+	_measured_ping[1] = clampi(Time.get_ticks_msec() - sent_msec, 0, 60000)
 
 
 ## Lets game_flow get a joining PC into the right scene before Godot sends it anything there.
@@ -241,19 +277,21 @@ func clear_run_records() -> void:
 
 
 ## NEW 2026-11-11 (roadmap WP6): the round trip time (ms) to that player as this PC knows it: the host sees each
-## client's, a client sees only the host's (its own connection). -1 when unknown: yourself, solo, or a connection
-## type that doesn't report it (Steam's relay for now).
+## client's, a client sees only the host's (its own connection). -1 when unknown: yourself, solo, another client
+## (from a client), or a moment before the first measurement.
+## CHANGED 2026-11-13 (roadmap WP15b): a connection that doesn't report a ping itself (Steam) uses round trips this
+## game times every PING_INTERVAL, so the Tab list shows a number there too.
 func get_ping_msec(player_id: int) -> int:
-	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
 	var peer_id: int = get_peer_id(player_id)
-	if enet == null or peer_id == 0 or peer_id == multiplayer.get_unique_id():
+	if not is_online() or peer_id == 0 or peer_id == multiplayer.get_unique_id():
 		return -1
 	if not is_host() and peer_id != 1:
 		return -1
-	var packet_peer: ENetPacketPeer = enet.get_peer(peer_id)
-	if packet_peer == null:
-		return -1
-	return int(packet_peer.get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME))
+	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	if enet != null and not _prefer_measured_ping:
+		var packet_peer: ENetPacketPeer = enet.get_peer(peer_id)
+		return int(packet_peer.get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME)) if packet_peer != null else -1
+	return int(_measured_ping.get(peer_id, -1))
 
 
 ## Host only. Removes a player from the game.
@@ -271,6 +309,8 @@ func kick(player_id: int) -> void:
 ## as a client it stays empty until the host sends it.
 func _reset_session() -> void:
 	_peer_seen = multiplayer.multiplayer_peer
+	_measured_ping.clear()
+	_ping_left = 0.0
 	# A host keeps its own run progress when its connection changes (e.g. solo, then hosting a lobby).
 	var old_self: PlayerRecord = _records.get(_host_self_id) if _host_self_id != 0 else null
 	_host_self_id = 0
@@ -390,6 +430,7 @@ func _handle_peer_disconnected(peer_id: int) -> void:
 		return
 	var player_id: int = _player_by_peer.get(peer_id, 0)
 	_player_by_peer.erase(peer_id)
+	_measured_ping.erase(peer_id)
 	if player_id == 0:
 		return
 	_peer_by_player.erase(player_id)

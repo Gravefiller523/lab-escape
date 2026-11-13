@@ -233,6 +233,23 @@ func test_ping_to_other_players() -> void:
 	assert_eq(host.get_ping_msec(host.local_player_id()), -1, "no ping to yourself")
 
 
+## NEW 2026-11-13 (roadmap WP15b): on a connection that reports no ping of its own (Steam), the game times round
+## trips itself: the client learns the host's, and tells the host, so the host knows the client's.
+func test_ping_the_game_times_itself() -> void:
+	var host := _host(_config())
+	var client := _client(_config())
+	host.use_measured_ping(true)
+	client.use_measured_ping(true)
+	await wait_until(_count_is(client, 2), WAIT)
+	assert_eq(host.get_ping_msec(client.local_player_id()), -1, "nothing measured yet")
+	await wait_until(func() -> bool: return client.get_ping_msec(host.local_player_id()) >= 0, WAIT)
+	var to_host: int = client.get_ping_msec(host.local_player_id())
+	assert_between(to_host, 0, 500, "the client timed a round trip to the host")
+	await wait_until(func() -> bool: return host.get_ping_msec(client.local_player_id()) >= 0, WAIT)
+	assert_between(host.get_ping_msec(client.local_player_id()), 0, 500, "and told the host, which now knows it too")
+	assert_eq(client.get_ping_msec(client.local_player_id()), -1, "still none to yourself")
+
+
 ## NEW 2026-11-12 (roadmap WP13b): a joiner on another build of the game is turned away with both builds named,
 ## before it gets ready (loads the host's floor).
 func test_join_refused_when_builds_differ() -> void:

@@ -183,6 +183,15 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 		assert_true(seen.get("has_body", false), "the client has a body on floor %d" % (index + 1))
 	assert_eq(client.get("result", ""), "escaped", "the client saw the escape")
 	assert_eq(client.get("final_state", ""), "BREAK_ROOM", "the client is back in the Break Room")
+	# NEW 2026-11-13 (roadmap WP15b): every PC is told who made each kill (the host beat every boss).
+	var boss_floors: int = 0
+	for entry: Variant in floors:
+		if (entry as Dictionary).get("boss_floor", false):
+			boss_floors += 1
+	var host_id: String = str(host.get("my_player_id", ""))
+	assert_eq(int((host.get("kills_credited", {}) as Dictionary).get(host_id, 0)), boss_floors, "the host counted its boss kills")
+	assert_eq(int((client.get("kills_credited", {}) as Dictionary).get(host_id, 0)), boss_floors,
+		"the client was told about every one of the host's kills")
 
 	# The late joiner joined during a floor and played the rest.
 	assert_true(late.get("ok", false), "the late joiner finished: %s" % str(late.get("notes", [])))

@@ -1,7 +1,7 @@
 class_name RunSummaryPanel
 extends PanelContainer
 ## The end of a run, while the lift takes everyone back to the Break Room: escaped or wiped, how far you got, how
-## long it took, and a line per player (deaths, gems spent, upgrades). NEW 2026-11-11 (roadmap WP5). Every PC counts
+## long it took, and a line per player (kills, deaths, gems spent, upgrades). NEW 2026-11-11 (roadmap WP5). Every PC counts
 ## what it sees on EventBus; upgrades come from the synced player records (net_core). Spec: docs/systems/ui.md.
 
 const PANEL_WIDTH: float = 560.0
@@ -15,6 +15,8 @@ var _started_msec: int = 0
 var _floor: int = 0
 var _deaths: Dictionary[int, int] = {}
 var _gems_spent: Dictionary[int, int] = {}
+## NEW 2026-11-13 (roadmap WP15b): kills per player, from EventBus.kill_credited (every PC hears it).
+var _kills: Dictionary[int, int] = {}
 var _force_visible: bool = false
 
 
@@ -28,7 +30,7 @@ func get_text() -> String:
 	return "%s\n%s" % [_title.text, _details.text] if visible else ""
 
 
-## One line per player: "Sam | 2 | 63 | Fly, Frog".
+## One line per player: "Sam | 14 | 2 | 63 | Fly, Frog" (kills, deaths, gems spent, upgrades).
 func get_rows() -> PackedStringArray:
 	var rows := PackedStringArray()
 	var cells: Array[Node] = _table.get_children()
@@ -56,7 +58,7 @@ func _ready() -> void:
 	column.add_child(_details)
 	_table = GridContainer.new()
 	_table.name = "Table"
-	_table.columns = 4
+	_table.columns = 5
 	_table.add_theme_constant_override("h_separation", 18)
 	_table.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_table)
@@ -67,6 +69,9 @@ func _ready() -> void:
 		_deaths[player_id] = _deaths.get(player_id, 0) + 1)
 	EventBus.vendor_purchase.connect(func(player_id: int, _item_id: StringName, price: int) -> void:
 		_gems_spent[player_id] = _gems_spent.get(player_id, 0) + price)
+	EventBus.kill_credited.connect(func(_enemy_id: StringName, killer_player_id: int) -> void:
+		if killer_player_id != 0:
+			_kills[killer_player_id] = _kills.get(killer_player_id, 0) + 1)
 	EventBus.run_ended.connect(_on_run_ended)
 
 
@@ -81,6 +86,7 @@ func _reset() -> void:
 	_floor = 0
 	_deaths.clear()
 	_gems_spent.clear()
+	_kills.clear()
 
 
 func _on_run_ended(result: StringName) -> void:
@@ -91,7 +97,7 @@ func _on_run_ended(result: StringName) -> void:
 	for child: Node in _table.get_children():
 		_table.remove_child(child)
 		child.queue_free()
-	for header: String in ["Player", "Deaths", "Gems spent", "Upgrades"]:
+	for header: String in ["Player", "Kills", "Deaths", "Gems spent", "Upgrades"]:
 		_add_cell(header, HudStyle.MUTED)
 	for player_id: int in Net.get_record_ids():
 		var record: PlayerRecord = Net.get_record(player_id)
@@ -101,6 +107,7 @@ func _on_run_ended(result: StringName) -> void:
 				var data: ContentData = ContentRegistry.get_content(upgrade_id)
 				upgrades.append(data.display_name if data != null and not data.display_name.is_empty() else String(upgrade_id))
 		_add_cell(Net.get_display_name(player_id), Color.WHITE)
+		_add_cell(str(_kills.get(player_id, 0)), Color.WHITE)
 		_add_cell(str(_deaths.get(player_id, 0)), Color.WHITE)
 		_add_cell(str(_gems_spent.get(player_id, 0)), Color.WHITE)
 		_add_cell(", ".join(upgrades) if not upgrades.is_empty() else "-", Color.WHITE)

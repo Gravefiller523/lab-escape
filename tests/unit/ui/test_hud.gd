@@ -271,13 +271,17 @@ func test_run_summary_counts_the_run() -> void:
 	EventBus.run_started.emit(1)
 	EventBus.player_died.emit(me, Vector3.ZERO)
 	EventBus.vendor_purchase.emit(me, &"item_crowbar", 3)
+	# NEW 2026-11-13 (roadmap WP15b): kills, from the kill credit every PC gets.
+	EventBus.kill_credited.emit(&"enemy_rat", me)
+	EventBus.kill_credited.emit(&"enemy_bat", me)
+	EventBus.kill_credited.emit(&"enemy_rat", 0)
 	EventBus.run_ended.emit(&"escaped")
 	await wait_process_frames(2)
 	assert_string_contains(summary.get_text(), "Escaped")
 	assert_string_contains(summary.get_text(), "0 floors", "no floor was reached in this test")
 	var rows: PackedStringArray = summary.get_rows()
 	assert_gt(rows.size(), 0, "a row for you")
-	assert_string_contains(rows[0], "| 1 | 3 |", "1 death, 3 gems spent")
+	assert_string_contains(rows[0], "| 2 | 1 | 3 |", "2 kills (the one nobody made isn't yours), 1 death, 3 gems spent")
 
 
 ## NEW 2026-11-11 (roadmap WP7): getting hurt reddens the screen edges, then they fade.

@@ -565,3 +565,15 @@ func _make_pc(hosting: bool) -> Node:
 	pc.multiplayer.multiplayer_peer = peer
 	_pcs.append(pc)
 	return pc
+
+
+## NEW 2026-11-13 (roadmap WP15b): a kill is told to every PC (EventBus.kill_credited), with who made it.
+func test_a_kill_is_credited_to_whoever_made_it() -> void:
+	Perception.players_invisible = true
+	var rat := _spawn(&"enemy_rat", Vector3(0, 0.1, 0))
+	watch_signals(EventBus)
+	var blow := DamageInfo.make(9999.0, &"blunt")
+	blow.source_player_id = 4242
+	rat.get_health().apply_damage(blow)
+	assert_signal_emitted_with_parameters(EventBus, "kill_credited", [&"enemy_rat", 4242])
+	assert_signal_emit_count(EventBus, "kill_credited", 1, "once per kill")

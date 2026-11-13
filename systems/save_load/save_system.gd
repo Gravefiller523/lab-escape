@@ -26,7 +26,8 @@ func _ready() -> void:
 			return
 		var profile: PlayerProfile = get_profile()
 		profile.stats["floors_reached_best"] = maxi(int(profile.stats.get("floors_reached_best", 0)), floor_number))
-	EventBus.enemy_killed.connect(func(_enemy_id: StringName, _at: Vector3, killer_player_id: int) -> void:
+	# CHANGED 2026-11-13 (roadmap WP15b): kill_credited reaches every PC, so clients' kills count too.
+	EventBus.kill_credited.connect(func(_enemy_id: StringName, killer_player_id: int) -> void:
 		if killer_player_id != 0 and killer_player_id == Net.local_player_id():
 			increment_stat(&"enemies_killed"))
 	EventBus.player_died.connect(func(player_id: int, _at: Vector3) -> void:

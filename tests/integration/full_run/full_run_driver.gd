@@ -38,6 +38,8 @@ var _args: Dictionary[String, String] = {}
 var _report: Dictionary = {"ok": false, "role": "", "floors": [], "notes": []}
 var _finished: bool = false
 var _boss_defeated: bool = false
+## NEW 2026-11-13 (roadmap WP15b): kills this PC was told about (EventBus.kill_credited), per killer's player id.
+var _kills_credited: Dictionary = {}
 var _run_result: StringName = &""
 
 
@@ -50,6 +52,9 @@ func _ready() -> void:
 	UI.get_hud().hints.use_file("user://full_run_test/hints_%s.cfg" % _report["role"])
 	SaveSystem.use_folder("user://full_run_test/profile_%s" % _report["role"])
 	EventBus.boss_defeated.connect(func(_boss_id: StringName) -> void: _boss_defeated = true)
+	EventBus.kill_credited.connect(func(_enemy_id: StringName, killer_player_id: int) -> void:
+		if killer_player_id != 0:
+			_kills_credited[str(killer_player_id)] = int(_kills_credited.get(str(killer_player_id), 0)) + 1)
 	EventBus.run_ended.connect(func(result: StringName) -> void: _run_result = result)
 	get_tree().create_timer(TOTAL_TIMEOUT).timeout.connect(func() -> void: _finish("timed out"))
 	if _report["role"] == "host":
@@ -236,7 +241,10 @@ func _beat_boss() -> Dictionary:
 	var boss: Boss = Boss.current()
 	var boss_id: String = String(boss.data.id) if boss.data != null else ""
 	var health: HealthComponent = HealthComponent.of(boss)
-	health.apply_damage(DamageInfo.make(health.get_max() * 10.0, &"debug"))
+	# CHANGED 2026-11-13 (roadmap WP15b): the host takes the credit, so every PC's kill count can be checked.
+	var blow := DamageInfo.make(health.get_max() * 10.0, &"debug")
+	blow.source_player_id = Net.local_player_id()
+	health.apply_damage(blow)
 	var defeated: bool = await _until(func() -> bool: return _boss_defeated, STEP_TIMEOUT)
 	_boss_defeated = false
 	return {"found": true, "boss_id": boss_id, "defeated": defeated}
@@ -380,6 +388,8 @@ func _finish(failure: String = "") -> void:
 	if not failure.is_empty():
 		_report["ok"] = false
 		_note(failure)
+	_report["kills_credited"] = _kills_credited
+	_report["my_player_id"] = str(Net.local_player_id())
 	var path: String = _arg("out")
 	if not path.is_empty():
 		var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)

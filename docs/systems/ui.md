@@ -144,6 +144,7 @@ NEW `test_host_local_from_menu_goes_to_break_room`, `test_connection_lost_return
 
 - 2026-11-12 (roadmap WP12): first-time hints are now kept in the player's profile (`SaveSystem.has_seen_hint` / `mark_hint_seen`) instead of `user://hints_seen.cfg`; `Hints.use_file()` still keeps them in a file for tests. NEW console command `hints reset` (shows every hint again).
 - 2026-11-13 (roadmap WP15b): the run summary has a Kills column (from `EventBus.kill_credited`, so every player's kills show, not only the host's). Typing warning fixed in `hud/hints.gd`.
+- 2026-11-13 (roadmap WP13b, OK'd by Zachary): the main menu shows the build (`BuildInfo.get_label()`, e.g. "v0.1.0 build 3fa9c1d") small and grey in its bottom-right corner (`BuildLabel`). Test: `test_main_menu_shows_the_build`.
 
 ## HANDOFF
 **Done (Phase 1a slice):** the `UI` autoload; main menu (Host game (Steam), join hint for invites and

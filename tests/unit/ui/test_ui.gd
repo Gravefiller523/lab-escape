@@ -185,3 +185,14 @@ func test_tab_shows_the_player_list() -> void:
 	Input.parse_input_event(tab)
 	await wait_process_frames(3)
 	assert_false(UI.is_screen_open(), "Tab again closes it")
+
+
+## NEW 2026-11-13 (roadmap WP13b, OK'd by Zachary): the main menu shows which build this is, so friends can compare.
+func test_main_menu_shows_the_build() -> void:
+	UI.show_screen(UIService.SCREEN_MAIN_MENU)
+	await wait_process_frames(2)
+	var menu: Node = UI.get_child(UI.get_child_count() - 2)
+	var label := menu.find_child("BuildLabel", true, false) as Label
+	assert_not_null(label, "a build label")
+	assert_eq(label.text, BuildInfo.get_label(), "showing this build, e.g. v0.1.0 build 3fa9c1d")
+	UI.close_screen()

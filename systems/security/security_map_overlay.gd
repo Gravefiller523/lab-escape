@@ -28,9 +28,9 @@ func _draw() -> void:
 			draw_rect(rect.grow(-1.0), HIGHLIGHT_COLOR)
 			draw_rect(rect.grow(-1.0), HIGHLIGHT_COLOR.lightened(0.4), false, 2.0)
 	for dot: Dictionary in dots:
-		var at: Vector2 = map.cells_to_screen(dot["cells"])
+		var at: Vector2 = map.cells_to_screen(dot["cells"] as Vector2)
 		draw_circle(at, 7.0, Color(0.0, 0.0, 0.0, 0.7))
-		draw_circle(at, 5.0, dot["color"])
+		draw_circle(at, 5.0, dot["color"] as Color)
 	var y: float = scan * size.y
 	draw_rect(Rect2(0.0, y - 6.0, size.x, 12.0), SCAN_COLOR)
 	draw_line(Vector2(0.0, y), Vector2(size.x, y), SCAN_COLOR * Color(1, 1, 1, 2.5), 1.0)

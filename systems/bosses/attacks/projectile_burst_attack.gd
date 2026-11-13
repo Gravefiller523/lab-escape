@@ -72,7 +72,7 @@ func _fire_volley(boss: Boss, target: PlayerCharacter) -> void:
 			forward = flat.normalized()
 			distance = flat.length()
 	var ring: bool = fan_degrees >= 359.0
-	var gravity: float = float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)) * projectile.gravity_scale
+	var gravity: float = (ProjectSettings.get_setting("physics/3d/default_gravity", 9.8) as float) * projectile.gravity_scale
 	var spread: float = deg_to_rad(projectile.spread_degrees)
 	for index: int in shots_per_volley:
 		var turn: float = 0.0

@@ -25,7 +25,7 @@ func _ready() -> void:
 		if not _counting():
 			return
 		var profile: PlayerProfile = get_profile()
-		profile.stats["floors_reached_best"] = maxi(int(profile.stats.get("floors_reached_best", 0)), floor_number))
+		profile.stats["floors_reached_best"] = maxi((profile.stats.get("floors_reached_best", 0) as int), floor_number))
 	# CHANGED 2026-11-13 (roadmap WP15b): kill_credited reaches every PC, so clients' kills count too.
 	EventBus.kill_credited.connect(func(_enemy_id: StringName, killer_player_id: int) -> void:
 		if killer_player_id != 0 and killer_player_id == Net.local_player_id():
@@ -81,14 +81,14 @@ func save_profile() -> void:
 
 
 func get_stat(stat: StringName) -> int:
-	return int(get_profile().stats.get(String(stat), 0))
+	return get_profile().stats.get(String(stat), 0) as int
 
 
 func increment_stat(stat: StringName, amount: int = 1) -> void:
 	if not _counting():
 		return
 	var profile: PlayerProfile = get_profile()
-	profile.stats[String(stat)] = int(profile.stats.get(String(stat), 0)) + amount
+	profile.stats[String(stat)] = (profile.stats.get(String(stat), 0) as int) + amount
 
 
 ## NEW (roadmap WP12, for ui's Hints): first-time hints already shown to this player.
@@ -117,7 +117,7 @@ func get_profile_path() -> String:
 ## Upgrades a saved dictionary from any older version to SAVE_VERSION, one step at a time.
 static func migrate(data: Dictionary) -> Dictionary:
 	var upgraded: Dictionary = data.duplicate(true)
-	var version: int = int(upgraded.get("save_version", 0))
+	var version: int = (upgraded.get("save_version", 0) as int)
 	if version < 1:
 		upgraded = _migrate_0_to_1(upgraded)
 	upgraded["save_version"] = SAVE_VERSION

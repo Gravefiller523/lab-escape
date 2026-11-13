@@ -29,10 +29,10 @@ static func claim(enemy: Enemy, player: PlayerCharacter) -> bool:
 	var wanted: int = maxi(enemy.data.attack_tickets if enemy.data != null else 1, 1)
 	var used: int = 0
 	for hold: Dictionary in held:
-		used += int(hold["count"])
+		used += (hold["count"] as int)
 	if used + wanted > maxi(tuning.attack_tickets_per_player, wanted):
 		return false
-	if now - float(_last_grant.get(key, -1000.0)) < tuning.ticket_grant_gap:
+	if now - (_last_grant.get(key, -1000.0) as float) < tuning.ticket_grant_gap:
 		return false
 	release(enemy)
 	held = _tidy(key, now)
@@ -70,7 +70,7 @@ static func used_for(player: PlayerCharacter) -> int:
 	var used: int = 0
 	if player != null:
 		for hold: Dictionary in _tidy(player.get_instance_id(), _now()):
-			used += int(hold["count"])
+			used += (hold["count"] as int)
 	return used
 
 
@@ -84,8 +84,8 @@ static func clear() -> void:
 static func _tidy(key: int, now: float) -> Array:
 	var kept: Array = []
 	for hold: Dictionary in _holds.get(key, []):
-		var holder := instance_from_id(int(hold["enemy"])) as Enemy
-		if holder != null and not holder.is_dead() and float(hold["until"]) > now:
+		var holder := instance_from_id(hold["enemy"] as int) as Enemy
+		if holder != null and not holder.is_dead() and (hold["until"] as float) > now:
 			kept.append(hold)
 	_holds[key] = kept
 	return kept

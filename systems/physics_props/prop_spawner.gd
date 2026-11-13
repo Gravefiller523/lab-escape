@@ -416,7 +416,7 @@ func decide_punt(body: PlayerCharacter, prop: NetProp) -> String:
 
 ## Host: did this player punt less than punt_cooldown ago (with a little allowance for network timing)?
 func _punted_too_recently(body: PlayerCharacter) -> bool:
-	var since: int = Time.get_ticks_msec() - int(_punt_msec.get(body.player_id, -100000))
+	var since: int = Time.get_ticks_msec() - (_punt_msec.get(body.player_id, -100000) as int)
 	return since < int((Config.feel.props.punt_cooldown - PUNT_COOLDOWN_TOLERANCE) * 1000.0)
 
 
@@ -1151,7 +1151,7 @@ static func impact_mass_of(victim: Node) -> float:
 	if enemy != null:
 		return enemy.get_impact_mass()
 	if victim.has_meta(&"impact_mass"):
-		return float(victim.get_meta(&"impact_mass"))
+		return victim.get_meta(&"impact_mass") as float
 	return tuning.default_impact_mass
 
 
@@ -1186,9 +1186,9 @@ func _apply_hit(prop: NetProp, victim: Node3D, speed_lost: float) -> void:
 	# CHANGED 2026-10-30: within the cooldown a report is the same hit again with more speed lost (the prop
 	# took a few steps to stop): only the extra damage is dealt, so one hit never does more than one hit can.
 	var counted: float = 0.0
-	var again: bool = now - int(_hit_msec.get(key, -100000)) < int(tuning.impact_report_cooldown * 1000.0)
+	var again: bool = now - (_hit_msec.get(key, -100000) as int) < int(tuning.impact_report_cooldown * 1000.0)
 	if again:
-		counted = float(_hit_dealt.get(key, INF))
+		counted = (_hit_dealt.get(key, INF) as float)
 	var speed: float = minf(speed_lost, tuning.prop_max_speed)
 	var full: float = impact_damage(prop.get_true_mass(), speed, impact_mass_of(victim))
 	if victim is PlayerCharacter:

@@ -107,7 +107,7 @@ func _process(delta: float) -> void:
 		_ping_left -= delta
 		if _ping_left <= 0.0:
 			_ping_left = PING_INTERVAL
-			_ping.rpc_id(1, Time.get_ticks_msec(), int(_measured_ping.get(1, -1)))
+			_ping.rpc_id(1, Time.get_ticks_msec(), (_measured_ping.get(1, -1) as int))
 
 
 ## Client -> host: "send this straight back" (and here is the round trip I measured last time).
@@ -291,7 +291,7 @@ func get_ping_msec(player_id: int) -> int:
 	if enet != null and not _prefer_measured_ping:
 		var packet_peer: ENetPacketPeer = enet.get_peer(peer_id)
 		return int(packet_peer.get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME)) if packet_peer != null else -1
-	return int(_measured_ping.get(peer_id, -1))
+	return _measured_ping.get(peer_id, -1) as int
 
 
 ## Host only. Removes a player from the game.

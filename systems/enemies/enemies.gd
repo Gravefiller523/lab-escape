@@ -479,7 +479,7 @@ func _physics_process(delta: float) -> void:
 	var kept: Array[Dictionary] = []
 	for entry: Dictionary in _thrown:
 		var prop := (entry["prop"] as WeakRef).get_ref() as NetProp
-		if prop == null or not prop.is_inside_tree() or float(entry["until"]) < now or prop.is_held():
+		if prop == null or not prop.is_inside_tree() or (entry["until"] as float) < now or prop.is_held():
 			continue
 		kept.append(entry)
 		var moving: Vector3 = prop.get_estimated_velocity()

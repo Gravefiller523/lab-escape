@@ -11,7 +11,7 @@ work package whose status is not "done" and isn't waiting on Zachary.
 
 - **Merged into main:** WP1 to WP7, WP9, and WP10 part 1 (Botany's enemies, loot and shop stock).
 - **Waiting on Zachary.** Each branch below sits on top of the one above it, so a merge phrase for one also
-  merges everything above it in this table. "push and merge wp/14-items into main" merges all seven.
+  merges everything above it in this table. "push and merge wp/15b-cleanup into main" merges all eight.
 
   | Branch | Package | What to try in the game |
   |---|---|---|
@@ -22,16 +22,17 @@ work package whose status is not "done" and isn't waiting on Zachary.
   | `wp/13-bosses` | WP13 | Console: `spawn boss_mushroom_man` or `spawn boss_robobrain` on any floor. Boss floors on Botany and Robotics now have their own boss. |
   | `wp/13b-version-check` | WP13b | Console: `version` shows your build. Two game windows from the editor still join each other. |
   | `wp/14-items` | WP14 | Buy a laser pointer from a Zoology vending machine and point it near rats. Console: `spawn item_laser_pointer`, `spawn prop_trash_bag`, `spawn item_sandwich`. |
+  | `wp/15b-cleanup` | WP15b | Play a short run with two game windows: the run summary shows kills for both players. The Tab list shows each ping. |
 
 - **Also waiting on Zachary: PT1, the first real-Steam session** with one friend, together with fun check 1 (both
   in section c, after WP13). It needs a test build: merge the stack first, then say "make a test build".
-- **Next for Claude:** WP15 (the hamster wheel). Anything PT1 finds jumps the queue.
+- **Next for Claude:** WP15 (the hamster wheel; WP15b was done first so the PT1 build is tidier). Anything PT1 finds jumps the queue.
 - **On hold until Zachary says so:** D8 (Steam fee and App ID) and D9 (name check). They block WP18's real test,
   WP32 and WP33.
 - **Other threads working in this repo:** the floor generator thread owns `systems/level_gen`,
   `config/floor_gen_tuning.tres`, and the run length numbers `run_floor_count` and `boss_every_floors` (decision D1
   is approved but not applied yet: today they are still 18 and 6). It works in its own folder, `../lab-escape-6a`.
-- **Pace so far:** 15 packages built in the first 2 days. The code packages went much faster than the estimate in
+- **Pace so far:** 16 packages built in the first 3 days. The code packages went much faster than the estimate in
   section a. The art, sound and launch phases (WP20 on) depend on Zachary's time, tools and play tests, and are
   still the long part.
 
@@ -127,12 +128,13 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G11 | Steam rich presence in a friend's list never checked. | reliability | S | You |
 | G49 | The test run prints 79 RPC errors (from `test_speed_check.gd`'s fake client) and leaves 1 orphan node, so a real new error is easy to miss in the Output panel. | reliability | S | |
 | G50 | Enemy navigation baking reads visual meshes (Godot warns this is slow) and reports 2 navmesh edge errors on some floors: a possible hitch on floor load and odd enemy paths. | reliability | S | |
-| G51 | When the host leaves a local (no Steam) game, ENet prints one "Unable to send packet on channel 0" error while saying goodbye. Harmless; found by WP1. | reliability | S | |
+| G51 | ~~When the host leaves a local (no Steam) game, ENet prints one "Unable to send packet on channel 0" error while saying goodbye.~~ Fixed in WP15b. | reliability | S | |
 | G52 | ~~A player who joins mid-floor built the floor before their connection opened, so its vending machines, printers, mutation machine, doors, buttons, boss arena and plants asked the host for their state too early and never heard back (no shop offers, wrong door states).~~ Fixed in WP1. | reliability | S | |
 | G53 | ~~Prop snapshot messages reached 1,900 bytes, over one network packet, so on real connections they'd be lost more often (jumpy props).~~ Fixed in WP1. | reliability | S | |
 | G56 | ~~Twice, in full test runs, the full-run test's client got about 300 "spawner is null" errors and no body.~~ Found in WP7: the client asked to join while the host was still loading the Break Room, was told "nothing yet", and missed the host's "come into the world" message. Fixed in WP7 (game_flow sends a joiner straight to the Break Room while the host loads it). The full-run driver also has `--join_delay` to try joins at other moments. | reliability | S | |
-| G57 | `test_thrown_crate_barely_hurts_a_heavy_enemy` (physics_props) failed once in a full run: the thrown crate hit the 50 kg test enemy twice (it bounced), leaving 6.6 health where the test wants more than 9. It passed 3 times in a row alone. Physics bounce timing; worth making the test count only the first hit. Found in WP11. | reliability | S | ||
-| G55 | The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
+| G57 | (Fixed in WP15b: each hit is judged on its own.) `test_thrown_crate_barely_hurts_a_heavy_enemy` (physics_props) failed once in a full run: the thrown crate hit the 50 kg test enemy twice (it bounced), leaving 6.6 health where the test wants more than 9. It passed 3 times in a row alone. Physics bounce timing; worth making the test count only the first hit. Found in WP11. | reliability | S | ||
+| G59 | The test files (tests/unit and tests/integration) have about 100 typing warnings outside level_gen's tests (mostly a Variant from a Dictionary handed to assert_true or int()). Found in WP15b with a checker that loads every script with typing warnings raised to errors (a temporary `override.cfg`; see the WP15b notes). | reliability | S | |
+| G55 | (Systems outside level_gen fixed in WP15b; level_gen's ~90 are the floor generator thread's.) The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
 | G54 | ~~Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors.~~ Fixed in WP3. | reliability | S | |
 | G58 | ~~(WP13b) Nothing checks that the host and a joining player run the same version of the game.~~ Fixed in WP13b. Was: **no check.** Two different builds can join each other, and the result is confusing bugs on one PC only (missing enemies, things out of step). Needs a build number shown in the main menu and a clear "your game is a different version" message on join. Found in the 2026-11-12 review. | reliability | S | |
 
@@ -197,8 +199,8 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 Added 2026-11-12. Each line names where it is picked up.
 | What | From | Picked up in |
 |---|---|---|
-| Kills in the run summary and the lifetime stats only count the host's kills (only the host's game hears about kills). | WP5, WP12 | WP15b |
-| Ping shows "-" over Steam in the Tab player list. | WP6 | WP15b (needs a real-Steam check) |
+| ~~Kills in the run summary and the lifetime stats only count the host's kills.~~ Done in WP15b. | WP5, WP12 | WP15b |
+| ~~Ping shows "-" over Steam in the Tab player list.~~ Done in WP15b; PT1 checks it on real Steam. | WP6 | WP15b |
 | A rejoining player gets their mutations back: can only be checked with real Steam accounts. | WP2 | Section f checklist |
 | The spore shooter leaves no cloud on the floor (its puffball gives the spores status instead). | WP10 | Update 1 (WP13's spore slam uses the spores status too, so nothing needs a real cloud yet) |
 | Photosynthesis heals "when nothing has hurt you for a while", not "in the light". | WP10 | WP26 (lighting) |
@@ -206,11 +208,11 @@ Added 2026-11-12. Each line names where it is picked up.
 | The flock camera is its own enemy, not the security cameras the floor plan places. | WP11 | Update 1, with the security room |
 | Steam Cloud for the profile file. | WP12 | WP32 |
 | Octo can climb other players and crates (G22): tune it or keep it as comedy. | audit | WP16 (ask Zachary) |
-| Hazards have no data files of their own (G27). | audit | WP15b |
+| Hazards have no data files of their own (G27). Their numbers are in floor_gen_tuning.tres, so this waits for the floor generator's step 6 pass. | audit | after the floor thread's step 6 |
 | The lift ride has no rumble or arrival jolt (G40). | audit | WP26 |
-| One harmless network error when the host leaves a local game (G51). | WP1 | WP15b |
+| ~~One harmless network error when the host leaves a local game (G51).~~ Fixed in WP15b. | WP1 | WP15b |
 | About 130 typing warnings in existing code (G55); level_gen's share belongs to the floor generator thread. | WP3 | WP15b |
-| A physics test that failed once in a full run (G57). | WP11 | WP15b |
+| ~~A physics test that failed once in a full run (G57).~~ Fixed in WP15b. | WP11 | WP15b |
 
 ---
 
@@ -415,7 +417,10 @@ The five questions, the same every time:
 - **Why here:** it's the last stop before friends play the game for the balance pass.
 - **Test it:** the run summary shows kills for everyone; the Output panel has
   no typing warnings from the systems this package touched.
-- **Gaps:** G27, G51, G55, G57, and the "Promised later" lines marked WP15b. **Status: not started.**
+- **Gaps:** G27, G51, G55, G57, and the "Promised later" lines marked WP15b.
+- **Built:** every player's **kills** now count: the host tells every PC who made each kill, so the run summary has a Kills column for everyone and each player's lifetime kills grow on their own PC. **Ping over Steam:** the game times its own round trips, so the Tab list shows a number there too. **G51 fixed:** the network error when the host left a local game is gone (the game lets go of the connection before saying goodbye on it). **G57 fixed:** the crate test judges each hit on its own. **G55:** the systems (outside the floor generator) have no typing warnings left; I found them with a small checker that loads every script with typing warnings raised to errors.
+- **Not done here:** hazard data files (G27): hazard numbers live in `config/floor_gen_tuning.tres`, which the floor generator thread owns until its step 6 pass is done, so it waits for that. The test files still have about 100 typing warnings outside level_gen's (new gap G59).
+- **Status: waiting for your play test.** Branch `wp/15b-cleanup` (stacked on `wp/14-items`).
 
 #### WP16: Balance pass 1
 - **What:** with telemetry from at least 3 of your play sessions: run length (D1), prices, gem drops, vial chance,
@@ -615,7 +620,7 @@ Do these on two or more PCs with different Steam accounts, using a test build. T
 - [ ] **The host quits mid-floor:** every client returns to the menu with a message, nobody crashes.
 - [ ] Die, get reprinted with meat, keep mutations; team wipe ends the run.
 - [ ] A friend quits and rejoins the same run: they get their mutations back (can't be tested without real Steam accounts).
-- [ ] The Tab player list shows a real ping for each friend (it shows "-" over Steam until WP15b).
+- [ ] The Tab player list shows a real ping for each friend (the game times it itself since WP15b).
 - [ ] A friend on a different test build is told their version is different instead of joining (built in WP13b).
 - [ ] Beat a boss; the whole team rides on.
 - [ ] Achievements pop on Steam (needs the real App ID).

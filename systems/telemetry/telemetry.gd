@@ -104,7 +104,7 @@ static func _plain(value: Variant) -> Variant:
 		TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING:
 			return value
 		TYPE_STRING_NAME:
-			return String(value)
+			return str(value)
 		TYPE_VECTOR2:
 			var v2: Vector2 = value
 			return [snappedf(v2.x, 0.01), snappedf(v2.y, 0.01)]

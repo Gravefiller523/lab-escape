@@ -271,13 +271,18 @@ func _can_start() -> bool:
 
 
 func _close_peer() -> void:
-	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
-	if enet != null and enet.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED \
-			and enet.host != null:
-		_say_goodbye(enet)
-	if multiplayer.multiplayer_peer != null and not multiplayer.multiplayer_peer is OfflineMultiplayerPeer:
-		multiplayer.multiplayer_peer.close()
+	var old: MultiplayerPeer = multiplayer.multiplayer_peer
+	var enet := old as ENetMultiplayerPeer
+	var goodbye: bool = enet != null and enet.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED \
+		and enet.host != null
+	# CHANGED 2026-11-13 (roadmap WP15b, gap G51): the game lets go of the connection BEFORE saying goodbye on it.
+	# Otherwise, while the goodbye goes out, Godot hears the first client leave and tries to tell the others,
+	# whose connections are already closing ("Unable to send packet on channel 0").
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	if goodbye:
+		_say_goodbye(enet)
+	if old != null and not old is OfflineMultiplayerPeer:
+		old.close()
 	_mode = Mode.NONE
 	_is_host = false
 	_lobby_id = 0

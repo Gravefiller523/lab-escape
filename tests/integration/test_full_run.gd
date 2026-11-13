@@ -28,8 +28,7 @@ const EXIT_NOISE: PackedStringArray = ["leaked at exit", "resources still in use
 const KNOWN: PackedStringArray = []
 ## The same, but only allowed after the process has finished its run and is leaving.
 const KNOWN_WHILE_LEAVING: PackedStringArray = [
-	# Roadmap G51 / WP2: the host leaving a local (no Steam) game prints one ENet error while it says goodbye.
-	"Unable to send packet on channel 0, max channels: 0",
+	# (empty since 2026-11-13: G51, the ENet error when the host left a local game, was fixed in roadmap WP15b)
 ]
 
 var _dir: String = ""

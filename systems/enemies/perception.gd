@@ -68,8 +68,8 @@ func get_noticed_players() -> Array[PlayerCharacter]:
 	for player: PlayerCharacter in get_visible_players():
 		var key: int = player.get_instance_id()
 		var close: bool = _flat_distance(player) <= tuning.close_sense_range
-		if close or now - float(_seen_since.get(key, now)) >= tuning.notice_seconds \
-				or float(_known_until.get(key, -1.0)) > now:
+		if close or now - (_seen_since.get(key, now) as float) >= tuning.notice_seconds \
+				or (_known_until.get(key, -1.0) as float) > now:
 			noticed.append(player)
 	return noticed
 
@@ -105,7 +105,7 @@ func choose_target(current: PlayerCharacter, held_since: float) -> PlayerCharact
 		score *= 1.0 + tuning.target_crowd_penalty * float(_others_after(player))
 		if player == current:
 			score /= tuning.target_stickiness
-		if now - float(_hurt_at.get(player.get_instance_id(), -1000.0)) < tuning.target_memory_seconds:
+		if now - (_hurt_at.get(player.get_instance_id(), -1000.0) as float) < tuning.target_memory_seconds:
 			score /= tuning.target_revenge
 		if score < best_score:
 			best_score = score

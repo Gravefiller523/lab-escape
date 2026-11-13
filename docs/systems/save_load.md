@@ -78,6 +78,7 @@ GUT tests: `test_new_profile_defaults`, `test_round_trip`, `test_migration_from_
   unit tests and systems' test scenes never change the real profile. `enemies_killed` only counts on the host (the
   `enemy_killed` event is host-only). The file is read with `JSON.new().parse` so a broken file logs one warning, not an
   engine error. Tests in `tests/unit/save_load/test_save_load.gd` (the spec's six plus two).
+- 2026-11-13 (roadmap WP15b): lifetime `enemies_killed` counts from `EventBus.kill_credited`, so a client's kills count too (before: only the host's). Typing warnings fixed.
 
 ## HANDOFF
 **Built (2026-11-12, roadmap WP12):** see the Changelog. **Not yet:** Steam Cloud (set up on the Steamworks site once the

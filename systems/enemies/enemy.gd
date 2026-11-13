@@ -36,7 +36,7 @@ const CALM_STATES: Array[StringName] = [&"idle", &"patrol", &"search"]
 ## NEW 2026-10-30: how long (s) a jump aside lasts.
 const DODGE_SECONDS: float = 0.4
 ## NEW 2026-11-12 (roadmap WP14): the state an enemy with EnemyData.lure_kinds gets by itself.
-const LURED_STATE: Script = preload("res://systems/enemies/states/lured_state.gd")
+const LURED_STATE: GDScript = preload("res://systems/enemies/states/lured_state.gd")
 const LURED_STATE_NAME: StringName = &"lured"
 ## NEW 2026-10-30 (punt): how long a shove lasts, and how fast it slows down meanwhile (m/s per second).
 const KNOCK_SECONDS: float = 0.6
@@ -942,7 +942,7 @@ func fire_at(point: Vector3) -> void:
 	# CHANGED 2026-11-12 (roadmap WP10): a lobbed shot (gravity_scale > 0) aims above you by how far it will fall on
 	# the way, so it lands on you instead of short.
 	var flight_seconds: float = from.distance_to(point) / maxf(attack.projectile_speed, 0.1)
-	var gravity: float = float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)) * attack.gravity_scale
+	var gravity: float = (ProjectSettings.get_setting("physics/3d/default_gravity", 9.8) as float) * attack.gravity_scale
 	var aim: Vector3 = point + Vector3.UP * 0.5 * gravity * flight_seconds * flight_seconds
 	var direction: Vector3 = (aim - from).normalized()
 	if direction.is_zero_approx():

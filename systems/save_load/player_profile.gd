@@ -32,7 +32,7 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	profile.loadout = (data.get("loadout", {}) as Dictionary).duplicate()
 	var saved_stats: Dictionary = data.get("stats", {})
 	for key: Variant in saved_stats:
-		profile.stats[str(key)] = int(saved_stats[key])
+		profile.stats[str(key)] = (saved_stats[key] as int)
 	for id: Variant in data.get("seen_hint_ids", []) as Array:
 		profile.seen_hint_ids.append(StringName(str(id)))
 	return profile

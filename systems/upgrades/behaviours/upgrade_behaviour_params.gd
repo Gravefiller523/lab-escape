@@ -6,7 +6,7 @@ class_name UpgradeBehaviourParams
 static func number(node: Node, key: String, default: float) -> float:
 	var params: Dictionary = node.get_meta(&"params", {})
 	var value: Variant = params.get(key, default)
-	return float(value) if value is float or value is int else default
+	return (value as float) if value is float or value is int else default
 
 
 static func text(node: Node, key: String, default: String) -> String:

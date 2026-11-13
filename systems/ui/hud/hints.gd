@@ -37,7 +37,7 @@ func has_seen(hint_id: StringName) -> bool:
 	if _file_path.is_empty():
 		return SaveSystem.has_seen_hint(hint_id)
 	_load()
-	return bool(_seen.get_value(SECTION, String(hint_id), false))
+	return _seen.get_value(SECTION, String(hint_id), false) as bool
 
 
 ## Something happened: show the first unseen hint for this trigger. True if one showed. Only in the game world

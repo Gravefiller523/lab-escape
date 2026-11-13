@@ -35,7 +35,7 @@ func _joins(layout: FloorLayout) -> Dictionary[int, Array]:
 
 func test_cameras_are_picked_by_the_rules_and_match_on_every_pc() -> void:
 	var tuning: FloorGenTuning = _tuning()
-	for floor_number: int in [1, 3, 6, 9, 14, 18]:
+	for floor_number: int in [1, 3, 6, 9, 11, 12]:
 		for attempt: int in 3:
 			var floor_seed: int = 3100 + floor_number * 17 + attempt
 			var layout: FloorLayout = FloorGenerator.generate_from_seed(_robotics(), floor_number, floor_seed, tuning)

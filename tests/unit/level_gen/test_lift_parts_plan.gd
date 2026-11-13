@@ -102,12 +102,12 @@ func test_every_part_kind_has_a_size_and_category() -> void:
 func test_parts_follow_the_rules_on_every_floor() -> void:
 	var tuning: FloorGenTuning = _tuning()
 	var floors: int = 0
-	for floor_number: int in range(1, 19):
+	for floor_number: int in range(1, 13):
 		for attempt: int in SEEDS_PER_FLOOR:
 			var layout: FloorLayout = FloorGenerator.generate_from_seed(_robotics(), floor_number, 7000 + floor_number * 31 + attempt, tuning)
 			floors += 1
 			_check_floor(layout, tuning)
-	assert_eq(floors, 18 * SEEDS_PER_FLOOR)
+	assert_eq(floors, 12 * SEEDS_PER_FLOOR)
 
 
 func _check_floor(layout: FloorLayout, tuning: FloorGenTuning) -> void:
@@ -220,7 +220,6 @@ func test_the_lift_breaks_the_planned_parts_and_spawns_them_at_their_markers() -
 	assert_eq(broken, planned, "the plan's parts are the broken slots (not the lift's own roll)")
 	EventBus.floor_ready.emit(9, layout.department_id)
 	await wait_physics_frames(3)
-	_allow_navigation_warning()
 	for part: Array in layout.lift_parts:
 		var spawned: Array[NetProp] = props.get_props(StringName(str(part[0])))
 		assert_eq(spawned.size(), 1, "the %s was spawned" % part[0])
@@ -240,11 +239,3 @@ func test_the_lift_breaks_the_planned_parts_and_spawns_them_at_their_markers() -
 	# floor_ready started the enemies' navigation bake on a background thread: let it finish before the floor goes.
 	await wait_until(func() -> bool: return not Enemies.is_baking_navigation(), WAIT)
 	Level.clear()
-
-
-## floor_ready also makes the enemies bake their navigation, and the first bake in a run warns that it parsed
-## the CSG tiles' meshes (an enemies matter, not this test's): that warning doesn't fail the test.
-func _allow_navigation_warning() -> void:
-	for error: GutTrackedError in get_errors():
-		if error.contains_text("Source geometry parsing"):
-			error.handled = true

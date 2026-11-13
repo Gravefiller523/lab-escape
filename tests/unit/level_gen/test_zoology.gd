@@ -25,7 +25,7 @@ func test_zoology_floors_have_their_required_rooms() -> void:
 	var department_rooms: int = 0
 	var shared_rooms: int = 0
 	for floor_seed: int in 40:
-		var floor_number: int = 1 + floor_seed % 18
+		var floor_number: int = 1 + floor_seed % 12
 		var layout: FloorLayout = FloorGenerator.generate_from_seed(zoology, floor_number, floor_seed * 19 + 7, Config.floor_gen)
 		var label: String = "floor %d seed %d" % [floor_number, floor_seed]
 		assert_false(layout.is_fallback, "%s: a real floor" % label)
@@ -144,3 +144,45 @@ func test_broken_enclosures_let_an_animal_out_but_dont_hurt() -> void:
 	zone.setup(&"broken_enclosure")
 	add_child_autofree(zone)
 	assert_not_null(zone.get_node_or_null("Straw"), "it looks like a broken cage with straw")
+
+
+## NEW 2026-11-13 (step 6b): heavily damaged and destroyed Zoology rooms have broken skylights (holes in the
+## ceiling with light falling through) and dark corners; the same on every PC; other departments don't.
+func test_damaged_zoology_rooms_get_skylights_and_dark_corners() -> void:
+	var counts: Array[int] = []
+	for attempt: int in 2:
+		FloorGenerator.debug_damage = &"destroyed"
+		var layout: FloorLayout = FloorGenerator.generate_from_seed(_zoology(), 5, 4141, Config.floor_gen)
+		FloorGenerator.debug_damage = &""
+		var viewport := SubViewport.new()
+		viewport.own_world_3d = true
+		add_child_autofree(viewport)
+		var parent := Node3D.new()
+		viewport.add_child(parent)
+		Level.build(layout, parent)
+		var holes: int = 0
+		var corners: int = 0
+		for node: Node in RoomShape.all_children(parent):
+			if node is CSGBox3D and node.name.begins_with("Skylight"):
+				assert_eq((node as CSGBox3D).operation, CSGShape3D.OPERATION_SUBTRACTION, "a skylight cuts the ceiling")
+				holes += 1
+			if node.name.begins_with("DarkCorner"):
+				corners += 1
+		assert_gt(holes, 5, "destroyed Zoology rooms have broken skylights (%d)" % holes)
+		assert_gt(corners, 5, "and dark corners (%d)" % corners)
+		counts.append(holes * 1000 + corners)
+		Level.clear()
+	assert_eq(counts[0], counts[1], "the same floor gets the same skylights and corners (seeded)")
+	FloorGenerator.debug_damage = &"destroyed"
+	var botany: FloorLayout = FloorGenerator.generate_from_seed(ContentRegistry.get_content(&"department_botany") as DepartmentData,
+		5, 4141, Config.floor_gen)
+	FloorGenerator.debug_damage = &""
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	add_child_autofree(viewport)
+	var parent := Node3D.new()
+	viewport.add_child(parent)
+	Level.build(botany, parent)
+	for node: Node in RoomShape.all_children(parent):
+		assert_false(node.name == DamageLooks.NODE_NAME, "Botany has no skylights")
+	Level.clear()

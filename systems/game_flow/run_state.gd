@@ -13,7 +13,7 @@ var floor_number: int = 0
 ## Which department of department_ids we are in (0-based). CHANGED 2026-10-31: floor_number - 1.
 var department_index: int = 0
 ## 1..floor_count for regular floors; floor_count + 1 is the boss floor. CHANGED 2026-10-31: the floor's place in
-## its block of GameConfig.boss_every_floors floors (1 to 5, the boss floor is 6). Enemy budgets and min_floor use it.
+## its block of GameConfig.boss_every_floors floors (1 to 3, the boss floor is 4). Enemy budgets and min_floor use it.
 var floor_in_department: int = 0
 var is_boss_floor: bool = false
 

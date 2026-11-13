@@ -151,6 +151,7 @@ func build(layout: FloorLayout, parent: Node = null) -> void:
 			_dress_room(node, room, department)
 			_apply_damage(node, index, layout)
 			IncidentOverlays.dress(node, index, layout, department)
+			DamageLooks.dress(node, index, layout, department)
 		for marker: RoomMarker in _markers_in(node):
 			var key: String = FloorLayout.marker_key(index, String(node.get_path_to(marker)))
 			if layout.marker_params.has(key):

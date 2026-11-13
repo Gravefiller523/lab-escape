@@ -1,12 +1,12 @@
 extends GutTest
 ## NEW 2026-11-10 (floor generation step 4f, plan section 13): the bulk test. `seeds` floors per department (floors
-## 1 to 15 in turn; 30 here, 500 in the slow group: tests_slow/level_gen/test_floor_rules_bulk_500.gd), every one checked against the plan's 8 rules from the outside (not with the generator's own
+## 1 to 12 in turn (CHANGED 2026-11-13: runs are 12 floors; was 1 to 15); 30 here, 500 in the slow group: tests_slow/level_gen/test_floor_rules_bulk_500.gd), every one checked against the plan's 8 rules from the outside (not with the generator's own
 ## checks): carry paths, locks openable in some order, required rooms, no overlaps, every join face to face, the
 ## start, parts and keys reachable, the part rules, and a part in a calm room. Also how often the fallback is needed.
 
 ## Floors per department (the slow group sets 500 in before_all).
 var seeds: int = 30
-const FLOORS: int = 15
+const FLOORS: int = 12
 const DEPARTMENTS: Array[StringName] = [&"department_robotics", &"department_botany", &"department_zoology"]
 
 
@@ -186,7 +186,8 @@ func _reach(layout: FloorLayout, joins: Dictionary[int, Array], locks: Array[int
 ## Can this lock be opened by a team that reaches these tiles?
 func _opens(layout: FloorLayout, door: int, reach: Dictionary[int, bool]) -> bool:
 	var entry: Array = layout.doors[door]
-	if not reach.has(int(entry[0])) and not reach.has(int(entry[2])):
+	# CHANGED 2026-11-13: only from the approach side (the reader, breaker and pry point are there).
+	if not reach.has(int(entry[2])):
 		return false
 	var type: int = entry[3]
 	if type == FloorGenerator.DOOR_POWER and int(entry[4]) != 1:

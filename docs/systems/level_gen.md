@@ -458,7 +458,8 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   half walls or the generator skips one side.
 - DONE 2026-10-31 (step 4a): a department every floor (game_flow).
 - 2026-10-31 (step 4a): Botany and Zoology are placeholder departments (shared rooms only, stand-in enemies;
-  Botany's boss floors off) until their own rooms come (plan step 5).
+  Botany's boss floors off) until their own rooms come (plan step 5). UPDATED 2026-11-13: all three now have their
+  own rooms (step 5), and boss floors (4, 8 and 12 since 6a) roll among the departments that have a boss.
 - 2026-10-31 (step 3): main hallway T pieces aren't used yet (main hallways don't split); secondary T
   pieces are. `DepartmentData.welcome_center_scene` isn't read: the generator picks a welcome center tile
   (RoomData, `room_kind` "welcome_center") that lists the department, else the generic one.
@@ -603,6 +604,38 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
 - 2026-11-12 (roadmap WP10, content only): `department_botany` now spawns its own enemies (mushroom zombie, flytrap, spore shooter, vine creeper) and uses `loot_botany_small` and `stock_botany_vending`. Its boss floors stay off until the Mushroom Man (WP13).
 
 - 2026-11-12 (roadmap WP11, content only): `department_robotics` now spawns its own enemies (roomba, turret, drone, flock camera) and uses `loot_robotics_small` and `stock_robotics_vending`. Its boss floors stay off until Robobrain (WP13).
+
+- 2026-11-13 (floor generation step 6a: runs of 12 floors, a boss every 4): `config/floor_gen_tuning.tres` re-spreads
+  every floor-number curve over 12 floors (the script's defaults are the old 18-floor ones): `floor_brackets`
+  1, 3, 6, 8 (parts 1-2 on floors 1-2, 2-3 on 3-5, 3-5 from 6; keycard doors, parts behind keycards, smaller
+  incidents, branch depth and loops follow the same brackets); per floor x1.5 for main hallway length, damage
+  intensity, part size bias and hazards; rooms 10 on floor 1, about 27 by floor 11 (`target_rooms_per_floor`
+  1.7). The "from floor 4" rules (a part near the incident, missing power cells) stay at floor 4, the first boss
+  block boundary. Tests over floors 1-18 now cover 1-12; the bulk check covers 1-12.
+- 2026-11-13 (step 6b, Botany's airlock): NEW tile role "connector" (`TileStandards.ROLE_CONNECTOR`): a short passage
+  with exactly two doorways, no size category, no lift parts. Botany's decontamination airlock
+  (`room_tile_botany_decon_airlock`, same id) is now one: 1 x 2 units with a doorway at each end. The generator puts
+  it between a hallway and a lab: the required airlock goes at a main hallway doorway with a lab behind it, and labs
+  listed in `airlock_room_kinds` that hang off a hallway sit behind one now and then (`airlock_chance`, within the
+  airlock's max_per_floor). An airlock nothing fits behind is taken back out (`_unplace_last`). Connectors get doors
+  like rooms, so an airlock has a door at each end. NEW tuning `airlock_room_kinds`, `airlock_chance`,
+  `airlock_kind`. Test `test_airlocks_sit_between_a_hallway_and_a_lab`.
+- 2026-11-13 (step 6b, Zoology's damage look): NEW `DamageLooks` (`systems/level_gen/tiles/damage_looks.gd`), picked per
+  department in NEW tuning `damage_looks_by_department` (Zoology: "skylights"): heavy and destroyed tiles get 1-2
+  holes cut in the ceiling (CSG) with a pale shaft and a dim downlight through each and a ceiling panel hanging
+  down, plus 2-4 dark corners (a shadowy volume and a dead light fitting). Looks only, seeded. Test
+  `test_damaged_zoology_rooms_get_skylights_and_dark_corners`.
+- 2026-11-13 (step 6b, navigation warning): checked that the enemies' bake no longer reads the blockout tiles' visual
+  meshes (it reads their collision faces since roadmap WP3, 2026-11-11), so Godot's "slow parse" warning is gone: the
+  walkable area matches the old way within 0.4% and bake time is the same (about 20-50 ms a floor). NEW test
+  `test_navigation_bake.gd` locks that in for every department; the two level_gen tests no longer excuse the warning.
+- 2026-11-13 (step 6c, tuning from data): NEW debug tool `FloorStats` (`systems/level_gen/debug/floor_stats.gd`) and its
+  runner scene `test/floor_stats_runner.tscn` (headless: N floors per department per floor number, a CSV and a markdown
+  summary). NEW `FloorLayout.stats["longest_path_m"]` (the walk from the elevator to the farthest tile). Tuning:
+  `floor_brackets` (1, 3, 6, 8) -> (1, 4, 6, 9) so floors 1-3 are all the gentlest bracket (floor 3 had a jump in parts,
+  keycard doors and loops). Report with before and after tables: `docs/design/floor-stats-6c.md`.
+  Also (Zachary's OK) the enemies' spawner budget follows the run's floor and `enemy_budget_per_floor` is 0.2 in
+  `config/game_config.tres`, so enemies per room stay about 0.5 on every floor. `FloorStats` counts spawned enemies too.
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

@@ -691,6 +691,12 @@ Mostly content: department files, welcome centers, room tiles, incidents (gas, f
 palettes. New code only for new hazard kinds. *Test: play 3 floors of each; F3 view on 10 seeds each.*
 
 ### Step 6: tuning pass
+- **Built 2026-11-13 (6a):** runs of 12 floors with a boss every 4 (floors 4, 8, 12); every floor-number curve
+  and bracket re-spread over 12 floors in `config/floor_gen_tuning.tres`. The playtest tuning comes next.
+- **Built 2026-11-13 (6b):** a real two-door airlock between hallways and Botany labs; broken skylights and dark
+  corners in damaged Zoology rooms; the navigation bake reads collision shapes (no slow-parse warning; a test checks it).
+- **Built 2026-11-13 (6c):** a floor stats tool (CSV and summary from hundreds of floors); the brackets moved so
+  the first department (floors 1-3) is the gentlest. Report: `docs/design/floor-stats-6c.md`.
 Every number in `config/floor_gen_tuning.tres`, grouped and commented. Play floors 1, 4, 8 and 12 in
 each department and adjust size, damage, parts, locks and cameras together. *Test: you play a run and
 we change numbers live with `tune`.*

@@ -85,7 +85,6 @@ func test_nothing_spawns_before_floor_ready() -> void:
 	assert_eq(props.get_props().size(), 0, "building the floor spawns nothing")
 	EventBus.floor_ready.emit(9, layout.department_id)
 	await wait_physics_frames(3)
-	_allow_navigation_warning()
 	assert_gt(props.get_props().size(), 0, "floor_ready spawns the floor's things")
 	await wait_until(func() -> bool: return not Enemies.is_baking_navigation(), WAIT)
 	Level.clear()
@@ -100,7 +99,6 @@ func test_enemies_can_walk_through_open_doors_but_not_locked_ones() -> void:
 	Level.build(layout, root)
 	await wait_physics_frames(3)
 	var region: NavigationRegion3D = Enemies.bake_navigation(root.get_node(LevelService.ROOMS_NODE), true)
-	_allow_navigation_warning()
 	assert_not_null(region.navigation_mesh, "the floor's navigation is baked")
 	var rooms: Array[Node3D] = Level.get_room_nodes()
 	var open_seen: int = 0
@@ -139,11 +137,3 @@ func _covered(region: NavigationRegion3D, point: Vector3) -> bool:
 		if absf(height - at.y) < 0.8 and Geometry2D.is_point_in_polygon(Vector2(at.x, at.z), flat):
 			return true
 	return false
-
-
-## The enemies' navigation bake warns, once per run, that it parsed the CSG tiles' meshes (an enemies matter,
-## not this test's): that warning doesn't fail the test.
-func _allow_navigation_warning() -> void:
-	for error: GutTrackedError in get_errors():
-		if error.contains_text("Source geometry parsing"):
-			error.handled = true

@@ -186,7 +186,7 @@ group: `welcome_center_scene` (empty = the generic one), `room_types` (each a Ro
 `room_type_robot_test_bay`, `room_kind`, `display_name`, `weight`, `max_per_floor`, `min_floor`,
 `size_categories`, `part_categories`), `shared_room_weight` (-1 = the tuning file's `shared_room_share`),
 `palette` (`"wall"`, `"floor"`, `"trim"`, `"accent"`, NEW 2026-11-14 `"art"` -> Material), `signage_style` (sign scene), `lighting`
-(a LightingStyleData: light colour and energy, emergency light colour; how damage makes lights flicker and die is in `config/floor_gen_tuning.tres`),
+(a LightingStyleData: light colour and energy, emergency light colour; NEW 2026-11-14 its "Atmosphere" group: `ambient_color`, `ambient_energy`, `background_color`, `fog_color`, `fog_density`, `volumetric_fog`, `exposure`, `shadows`, `mote_color`, `mote_amount`, `mote_size`, `mote_speed`, `mote_fall`, `warning_light_color`, `warning_light_every`; how damage makes lights flicker and die is in `config/floor_gen_tuning.tres`),
 `prop_pool` (prop ids with weights), `hazard_kinds` (e.g. `sparks`, `fire`), `incidents` (each an
 IncidentData: `id` like `incident_fabrication_fire`, `display_name`, `weight`, `origin_room_kinds`,
 `overlay_flavour`, `hazard_kinds`, `lighting`). NEW 2026-10-31 (step 4a): the generator uses `room_types` (department rooms

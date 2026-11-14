@@ -18,6 +18,8 @@ const NIGHT_AMBIENT: Color = Color(0.55, 0.55, 0.6)
 const DAY_SKY: Color = Color(0.55, 0.75, 0.95)
 const DAY_AMBIENT: Color = Color(0.8, 0.82, 0.85)
 const DAY_SUN_ENERGY: float = 1.6
+## NEW 2026-11-14 (art phase WP26): the box around your camera where floating specks appear (half sizes, metres).
+const MOTE_BOX: Vector3 = Vector3(6.0, 2.0, 6.0)
 
 var _level_root: Node3D
 var _lift: CargoLift
@@ -25,6 +27,10 @@ var _players: PlayerSpawner
 var _props: PropSpawner
 var _environment: WorldEnvironment
 var _sun: DirectionalLight3D
+## NEW 2026-11-14 (art phase WP26): the look of the floor we are on (null = the plain default), and the specks
+## floating around this PC's camera.
+var _look: LightingStyleData
+var _motes: GPUParticles3D
 
 
 const GROUP: StringName = &"game_world"
@@ -98,6 +104,7 @@ func clear_level() -> void:
 ## Every PC: puts the Break Room in, lined up with the lift. Returns its spawn points.
 func build_break_room(scene: PackedScene) -> Array[Node3D]:
 	clear_level()
+	apply_look(null)
 	var room := scene.instantiate() as BreakRoom
 	_level_root.add_child(room)
 	_line_up(room.get_lift_spot())
@@ -118,9 +125,16 @@ func build_surface(scene: PackedScene) -> Array[Node3D]:
 func set_daylight(on: bool) -> void:
 	if _environment == null or _sun == null:
 		return
-	_environment.environment.background_color = DAY_SKY if on else NIGHT_BACKGROUND
-	_environment.environment.ambient_light_color = DAY_AMBIENT if on else NIGHT_AMBIENT
-	_sun.light_energy = DAY_SUN_ENERGY if on else 1.0
+	if not on:
+		apply_look(_look)
+		return
+	# Outside: the plain look with sky and sun, but remember the floor's look for coming back in.
+	var inside: LightingStyleData = _look
+	apply_look(null)
+	_look = inside
+	_environment.environment.background_color = DAY_SKY
+	_environment.environment.ambient_light_color = DAY_AMBIENT
+	_sun.light_energy = DAY_SUN_ENERGY
 
 
 func is_daylight() -> bool:
@@ -131,6 +145,9 @@ func is_daylight() -> bool:
 func build_floor(layout: FloorLayout) -> void:
 	clear_level()
 	Level.build(layout, _level_root)
+	# NEW 2026-11-14 (art phase WP26): the department's light and air.
+	var department: DepartmentData = GameFlow.get_department(layout.department_id) if layout.department_id != &"" else null
+	apply_look(department.lighting if department != null else null)
 	var spots: Array[RoomMarker] = Level.get_markers(&"lift")
 	if not spots.is_empty():
 		_line_up(spots[0])
@@ -152,3 +169,78 @@ func _on_floor_ready(_floor_number: int, _department_id: StringName) -> void:
 		var prop_id := StringName(str(marker.params.get("prop_id", DEFAULT_PROP_ID)))
 		_props.spawn_prop(prop_id, marker.global_transform)
 
+
+
+## NEW 2026-11-14 (art phase WP26, Zachary OK'd the lighting mock-up): every PC: puts a department's atmosphere on the
+## world (LightingStyleData's "Atmosphere" group): ambient light, background, haze, tone curve and floating specks.
+## null puts back the plain look (the Break Room). Indoors the sun is off; the plain look keeps it.
+func apply_look(style: LightingStyleData) -> void:
+	_look = style
+	if _environment == null:
+		return
+	var environment: Environment = _environment.environment
+	var plain: bool = style == null
+	environment.background_color = NIGHT_BACKGROUND if plain else style.background_color
+	environment.ambient_light_color = NIGHT_AMBIENT if plain else style.ambient_color
+	environment.ambient_light_energy = 1.0 if plain else style.ambient_energy
+	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR if plain else Environment.TONE_MAPPER_FILMIC
+	environment.tonemap_exposure = 1.0 if plain else style.exposure
+	environment.ssao_enabled = not plain
+	environment.glow_enabled = not plain
+	environment.fog_enabled = not plain and style.fog_density > 0.0
+	environment.volumetric_fog_enabled = not plain and style.fog_density > 0.0 and style.volumetric_fog
+	if not plain:
+		environment.fog_light_color = style.fog_color
+		environment.fog_density = style.fog_density
+		environment.volumetric_fog_density = style.fog_density * 0.8
+		environment.volumetric_fog_albedo = style.fog_color
+	if _sun != null:
+		_sun.visible = plain
+		_sun.light_energy = 1.0
+	_set_motes(style)
+
+
+## The look on the world now (null = the plain one).
+func get_look() -> LightingStyleData:
+	return _look
+
+
+func _set_motes(style: LightingStyleData) -> void:
+	if _motes != null:
+		_motes.queue_free()
+		_motes = null
+	if style == null or style.mote_amount <= 0:
+		return
+	_motes = GPUParticles3D.new()
+	_motes.name = "Motes"
+	_motes.amount = style.mote_amount
+	_motes.lifetime = 6.0
+	_motes.preprocess = 6.0
+	_motes.local_coords = false
+	var motion := ParticleProcessMaterial.new()
+	motion.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	motion.emission_box_extents = MOTE_BOX
+	motion.gravity = Vector3(0.0, -style.mote_fall if style.mote_fall > 0.0 else 0.02, 0.0)
+	motion.initial_velocity_min = style.mote_speed * 0.25
+	motion.initial_velocity_max = style.mote_speed
+	motion.spread = 180.0
+	_motes.process_material = motion
+	var quad := QuadMesh.new()
+	quad.size = Vector2(style.mote_size, style.mote_size)
+	var speck := StandardMaterial3D.new()
+	speck.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	speck.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	speck.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	speck.albedo_color = style.mote_color
+	quad.material = speck
+	_motes.draw_pass_1 = quad
+	add_child(_motes)
+
+
+func _process(_delta: float) -> void:
+	# The specks follow this PC's camera, so there are always some around you and none wasted far away.
+	if _motes == null:
+		return
+	var camera: Camera3D = get_viewport().get_camera_3d()
+	if camera != null:
+		_motes.global_position = camera.global_position

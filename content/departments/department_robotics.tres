@@ -112,9 +112,23 @@ part_categories = PackedStringArray("electronic", "electrical")
 
 [sub_resource type="Resource" id="Lighting"]
 script = ExtResource("5_lighting")
-light_color = Color(0.86, 0.93, 1, 1)
-light_energy = 1.0
+light_color = Color(0.8, 0.9, 1, 1)
+light_energy = 1.35
 emergency_color = Color(1, 0.12, 0.08, 1)
+ambient_color = Color(0.26, 0.31, 0.4, 1)
+ambient_energy = 0.55
+background_color = Color(0.02, 0.025, 0.035, 1)
+fog_color = Color(0.18, 0.22, 0.3, 1)
+fog_density = 0.014
+volumetric_fog = true
+exposure = 1.15
+shadows = true
+mote_color = Color(1, 0.6, 0.2, 1)
+mote_amount = 40
+mote_size = 0.03
+mote_speed = 0.6
+mote_fall = 0.6
+warning_light_color = Color(1, 0.15, 0.1, 1)
 
 [sub_resource type="Resource" id="Incident_fire_lighting"]
 script = ExtResource("5_lighting")

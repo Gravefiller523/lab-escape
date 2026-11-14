@@ -224,3 +224,4 @@ boss floor → next department … → run summary (`run_summary_seconds`) → B
 - **bosses:** emit `boss_defeated` on every PC; GameFlow moves on or ends the run as "escaped".
 - **death_respawn:** emit `team_wiped` on every PC; GameFlow ends the run as "wiped".
 - **ui:** a run summary screen can listen to `run_ended` (the summary lasts `run_summary_seconds`).
+- 2026-11-14 (art phase WP26, Zachary OK'd the lighting mock-up): NEW `GameWorld.apply_look(style: LightingStyleData)` and `get_look()`. `build_floor` puts the floor department's atmosphere on the world (ambient light, background, haze, filmic tone curve, SSAO, glow, floating specks that follow this PC's camera); indoors the sun is off. `build_break_room` puts the plain look back. `set_daylight(true)` shows sky and sun and remembers the floor's look; `set_daylight(false)` puts it back. Test: `tests/unit/game_flow/test_department_look.gd` (3).

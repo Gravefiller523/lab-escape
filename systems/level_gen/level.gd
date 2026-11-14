@@ -14,6 +14,13 @@ const PLUG_COLOR: Color = Color(0.5, 0.5, 0.53)
 ## NEW 2026-11-09: how often (seconds) part cues check their part is still there, and how near it must be (metres).
 const CUE_CHECK_SECONDS: float = 0.5
 const CUE_REACH: float = 1.5
+## NEW 2026-11-14 (art phase WP26): ceiling light shadows start fading this far away (metres), gone after this much more.
+const SHADOW_FADE_BEGIN: float = 14.0
+const SHADOW_FADE_LENGTH: float = 6.0
+## NEW 2026-11-14: the pulsing warning lights (LightingStyleData.warning_light_color).
+const WARNING_LIGHT_ENERGY: float = 1.5
+const WARNING_LIGHT_RANGE: float = 6.0
+const WARNING_PULSE_SECONDS: float = 1.2
 
 var _config: GameConfig
 var _layout: FloorLayout
@@ -400,8 +407,16 @@ func _light_room(node: Node3D, index: int, layout: FloorLayout, department: Depa
 			if light.is_in_group(TileStandards.LIGHT_GROUP):
 				light.light_color = lighting.light_color
 				light.light_energy *= lighting.light_energy
+				# NEW 2026-11-14 (art phase WP26): soft shadows that fade out with distance, so only nearby lights cost.
+				if lighting.shadows:
+					light.shadow_enabled = true
+					light.distance_fade_enabled = true
+					light.distance_fade_begin = SHADOW_FADE_BEGIN
+					light.distance_fade_shadow = SHADOW_FADE_LENGTH
 			elif light.is_in_group(TileStandards.EMERGENCY_LIGHT_GROUP):
 				light.light_color = lighting.emergency_color
+	if lighting != null and lighting.warning_light_color.a > 0.0 and index % maxi(lighting.warning_light_every, 1) == 0:
+		_add_warning_light(node, lighting.warning_light_color)
 	var flicker := TileLightFlicker.new()
 	flicker.name = "LightFlicker"
 	node.add_child(flicker)
@@ -694,3 +709,23 @@ func _process(delta: float) -> void:
 		for prop: NetProp in Props.get_props(cue.get_meta(&"part_id")):
 			near = near or prop.global_position.distance_to(cue.global_position) < CUE_REACH
 		cue.visible = near
+
+
+## NEW 2026-11-14 (art phase WP26, Zachary OK'd the lighting mock-up): a slowly pulsing warning light near the ceiling
+## in the middle of a room (Robotics). Only looks; every PC adds the same ones (from the room's index in the layout).
+func _add_warning_light(node: Node3D, color: Color) -> void:
+	var blockout := node as BlockoutTile
+	var tuning: FloorGenTuning = Config.floor_gen
+	var size := Vector2(1, 1) * tuning.grid_unit
+	if blockout != null:
+		size = Vector2(blockout.size_units) * tuning.grid_unit
+	var light := OmniLight3D.new()
+	light.name = "WarningLight"
+	light.light_color = color
+	light.light_energy = WARNING_LIGHT_ENERGY
+	light.omni_range = WARNING_LIGHT_RANGE
+	light.position = Vector3(size.x / 2.0, tuning.ceiling_height - 0.4, size.y / 2.0)
+	node.add_child(light)
+	var pulse: Tween = light.create_tween().set_loops()
+	pulse.tween_property(light, "light_energy", WARNING_LIGHT_ENERGY * 0.2, WARNING_PULSE_SECONDS)
+	pulse.tween_property(light, "light_energy", WARNING_LIGHT_ENERGY, WARNING_PULSE_SECONDS)

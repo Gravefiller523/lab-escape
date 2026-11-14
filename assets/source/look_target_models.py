@@ -38,6 +38,13 @@ PALETTE = {
     "label": (3, 2, (0.95, 0.95, 0.90)),
     "moss": (4, 2, (0.45, 0.60, 0.30)),
     "sand": (5, 2, (0.82, 0.74, 0.55)),
+    "safety_yellow": (0, 3, (0.95, 0.74, 0.10)),
+    "safety_yellow_worn": (1, 3, (0.78, 0.60, 0.12)),
+    "steel": (2, 3, (0.42, 0.45, 0.50)),
+    "steel_dark": (3, 3, (0.20, 0.22, 0.25)),
+    "stripe_black": (4, 3, (0.08, 0.08, 0.09)),
+    "rubber": (5, 3, (0.12, 0.12, 0.13)),
+    "bolt": (6, 3, (0.70, 0.72, 0.75)),
 }
 
 
@@ -238,6 +245,54 @@ def vial(material, glass_material):
     join_and_export(glass, "prop_dna_vial_glass", glass_material, "shared", False)
 
 
+def lift(material):
+    """The cargo lift's cage (docs/systems/cargo_lift.md): 5 x 5 m inside, 3.4 m high, the gate at +Y here (Godot
+    -Z), the back wall with the part panel at -Y. The doors, slots and buttons stay the lift's own nodes."""
+    inside_x, inside_y, height, wall = 5.0, 5.0, 3.4, 0.2
+    hx, hy = inside_x / 2.0, inside_y / 2.0
+    parts = [
+        part("cube", "steel_dark", (0, 0, -0.15), (inside_x + wall * 2, inside_y + wall * 2, 0.3)),       # platform
+        part("cube", "steel", (0, -hy - wall / 2.0, height / 2.0), (inside_x + wall * 2, wall, height)),  # back wall
+        part("cube", "steel_dark", (0, 0, height + wall / 2.0), (inside_x + wall * 2, inside_y + wall * 2, wall)),
+    ]
+    # Floor treads and a yellow and black edge at the gate.
+    for index in range(9):
+        parts.append(part("cube", "steel", (0, -hy + 0.3 + index * 0.55, 0.005), (inside_x - 0.3, 0.06, 0.02)))
+    for index in range(10):
+        swatch = "safety_yellow" if index % 2 == 0 else "stripe_black"
+        parts.append(part("cube", swatch, (-hx + 0.25 + index * 0.5, hy - 0.12, 0.01), (0.5, 0.24, 0.03)))
+    # Corner posts and beams in safety yellow, worn where hands touch.
+    for x in (-hx - wall / 2.0, hx + wall / 2.0):
+        for y in (-hy - wall / 2.0, 0.0, hy + wall / 2.0):
+            parts.append(part("cube", "safety_yellow", (x, y, height / 2.0), (wall * 1.2, wall * 1.2, height)))
+        parts.append(part("cube", "safety_yellow_worn", (x, 0, 1.05), (wall * 0.8, inside_y, 0.1)))     # railing
+        parts.append(part("cube", "steel", (x, 0, 0.15), (wall * 0.9, inside_y, 0.3)))                  # kick plate
+        parts.append(part("cube", "safety_yellow", (x, 0, height - 0.1), (wall * 1.2, inside_y + wall, 0.2)))
+    parts.append(part("cube", "safety_yellow", (0, hy + wall / 2.0, height - 0.1), (inside_x + wall * 2, wall * 1.2, 0.2)))
+    # Back wall: ribs, bolts, and a dark frame round the part panel.
+    for x in (-2.0, -1.0, 0.0, 1.0, 2.0):
+        parts.append(part("cube", "steel_dark", (x, -hy + 0.02, height / 2.0), (0.08, 0.06, height - 0.2)))
+    for x in (-2.4, 2.4):
+        for z in (0.2, 1.7, 3.2):
+            parts.append(part("cylinder", "bolt", (x, -hy + 0.04, z), (0.07, 0.07, 0.04), (90, 0, 0), vertices=6))
+    parts.append(part("cube", "rubber", (-0.9, -hy + 0.03, 1.25), (3.3, 0.03, 2.2)))
+    # A caged work light on the roof.
+    parts.append(part("cube", "steel_dark", (0, 0, height - 0.08), (0.6, 0.3, 0.12)))
+    join_and_export(parts, "lift_cage", material, "shared", True)
+
+    # One gate door: 2.5 m wide, 3 m high, a yellow frame round a steel mesh.
+    door_w, door_h = inside_x / 2.0, height - 0.4
+    door = [part("cube", "safety_yellow", (0, 0, door_h / 2.0), (door_w, 0.06, 0.12))]
+    door.append(part("cube", "safety_yellow", (0, 0, -door_h / 2.0), (door_w, 0.06, 0.12)))
+    for x in (-door_w / 2.0, door_w / 2.0):
+        door.append(part("cube", "safety_yellow", (x, 0, 0), (0.12, 0.08, door_h)))
+    for index in range(1, 8):
+        door.append(part("cube", "steel", (-door_w / 2.0 + index * door_w / 8.0, 0, 0), (0.03, 0.03, door_h)))
+    for index in range(1, 6):
+        door.append(part("cube", "steel", (0, 0, -door_h / 2.0 + index * door_h / 6.0), (door_w, 0.03, 0.03)))
+    join_and_export(door, "lift_door", material, "shared", False)
+
+
 clear_scene()
 palette = make_palette()
 solid = palette_material(palette)
@@ -248,4 +303,5 @@ gem(solid, "prop_gem", 0.16)
 gem(solid, "prop_gem_large", 0.28)
 meat(solid)
 vial(solid, see_through)
+lift(solid)
 print("LOOK_TARGET_DONE")

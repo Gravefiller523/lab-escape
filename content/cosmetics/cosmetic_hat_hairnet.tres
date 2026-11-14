@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CosmeticData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/cosmetics/cosmetic_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/cosmetics/models/hat_hairnet.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"cosmetic_hat_hairnet"
+display_name = "Hairnet"
+description = "Kitchen rules apply in the lab too. In your locker from day one."
+slot = &"hat"
+scene = ExtResource("2_scene")

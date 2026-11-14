@@ -6,6 +6,8 @@ extends Label
 ## Spec: docs/systems/ui.md.
 
 const PREFIX: String = "PA: "
+## NEW 2026-11-13 (roadmap WP19): seconds into the last ride up before its PA line.
+const ESCAPE_LINE_DELAY: float = 1.0
 
 var _left: float = 0.0
 var _pending: String = ""
@@ -18,12 +20,15 @@ func get_line() -> String:
 
 
 ## The announcement for this floor of this run (the same on every PC), or "" if none fits.
-static func pick(run_seed: int, floor_number: int, department_id: StringName) -> String:
+static func pick(run_seed: int, floor_number: int, department_id: StringName, moment: StringName = &"floor") -> String:
 	var lines: Array[AnnouncementData] = []
 	var weights := PackedFloat32Array()
 	for content: ContentData in ContentRegistry.get_all(&"announcement"):
 		var line := content as AnnouncementData
 		if line == null or line.weight <= 0.0:
+			continue
+		var line_moment: StringName = line.moment if line.moment != &"" else &"floor"
+		if line_moment != moment:
 			continue
 		if not line.department_ids.is_empty() and not line.department_ids.has(department_id):
 			continue
@@ -52,6 +57,12 @@ func _ready() -> void:
 	add_theme_constant_override("outline_size", HudStyle.OUTLINE_SIZE)
 	visible = false
 	EventBus.floor_ready.connect(_on_floor_ready)
+	# NEW 2026-11-13 (roadmap WP19): one line on the last ride up.
+	EventBus.run_ended.connect(func(result: StringName) -> void:
+		var run: RunState = GameFlow.get_run()
+		if result == GameFlowService.RESULT_ESCAPED and run != null:
+			_pending = pick(run.run_seed, run.floor_number + 1, &"", &"escape_ride")
+			_pending_in = ESCAPE_LINE_DELAY)
 
 
 func _on_floor_ready(floor_number: int, department_id: StringName) -> void:

@@ -49,7 +49,7 @@ Decorations are scene edits by the break_room owner. Cosmetics come from cosmeti
   "Start anyway". Players left outside are moved into the elevator (teleported) at start.
 
 ## Dependencies and stubs
-cargo_lift (ElevatorZone; stub: an Area3D counting players), cosmetics (closet; stub: a toast), player (spawner),
+cargo_lift (ElevatorZone; stub: an Area3D counting players), cosmetics (closet: `Cosmetics.open_closet()`, since 2026-11-13), player (spawner),
 interaction (Interactable, NEW 2026-10-18).
 
 ## Test scene and GUT tests
@@ -98,6 +98,7 @@ GUT tests (`tests/unit/break_room/test_break_room.gd`): `test_enough_spawn_point
   `GameFlow.get_last_run_result()`. Tests: `test_the_lift_bay_fits_the_cargo_lift`; the start tests moved to cargo_lift.
 
 - 2026-11-12 (roadmap WP8, decision D5): the whiteboard (now 4.6 x 2 m) shows the premise (`WHITEBOARD_NOTICE`: the night-shift notice) with the last run underneath; NEW `get_whiteboard_text()`. Three how-to boards by the lift (`HowToBoards`: fix the lift, gems are money, died?). Test `test_the_room_tells_the_story_and_how_to_play`.
+- 2026-11-13 (roadmap WP17): the jacket closet opens the cosmetics closet screen (`Cosmetics.open_closet()`) on the PC of whoever used it, instead of a "coming later" note; its sign no longer says "(coming later)". NEW test-only `use_closet_opener(opener)`. Test `test_closet_note_goes_to_whoever_used_it` is now `test_closet_opens_for_whoever_used_it`.
 
 ## HANDOFF
 **Done (Phase 1a grey box):** `break_room.tscn`: floor, walls, a table, 8 spawn points (more are
@@ -119,7 +120,7 @@ press them, and the "who's missing" sign has a copy on the elevator's back wall.
 - cargo_lift: `ElevatorZoneStub` (`stubs/elevator_zone_stub.gd`) has the same functions as
   `ElevatorZone` minus props. Swap the scene's ElevatorZone node for the real one.
 - game_flow: after a start is accepted, the doors reopen after 4 seconds instead of a run starting.
-- cosmetics / voice: the closet and mirror only show a message.
+- ~~cosmetics~~ DONE 2026-11-13 (WP17): the closet opens the jacket closet. voice: the mirror only shows a message.
 - ui: toasts are shown by the test scene.
 
 **Known limits:** walls only, no ceiling or real art; grey-box sizes may change. Checked on real Steam with 2 PCs (2026-10-18).

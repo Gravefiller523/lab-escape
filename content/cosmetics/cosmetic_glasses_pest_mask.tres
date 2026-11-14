@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CosmeticData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://core/data/cosmetics/cosmetic_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/cosmetics/models/glasses_pest_mask.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://core/data/cosmetics/unlock_rule_data.gd" id="3_rule"]
+
+[sub_resource type="Resource" id="Unlock"]
+script = ExtResource("3_rule")
+kind = &"achievement"
+achievement_id = &"achievement_kills_100"
+count = 1
+
+[resource]
+script = ExtResource("1_data")
+id = &"cosmetic_glasses_pest_mask"
+display_name = "Pest-control mask"
+description = "Get the Animal Control achievement (100 kills)."
+slot = &"glasses"
+scene = ExtResource("2_scene")
+unlock = SubResource("Unlock")

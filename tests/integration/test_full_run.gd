@@ -182,6 +182,10 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 		assert_true(seen.get("has_body", false), "the client has a body on floor %d" % (index + 1))
 	assert_eq(client.get("result", ""), "escaped", "the client saw the escape")
 	assert_eq(client.get("final_state", ""), "BREAK_ROOM", "the client is back in the Break Room")
+	# NEW 2026-11-13 (roadmap WP19): the escape ends in the car park and the credits, on every PC, before the Break Room.
+	for report: Dictionary in [host, client, late]:
+		assert_true(report.get("saw_surface", false), "%s came out in the car park" % report.get("role", "?"))
+		assert_true(report.get("saw_credits", false), "%s saw the credits" % report.get("role", "?"))
 	# NEW 2026-11-13 (roadmap WP15): every PC has the same floor tasks in the same places, and hears they're done.
 	var tasks_finished: int = 0
 	var tasks_seen: int = 0

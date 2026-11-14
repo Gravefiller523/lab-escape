@@ -9,6 +9,8 @@ const WAIT: float = 5.0
 const BREAK_ROOM_SCENE: PackedScene = preload("res://systems/break_room/break_room.tscn")
 
 var _pcs: Array[Node] = []
+## NEW 2026-11-13 (roadmap WP17): names of the PCs the jacket closet opened on.
+var _closet_opened: Array[String] = []
 
 
 func _make_pc(config: GameConfig) -> Node:
@@ -27,6 +29,7 @@ func _make_pc(config: GameConfig) -> Node:
 	pc.add_child(props)
 	var room := BREAK_ROOM_SCENE.instantiate() as BreakRoom
 	room.use_net(net, config, props)
+	room.use_closet_opener(func() -> void: _closet_opened.append(String(pc.name)))
 	pc.add_child(room)
 	var players := PlayerSpawner.new()
 	players.name = "PlayerSpawner"
@@ -101,6 +104,7 @@ func after_each() -> void:
 			peers[index].close()
 		get_tree().set_multiplayer(null, paths[index])
 	_pcs.clear()
+	_closet_opened.clear()
 
 
 func test_enough_spawn_points_for_max_players() -> void:
@@ -135,7 +139,9 @@ func test_the_lift_bay_fits_the_cargo_lift() -> void:
 		assert_gt(middle.distance_to(wall_at), CargoLift.INSIDE.x / 2.0 + CargoLift.WALL, "room for the lift")
 
 
-func test_closet_note_goes_to_whoever_used_it() -> void:
+## CHANGED 2026-11-13 (roadmap WP17): was test_closet_note_goes_to_whoever_used_it; the closet now opens the jacket
+## closet screen instead of showing a "coming later" note, still only for whoever used it.
+func test_closet_opens_for_whoever_used_it() -> void:
 	var host := _host(_config())
 	var client := _client(_config())
 	var host_id: int = _net(host).local_player_id()
@@ -144,11 +150,9 @@ func test_closet_note_goes_to_whoever_used_it() -> void:
 	_walk_to(host, host_id, "ClosetUseBody")
 	await wait_physics_frames(10)
 	_use(host, host_id, "ClosetUseBody")
-	var host_sign := host.get_node("BreakRoom/MessageSign") as Label3D
-	await wait_until(func() -> bool: return not host_sign.text.is_empty(), WAIT)
-	assert_string_contains(host_sign.text, "Jacket closet")
+	await wait_until(func() -> bool: return not _closet_opened.is_empty(), WAIT)
 	await wait_physics_frames(5)
-	assert_eq((client.get_node("BreakRoom/MessageSign") as Label3D).text, "", "only the player who used it sees it")
+	assert_eq(_closet_opened, [String(host.name)], "the closet opened on the user's PC only")
 
 
 func test_room_has_props_to_play_with() -> void:

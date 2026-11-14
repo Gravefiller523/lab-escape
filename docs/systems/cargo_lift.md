@@ -148,6 +148,7 @@ Not yet: dead players (needs death_respawn), carts (needs carts).
   NEW parts (content files, grey placeholders): `prop_lift_motor` (large, mechanical), `prop_lift_control_board`
   (small, electronic), `prop_lift_brake_assembly` (large, mechanical); the slot wall grows a fourth row. Tests that
   meant "every slot breaks" now break every slot (`get_slot_names().size()` instead of 9).
+- 2026-11-13 (roadmap WP19): NEW `set_hold_note(note)` / `get_hold_note()`, every PC: while the note is set the lift won't leave (`is_ready()` false, `depart_blocker()` returns the note) and its panel shows it. game_flow sets it in the car park.
 
 ## HANDOFF
 **Built (2026-10-19):** `CargoLift` (`cargo_lift.gd`, scene `cargo_lift.tscn`, geometry made in code with fixed

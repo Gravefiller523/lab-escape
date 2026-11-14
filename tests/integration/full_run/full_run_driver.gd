@@ -42,6 +42,9 @@ var _boss_defeated: bool = false
 var _kills_credited: Dictionary = {}
 ## NEW 2026-11-13 (roadmap WP15): floor tasks this PC saw finished (EventBus.floor_task_completed).
 var _tasks_completed: int = 0
+## NEW 2026-11-13 (roadmap WP19): this PC came out in the car park, and saw the credits roll.
+var _saw_surface: bool = false
+var _saw_credits: bool = false
 var _run_result: StringName = &""
 
 
@@ -55,6 +58,7 @@ func _ready() -> void:
 	SaveSystem.use_folder("user://full_run_test/profile_%s" % _report["role"])
 	EventBus.boss_defeated.connect(func(_boss_id: StringName) -> void: _boss_defeated = true)
 	EventBus.floor_task_completed.connect(func(_task_id: StringName) -> void: _tasks_completed += 1)
+	EventBus.surface_reached.connect(_on_surface_reached)
 	EventBus.kill_credited.connect(func(_enemy_id: StringName, killer_player_id: int) -> void:
 		if killer_player_id != 0:
 			_kills_credited[str(killer_player_id)] = int(_kills_credited.get(str(killer_player_id), 0)) + 1)
@@ -64,6 +68,12 @@ func _ready() -> void:
 		_run_host()
 	else:
 		_run_client()
+
+
+## NEW 2026-11-13 (roadmap WP19): out in the car park; the credits should roll before the lift goes back down.
+func _on_surface_reached() -> void:
+	_saw_surface = true
+	_saw_credits = await _until(func() -> bool: return UI.get_open_screen() == UIService.SCREEN_CREDITS, STEP_TIMEOUT)
 
 
 func _arg(key: String, default: String = "") -> String:
@@ -83,6 +93,9 @@ func _run_host() -> void:
 		Config.game.boss_every_floors = _int_arg("boss_every", Config.game.boss_every_floors)
 	if _args.has("ride"):
 		Config.game.lift_ride_seconds = _arg("ride").to_float()
+		# NEW 2026-11-13 (roadmap WP19): the ending's car park and credits, as short as a ride.
+		Config.game.ending_car_park_seconds = Config.game.lift_ride_seconds
+		Config.game.credits_seconds = Config.game.lift_ride_seconds
 	# A flat battery has to sit on the charger first; this run slots parts straight in.
 	for prop: ContentData in ContentRegistry.get_all(&"prop"):
 		var data := prop as PropData
@@ -407,6 +420,8 @@ func _finish(failure: String = "") -> void:
 		_note(failure)
 	_report["kills_credited"] = _kills_credited
 	_report["tasks_completed"] = _tasks_completed
+	_report["saw_surface"] = _saw_surface
+	_report["saw_credits"] = _saw_credits
 	_report["my_player_id"] = str(Net.local_player_id())
 	var path: String = _arg("out")
 	if not path.is_empty():

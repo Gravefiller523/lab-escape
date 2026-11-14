@@ -128,8 +128,7 @@ outline_size = 8
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 2.7, 0)
 billboard = 1
 pixel_size = 0.004
-text = "Jacket closet
-(coming later)"
+text = "Jacket closet"
 
 [node name="ClosetUseBody" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 1.2, 0)

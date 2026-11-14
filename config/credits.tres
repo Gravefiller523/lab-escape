@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CreditsData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/data/story/credits_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+text = "# LAB ESCAPE
+
+Made by Zachary
+
+# Playtesters
+Your name could be here
+
+# Built with
+Godot Engine
+GodotSteam
+Steamworks by Valve
+
+# Thank you for playing
+The night shift is over. Please return your lab coat.
+
+# Licences
+Godot Engine: MIT licence, (c) Juan Linietsky, Ariel Manzur and contributors
+GodotSteam: MIT licence, (c) GP Garcia, Chris Ridenour and contributors
+Godot AI plugin: MIT licence, (c) Godot AI contributors
+GUT (used for testing): MIT licence, (c) Tom Wesley and contributors"

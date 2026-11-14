@@ -206,7 +206,18 @@ Add its id to departments' `task_ids` (a department with none gets every task). 
 **Fill in:** `slot` (`hat`, `glasses`, `coat`, `gloves`, `shoes`), `scene`, `mutation_variants`
 (mutation id → alternative scene, e.g. a tall hat for Giraffe), `unlock` (leave empty for unlocked from
 the start, or an UnlockRuleData: `runs_completed`, `floors_reached`, `boss_defeated` + `boss_id`,
-`achievement` + `achievement_id`, and `count`). **Test:** `unlock_cosmetics`, then the closet.
+`achievement` + `achievement_id`, and `count`). Write how to get it in `description`: the closet shows it on locked items.
+The model scene is a `Node3D` whose origin sits on the slot's attach point (`hat`: head, `glasses`: face, `coat` and `gloves`:
+body, `shoes`: feet). **Copy:** `cosmetic_hat_hard_hat.tres` and `systems/cosmetics/models/hat_hard_hat.tscn`.
+**Test:** `unlock_cosmetics`, then the closet in the Break Room (or F6 on `systems/cosmetics/test/closet_test.tscn`).
+
+## Announcement (PA line)
+NEW 2026-11-13: `moment` says when it is read: `floor` (a few seconds into a floor, the default) or `escape_ride` (on
+the last ride up after the last boss). **Copy:** `announcement_escaping_fireable.tres` or `announcement_escape_wages.tres`.
+
+## Credits
+`config/credits.tres` (CreditsData): the credits roll's words, one per line, `# ` for a heading. Keep it the same as
+`docs/CREDITS.md`. Godot's licence notices are added by the game itself.
 
 ## Achievement
 First create it on the Steamworks site. **Fill in:** `steam_api_name`, `trigger_event` (an EventBus

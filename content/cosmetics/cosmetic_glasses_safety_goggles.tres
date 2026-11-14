@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CosmeticData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://core/data/cosmetics/cosmetic_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://systems/cosmetics/models/glasses_safety_goggles.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"cosmetic_glasses_safety_goggles"
+display_name = "Safety goggles"
+description = "In your locker from day one."
+slot = &"glasses"
+scene = ExtResource("2_scene")

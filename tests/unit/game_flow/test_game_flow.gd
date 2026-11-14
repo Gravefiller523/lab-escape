@@ -35,6 +35,9 @@ func _config() -> GameConfig:
 	var config := GameConfig.new()
 	config.elevator_ride_seconds = 0.05
 	config.lift_ride_seconds = 0.05
+	# NEW 2026-11-13 (roadmap WP19): an escape stops in the car park, then the credits roll; keep both short here.
+	config.ending_car_park_seconds = 0.05
+	config.credits_seconds = 0.05
 	config.run_summary_seconds = 0.05
 	config.floor_load_timeout = 3.0
 	config.floors_per_department = 5

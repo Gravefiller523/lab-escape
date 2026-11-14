@@ -489,7 +489,10 @@ The five questions, the same every time:
   see-through dome). All three departments now look finished. Then the 25 rooms and hallways every department shares (offices,
   break room, cafeteria, bathroom, storage, janitor closet, elevator, hallways): one model each, coloured by the
   floor's department palette; and a fix so a doorway a floor doesn't use is filled with wall instead of showing a
-  hole in the model. Next: the player body. Every room in the game now has a finished model. **Status: in progress.**
+  hole in the model. Every room in the game now has a finished model.
+  On `wp/27-player-body`: the lift's twelve spare parts, the heavy crate, the trash bag and the Zoology lift part,
+  and a mock-up of the player's body (a lab worker in blue scrubs, `player_body.glb`) waiting on Zachary's OK before
+  it replaces the grey capsule. **Status: in progress.**
 
 ### Phase S: sound (see section e)
 #### WP28: Audio mix and free sounds

@@ -91,6 +91,11 @@ PALETTE = {
     "shell_light": (5, 8, (1.00, 0.95, 0.80)),
     "shell_floor": (6, 8, (0.62, 0.58, 0.50)),
     "shell_accent": (7, 8, (0.45, 0.60, 0.30)),
+    "scrubs": (8, 8, (0.36, 0.55, 0.72)),
+    "scrubs_dark": (9, 8, (0.26, 0.42, 0.57)),
+    "skin": (10, 8, (0.87, 0.68, 0.55)),
+    "hair": (11, 8, (0.32, 0.22, 0.15)),
+    "sneaker": (12, 8, (0.93, 0.93, 0.92)),
 }
 
 # Each department's colours for the shell squares (docs/ART_BIBLE.md section 2). Zoology's are the PALETTE ones.
@@ -1594,6 +1599,178 @@ def shared_rooms(material):
         join_and_export(pieces, "room_shared_" + name, material, "shared", False)
 
 
+def player_body(material):
+    """The player (systems/player/player.tscn, MOCK-UP for Zachary's OK): a lab worker in blue scrubs, 1.8 m tall,
+    trainers, an ID badge on a lanyard and short hair. Coats, hats, glasses, gloves and shoes from the closet go on
+    top of this (systems/cosmetics); mutation parts go on its attach points."""
+    parts = [
+        part("cube", "scrubs", (0, 0, 0.92), (0.38, 0.22, 0.2)),                                     # hips
+        part("cylinder", "scrubs", (0, 0, 1.2), (0.44, 0.26, 0.5), vertices=8),                       # torso
+        part("cylinder", "scrubs", (0, 0, 1.43), (0.48, 0.27, 0.08), vertices=8),                     # shoulders
+        part("cube", "skin", (0, 0.115, 1.42), (0.1, 0.04, 0.1), (0, 45, 0)),                         # v-neck
+        part("cube", "scrubs_dark", (-0.11, 0.13, 1.28), (0.12, 0.02, 0.1)),                          # chest pocket
+        part("cylinder", "steel_dark", (-0.11, 0.135, 1.35), (0.012, 0.012, 0.08), vertices=4),       # pen
+        part("cube", "lab_green", (0.06, 0.135, 1.33), (0.015, 0.01, 0.2), (0, 25, 0)),              # lanyard
+        part("cube", "label", (0.1, 0.14, 1.2), (0.07, 0.01, 0.1)),                                   # ID badge
+        part("cube", "lab_green", (0.1, 0.146, 1.23), (0.05, 0.005, 0.02)),
+        part("cylinder", "skin", (0, 0, 1.52), (0.11, 0.11, 0.12), vertices=8),                       # neck
+        part("uv", "skin", (0, 0.01, 1.66), (0.24, 0.26, 0.28), segments=10, rings=6),               # head
+        part("uv", "hair", (0, -0.025, 1.73), (0.26, 0.27, 0.2), segments=10, rings=5),              # hair
+        part("cube", "hair", (0, 0.07, 1.78), (0.2, 0.1, 0.06), (15, 0, 0)),                          # fringe
+        part("uv", "eye", (0.05, 0.125, 1.67), (0.035, 0.02, 0.04), segments=6, rings=4),
+        part("uv", "eye", (-0.05, 0.125, 1.67), (0.035, 0.02, 0.04), segments=6, rings=4),
+        part("cube", "hair", (0.05, 0.13, 1.71), (0.06, 0.015, 0.015)),                               # brows
+        part("cube", "hair", (-0.05, 0.13, 1.71), (0.06, 0.015, 0.015)),
+        part("cone", "skin", (0, 0.14, 1.635), (0.04, 0.04, 0.05), (-90, 0, 0), vertices=4),         # nose
+        part("cube", "skin_pink", (0, 0.125, 1.59), (0.06, 0.01, 0.012)),                             # mouth
+    ]
+    for side in (-1, 1):
+        parts.append(part("uv", "skin", (side * 0.125, 0.0, 1.66), (0.05, 0.04, 0.07), segments=6, rings=4))  # ears
+        parts.append(part("cylinder", "scrubs", (side * 0.105, 0, 0.5), (0.15, 0.15, 0.82), vertices=8))      # legs
+        parts.append(part("cube", "sneaker", (side * 0.105, 0.035, 0.05), (0.13, 0.28, 0.1)))                # trainers
+        parts.append(part("cube", "rubber", (side * 0.105, 0.035, 0.008), (0.135, 0.29, 0.016)))
+        parts.append(part("cube", "lab_green", (side * 0.17, 0.035, 0.06), (0.005, 0.12, 0.03)))
+        parts.append(part("cylinder", "scrubs", (side * 0.27, 0, 1.3), (0.12, 0.12, 0.28), (0, side * 8, 0), vertices=8))  # sleeves
+        parts.append(part("cylinder", "skin", (side * 0.29, 0.0, 1.03), (0.09, 0.09, 0.3), (0, side * 4, 0), vertices=8))  # forearms
+        parts.append(part("uv", "skin", (side * 0.3, 0.0, 0.84), (0.09, 0.07, 0.12), segments=6, rings=4))               # hands
+    join_and_export(parts, "player_body", material, "shared", True)
+
+
+def ring_of(parts, swatch, count, radius, z, size, kind="cube", spin=True):
+    for i in range(count):
+        a = 2.0 * math.pi * i / count
+        rotation = (0, 0, math.degrees(-a)) if spin else (0, 0, 0)
+        parts.append(part(kind, swatch, (math.sin(a) * radius, math.cos(a) * radius, z), size, rotation))
+
+
+def lift_parts(material, glass_material):
+    """The cargo lift's spare parts (systems/cargo_lift/parts/*.tscn) and the Zoology lift part, each centred on its
+    grey box's collision shape and the same size."""
+    models = {}
+
+    models["lift_battery"] = [                                       # 0.3 x 0.45 x 0.2
+        part("cube", "steel_dark", (0, 0, -0.02), (0.3, 0.2, 0.41)),
+        part("cube", "rubber", (0, 0, 0.2), (0.3, 0.2, 0.05)),
+        part("cube", "safety_yellow", (0, 0.101, -0.02), (0.22, 0.01, 0.16)),
+        part("cube", "stripe_black", (0, 0.106, 0.0), (0.16, 0.005, 0.03)),
+        part("cylinder", "cap_red", (0.09, 0, 0.215), (0.05, 0.05, 0.03), vertices=8),
+        part("cylinder", "rubber", (-0.09, 0, 0.215), (0.05, 0.05, 0.03), vertices=8),
+        part("cube", "steel", (0, 0, 0.222), (0.12, 0.025, 0.01)),
+    ]
+    p = [part("cylinder", "steel", (0, 0, 0), (0.6, 0.6, 0.05), vertices=16),       # brake: r 0.35, 0.18 tall
+         part("cylinder", "steel_dark", (0, 0, 0), (0.24, 0.24, 0.12), vertices=10),
+         part("cylinder", "rubber", (0, 0, 0.06), (0.08, 0.08, 0.02), vertices=8),
+         part("cube", "cap_red", (0.25, 0, 0), (0.18, 0.2, 0.18))]
+    ring_of(p, "steel_dark", 6, 0.2, 0.026, (0.035, 0.035, 0.01), "cylinder", False)
+    models["lift_brake_assembly"] = p
+    models["lift_button"] = [                                        # 0.3 x 0.15 x 0.3
+        part("cube", "steel_dark", (0, 0, -0.04), (0.3, 0.3, 0.07)),
+        part("cylinder", "safety_yellow", (0, 0, 0.0), (0.24, 0.24, 0.02), vertices=12),
+        part("cylinder", "steel", (0, 0, 0.02), (0.12, 0.12, 0.04), vertices=10),
+        part("uv", "cap_red", (0, 0, 0.05), (0.2, 0.2, 0.09), segments=10, rings=4),
+    ]
+    p = [part("cylinder", "wood", (0, 0, 0.18), (0.6, 0.6, 0.04), vertices=12),       # spool: r 0.3, 0.4 tall
+         part("cylinder", "wood", (0, 0, -0.18), (0.6, 0.6, 0.04), vertices=12),
+         part("cylinder", "copper", (0, 0, 0), (0.48, 0.48, 0.32), vertices=12),
+         part("cylinder", "steel_dark", (0, 0, 0), (0.1, 0.1, 0.42), vertices=8)]
+    for i in range(4):
+        p.append(part("cylinder", "safety_yellow_worn", (0, 0, -0.12 + i * 0.08), (0.49, 0.49, 0.012), vertices=12))
+    models["lift_cable_spool"] = p
+    p = [part("cube", "pcb_green", (0, 0, -0.01), (0.35, 0.25, 0.015))]                # board: 0.35 x 0.04 x 0.25
+    for x, y, sx, sy in ((-0.08, 0.04, 0.08, 0.08), (0.06, -0.05, 0.1, 0.06), (0.1, 0.07, 0.05, 0.05)):
+        p.append(part("cube", "rubber", (x, y, 0.005), (sx, sy, 0.015)))
+    for i in range(5):
+        p.append(part("cube", "copper", (-0.02 + i * 0.03, 0.0, -0.001), (0.006, 0.2, 0.003)))
+    for x, y in ((-0.13, -0.08), (-0.1, -0.08), (0.14, -0.09)):
+        p.append(part("cylinder", "led_blue", (x, y, 0.01), (0.02, 0.02, 0.03), vertices=6))
+    p.append(part("cube", "steel", (-0.165, 0, 0.0), (0.02, 0.14, 0.02)))
+    models["lift_control_board"] = p
+    p = []                                                                             # counterweight: 0.8 cube
+    for i in range(4):
+        p.append(part("cube", "steel_dark" if i % 2 == 0 else "steel", (0, 0, -0.3 + i * 0.2), (0.8, 0.8, 0.19)))
+    for i in range(5):
+        p.append(part("cube", "safety_yellow" if i % 2 == 0 else "stripe_black", (-0.32 + i * 0.16, 0.402, 0.0),
+                      (0.16, 0.01, 0.12)))
+    p.append(part("cylinder", "steel", (0, 0, 0.42), (0.14, 0.14, 0.04), (90, 0, 0), vertices=8))
+    models["lift_counterweight"] = p
+    models["lift_fuse"] = [                                          # r 0.08, 0.35 tall
+        part("cylinder", "steel", (0, 0, 0.14), (0.16, 0.16, 0.07), vertices=10),
+        part("cylinder", "steel", (0, 0, -0.14), (0.16, 0.16, 0.07), vertices=10),
+        part("cylinder", "label", (0, 0, 0), (0.14, 0.14, 0.21), vertices=10),
+        part("cube", "cap_red", (0, 0.07, 0), (0.06, 0.005, 0.12)),
+    ]
+    p = [part("cylinder", "steel", (0, 0, 0), (0.5, 0.5, 0.12), vertices=16),           # gear: r 0.3, 0.12 tall
+         part("cylinder", "steel_dark", (0, 0, 0), (0.14, 0.14, 0.13), vertices=8)]
+    ring_of(p, "steel", 14, 0.27, 0.0, (0.06, 0.08, 0.12))
+    ring_of(p, "steel_dark", 4, 0.14, 0.0, (0.06, 0.06, 0.125), "cylinder", False)
+    models["lift_gear"] = p
+    models["lift_lever"] = [                                         # 0.08 x 0.7 x 0.08
+        part("cylinder", "steel", (0, 0, 0.0), (0.04, 0.04, 0.6), vertices=8),
+        part("uv", "cap_red", (0, 0, 0.3), (0.08, 0.08, 0.08), segments=8, rings=5),
+        part("cube", "steel_dark", (0, 0, -0.31), (0.08, 0.08, 0.08)),
+        part("cube", "safety_yellow", (0, 0, 0.18), (0.05, 0.05, 0.12)),
+    ]
+    p = [part("uv", "skylight", (0, 0, 0.02), (0.28, 0.28, 0.28), segments=10, rings=6),  # light: r 0.18
+         part("cylinder", "steel_dark", (0, 0, -0.12), (0.22, 0.22, 0.12), vertices=10)]
+    for angle in (0, 60, 120):
+        p.append(part("cylinder", "steel_dark", (0, 0, 0.02), (0.33, 0.33, 0.015), (90, 0, angle), vertices=12))
+    p.append(part("cube", "safety_yellow", (0, 0, -0.17), (0.12, 0.12, 0.02)))
+    models["lift_light"] = p
+    p = [part("cylinder", "steel", (0, 0, 0.0), (0.38, 0.38, 0.36), vertices=12),        # motor: r 0.22, 0.5 tall
+         part("cylinder", "steel_dark", (0, 0, 0.2), (0.34, 0.34, 0.06), vertices=12),
+         part("cylinder", "steel_dark", (0, 0, -0.2), (0.34, 0.34, 0.06), vertices=12),
+         part("cylinder", "bolt", (0, 0, 0.24), (0.05, 0.05, 0.04), vertices=8),
+         part("cube", "safety_yellow", (0, 0.2, 0.05), (0.12, 0.06, 0.1)),
+         part("cube", "label", (0, 0.19, -0.06), (0.12, 0.01, 0.06))]
+    ring_of(p, "steel_dark", 10, 0.2, 0.0, (0.02, 0.04, 0.3))
+    models["lift_motor"] = p
+    models["lift_vacuum_tube"] = [                                   # r 0.1, 0.45 tall (glass is its own model)
+        part("cylinder", "rubber", (0, 0, -0.18), (0.18, 0.18, 0.08), vertices=10),
+        part("cube", "steel_dark", (0, 0, 0.0), (0.08, 0.02, 0.2)),
+        part("cylinder", "copper", (0, 0, 0.12), (0.03, 0.03, 0.06), vertices=6),
+    ] + [part("cylinder", "bolt", (math.sin(a) * 0.05, math.cos(a) * 0.05, -0.215), (0.012, 0.012, 0.03), vertices=4)
+         for a in (0.0, 1.57, 3.14, 4.71)]
+    models["lift_part_zoology"] = [                                  # r 0.2, 0.7 tall: a hydraulic ram
+        part("cylinder", "safety_yellow", (0, 0, -0.1), (0.36, 0.36, 0.48), vertices=10),
+        part("cylinder", "steel", (0, 0, 0.24), (0.14, 0.14, 0.22), vertices=8),
+        part("cylinder", "steel_dark", (0, 0, 0.33), (0.2, 0.2, 0.04), vertices=8),
+        part("cylinder", "steel_dark", (0, 0, -0.33), (0.4, 0.4, 0.04), vertices=10),
+        part("cylinder", "steel_dark", (0, 0, 0.14), (0.38, 0.38, 0.03), vertices=10),
+        part("cube", "rubber", (0.19, 0, -0.1), (0.05, 0.06, 0.3)),
+    ]
+    for name, pieces in models.items():
+        join_and_export(pieces, "prop_" + name, material, "shared", False)
+    join_and_export([part("cylinder", "glass", (0, 0, 0.04), (0.2, 0.2, 0.36), vertices=10)],
+                    "prop_lift_vacuum_tube_glass", glass_material, "shared", False)
+
+
+def heavy_crate(material):
+    """The heavy crate (prop_crate_heavy, 1.2 x 0.8 x 0.8): planks, steel corners and bands, a yellow HEAVY stripe."""
+    parts = [part("cube", "wood", (0, 0, 0), (1.18, 0.78, 0.78))]
+    for z in (-0.2, 0.0, 0.2):
+        parts.append(part("cube", "wood_dark", (0, 0, z), (1.19, 0.79, 0.01)))
+    for x in (-0.45, 0.45):
+        parts.append(part("cube", "steel_dark", (x, 0, 0), (0.06, 0.8, 0.8)))
+    for x in (-0.6, 0.6):
+        for y in (-0.4, 0.4):
+            parts.append(part("cube", "steel", (x * 0.98, y * 0.98, 0), (0.06, 0.06, 0.8)))
+    parts.append(part("cube", "safety_yellow", (0, 0.396, 0.12), (0.6, 0.01, 0.14)))
+    parts.append(part("cube", "stripe_black", (0, 0.4, 0.12), (0.4, 0.005, 0.04)))
+    join_and_export(parts, "prop_crate_heavy", material, "shared", False)
+
+
+def trash_bag(material):
+    """The trash bag (prop_trash_bag, about 0.5 m): a lumpy black bag with a tied knot."""
+    parts = [
+        part("ico", "rubber", (0, 0, -0.06), (0.5, 0.48, 0.44), subdivisions=2),
+        part("ico", "rubber", (0.08, -0.06, 0.08), (0.3, 0.3, 0.26), subdivisions=1),
+        part("cone", "rubber", (0, 0, 0.2), (0.14, 0.14, 0.12), (180, 0, 0), vertices=6),
+        part("uv", "fur_dark", (0, 0, 0.28), (0.1, 0.1, 0.07), segments=6, rings=4),
+        part("cube", "fur_dark", (0.04, 0, 0.31), (0.1, 0.02, 0.04), (0, 30, 0)),
+    ]
+    join_and_export(parts, "prop_trash_bag", material, "shared", False)
+
+
 clear_scene()
 palette = make_palette()
 for other_department in DEPARTMENT_SHELLS:
@@ -1629,6 +1806,10 @@ drone(solid)
 flock_camera(solid)
 robobrain(solid, see_through)
 shared_rooms(solid)
+player_body(solid)
+lift_parts(solid, see_through)
+heavy_crate(solid)
+trash_bag(solid)
 bat(solid)
 fly(solid)
 kangaroo(solid)

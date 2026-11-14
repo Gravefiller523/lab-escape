@@ -1,6 +1,8 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/prop_lift_vacuum_tube.mesh" id="art_mesh_1"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/prop_lift_vacuum_tube_glass.mesh" id="art_mesh_2"]
 
 [sub_resource type="CylinderShape3D" id="Shape_part"]
 height = 0.45
@@ -17,6 +19,7 @@ top_radius = 0.1
 bottom_radius = 0.1
 height = 0.45
 
+
 [node name="LiftPart" type="RigidBody3D"]
 script = ExtResource("1_prop")
 
@@ -24,4 +27,7 @@ script = ExtResource("1_prop")
 shape = SubResource("Shape_part")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("Mesh_part")
+mesh = ExtResource("art_mesh_1")
+
+[node name="Glass" type="MeshInstance3D" parent="Mesh"]
+mesh = ExtResource("art_mesh_2")

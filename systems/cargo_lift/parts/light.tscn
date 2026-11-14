@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/prop_lift_light.mesh" id="art_mesh_1"]
 
 [sub_resource type="SphereShape3D" id="Shape_part"]
 radius = 0.18
@@ -15,6 +16,7 @@ material = SubResource("Mat_part")
 radius = 0.18
 height = 0.36
 
+
 [node name="LiftPart" type="RigidBody3D"]
 script = ExtResource("1_prop")
 
@@ -22,4 +24,4 @@ script = ExtResource("1_prop")
 shape = SubResource("Shape_part")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("Mesh_part")
+mesh = ExtResource("art_mesh_1")

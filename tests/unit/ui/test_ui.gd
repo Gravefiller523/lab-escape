@@ -196,3 +196,26 @@ func test_main_menu_shows_the_build() -> void:
 	assert_not_null(label, "a build label")
 	assert_eq(label.text, BuildInfo.get_label(), "showing this build, e.g. v0.1.0 build 3fa9c1d")
 	UI.close_screen()
+
+
+func test_main_menu_join_and_local_options_open_under_their_buttons() -> void:
+	# NEW 2026-11-14 (roadmap WP27): the lab look keeps the join and local testing options behind two big buttons.
+	UI.show_screen(UIService.SCREEN_MAIN_MENU)
+	await wait_process_frames(2)
+	var menu: Node = UI.get_child(UI.get_child_count() - 2)
+	var join_box := menu.find_child("JoinBox", true, false) as Control
+	var local_box := menu.find_child("LocalBox", true, false) as Control
+	assert_not_null(join_box)
+	assert_not_null(local_box)
+	assert_false(join_box.visible, "closed at first")
+	assert_false(local_box.visible, "closed at first")
+	var local_button: Button = null
+	for button: Node in menu.find_children("*", "Button", true, false):
+		if (button as Button).text == "TEST ON ONE PC":
+			local_button = button as Button
+	assert_not_null(local_button, "a Test on one PC button")
+	local_button.pressed.emit()
+	assert_true(local_box.visible, "pressing it shows the local testing options")
+	assert_true(local_box.is_ancestor_of(menu.find_child("HostLocalButton", true, false)), "Host local is in there")
+	assert_not_null(menu.find_child("StaffBadge", true, false), "the staff ID badge shows the Steam sign-in")
+	UI.close_screen()

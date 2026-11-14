@@ -35,6 +35,9 @@ var _crosshair: ColorRect
 var _prompt: Label
 var _hold_bar: ProgressBar
 var _lift_panel: PanelContainer
+## NEW 2026-11-14 (roadmap WP27): "FLOOR 3  ·  ZOOLOGY" in the top-left corner.
+var _floor_panel: PanelContainer
+var _floor_label: Label
 var _lift_label: Label
 var _lift_left: float = 0.0
 ## For tests: the controller and lift to read (null = the local player's, CargoLift.current()).
@@ -56,6 +59,20 @@ func get_prompt_text() -> String:
 
 
 ## The lift panel's text ("" when hidden).
+## NEW 2026-11-14 (roadmap WP27): the floor line in the top-left corner ("" when it is hidden).
+func get_floor_text() -> String:
+	return _floor_label.text if _floor_panel.visible else ""
+
+
+## NEW 2026-11-14: the floor line for a floor number and department name ("" for none).
+static func floor_text(floor_number: int, department_name: String, in_break_room: bool) -> String:
+	if in_break_room:
+		return "BREAK ROOM"
+	if floor_number <= 0:
+		return ""
+	return "FLOOR %d  ·  %s" % [floor_number, department_name.to_upper()] if department_name != "" else "FLOOR %d" % floor_number
+
+
 func get_lift_text() -> String:
 	return _lift_label.text if _lift_panel.visible else ""
 
@@ -108,20 +125,31 @@ func _ready() -> void:
 	_hold_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_hold_bar)
 
+	# CHANGED 2026-11-14 (roadmap WP27, Zachary OK'd the mock-up): top left, the floor and department, and the lift's
+	# needs under it (the lift panel was top right).
+	var top_left := VBoxContainer.new()
+	top_left.name = "TopLeft"
+	top_left.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	top_left.position = Vector2(MARGIN, MARGIN)
+	top_left.add_theme_constant_override("separation", 6)
+	top_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(top_left)
+	_floor_panel = PanelContainer.new()
+	_floor_panel.name = "FloorPanel"
+	_floor_panel.add_theme_stylebox_override("panel", HudStyle.accent_box())
+	_floor_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_floor_panel.visible = false
+	_floor_label = HudStyle.label("FloorLabel")
+	_floor_panel.add_child(_floor_label)
+	top_left.add_child(_floor_panel)
 	_lift_panel = PanelContainer.new()
 	_lift_panel.name = "LiftPanel"
-	# Pinned to the top-right corner; it grows to the left and down to fit its text.
-	_lift_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_lift_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_lift_panel.offset_left = -MARGIN
-	_lift_panel.offset_right = -MARGIN
-	_lift_panel.offset_top = MARGIN
-	_lift_panel.offset_bottom = MARGIN
+	_lift_panel.add_theme_stylebox_override("panel", HudStyle.accent_box(HudStyle.MUTED))
 	_lift_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_lift_panel.visible = false
 	_lift_label = _outlined_label("LiftLabel")
 	_lift_panel.add_child(_lift_label)
-	add_child(_lift_panel)
+	top_left.add_child(_lift_panel)
 
 	# Empty spots, so damage and inventory only add their widget here.
 	var spots: Dictionary[String, Control.LayoutPreset] = {
@@ -215,6 +243,15 @@ func _refresh_lift() -> void:
 			lift.is_riding(), lift.is_in_break_room())
 	_lift_label.text = text
 	_lift_panel.visible = not text.is_empty()
+	# NEW 2026-11-14 (roadmap WP27): the floor line (game_flow's run: floor number and department).
+	var floor_line: String = ""
+	var run: RunState = null if _use_test_sources else GameFlow.get_run()
+	if run != null:
+		var department: DepartmentData = GameFlow.get_department(run.get_department_id())
+		floor_line = floor_text(run.floor_number, department.display_name if department != null else "",
+			lift != null and lift.is_in_break_room())
+	_floor_label.text = floor_line
+	_floor_panel.visible = not floor_line.is_empty()
 
 
 func _outlined_label(node_name: String) -> Label:

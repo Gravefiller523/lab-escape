@@ -332,3 +332,11 @@ func test_a_hint_shows_once_and_is_remembered() -> void:
 	assert_true(later.has_seen(&"hint_gems"), "remembered after a restart")
 	assert_false(later.trigger(&"gem_grabbed"), "so it never shows again")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+func test_floor_line_names_the_floor_and_department() -> void:
+	# NEW 2026-11-14 (roadmap WP27): the top-left line of the new HUD look.
+	assert_eq(Hud.floor_text(3, "Zoology", false), "FLOOR 3  ·  ZOOLOGY")
+	assert_eq(Hud.floor_text(5, "", false), "FLOOR 5", "no department name: just the floor")
+	assert_eq(Hud.floor_text(4, "Botany", true), "BREAK ROOM", "between floors it says where you are")
+	assert_eq(Hud.floor_text(0, "Zoology", false), "", "no floor yet: nothing shows")

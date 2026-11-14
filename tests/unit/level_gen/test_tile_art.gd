@@ -26,7 +26,9 @@ func test_the_animal_holding_room_shows_its_model_and_keeps_its_walls() -> void:
 
 
 func test_a_tile_without_a_model_is_unchanged() -> void:
-	var tile := (load("res://systems/level_gen/tiles/tile_zoology_vet_surgery.tscn") as PackedScene).instantiate() as Node3D
+	# A plain tile made here, so this test never depends on which rooms have models yet.
+	var tile := BlockoutTile.new()
+	tile.size_units = Vector2i(2, 2)
 	add_child_autofree(tile)
 	await wait_physics_frames(2)
 	assert_null(tile.find_child(BlockoutTile.ART_NAME, true, false))

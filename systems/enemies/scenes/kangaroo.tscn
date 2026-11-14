@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://systems/enemies/states/flee_state.gd" id="7_flee"]
 [ext_resource type="Script" path="res://systems/enemies/behaviours/jump_attack_behaviour.gd" id="8_jump"]
 [ext_resource type="Script" path="res://systems/enemies/states/search_state.gd" id="9_search"]
+[ext_resource type="ArrayMesh" path="res://assets/models/zoology/enemy_kangaroo.mesh" id="art_mesh_1"]
 
 [sub_resource type="CapsuleShape3D" id="Shape_1"]
 radius = 0.35
@@ -22,6 +23,7 @@ material = SubResource("Mat_1")
 radius = 0.35
 height = 1.7
 
+
 [node name="Kangaroo" type="CharacterBody3D"]
 script = ExtResource("1_enemy")
 avoidance_priority = 1.0
@@ -34,8 +36,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
 shape = SubResource("Shape_1")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
-mesh = SubResource("Mesh_1")
+mesh = ExtResource("art_mesh_1")
 
 [node name="States" type="Node" parent="."]
 

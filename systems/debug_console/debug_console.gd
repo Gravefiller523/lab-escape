@@ -44,6 +44,8 @@ var _output: RichTextLabel
 var _input: LineEdit
 var _fps_on: bool = false
 var _fps_label: Label
+## NEW 2026-11-14 (roadmap WP21b): the `perf` readout (budgets: GameConfig perf_*, docs/PERFORMANCE.md).
+var _perf_on: bool = false
 ## The last output the host sent back (used by tests).
 var last_remote_output: String = ""
 
@@ -171,6 +173,8 @@ func _register_built_ins() -> void:
 	register_command(&"seed", _cmd_seed, "seed: the current run's seed", false)
 	register_command(&"net", _cmd_net, "net: who is connected, slots and ping", false)
 	register_command(&"fps", _cmd_fps, "fps: show or hide the frame rate", false)
+	# NEW 2026-11-14 (roadmap WP21b): what the graphics card is asked to draw, against the art budget.
+	register_command(&"perf", _cmd_perf, "perf: show or hide frame time, draw calls and triangles (see docs/PERFORMANCE.md)", false)
 	register_command(&"clear", _cmd_clear, "clear: empty the console", false)
 	# NEW 2026-10-29: feel tuning. Runs on this PC only (not sent to the host), but still a cheat.
 	register_command(&"tune", _cmd_tune,
@@ -236,9 +240,27 @@ func _cmd_net(_args: PackedStringArray, _player_id: int) -> String:
 	return "\n".join(lines)
 
 
+## NEW 2026-11-14 (roadmap WP21b): frame time, draw calls and triangles in view, with the budget from the art bible.
+static func perf_line() -> String:
+	var fps: float = Engine.get_frames_per_second()
+	var frame_ms: float = Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+	var draws: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	var triangles: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))
+	var objects: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))
+	var video_mb: float = Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
+	return "%d fps  %.1f ms  draws %d/%d  triangles %dk/%dk  objects %d  video %d MB" % [fps, frame_ms, draws,
+		Config.game.perf_draw_call_budget, triangles / 1000, Config.game.perf_triangle_budget / 1000, objects, int(video_mb)]
+
+
+func _cmd_perf(_args: PackedStringArray, _player_id: int) -> String:
+	_perf_on = not _perf_on
+	_fps_label.visible = _fps_on or _perf_on
+	return "Performance display %s." % ("on" if _perf_on else "off")
+
+
 func _cmd_fps(_args: PackedStringArray, _player_id: int) -> String:
 	_fps_on = not _fps_on
-	_fps_label.visible = _fps_on
+	_fps_label.visible = _fps_on or _perf_on
 	return "FPS display %s." % ("on" if _fps_on else "off")
 
 
@@ -316,7 +338,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(_delta: float) -> void:
-	if _fps_on:
+	if _perf_on:
+		_fps_label.text = perf_line()
+	elif _fps_on:
 		_fps_label.text = "%d fps" % Engine.get_frames_per_second()
 
 

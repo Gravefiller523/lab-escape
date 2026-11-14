@@ -65,6 +65,9 @@ grey-box materials, not the system.
 - A few real lights per room; at most 4 that cast shadows in view at once.
 - Glow strips and screens are emissive materials (cheap), not lights.
 - Light fog per department; a little ambient occlusion. No baked lightmaps: floors are generated at runtime.
+- Measured 2026-11-14 (docs/PERFORMANCE.md): models are cheap in this style; lights, fog and glow are not. Keep one
+  joined mesh per room dressing and prop, at most 4 shadowed lights in view, and volumetric fog only where it sells
+  the room.
 
 ## 6. Scale and grid
 1 Godot unit = 1 metre. The player is 1.8 m tall. Rooms sit on a 3 m grid. Doorways are 2.4 m wide and 2.8 m tall.

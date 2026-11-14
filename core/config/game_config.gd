@@ -46,6 +46,10 @@ extends Resource
 @export var ending_car_park_seconds: float = 15.0
 @export var credits_seconds: float = 40.0
 @export var escape_banner_seconds: float = 3.0
+## NEW 2026-11-14 (roadmap WP21b): the art budget the `perf` console readout compares against (docs/PERFORMANCE.md):
+## draw calls and triangles in one frame.
+@export var perf_draw_call_budget: int = 1500
+@export var perf_triangle_budget: int = 300000
 ## Seconds the host waits for every PC to finish building a floor before starting it anyway.
 @export var floor_load_timeout: float = 20.0
 ## Shortest cargo lift ride between floors (seconds); longer if a PC is still building the next floor.

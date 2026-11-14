@@ -464,7 +464,8 @@ The five questions, the same every time:
   the art bible (triangles, lights that cast shadows, effects), replacing section d's estimates.
 - **Why here:** if the look target is too heavy, it's far cheaper to find out with one room than after sixty.
 - **Test it:** type `perf` in the console on a busy floor and read the numbers against the budget.
-- **Gaps:** G47 (first half). **Status: not started.**
+- **Built:** the `perf` console readout (fps, frame time, draw calls and triangles against the budget in GameConfig) and `docs/PERFORMANCE.md` with the first measurements: the look-target room is about 4,000 triangles in 5 draw calls, so a whole floor would use about a fifth of the triangle budget; lighting and fog are the expensive parts. A modest PC can't be measured here (this PC has an RTX 5080), so that check stays in WP31.
+- **Gaps:** G47 (first half). **Status: done.**
 #### WP21c: The Steam "Coming soon" page (added 2026-11-12, Zachary's choice; waits on D8 and D9)
 - **What:** the store page goes up as soon as the look target gives real screenshots, not at the end: capsule
   images, 5 screenshots, a short description, tags, system requirements and the AI-content disclosure. Wishlists

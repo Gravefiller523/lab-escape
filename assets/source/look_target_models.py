@@ -1,0 +1,251 @@
+# Builds the look target's first models in Blender (roadmap WP21) and exports them as .glb files.
+# Run from the project folder:
+#   blender --background --factory-startup --python assets/source/look_target_models.py
+# Every model is chunky low-poly with flat shading, UV-mapped onto the Zoology palette texture (one 256 x 256 image
+# of colour squares, docs/ART_BIBLE.md section 4), so it needs no texture of its own.
+# Blender +Y becomes Godot -Z (forward), so faces and heads point to +Y here.
+
+import math
+import os
+
+import bpy
+import bmesh
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+PALETTE_PATH = os.path.join(ROOT, "assets", "textures", "zoology", "palette_zoology.png")
+MODEL_DIR = os.path.join(ROOT, "assets", "models")
+
+# The palette: 8 x 8 squares of 32 px. Name -> (column, row, colour).
+SWATCH = 32
+PALETTE = {
+    "fur": (0, 0, (0.42, 0.40, 0.42)),
+    "fur_dark": (1, 0, (0.28, 0.26, 0.28)),
+    "skin_pink": (2, 0, (0.93, 0.62, 0.62)),
+    "tooth": (3, 0, (0.96, 0.92, 0.78)),
+    "eye": (4, 0, (0.05, 0.05, 0.06)),
+    "eye_red": (5, 0, (0.85, 0.12, 0.10)),
+    "wood": (0, 1, (0.62, 0.43, 0.25)),
+    "wood_dark": (1, 1, (0.45, 0.30, 0.17)),
+    "metal": (2, 1, (0.55, 0.57, 0.60)),
+    "gem": (3, 1, (0.30, 0.85, 1.00)),
+    "gem_light": (4, 1, (0.65, 0.95, 1.00)),
+    "meat": (5, 1, (0.78, 0.28, 0.25)),
+    "meat_fat": (6, 1, (0.96, 0.82, 0.74)),
+    "bone": (7, 1, (0.95, 0.92, 0.84)),
+    "glass": (0, 2, (0.80, 0.92, 0.95)),
+    "dna_green": (1, 2, (0.40, 0.95, 0.45)),
+    "cap_red": (2, 2, (0.85, 0.20, 0.18)),
+    "label": (3, 2, (0.95, 0.95, 0.90)),
+    "moss": (4, 2, (0.45, 0.60, 0.30)),
+    "sand": (5, 2, (0.82, 0.74, 0.55)),
+}
+
+
+def make_palette():
+    size = SWATCH * 8
+    image = bpy.data.images.new("palette_zoology", size, size, alpha=False)
+    pixels = [0.5] * (size * size * 4)
+    for name, (column, row, colour) in PALETTE.items():
+        for y in range(row * SWATCH, (row + 1) * SWATCH):
+            image_y = size - 1 - y
+            for x in range(column * SWATCH, (column + 1) * SWATCH):
+                index = (image_y * size + x) * 4
+                pixels[index:index + 4] = [colour[0], colour[1], colour[2], 1.0]
+    image.pixels = pixels
+    os.makedirs(os.path.dirname(PALETTE_PATH), exist_ok=True)
+    image.filepath_raw = PALETTE_PATH
+    image.file_format = "PNG"
+    image.save()
+    return image
+
+
+def palette_material(image, name="palette_zoology", transparent=False):
+    material = bpy.data.materials.new(name)
+    material.use_nodes = True
+    nodes = material.node_tree.nodes
+    bsdf = nodes.get("Principled BSDF")
+    texture = nodes.new("ShaderNodeTexImage")
+    texture.image = image
+    texture.interpolation = "Closest"
+    material.node_tree.links.new(texture.outputs["Color"], bsdf.inputs["Base Color"])
+    bsdf.inputs["Roughness"].default_value = 0.8
+    if transparent:
+        bsdf.inputs["Alpha"].default_value = 0.45
+        material.blend_method = "BLEND"
+    return material
+
+
+def swatch_uv(name):
+    column, row, _ = PALETTE[name]
+    u = (column + 0.5) / 8.0
+    v = 1.0 - (row + 0.5) / 8.0
+    return (u, v)
+
+
+def paint(obj, swatch):
+    """Every face of this part shows one palette square."""
+    mesh = obj.data
+    if not mesh.uv_layers:
+        mesh.uv_layers.new(name="UVMap")
+    uv = swatch_uv(swatch)
+    for loop in mesh.uv_layers.active.data:
+        loop.uv = uv
+
+
+def clear_scene():
+    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.object.delete()
+    for block in list(bpy.data.meshes):
+        bpy.data.meshes.remove(block)
+
+
+def part(kind, swatch, location=(0, 0, 0), scale=(1, 1, 1), rotation=(0, 0, 0), **kwargs):
+    if kind == "cube":
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=location)
+    elif kind == "ico":
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=kwargs.get("subdivisions", 1), radius=0.5, location=location)
+    elif kind == "uv":
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=kwargs.get("segments", 8), ring_count=kwargs.get("rings", 5),
+                                             radius=0.5, location=location)
+    elif kind == "cylinder":
+        bpy.ops.mesh.primitive_cylinder_add(vertices=kwargs.get("vertices", 8), radius=0.5, depth=1.0,
+                                            location=location)
+    elif kind == "cone":
+        bpy.ops.mesh.primitive_cone_add(vertices=kwargs.get("vertices", 8), radius1=0.5, radius2=kwargs.get("tip", 0.0),
+                                        depth=1.0, location=location)
+    obj = bpy.context.active_object
+    obj.scale = scale
+    obj.rotation_euler = [math.radians(a) for a in rotation]
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    paint(obj, swatch)
+    return obj
+
+
+def join_and_export(parts, name, material, folder, origin_at_base):
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in parts:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = parts[0]
+    bpy.ops.object.join()
+    model = bpy.context.active_object
+    model.name = name
+    for polygon in model.data.polygons:
+        polygon.use_smooth = False
+    model.data.materials.clear()
+    model.data.materials.append(material)
+    if origin_at_base:
+        lowest = min((model.matrix_world @ v.co).z for v in model.data.vertices)
+        bpy.context.scene.cursor.location = (0, 0, lowest)
+        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+        model.location = (0, 0, 0)
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    triangles = sum(len(p.vertices) - 2 for p in model.data.polygons)
+    out_dir = os.path.join(MODEL_DIR, folder)
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, name + ".glb")
+    bpy.ops.object.select_all(action="DESELECT")
+    model.select_set(True)
+    bpy.ops.export_scene.gltf(filepath=path, use_selection=True, export_format="GLB", export_yup=True,
+                              export_apply=True)
+    print("EXPORTED %s (%d triangles)" % (path, triangles))
+    bpy.data.objects.remove(model)
+
+
+def rat(material):
+    parts = [
+        part("uv", "fur", (0, 0, 0.15), (0.32, 0.5, 0.26), segments=10, rings=6),          # body
+        part("uv", "fur", (0, 0.27, 0.19), (0.22, 0.26, 0.2), segments=8, rings=5),        # head
+        part("cone", "skin_pink", (0, 0.42, 0.18), (0.1, 0.1, 0.12), (-90, 0, 0)),         # snout
+        part("uv", "skin_pink", (0, 0.48, 0.18), (0.05, 0.05, 0.05), segments=6, rings=4),  # nose
+        part("cube", "tooth", (0.018, 0.44, 0.12), (0.03, 0.02, 0.06)),                      # teeth
+        part("cube", "tooth", (-0.018, 0.44, 0.12), (0.03, 0.02, 0.06)),
+        part("uv", "eye_red", (0.07, 0.36, 0.24), (0.045, 0.045, 0.045), segments=6, rings=4),
+        part("uv", "eye_red", (-0.07, 0.36, 0.24), (0.045, 0.045, 0.045), segments=6, rings=4),
+        part("cylinder", "skin_pink", (0.09, 0.24, 0.3), (0.12, 0.12, 0.02), (90, 0, 20), vertices=8),  # ears
+        part("cylinder", "skin_pink", (-0.09, 0.24, 0.3), (0.12, 0.12, 0.02), (90, 0, -20), vertices=8),
+    ]
+    for x in (0.1, -0.1):
+        for y in (0.13, -0.15):
+            parts.append(part("cube", "fur_dark", (x, y, 0.03), (0.06, 0.08, 0.07)))         # stubby legs
+    previous = (0, -0.22, 0.12)
+    for index in range(6):                                                                  # tail, curling up
+        sideways = math.radians(index * 14)
+        lift = math.radians(index * 9)
+        step = 0.075
+        direction = (math.sin(sideways) * math.cos(lift), -math.cos(sideways) * math.cos(lift), math.sin(lift))
+        nxt = tuple(p + d * step for p, d in zip(previous, direction))
+        mid = tuple((a + b) / 2 for a, b in zip(previous, nxt))
+        width = 0.034 - index * 0.004
+        segment = part("cylinder", "skin_pink", mid, (width, width, step * 1.35), vertices=6)
+        # Point the segment along its direction (a cylinder starts along Z).
+        segment.rotation_mode = "QUATERNION"
+        from mathutils import Vector
+        segment.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(Vector(direction))
+        bpy.ops.object.select_all(action="DESELECT")
+        segment.select_set(True)
+        bpy.context.view_layer.objects.active = segment
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+        parts.append(segment)
+        previous = nxt
+    join_and_export(parts, "enemy_rat", material, "zoology", True)
+
+
+def crate(material):
+    parts = [part("cube", "wood", (0, 0, 0), (0.56, 0.56, 0.56))]
+    for axis in range(3):                                                                    # frame on the edges
+        for a in (-1, 1):
+            for b in (-1, 1):
+                location = [0, 0, 0]
+                scale = [0.07, 0.07, 0.07]
+                other = [i for i in range(3) if i != axis]
+                location[other[0]] = a * 0.28
+                location[other[1]] = b * 0.28
+                scale[axis] = 0.6
+                parts.append(part("cube", "wood_dark", tuple(location), tuple(scale)))
+    for side in (-1, 1):                                                                     # a diagonal brace
+        parts.append(part("cube", "wood_dark", (0, side * 0.285, 0), (0.06, 0.03, 0.72), (0, 45, 0)))
+    join_and_export(parts, "prop_crate", material, "shared", False)
+
+
+def gem(material, name, size):
+    parts = [
+        part("ico", "gem", (0, 0, 0), (size * 0.8, size * 0.8, size), subdivisions=1),
+        part("ico", "gem_light", (size * 0.12, -size * 0.18, size * 0.15), (size * 0.25, size * 0.25, size * 0.3),
+             subdivisions=1),
+    ]
+    join_and_export(parts, name, material, "shared", False)
+
+
+def meat(material):
+    parts = [
+        part("uv", "meat", (0.03, 0, 0), (0.22, 0.17, 0.13), segments=8, rings=5),
+        part("uv", "meat_fat", (0.06, 0.02, 0.05), (0.12, 0.08, 0.04), segments=6, rings=4),
+        part("cylinder", "bone", (-0.12, 0, 0), (0.035, 0.035, 0.12), (0, 90, 0), vertices=6),
+        part("uv", "bone", (-0.18, 0.02, 0), (0.05, 0.05, 0.05), segments=6, rings=4),
+        part("uv", "bone", (-0.18, -0.02, 0), (0.05, 0.05, 0.05), segments=6, rings=4),
+    ]
+    join_and_export(parts, "prop_meat", material, "shared", False)
+
+
+def vial(material, glass_material):
+    liquid = [
+        part("cylinder", "dna_green", (0, 0, -0.02), (0.08, 0.08, 0.15), vertices=10),
+        part("cylinder", "cap_red", (0, 0, 0.1), (0.11, 0.11, 0.04), vertices=10),
+        part("cube", "label", (0, -0.045, -0.02), (0.06, 0.012, 0.07)),
+    ]
+    join_and_export(liquid, "prop_dna_vial", material, "shared", False)
+    glass = [part("cylinder", "glass", (0, 0, -0.005), (0.1, 0.1, 0.2), vertices=10)]
+    join_and_export(glass, "prop_dna_vial_glass", glass_material, "shared", False)
+
+
+clear_scene()
+palette = make_palette()
+solid = palette_material(palette)
+see_through = palette_material(palette, "palette_zoology_glass", True)
+rat(solid)
+crate(solid)
+gem(solid, "prop_gem", 0.16)
+gem(solid, "prop_gem_large", 0.28)
+meat(solid)
+vial(solid, see_through)
+print("LOOK_TARGET_DONE")

@@ -493,7 +493,10 @@ The five questions, the same every time:
   On `wp/27-player-body`: the lift's twelve spare parts, the heavy crate, the trash bag, the Zoology lift part,
   the six debris pieces and the cart,
   and the player's body: a scientist in a white lab coat (Zachary OK'd it), in place of the grey capsule, also in
-  the closet's stand-in. Moving arms and legs (Mixamo) come later. **Status: in progress.**
+  the closet's stand-in. Moving arms and legs (Mixamo) come later.
+  On `wp/29-machines-art`: the glowing pickups (keycards, power cell, data drive, with a new glowing palette
+  material), the vending machine, 3D printer, mutation booth and battery charger, and all 14 closet cosmetics.
+  Attach points moved to fit the scientist. **Status: in progress.**
 
 ### Phase S: sound (see section e)
 #### WP28: Audio mix and free sounds

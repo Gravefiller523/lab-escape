@@ -14,6 +14,8 @@ signal offers_changed()
 
 const GROUP: StringName = &"vendors"
 const BODY_SIZE: Vector3 = Vector3(1.2, 2.0, 0.8)
+## NEW 2026-11-14 (art rollout): the machine's finished body model.
+const BODY_MODEL: String = "res://assets/models/shared/machine_vending.mesh"
 const SLOT_SIZE: Vector3 = Vector3(0.22, 0.2, 0.3)
 const TRAY_OFFSET: Vector3 = Vector3(0.0, 0.5, 0.75)
 ## NEW 2026-11-11 (roadmap WP3): the floor-level box in front of the machine that empties carts of gems.
@@ -271,7 +273,14 @@ func _build() -> void:
 	shape.shape = box
 	shape.position.y = BODY_SIZE.y / 2.0
 	body.add_child(shape)
-	body.add_child(_box_mesh(BODY_SIZE, Vector3(0, BODY_SIZE.y / 2.0, 0), Color(0.2, 0.35, 0.6)))
+	# CHANGED 2026-11-14 (art rollout): the finished model when it is there (origin on the floor), else the grey box.
+	if ResourceLoader.exists(BODY_MODEL):
+		var model := MeshInstance3D.new()
+		model.name = "Model"
+		model.mesh = load(BODY_MODEL) as Mesh
+		body.add_child(model)
+	else:
+		body.add_child(_box_mesh(BODY_SIZE, Vector3(0, BODY_SIZE.y / 2.0, 0), Color(0.2, 0.35, 0.6)))
 	add_child(body)
 	# Coin slot: a funnel on top-front; a gem dropped onto it falls in.
 	_slot = Area3D.new()

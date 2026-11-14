@@ -1865,6 +1865,213 @@ def debris_and_cart(material, glass_material):
     join_and_export(c, "prop_cart_standard", material, "shared", False)
 
 
+def pickups(material, glow_material):
+    """Glowing pickups: the keycards, the power cell, the data drive and the battery charger. The glowing parts are
+    their own "_glow" models (palette_glow material); the rest is ordinary palette. Centred like their grey boxes,
+    except the charger (origin on the floor)."""
+    for colour, swatch in (("blue", "led_blue"), ("red", "led_red"), ("yellow", "safety_yellow")):
+        join_and_export([part("cube", swatch, g(0, 0, 0), (0.22, 0.14, 0.03))], "prop_keycard_%s_glow" % colour,
+                        glow_material, "shared", False)
+    join_and_export([
+        part("cube", "label", g(0.02, 0.0155, 0.0), (0.12, 0.1, 0.004)),                     # a printed label
+        part("cube", "steel_dark", g(0.02, 0.0175, -0.02), (0.08, 0.012, 0.002)),
+        part("cube", "steel_dark", g(0.02, 0.0175, 0.01), (0.06, 0.01, 0.002)),
+        part("cube", "hay", g(-0.075, 0.016, 0.0), (0.035, 0.03, 0.004)),                    # chip
+        part("cylinder", "steel_dark", g(0.095, 0.0, -0.045), (0.016, 0.016, 0.032), vertices=6),   # lanyard hole
+    ], "prop_keycard_details", material, "shared", False)
+
+    join_and_export([                                                                    # power cell: 0.2 x 0.36 x 0.2
+        part("cylinder", "steel_dark", g(0, 0.15, 0), (0.2, 0.2, 0.06), vertices=10),
+        part("cylinder", "steel_dark", g(0, -0.15, 0), (0.2, 0.2, 0.06), vertices=10),
+        part("cylinder", "safety_yellow", g(0, 0.185, 0), (0.08, 0.08, 0.01), vertices=8),
+        part("cube", "steel", g(0, 0.2, 0), (0.12, 0.02, 0.02)),                             # handle
+    ] + [part("cube", "steel", g(math.sin(a) * 0.085, 0, math.cos(a) * 0.085), (0.02, 0.02, 0.26))
+         for a in (0.785, 2.356, 3.927, 5.498)], "prop_power_cell", material, "shared", False)
+    join_and_export([part("cylinder", "led_blue", g(0, 0, 0), (0.13, 0.13, 0.25), vertices=10)],
+                    "prop_power_cell_glow", glow_material, "shared", False)
+
+    join_and_export([                                                                    # data drive: 0.2 x 0.04 x 0.12
+        part("cube", "steel_dark", g(0, 0, 0), (0.2, 0.12, 0.04)),
+        part("cube", "label", g(0.03, 0.021, 0.0), (0.09, 0.07, 0.003)),
+        part("cube", "bolt", g(-0.1, 0, 0), (0.012, 0.08, 0.016)),                           # connector
+    ], "prop_data_drive", material, "shared", False)
+    join_and_export([part("cube", "led_blue", g(0, 0, 0.055), (0.16, 0.02, 0.045))], "prop_data_drive_glow",
+                    glow_material, "shared", False)
+
+    join_and_export([                                                                    # charger: 1.2 x 0.3 x 1.2
+        part("cube", "steel_dark", g(0, 0.1, 0), (1.2, 1.2, 0.2)),
+        part("cylinder", "steel", g(0, 0.21, 0), (0.95, 0.95, 0.03), vertices=16),
+        part("cube", "rubber", g(0.5, 0.32, -0.5), (0.16, 0.16, 0.24)),                       # cable box
+        part("cylinder", "rubber", g(0.3, 0.02, -0.62), (0.06, 0.06, 0.5), (0, 90, 0), vertices=6),
+    ] + [part("cube", "safety_yellow" if i % 2 == 0 else "stripe_black", g(-0.54 + i * 0.18, 0.205, 0.585),
+              (0.18, 0.03, 0.01)) for i in range(7)], "machine_charger", material, "shared", False)
+    join_and_export([
+        part("cylinder", "led_blue", g(0, 0.235, 0), (0.7, 0.7, 0.02), vertices=16),
+        part("cube", "led_blue", g(0.5, 0.45, -0.5), (0.06, 0.06, 0.02)),
+    ], "machine_charger_glow", glow_material, "shared", False)
+
+
+def machines(material, glass_material):
+    """The vending machine, the 3D printer and the mutation machine's booth, each built around its code-made boxes
+    (vendor.gd, printer_3d.gd, upgrade_machine.gd: origin on the floor, front towards +z). Buttons, labels, the coin
+    slot, the hoppers and the glowing pad stay as the code makes them; these are the bodies."""
+    v = [part("cube", "scrubs_dark", g(0, 1.05, 0), (1.2, 0.8, 1.9)),                       # vending machine
+         part("cube", "steel_dark", g(0, 0.05, 0), (1.22, 0.82, 0.1)),
+         part("cube", "safety_yellow", g(0, 1.97, 0.0), (1.21, 0.81, 0.06)),
+         part("cube", "steel_dark", g(-0.16, 0.96, 0.401), (0.84, 0.01, 1.32)),               # button panel
+         part("cube", "rubber", g(0, 1.8, 0.401), (1.0, 0.01, 0.3)),                          # screen
+         part("cube", "rubber", g(0, 0.38, 0.401), (0.64, 0.01, 0.16)),                        # tray slot
+         part("cube", "steel_dark", g(0.42, 1.5, 0.398), (0.32, 0.01, 0.36)),
+         part("cube", "glass", g(0.42, 1.5, 0.405), (0.28, 0.01, 0.32))]
+    for i in range(6):                                                                    # snacks behind the glass
+        v.append(part("cube", ("cap_red", "safety_yellow", "lab_green", "led_blue", "meat_fat", "terracotta")[i],
+                      g(0.33 + (i % 3) * 0.09, 1.4 + (i // 3) * 0.16, 0.385), (0.07, 0.02, 0.1)))
+    for x in (-0.61, 0.61):
+        v.append(part("cube", "scrubs", g(x, 1.05, 0), (0.02, 0.6, 1.7)))
+    join_and_export(v, "machine_vending", material, "shared", False)
+
+    p = [part("cube", "robot_white", g(0, 0.82, 0), (1.4, 1.2, 1.56)),                      # 3D printer
+         part("cube", "steel_dark", g(0, 0.02, 0), (1.42, 1.22, 0.04)),
+         part("cube", "cap_red", g(0, 1.47, 0.0), (1.41, 1.21, 0.06)),
+         part("cube", "steel", g(0, 1.61, 0), (1.0, 0.8, 0.03)),                             # hopper frame
+         part("cube", "rubber", g(-0.15, 0.58, 0.596), (0.86, 0.01, 0.72)),                    # build chamber
+         part("cube", "steel", g(-0.15, 0.3, 0.5), (0.7, 0.2, 0.03)),                          # print bed
+         part("cube", "steel_dark", g(-0.15, 0.82, 0.5), (0.78, 0.04, 0.04)),                  # gantry
+         part("cone", "copper", g(-0.05, 0.74, 0.5), (0.06, 0.06, 0.1), (180, 0, 0), vertices=6),
+         part("ico", "meat", g(-0.25, 0.38, 0.5), (0.18, 0.14, 0.12), subdivisions=1),        # half-printed something
+         part("cube", "glass", g(-0.15, 0.58, 0.604), (0.9, 0.01, 0.76)),
+         part("cube", "rubber", g(0, 1.2, 0.601), (1.05, 0.01, 0.32)),                         # screen bezel
+         part("cube", "steel_dark", g(0.45, 0.6, 0.601), (0.3, 0.01, 0.3))]                    # button plate
+    for i in range(5):
+        p.append(part("cube", "steel_dark", g(0.701, 0.5 + i * 0.12, 0.0), (0.01, 0.8, 0.04)))  # vents
+    join_and_export(p, "machine_printer", material, "shared", False)
+
+    b = [part("cube", "robot_white", g(0, 1.3, -1.0), (2.0, 0.15, 2.6)),                    # mutation booth
+         part("cube", "robot_white", g(-1.0, 1.3, 0), (0.15, 2.0, 2.6)),
+         part("cube", "robot_white", g(1.0, 1.3, 0), (0.15, 2.0, 2.6)),
+         part("cube", "steel_dark", g(0, 2.6, 0), (2.15, 2.15, 0.15)),
+         part("cube", "lab_green", g(0, 2.5, 1.0), (2.15, 0.06, 0.12)),                       # front header stripe
+         part("cylinder", "steel_dark", g(0, 0.015, 0), (1.6, 1.6, 0.03), vertices=16)]       # rim around the pad
+    for x in (-1.0, 1.0):
+        b.append(part("cube", "steel_dark", g(x, 1.3, 1.0), (0.2, 0.2, 2.6)))                 # front posts
+        b.append(part("cube", "dna_green", g(x * 0.9, 1.3, -0.9), (0.05, 0.05, 2.3)))          # corner light strips
+    for i in range(10):                                                                   # DNA helix on the back wall
+        a = i * 0.7
+        for strand, swatch in ((0.0, "dna_green"), (math.pi, "led_blue")):
+            b.append(part("uv", swatch, g(math.sin(a + strand) * 0.3, 0.35 + i * 0.2, -0.91), (0.09, 0.09, 0.09),
+                          segments=6, rings=4))
+        b.append(part("cube", "label", g(0, 0.35 + i * 0.2, -0.915), (abs(math.sin(a)) * 0.6 + 0.02, 0.01, 0.025)))
+    b.append(part("cube", "steel_dark", g(1.2, 0.75, 0.3), (0.3, 0.12, 0.12)))              # hopper bracket
+    b.append(part("cylinder", "steel", g(1.35, 0.5, 0.3), (0.1, 0.1, 0.5), vertices=6))
+    for z in (-0.5, 0.0, 0.5):
+        b.append(part("cylinder", "steel", g(0, 2.72, z), (0.1, 0.1, 2.0), (0, 90, 0), vertices=6))   # roof pipes
+    join_and_export(b, "machine_upgrade_booth", material, "shared", False)
+
+
+def coat_shell(parts, swatch, length, closed=True, sleeves=True, collar=None):
+    """A coat around the scientist's body, in the "body" attach point's space (y 0 = 1.0 m up, front is -z). length:
+    how far below the point the hem hangs."""
+    parts.append(part("cylinder", swatch, g(0, 0.2, 0), (0.48, 0.3, 0.52), vertices=8))         # chest
+    parts.append(part("cylinder", swatch, g(0, 0.44, 0), (0.52, 0.31, 0.08), vertices=8))        # shoulders
+    skirt = length - 0.06
+    parts.append(part("cylinder", swatch, g(0, -0.06 - skirt / 2.0, 0.01), (0.52, 0.33, skirt), vertices=8))
+    if sleeves:
+        for side in (-1, 1):
+            parts.append(part("cylinder", swatch, g(side * 0.28, 0.18, 0), (0.135, 0.135, 0.52), (0, side * 6, 0), vertices=8))
+    if collar:
+        parts.append(part("cube", collar, g(0, 0.47, 0.02), (0.26, 0.16, 0.06)))
+    if closed:
+        for i in range(4):
+            parts.append(part("cylinder", "bolt", g(0.02, 0.3 - i * 0.18, -0.16), (0.025, 0.025, 0.01), (90, 0, 0), vertices=6))
+
+
+def cosmetics(material, glass_material):
+    """The closet's cosmetics (systems/cosmetics/models/*.tscn), each made in its attach point's space on the
+    scientist: hats on "head" (1.75 m, the top of the head), glasses on "face" (in front of the eyes), coats and gloves
+    on "body" (1.0 m), shoes on "feet"."""
+    items = {}
+    p = [part("uv", "safety_yellow", g(0, 0.02, 0), (0.33, 0.36, 0.3), segments=12, rings=6)]        # hard hat
+    p.append(part("cylinder", "safety_yellow", g(0, 0.0, -0.02), (0.4, 0.44, 0.02), vertices=14))
+    p.append(part("cube", "safety_yellow_worn", g(0, 0.17, 0), (0.05, 0.3, 0.03)))
+    p.append(part("cylinder", "rubber", g(0, -0.015, 0), (0.29, 0.3, 0.03), vertices=12))
+    items["hat_hard_hat"] = p
+    items["hat_hairnet"] = [
+        part("uv", "label", g(0, 0.02, 0.01), (0.33, 0.35, 0.22), segments=10, rings=5),
+        part("cylinder", "lab_panel", g(0, -0.03, 0.01), (0.29, 0.31, 0.025), vertices=12),
+    ] + [part("cube", "lab_panel", g(-0.12 + i * 0.06, 0.07, 0.01), (0.008, 0.28, 0.01)) for i in range(5)]
+    p = [part("uv", "mushroom_cap", g(0, 0.05, 0), (0.52, 0.52, 0.24), segments=12, rings=6),        # mushroom cap
+         part("cylinder", "mushroom_stalk", g(0, -0.01, 0), (0.42, 0.42, 0.04), vertices=12)]
+    for x, z in ((0.1, -0.06), (-0.12, 0.05), (0.03, 0.14), (-0.05, -0.15), (0.16, 0.08)):
+        p.append(part("uv", "mushroom_stalk", g(x, 0.16 - (x * x + z * z) * 0.8, z), (0.08, 0.08, 0.03), segments=6, rings=3))
+    items["hat_mushroom_cap"] = p
+    p = [part("cylinder", "rubber", g(0, 0.02, 0.0), (0.27, 0.27, 0.02), (90, 0, 0), vertices=12)]  # rat ears
+    for side in (-1, 1):
+        p.append(part("cylinder", "fur", g(side * 0.12, 0.13, 0.0), (0.16, 0.16, 0.025), (90, 0, side * 15), vertices=10))
+        p.append(part("cylinder", "skin_pink", g(side * 0.12, 0.13, -0.008), (0.11, 0.11, 0.02), (90, 0, side * 15), vertices=10))
+    items["hat_rat_ears"] = p
+    items["hat_sweatband"] = [
+        part("cylinder", "cap_red", g(0, -0.04, 0.01), (0.27, 0.29, 0.05), vertices=12),
+        part("cylinder", "label", g(0, -0.04, 0.01), (0.275, 0.295, 0.015), vertices=12),
+    ]
+    items["hat_brain_jar"] = [                                                                       # brain in a jar
+        part("cylinder", "steel", g(0, 0.0, 0), (0.3, 0.3, 0.04), vertices=12),
+        part("cylinder", "steel", g(0, 0.33, 0), (0.24, 0.24, 0.04), vertices=12),
+        part("uv", "brain_pink", g(0, 0.14, 0), (0.18, 0.2, 0.14), segments=8, rings=5),
+        part("cube", "brain_pink", g(0, 0.2, 0), (0.01, 0.18, 0.02)),
+        part("cylinder", "copper", g(0.06, 0.06, 0), (0.015, 0.015, 0.1), vertices=4),
+    ]
+    items["glasses_safety_goggles"] = [
+        part("cube", "glass", g(0, 0.0, -0.01), (0.27, 0.035, 0.07)),
+        part("cube", "safety_yellow_worn", g(0, 0.0, 0.0), (0.29, 0.03, 0.085)),
+        part("cylinder", "rubber", g(0, 0.0, 0.13), (0.27, 0.29, 0.03), vertices=12),               # strap
+    ]
+    items["glasses_sunglasses"] = [
+        part("cube", "stripe_black", g(0.055, 0.0, -0.012), (0.095, 0.01, 0.055)),
+        part("cube", "stripe_black", g(-0.055, 0.0, -0.012), (0.095, 0.01, 0.055)),
+        part("cube", "stripe_black", g(0, 0.015, -0.012), (0.04, 0.01, 0.012)),
+        part("cube", "stripe_black", g(0.11, 0.0, 0.05), (0.008, 0.13, 0.01)),
+        part("cube", "stripe_black", g(-0.11, 0.0, 0.05), (0.008, 0.13, 0.01)),
+    ]
+    items["glasses_pest_mask"] = [
+        part("cube", "rubber", g(0, -0.09, 0.02), (0.15, 0.08, 0.1)),
+        part("cone", "rubber", g(0, -0.09, -0.04), (0.12, 0.12, 0.06), (90, 0, 0), vertices=8),
+        part("cylinder", "steel", g(0, 0.0, 0.13), (0.27, 0.29, 0.02), vertices=12),               # strap
+    ] + [part("cylinder", "safety_yellow", g(side * 0.08, -0.11, -0.04), (0.07, 0.07, 0.06), (90, 0, side * 30), vertices=8)
+         for side in (-1, 1)]
+    p = []                                                                                           # lab coat (closed)
+    coat_shell(p, "lab_white", 0.62, True, True, "lab_white")
+    p.append(part("cube", "lab_green", g(-0.12, 0.27, -0.15), (0.1, 0.01, 0.08)))
+    items["coat_lab_coat"] = p
+    p = [part("cylinder", "safety_yellow", g(0, 0.2, 0), (0.48, 0.3, 0.52), vertices=8),             # hi-vis vest
+         part("cylinder", "safety_yellow", g(0, 0.01, 0), (0.47, 0.29, 0.16), vertices=8)]
+    for y in (0.08, 0.26):
+        p.append(part("cylinder", "bolt", g(0, y, 0), (0.49, 0.31, 0.035), vertices=8))
+    p.append(part("cube", "shirt", g(0, 0.36, -0.15), (0.12, 0.01, 0.2)))                          # open neck
+    items["coat_hi_vis_vest"] = p
+    p = []                                                                                           # employee of the month
+    coat_shell(p, "scrubs_dark", 0.5, True, True, "scrubs_dark")
+    p.append(part("cube", "shirt", g(0, 0.36, -0.155), (0.11, 0.01, 0.2)))
+    p.append(part("cube", "cap_red", g(-0.13, 0.32, -0.16), (0.04, 0.01, 0.08)))                     # ribbon
+    p.append(part("cylinder", "safety_yellow", g(-0.13, 0.25, -0.165), (0.09, 0.09, 0.015), (90, 0, 0), vertices=10))
+    p.append(part("cylinder", "hay", g(-0.13, 0.25, -0.172), (0.05, 0.05, 0.01), (90, 0, 0), vertices=5))
+    items["coat_employee_of_the_month"] = p
+    items["gloves_rubber"] = [part("uv", "safety_yellow_worn", g(side * 0.3, -0.15, 0), (0.11, 0.09, 0.14), segments=6, rings=4)
+                              for side in (-1, 1)] + \
+                             [part("cylinder", "safety_yellow_worn", g(side * 0.3, -0.05, 0), (0.12, 0.12, 0.08), vertices=8)
+                              for side in (-1, 1)]
+    p = []                                                                                           # lab clogs
+    for side in (-1, 1):
+        p.append(part("cube", "lab_green", g(side * 0.1, 0.0, -0.035), (0.14, 0.3, 0.11)))
+        p.append(part("cube", "rubber", g(side * 0.1, -0.05, -0.035), (0.145, 0.31, 0.02)))
+        for i in range(3):
+            p.append(part("cylinder", "leaf_dark", g(side * 0.1, 0.056, -0.12 + i * 0.04), (0.02, 0.02, 0.005), vertices=6))
+    items["shoes_clogs"] = p
+    for name, pieces in items.items():
+        join_and_export(pieces, "cosmetic_" + name, material, "shared", False)
+    join_and_export([part("uv", "glass", g(0, 0.17, 0), (0.3, 0.3, 0.34), segments=12, rings=6)],
+                    "cosmetic_hat_brain_jar_glass", glass_material, "shared", False)
+
+
 clear_scene()
 palette = make_palette()
 for other_department in DEPARTMENT_SHELLS:
@@ -1905,6 +2112,9 @@ lift_parts(solid, see_through)
 heavy_crate(solid)
 trash_bag(solid)
 debris_and_cart(solid, see_through)
+pickups(solid, solid)
+machines(solid, see_through)
+cosmetics(solid, see_through)
 bat(solid)
 fly(solid)
 kangaroo(solid)

@@ -51,6 +51,9 @@ const SLOT_ORIGIN: Vector2 = Vector2(-1.9, 0.5)
 const PART_CHECK_SECONDS: float = 1.0
 ## The charger for batteries.
 const CHARGER_SIZE: Vector3 = Vector3(1.2, 0.3, 1.2)
+## NEW 2026-11-14 (art rollout): the charger's finished models (origin on the floor).
+const CHARGER_MODEL: String = "res://assets/models/shared/machine_charger.mesh"
+const CHARGER_GLOW_MODEL: String = "res://assets/models/shared/machine_charger_glow.mesh"
 ## How often the same "battery is flat" message may be shown (seconds).
 const NOTE_REPEAT_SECONDS: float = 2.0
 
@@ -700,17 +703,24 @@ func _build_charger(floor_number: int) -> void:
 	shape.shape = box
 	shape.position = Vector3(0, 0.6, 0)
 	_charger.add_child(shape)
-	var pad := MeshInstance3D.new()
-	var pad_mesh := BoxMesh.new()
-	pad_mesh.size = CHARGER_SIZE
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.2, 0.5, 0.9)
-	material.emission_enabled = true
-	material.emission = Color(0.1, 0.3, 0.8)
-	pad_mesh.material = material
-	pad.mesh = pad_mesh
-	pad.position = Vector3(0, CHARGER_SIZE.y / 2.0, 0)
-	_charger.add_child(pad)
+	# CHANGED 2026-11-14 (art rollout): the finished charger (a base and its glowing coil) when it is there.
+	if ResourceLoader.exists(CHARGER_MODEL) and ResourceLoader.exists(CHARGER_GLOW_MODEL):
+		for model_path: String in [CHARGER_MODEL, CHARGER_GLOW_MODEL]:
+			var model := MeshInstance3D.new()
+			model.mesh = load(model_path) as Mesh
+			_charger.add_child(model)
+	else:
+		var pad := MeshInstance3D.new()
+		var pad_mesh := BoxMesh.new()
+		pad_mesh.size = CHARGER_SIZE
+		var material := StandardMaterial3D.new()
+		material.albedo_color = Color(0.2, 0.5, 0.9)
+		material.emission_enabled = true
+		material.emission = Color(0.1, 0.3, 0.8)
+		pad_mesh.material = material
+		pad.mesh = pad_mesh
+		pad.position = Vector3(0, CHARGER_SIZE.y / 2.0, 0)
+		_charger.add_child(pad)
 	var label := Label3D.new()
 	label.text = "CHARGER\n(put the battery here)"
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED

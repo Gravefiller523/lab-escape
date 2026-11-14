@@ -1,0 +1,15 @@
+[gd_resource type="AudioStreamRandomizer" format=3]
+
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_impact_wood_1.ogg" id="1_ojmox"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_impact_wood_2.ogg" id="2_5nvmh"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_impact_wood_3.ogg" id="3_jikhg"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_impact_wood_4.ogg" id="4_eqdni"]
+
+[resource]
+random_pitch = 1.08
+random_volume_offset_db = 1.0
+streams_count = 4
+stream_0/stream = ExtResource("1_ojmox")
+stream_1/stream = ExtResource("2_5nvmh")
+stream_2/stream = ExtResource("3_jikhg")
+stream_3/stream = ExtResource("4_eqdni")

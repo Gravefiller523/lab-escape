@@ -36,6 +36,7 @@ var _table: EventSounds = SOUND_TABLE
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	ensure_buses()
+	apply_mix(Config.game)
 	for index: int in POOL_3D:
 		var player := AudioStreamPlayer3D.new()
 		player.bus = &"SFX"
@@ -71,6 +72,51 @@ static func ensure_buses() -> void:
 			var index: int = AudioServer.bus_count - 1
 			AudioServer.set_bus_name(index, bus)
 			AudioServer.set_bus_send(index, &"Master")
+
+
+## NEW 2026-11-14 (roadmap WP28): the mix. Music ducks under voice chat (a compressor on Music listening to the
+## Voice bus), sound effects get a light room reverb with the same feel as voice chat (20 ms pre-delay, room 0.55,
+## damping 0.7), and a limiter on Master keeps peaks under the ceiling. Numbers: GameConfig "Sound mix". Safe to
+## call again (each effect is added once, then updated).
+static func apply_mix(config: GameConfig) -> void:
+	if config == null:
+		return
+	ensure_buses()
+	var duck := _effect(&"Music", "AudioEffectCompressor") as AudioEffectCompressor
+	if duck == null:
+		duck = AudioEffectCompressor.new()
+		AudioServer.add_bus_effect(AudioServer.get_bus_index(&"Music"), duck)
+	duck.sidechain = &"Voice"
+	duck.threshold = config.music_duck_threshold_db
+	duck.ratio = maxf(config.music_duck_ratio, 1.0)
+	duck.attack_us = 20000.0
+	duck.release_ms = 400.0
+	var room := _effect(&"SFX", "AudioEffectReverb") as AudioEffectReverb
+	if room == null:
+		room = AudioEffectReverb.new()
+		AudioServer.add_bus_effect(AudioServer.get_bus_index(&"SFX"), room)
+	room.predelay_msec = 20.0
+	room.room_size = 0.55
+	room.damping = 0.7
+	room.dry = 1.0
+	room.wet = config.sfx_room_reverb
+	var limiter := _effect(&"Master", "AudioEffectHardLimiter") as AudioEffectHardLimiter
+	if limiter == null:
+		limiter = AudioEffectHardLimiter.new()
+		AudioServer.add_bus_effect(AudioServer.get_bus_index(&"Master"), limiter)
+	limiter.ceiling_db = config.master_ceiling_db
+
+
+## The first effect of a class on a bus, or null.
+static func _effect(bus: StringName, effect_class: String) -> AudioEffect:
+	var index: int = AudioServer.get_bus_index(bus)
+	if index < 0:
+		return null
+	for slot: int in AudioServer.get_bus_effect_count(index):
+		var effect: AudioEffect = AudioServer.get_bus_effect(index, slot)
+		if effect.is_class(effect_class):
+			return effect
+	return null
 
 
 ## A bus's volume, 0 to 1 (settings_input will call this; 1 until then).

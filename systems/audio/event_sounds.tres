@@ -1,6 +1,44 @@
-[gd_resource type="Resource" script_class="EventSounds" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="EventSounds" format=3]
 
 [ext_resource type="Script" path="res://systems/audio/event_sounds.gd" id="1_sounds"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/boss_phase_boom.tres" id="1_t76cx"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/button_press_click.tres" id="2_l41tq"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/crank_click.tres" id="3_04767"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/door_open.tres" id="4_px230"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/door_shut.tres" id="5_0pwxb"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/enemy_death.tres" id="6_5a785"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/enemy_shoot_laser.tres" id="7_t3aa5"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/gem_pickup_clink.tres" id="8_kk2e0"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/hit_punch.tres" id="9_pkwoa"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/item_use_swing.tres" id="10_acnuj"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/lift_arrive_bell.tres" id="11_nojxu"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/lift_part_clank.tres" id="12_o1x3m"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_lift_ride_hum_1.ogg" id="13_6q437"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/player_death.tres" id="14_ok4kv"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/punt_metal.tres" id="15_cpnwq"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/purchase_coins.tres" id="16_nh1le"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/reprint_printer.tres" id="17_52sfs"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/upgrade_confirm.tres" id="19_rje60"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/use_deny_buzz.tres" id="20_hr84b"]
 
 [resource]
 script = ExtResource("1_sounds")
+hit = ExtResource("9_pkwoa")
+enemy_death = ExtResource("6_5a785")
+player_death = ExtResource("14_ok4kv")
+item_use = ExtResource("10_acnuj")
+enemy_shoot = ExtResource("7_t3aa5")
+reprint = ExtResource("17_52sfs")
+upgrade = ExtResource("19_rje60")
+purchase = ExtResource("16_nh1le")
+gem_pickup = ExtResource("8_kk2e0")
+use_deny = ExtResource("20_hr84b")
+button_press = ExtResource("2_l41tq")
+door_move = ExtResource("4_px230")
+door_shut = ExtResource("5_0pwxb")
+crank_turn = ExtResource("3_04767")
+punt = ExtResource("15_cpnwq")
+lift_ride = ExtResource("13_6q437")
+lift_arrive = ExtResource("11_nojxu")
+lift_part = ExtResource("12_o1x3m")
+boss_phase = ExtResource("1_t76cx")

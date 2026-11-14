@@ -1,0 +1,13 @@
+[gd_resource type="AudioStreamRandomizer" format=3]
+
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_land_concrete_1.ogg" id="1_tb8yf"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_land_concrete_2.ogg" id="2_ucoaa"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_land_concrete_3.ogg" id="3_b42nh"]
+
+[resource]
+random_pitch = 1.08
+random_volume_offset_db = 1.0
+streams_count = 3
+stream_0/stream = ExtResource("1_tb8yf")
+stream_1/stream = ExtResource("2_ucoaa")
+stream_2/stream = ExtResource("3_b42nh")

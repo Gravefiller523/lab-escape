@@ -8,3 +8,6 @@
 
 # Exported game builds
 /build/
+
+# Downloaded packs waiting to be sorted (the sounds we use are copied into assets/audio).
+assets/_incoming/

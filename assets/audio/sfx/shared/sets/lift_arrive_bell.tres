@@ -1,0 +1,11 @@
+[gd_resource type="AudioStreamRandomizer" format=3]
+
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_lift_arrive_bell_1.ogg" id="1_y8hc4"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_lift_arrive_bell_2.ogg" id="2_nnugh"]
+
+[resource]
+random_pitch = 1.08
+random_volume_offset_db = 1.0
+streams_count = 2
+stream_0/stream = ExtResource("1_y8hc4")
+stream_1/stream = ExtResource("2_nnugh")

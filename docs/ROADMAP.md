@@ -505,7 +505,10 @@ The five questions, the same every time:
 
 ### Phase S: sound (see section e)
 #### WP28: Audio mix and free sounds
-- Buses, reverb shared with voice, footsteps and impacts from CC0 packs. **Status: not started.**
+- Buses, reverb shared with voice, footsteps and impacts from CC0 packs. **Status: done on `wp/34-sound` (2026-11-14):
+  music ducks under voice chat, a room reverb on effects, a limiter; 97 Kenney CC0 sounds (hits, deaths, doors,
+  buttons, the lift, footsteps and impacts on every surface) in random-variation sets. Creature calls, the fanfare and
+  music still use generated placeholders (WP29, WP30).**
 #### WP29: Generated sounds month (ElevenLabs batch)
 - Creature sounds, boss voices, machines, UI, PA lines. **Status: not started.**
 #### WP30: Music

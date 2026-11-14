@@ -129,6 +129,10 @@ the room). The same piece can be used twice with different numbers (`rocket_voll
 department's `boss_floors` on once it has its own boss. **Test:** `spawn boss_<name>` in the console.
 
 ## Room
+**A finished model for a tile (NEW 2026-11-14):** model the room to fit the tile exactly (origin at the tile's corner,
+the same doorways and big pieces), export it, turn it into a `.mesh` (`assets/source/extract_meshes.gd`) and set the
+tile's `art_mesh`. The grey CSG stays for collision but is hidden. See `docs/ART_BIBLE.md`.
+
 **Copy:** a similar room scene and its `.tres`. **Scene must have:** floor/walls, a baked
 `NavigationRegion3D`, `RoomDoorway` markers on the edges, and `RoomMarker`s (kind: `player_spawn`,
 `enemy_spawn`, `prop_spawn`, `item_spawn`, `vendor`, `supply_counter`, `printer`, `cart`, `lift`,

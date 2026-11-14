@@ -6,10 +6,12 @@
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_accent.tres" id="4_accent"]
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_wall.tres" id="5_wall"]
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_trim.tres" id="6_trim"]
+[ext_resource type="ArrayMesh" path="res://assets/models/zoology/room_zoology_animal_holding.mesh" id="7_art"]
 
 [node name="TileZoologyAnimalHolding" type="Node3D"]
 script = ExtResource("1_tile")
 size_units = Vector2i(6, 6)
+art_mesh = ExtResource("7_art")
 
 [node name="SocketN2" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 0, 0)

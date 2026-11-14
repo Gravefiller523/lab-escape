@@ -6,9 +6,11 @@
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_accent.tres" id="4_accent"]
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_wall.tres" id="5_wall"]
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_trim.tres" id="6_trim"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/room_shared_bathroom.mesh" id="art_tile"]
 
 [node name="TileBathroom" type="Node3D"]
 script = ExtResource("1_tile")
+art_mesh = ExtResource("art_tile")
 size_units = Vector2i(2, 3)
 
 [node name="SocketN0" type="Marker3D" parent="."]

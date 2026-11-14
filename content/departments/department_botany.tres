@@ -10,6 +10,7 @@
 [ext_resource type="Material" path="res://assets/materials/botany/botany_trim.tres" id="8_trim"]
 [ext_resource type="Material" path="res://assets/materials/botany/botany_accent.tres" id="9_accent"]
 [ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_botany_welcome_center.tscn" id="10_welcome"]
+[ext_resource type="Material" path="res://assets/materials/botany/palette_botany.tres" id="11_art"]
 
 [sub_resource type="Resource" id="Enemy_mushroom_zombie"]
 script = ExtResource("2_weighted")
@@ -200,6 +201,7 @@ boss_floors = true
 welcome_center_scene = ExtResource("10_welcome")
 room_types = Array[ExtResource("3_room_type")]([SubResource("Type_greenhouse"), SubResource("Type_seed_vault"), SubResource("Type_decon_airlock"), SubResource("Type_cell_culture_lab"), SubResource("Type_microscopy_lab"), SubResource("Type_soil_prep"), SubResource("Type_autoclave_room"), SubResource("Type_growth_chamber"), SubResource("Type_pump_room")])
 palette = {
+"art": ExtResource("11_art"),
 "accent": ExtResource("9_accent"),
 "floor": ExtResource("7_floor"),
 "trim": ExtResource("8_trim"),

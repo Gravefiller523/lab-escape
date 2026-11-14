@@ -34,3 +34,41 @@ func test_a_tile_without_a_model_is_unchanged() -> void:
 	assert_null(tile.find_child(BlockoutTile.ART_NAME, true, false))
 	for csg: Node in tile.find_children("*", "CSGCombiner3D", true, false):
 		assert_true((csg as CSGCombiner3D).visible, "%s still shows" % csg.name)
+
+
+func test_a_sealed_doorway_gets_a_wall_piece_in_the_models_colours() -> void:
+	# The model has a real gap at every doorway; one the floor doesn't use is filled with a matching wall piece.
+	var tile := TILE.instantiate() as BlockoutTile
+	add_child_autofree(tile)
+	await wait_physics_frames(2)
+	var art := tile.find_child(BlockoutTile.ART_NAME, true, false) as MeshInstance3D
+	assert_eq(art.get_meta(TileStandards.MATERIAL_SLOT_META, &""), &"art", "the department palette can colour it")
+	var palette_material := StandardMaterial3D.new()
+	TileStandards.apply_palette(tile, {"art": palette_material})
+	assert_eq(art.material_override, palette_material)
+	var socket: RoomDoorway = null
+	for candidate: RoomDoorway in tile.get_sockets():
+		if not candidate.open_edge and tile.socket_place(candidate).x >= 2:
+			socket = candidate
+			break
+	assert_not_null(socket, "the room has a west or east doorway")
+	assert_true(tile.seal_socket(String(socket.name)))
+	var patch := tile.find_child(BlockoutTile.ART_PATCH_PREFIX + String(socket.name), true, false) as MeshInstance3D
+	assert_not_null(patch, "the doorway is filled")
+	assert_not_null(patch.mesh)
+	assert_eq(patch.material_override, palette_material, "in the same colours as the walls")
+	assert_almost_eq(patch.rotation.y, PI / 2.0, 0.001, "turned to lie along a west or east wall")
+	assert_almost_eq(patch.position.z, socket.position.z, 0.001, "centred on the doorway")
+
+
+func test_a_tile_without_a_model_gets_no_wall_piece_when_sealed() -> void:
+	var tile := BlockoutTile.new()
+	tile.size_units = Vector2i(2, 2)
+	var socket := RoomDoorway.new()
+	socket.name = "SocketN0"
+	socket.position = Vector3(1.5, 0, 0)
+	tile.add_child(socket)
+	add_child_autofree(tile)
+	await wait_physics_frames(2)
+	tile.seal_socket("SocketN0")
+	assert_null(tile.find_child(BlockoutTile.ART_PATCH_PREFIX + "SocketN0", true, false))

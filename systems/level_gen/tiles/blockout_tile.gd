@@ -42,6 +42,9 @@ extends Node3D
 const GENERATED_NAME: String = "Generated"
 ## NEW 2026-11-14 (roadmap WP22 art rollout, OK'd by Zachary): the node holding a tile's finished model (art_mesh).
 const ART_NAME: String = "Art"
+## NEW 2026-11-14 (roadmap WP22): the wall piece that fills a sealed doorway in a finished model (seal_socket).
+const WALL_PATCH_PATH: String = "res://assets/models/shared/wall_patch.mesh"
+const ART_PATCH_PREFIX: String = "ArtPatch_"
 const PLACEHOLDER_NAME: String = "Placeholder"
 const TUNING_PATH: String = "res://config/floor_gen_tuning.tres"
 ## Floor and ceiling slab thickness (metres).
@@ -126,6 +129,8 @@ func _show_art(generated: Node3D) -> void:
 	var art := MeshInstance3D.new()
 	art.name = ART_NAME
 	art.mesh = art_mesh
+	# The department palette ("art" slot) colours the walls of rooms every department shares.
+	art.set_meta(TileStandards.MATERIAL_SLOT_META, &"art")
 	generated.add_child(art)
 
 
@@ -140,7 +145,33 @@ func seal_socket(socket_name: String) -> bool:
 		if node != null:
 			shell.remove_child(node)
 			node.queue_free()
+	_patch_art(socket_name)
 	return true
+
+
+## NEW 2026-11-14 (roadmap WP22 art rollout): a finished model has a real gap at every doorway, so a sealed one gets
+## a wall piece there (WALL_PATCH_PATH, made from the palette's "shell" squares) with the model's material.
+func _patch_art(socket_name: String) -> void:
+	var art := get_node_or_null(NodePath("%s/%s" % [GENERATED_NAME, ART_NAME])) as MeshInstance3D
+	if art == null:
+		return
+	var tuning: FloorGenTuning = _tuning()
+	for socket: RoomDoorway in _sockets():
+		if String(socket.name) != socket_name:
+			continue
+		var edge: int = _socket_place(socket, tuning.grid_unit).x
+		if edge < 0:
+			return
+		var outward: Vector3 = [Vector3.FORWARD, Vector3.BACK, Vector3.LEFT, Vector3.RIGHT][edge]
+		var patch := MeshInstance3D.new()
+		patch.name = ART_PATCH_PREFIX + socket_name
+		patch.mesh = load(WALL_PATCH_PATH) as Mesh
+		patch.position = Vector3(socket.position.x, 0.0, socket.position.z) + outward * tuning.wall_thickness / 2.0
+		patch.rotation.y = PI / 2.0 if edge >= 2 else 0.0
+		patch.material_override = art.material_override
+		patch.set_meta(TileStandards.MATERIAL_SLOT_META, &"art")
+		art.get_parent().add_child(patch)
+		return
 
 
 ## NEW 2026-10-31: was this socket's doorway filled with wall (seal_socket)?

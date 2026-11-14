@@ -6,10 +6,12 @@
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_accent.tres" id="4_accent"]
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_wall.tres" id="5_wall"]
 [ext_resource type="Material" path="res://systems/level_gen/tiles/materials/blockout_trim.tres" id="6_trim"]
+[ext_resource type="ArrayMesh" path="res://assets/models/zoology/room_zoology_quarantine_pens.mesh" id="7_art"]
 
 [node name="TileZoologyQuarantinePens" type="Node3D"]
 script = ExtResource("1_tile")
 size_units = Vector2i(3, 4)
+art_mesh = ExtResource("7_art")
 
 [node name="SocketN1" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0, 0)

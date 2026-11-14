@@ -1033,7 +1033,12 @@ func test_thrown_crate_barely_hurts_a_heavy_enemy() -> void:
 			hits.append(damage)
 		last_report_msec[0] = now)
 	await wait_physics_frames(5)
+	# CHANGED 2026-11-14: without the throw's random spin, like the kill test above (with spin the crate sometimes
+	# turned edge-on and flew past: no hit at all, which the "it hit" check below now catches).
+	var spin: float = Config.feel.props.throw_spin
+	Config.feel.props.throw_spin = 0.0
 	PropsService.grab_of(body).throw()
+	Config.feel.props.throw_spin = spin
 	await wait_seconds(1.5)
 	assert_false(health.is_dead())
 	assert_gt(hits.size(), 0, "the crate hit it")

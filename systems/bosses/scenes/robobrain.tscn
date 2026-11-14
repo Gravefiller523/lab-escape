@@ -6,6 +6,8 @@
 [ext_resource type="Script" path="res://systems/bosses/attacks/projectile_burst_attack.gd" id="4_burst"]
 [ext_resource type="Script" path="res://core/data/enemies/ranged_attack_data.gd" id="5_ranged"]
 [ext_resource type="Script" path="res://systems/bosses/attacks/laser_sweep_attack.gd" id="6_laser"]
+[ext_resource type="ArrayMesh" path="res://assets/models/robotics/boss_robobrain.mesh" id="art_mesh_1"]
+[ext_resource type="ArrayMesh" path="res://assets/models/robotics/boss_robobrain_glass.mesh" id="art_mesh_2"]
 
 [sub_resource type="BoxShape3D" id="Shape_1"]
 size = Vector3(2.0, 2.4, 2.4)
@@ -85,6 +87,8 @@ damage_type = &"fire"
 projectile_radius = 0.28
 projectile_color = Color(1, 0.55, 0.1, 1)
 
+
+
 [node name="Robobrain" type="CharacterBody3D"]
 script = ExtResource("1_boss")
 attack_knockback = 6.0
@@ -99,31 +103,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
 shape = SubResource("Shape_1")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
-mesh = SubResource("Mesh_treads")
-
-[node name="Body" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
-mesh = SubResource("Mesh_body")
+mesh = ExtResource("art_mesh_1")
 
 [node name="Dome" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
-mesh = SubResource("Mesh_dome")
-
-[node name="Brain" type="MeshInstance3D" parent="Mesh/Dome"]
-mesh = SubResource("Mesh_brain")
-
-[node name="ArmLeft" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.95, -0.3)
-mesh = SubResource("Mesh_arm")
-
-[node name="ArmRight" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.95, 0.95, -0.3)
-mesh = SubResource("Mesh_arm")
-
-[node name="Eye" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, -0.71)
-mesh = SubResource("Mesh_eye")
+mesh = ExtResource("art_mesh_2")
 
 [node name="HealthLabel" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.3, 0)

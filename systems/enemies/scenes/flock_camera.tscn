@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://systems/enemies/enemy.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://systems/enemies/states/idle_state.gd" id="2_idle"]
 [ext_resource type="Script" path="res://systems/enemies/behaviours/alarm_behaviour.gd" id="3_behaviour"]
+[ext_resource type="ArrayMesh" path="res://assets/models/robotics/enemy_flock_camera.mesh" id="art_mesh_1"]
 
 [sub_resource type="BoxShape3D" id="Shape_1"]
 size = Vector3(0.3, 0.3, 0.45)
@@ -14,6 +15,7 @@ albedo_color = Color(0.3, 0.3, 0.35, 1)
 material = SubResource("Mat_1")
 size = Vector3(0.3, 0.3, 0.45)
 
+
 [node name="FlockCamera" type="CharacterBody3D"]
 script = ExtResource("1_enemy")
 hurtbox_radius = 0.3
@@ -24,8 +26,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
 shape = SubResource("Shape_1")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
-mesh = SubResource("Mesh_1")
+mesh = ExtResource("art_mesh_1")
 
 [node name="States" type="Node" parent="."]
 

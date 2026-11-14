@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://systems/enemies/states/chase_state.gd" id="4_chase"]
 [ext_resource type="Script" path="res://systems/enemies/states/attack_ranged_state.gd" id="5_attack_ranged"]
 [ext_resource type="Script" path="res://systems/enemies/states/search_state.gd" id="6_search"]
+[ext_resource type="ArrayMesh" path="res://assets/models/robotics/enemy_drone.mesh" id="art_mesh_1"]
 
 [sub_resource type="BoxShape3D" id="Shape_1"]
 size = Vector3(0.6, 0.2, 0.6)
@@ -16,6 +17,7 @@ albedo_color = Color(0.9, 0.75, 0.2, 1)
 [sub_resource type="BoxMesh" id="Mesh_1"]
 material = SubResource("Mat_1")
 size = Vector3(0.6, 0.2, 0.6)
+
 
 [node name="Drone" type="CharacterBody3D"]
 script = ExtResource("1_enemy")
@@ -29,8 +31,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
 shape = SubResource("Shape_1")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
-mesh = SubResource("Mesh_1")
+mesh = ExtResource("art_mesh_1")
 
 [node name="States" type="Node" parent="."]
 

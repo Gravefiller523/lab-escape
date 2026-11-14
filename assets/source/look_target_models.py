@@ -67,6 +67,16 @@ PALETTE = {
     "spore": (3, 6, (0.78, 0.72, 0.36)),
     "vine": (4, 6, (0.36, 0.52, 0.22)),
     "flytrap_mouth": (5, 6, (0.80, 0.25, 0.30)),
+    "ind_wall": (6, 6, (0.52, 0.54, 0.57)),
+    "ind_panel": (7, 6, (0.36, 0.38, 0.41)),
+    "robot_white": (0, 7, (0.86, 0.86, 0.83)),
+    "led_blue": (1, 7, (0.35, 0.75, 1.00)),
+    "led_red": (2, 7, (1.00, 0.22, 0.15)),
+    "pcb_green": (3, 7, (0.13, 0.42, 0.24)),
+    "copper": (4, 7, (0.78, 0.48, 0.25)),
+    "screen": (5, 7, (0.20, 0.45, 0.55)),
+    "brain_pink": (6, 7, (0.93, 0.60, 0.68)),
+    "ind_floor": (7, 7, (0.40, 0.41, 0.43)),
 }
 
 
@@ -326,6 +336,8 @@ ZOOLOGY = {"lower": "wood", "upper": "plaster", "trim": "wood_dark", "ceiling": 
            "light": None}
 BOTANY = {"lower": "lab_panel", "upper": "lab_white", "trim": "lab_green", "ceiling": "lab_white", "beam": None,
           "light": "light_strip"}
+ROBOTICS = {"lower": "ind_panel", "upper": "ind_wall", "trim": "safety_yellow", "ceiling": "steel_dark", "beam": "steel",
+            "light": "light_strip"}
 
 
 def wall_with_gaps(parts, start, end, gaps, height, thickness, style=None):
@@ -1013,6 +1025,289 @@ def mushroom_man(material):
     join_and_export(parts, "boss_mushroom_man", material, "botany", True)
 
 
+def robot_arm(parts, x, z):
+    """A yellow factory arm on a 0.8 m base (the grey box's 0.8 x 2.2 x 0.8 arm box), reaching up and over."""
+    parts.append(part("cylinder", "steel_dark", g(x, 0.1, z), (0.8, 0.8, 0.2), vertices=10))
+    parts.append(part("cylinder", "safety_yellow", g(x, 0.45, z), (0.55, 0.55, 0.5), vertices=10))
+    parts.append(part("cube", "safety_yellow", g(x, 1.15, z), (0.3, 0.3, 1.0), (0, 10, 0)))
+    parts.append(part("uv", "steel_dark", g(x + 0.08, 1.7, z), (0.34, 0.34, 0.34), segments=8, rings=5))
+    parts.append(part("cube", "safety_yellow", g(x + 0.3, 1.9, z), (0.7, 0.24, 0.24), (0, -25, 0)))
+    parts.append(part("cube", "steel", g(x + 0.62, 2.0, z), (0.12, 0.16, 0.2)))
+    for dz in (-0.07, 0.07):
+        parts.append(part("cube", "steel_dark", g(x + 0.7, 1.88, z + dz), (0.05, 0.04, 0.18)))
+
+
+def bollard(parts, x, z, height=1.0, width=0.6):
+    parts.append(part("cylinder", "steel_dark", g(x, height / 2.0, z), (width, width, height), vertices=10))
+    for i in range(3):
+        parts.append(part("cylinder", "safety_yellow" if i % 2 == 0 else "stripe_black",
+                          g(x, height * (0.35 + i * 0.18), z), (width + 0.02, width + 0.02, height * 0.16), vertices=10))
+
+
+def hazard_line(parts, x, z, length, along_x=True, width=0.2):
+    count = max(1, int(length / 0.4))
+    step = length / count
+    for i in range(count):
+        swatch = "safety_yellow" if i % 2 == 0 else "stripe_black"
+        offset = -length / 2.0 + step * (i + 0.5)
+        if along_x:
+            parts.append(part("cube", swatch, g(x + offset, 0.006, z), (step, width, 0.012)))
+        else:
+            parts.append(part("cube", swatch, g(x, 0.006, z + offset), (width, step, 0.012)))
+
+
+def robotics_rooms(material, glass_material):
+    """Robotics' eight rooms (docs/ART_BIBLE.md: industrial grey with safety-yellow stripes, cold strip lights).
+    Every big piece sits on the grey box's collision box of the same name."""
+    rooms = {}
+
+    p = []
+    room_shell(p, 18.0, 24.0, {"N": [4.5, 13.5], "S": [4.5, 13.5], "W": [4.5, 19.5], "E": [4.5, 19.5]}, "ind_floor",
+               style=ROBOTICS)
+    for z in (8.0, 16.0):                                                                   # conveyors
+        p.append(part("cube", "steel_dark", g(9.0, 0.42, z), (12.0, 1.0, 0.84)))
+        p.append(part("cube", "rubber", g(9.0, 0.92, z), (11.6, 1.1, 0.16)))
+        for dz in (-0.58, 0.58):
+            p.append(part("cube", "safety_yellow", g(9.0, 0.98, z + dz), (12.0, 0.06, 0.12)))
+        for x in (3.1, 14.9):
+            p.append(part("cylinder", "steel", g(x, 0.92, z), (0.22, 0.22, 1.14), (90, 0, 0), vertices=8))
+        for i in range(4):                                                                  # half-built robots
+            p.append(part("cube", "robot_white", g(4.5 + i * 3.0, 1.15, z), (0.5, 0.5, 0.3)))
+            p.append(part("uv", "steel_dark", g(4.5 + i * 3.0, 1.38, z), (0.26, 0.26, 0.2), segments=6, rings=4))
+    for x, z in ((5.0, 10.5), (13.0, 10.5), (5.0, 13.5), (13.0, 13.5)):
+        robot_arm(p, x, z)
+    hazard_line(p, 9.0, 12.0, 9.0)
+    rooms["assembly_floor"] = p
+
+    p = []
+    room_shell(p, 9.0, 12.0, {"N": [4.5], "S": [4.5], "W": [7.5], "E": [4.5]}, "ind_floor", style=ROBOTICS)
+    for z in (8.5, 10.5):
+        p.append(part("cube", "ind_panel", g(8.3, 0.6, z), (0.8, 1.6, 1.2)))
+        p.append(part("cube", "screen", g(7.89, 0.9, z), (0.02, 0.6, 0.3)))
+        p.append(part("cube", "led_blue", g(7.89, 0.55, z - 0.5), (0.02, 0.1, 0.1)))
+        p.append(part("cube", "safety_yellow", g(8.3, 1.22, z), (0.82, 1.62, 0.04)))
+        p.append(part("cylinder", "rubber", g(7.6, 0.03, z), (0.08, 0.08, 1.2), (0, 90, 0), vertices=5))
+    hazard_line(p, 4.5, 6.0, 7.0)
+    for z in (2.5, 11.0):
+        hazard_line(p, 1.6, z, 1.4, False, 0.15)
+    rooms["charging_bay"] = p
+
+    p = []
+    room_shell(p, 12.0, 12.0, {"N": [4.5], "S": [7.5], "W": [7.5], "E": [4.5]}, "ind_floor", style=ROBOTICS)
+    for x in (4.5, 9.0):
+        bench(p, x, 0.9, 3.0, 3.0, 1.0, "steel", "ind_panel")
+        p.append(part("cube", "pcb_green", g(x - 0.8, 0.92, 3.0), (0.6, 0.4, 0.02)))
+        p.append(part("cube", "copper", g(x - 0.8, 0.935, 3.05), (0.3, 0.04, 0.01)))
+        p.append(part("cube", "steel_dark", g(x + 0.7, 1.1, 2.75), (0.6, 0.35, 0.4)))      # scope
+        p.append(part("cube", "screen", g(x + 0.7, 1.12, 2.92), (0.42, 0.02, 0.26)))
+    bench(p, 6.0, 0.9, 8.0, 4.0, 1.2, "steel", "ind_panel")
+    for i in range(3):
+        p.append(part("cube", "pcb_green", g(4.7 + i * 1.3, 0.92, 8.0), (0.5, 0.35, 0.02)))
+    p.append(part("cylinder", "copper", g(7.6, 0.95, 8.2), (0.2, 0.2, 0.08), vertices=8))      # wire spool
+    rooms["electronics_lab"] = p
+
+    p = []
+    room_shell(p, 12.0, 12.0, {"N": [4.5], "S": [7.5], "W": [7.5], "E": [4.5]}, "ind_floor", style=ROBOTICS)
+    p.append(part("cube", "ind_panel", g(6.0, 0.4, 3.5), (2.0, 1.0, 0.8)))                    # lathe
+    p.append(part("cube", "safety_yellow", g(5.3, 0.95, 3.5), (0.6, 0.8, 0.5)))
+    p.append(part("cylinder", "steel", g(6.3, 0.95, 3.5), (0.16, 0.16, 1.1), (0, 90, 0), vertices=8))
+    p.append(part("cube", "steel_dark", g(6.9, 0.95, 3.5), (0.3, 0.5, 0.4)))
+    p.append(part("cube", "ind_panel", g(9.5, 0.1, 2.0), (1.0, 1.0, 0.2)))                    # drill press
+    p.append(part("cylinder", "steel", g(9.7, 1.0, 2.2), (0.14, 0.14, 1.8), vertices=8))
+    p.append(part("cube", "safety_yellow", g(9.5, 1.7, 2.0), (0.5, 0.8, 0.5)))
+    p.append(part("cylinder", "steel_dark", g(9.4, 1.3, 1.8), (0.06, 0.06, 0.3), vertices=6))
+    p.append(part("cube", "steel", g(9.5, 0.75, 1.95), (0.6, 0.6, 0.04)))
+    bench(p, 11.2, 0.9, 9.0, 1.0, 3.0, "wood", "ind_panel")
+    p.append(part("cube", "safety_yellow", g(11.2, 0.95, 8.0), (0.4, 0.25, 0.1)))             # toolbox
+    p.append(part("cube", "ind_panel", g(11.85, 1.6, 9.0), (0.04, 2.6, 1.0)))                 # tool board
+    for i in range(5):
+        p.append(part("cube", "steel_dark", g(11.82, 1.6, 8.0 + i * 0.5), (0.03, 0.06, 0.35)))
+    hazard_line(p, 6.0, 4.6, 2.6)
+    rooms["machine_shop"] = p
+
+    p = []
+    room_shell(p, 12.0, 15.0, {"N": [7.5], "S": [4.5], "W": [7.5], "E": [7.5]}, "ind_floor", style=ROBOTICS)
+    for z in (4.0, 11.0):
+        for x in (2.05, 9.95):
+            p.append(part("cube", "safety_yellow", g(x, 1.2, z), (0.1, 1.0, 2.4)))
+        for x in (6.0,):
+            p.append(part("cube", "safety_yellow", g(x, 1.2, z), (0.1, 1.0, 2.4)))
+        for y in (0.15, 0.95, 1.75, 2.35):
+            p.append(part("cube", "steel", g(6.0, y, z), (8.0, 1.0, 0.05)))
+        for i in range(10):
+            y = (0.15, 0.95, 1.75)[i % 3] + 0.2
+            x = 2.6 + i * 0.75
+            swatch = ("sand", "safety_yellow", "ind_panel")[i % 3]
+            p.append(part("cube", swatch, g(x, y, z + (0.1 if i % 2 else -0.1)), (0.55, 0.6, 0.36)))
+        for i in range(4):
+            p.append(part("cylinder", "steel_dark", g(3.0 + i * 1.9, 1.06, z), (0.3, 0.3, 0.1), vertices=8))
+    rooms["parts_storage"] = p
+
+    p = []
+    room_shell(p, 9.0, 12.0, {"N": [4.5], "S": [4.5], "W": [7.5], "E": [4.5]}, "steel_dark", style=ROBOTICS)
+    for x in (2.5, 6.5):
+        p.append(part("cube", "rubber", g(x, 1.1, 6.0), (1.0, 6.0, 2.2)))
+        for i in range(6):                                                                  # rack doors and lights
+            z = 3.5 + i * 1.0
+            for side in (-1, 1):
+                p.append(part("cube", "steel_dark", g(x + side * 0.51, 1.1, z), (0.02, 0.9, 2.0)))
+                for row in range(5):
+                    swatch = ("led_blue", "pcb_green", "led_blue", "led_red", "led_blue")[(row + i) % 5]
+                    p.append(part("cube", swatch, g(x + side * 0.525, 0.5 + row * 0.35, z - 0.25 + (row % 2) * 0.3),
+                                      (0.01, 0.06, 0.03)))
+        p.append(part("cube", "steel", g(x, 3.2, 6.0), (0.5, 6.4, 0.06)))                  # cable tray
+        p.append(part("cube", "rubber", g(x, 3.24, 6.0), (0.4, 6.4, 0.04)))
+    for z in range(1, 12, 2):                                                               # floor tile lines
+        p.append(part("cube", "ind_panel", g(4.5, 0.004, z), (9.0, 0.03, 0.008)))
+    rooms["server_room"] = p
+
+    p = []
+    room_shell(p, 18.0, 18.0, {"N": [4.5, 13.5], "S": [4.5, 13.5], "W": [4.5, 13.5], "E": [4.5, 13.5]}, "ind_floor",
+               style=ROBOTICS)
+    p.append(part("cube", "ind_panel", g(16.6, 0.5, 9.0), (2.2, 2.2, 1.0)))                    # control booth
+    p.append(part("cube", "ind_wall", g(16.6, 2.85, 9.0), (2.2, 2.2, 0.3)))
+    for x, z, sx, sz in ((15.5, 9.0, 0.04, 2.2), (16.6, 7.9, 2.2, 0.04), (16.6, 10.1, 2.2, 0.04)):
+        p.append(part("cube", "glass", g(x, 1.85, z), (sx, sz, 1.7)))
+    for x, z in ((15.52, 7.92), (15.52, 10.08), (17.68, 7.92), (17.68, 10.08)):
+        p.append(part("cube", "steel_dark", g(x, 1.85, z), (0.06, 0.06, 1.7)))
+    p.append(part("cube", "screen", g(15.6, 1.1, 9.0), (0.04, 1.2, 0.2), (0, 0, 0)))
+    p.append(part("cube", "led_red", g(16.6, 3.05, 9.0), (0.3, 0.3, 0.12)))
+    for x, z in ((6.5, 9.0), (11.5, 9.0), (9.0, 6.5), (9.0, 11.5)):
+        bollard(p, x, z)
+    hazard_line(p, 9.0, 15.0, 7.0, True, 0.3)
+    p.append(part("cylinder", "safety_yellow", g(9.0, 0.004, 9.0), (6.0, 6.0, 0.008), vertices=16))   # test circle
+    p.append(part("cylinder", "ind_floor", g(9.0, 0.006, 9.0), (5.7, 5.7, 0.008), vertices=16))
+    rooms["test_bay"] = p
+
+    p = []
+    room_shell(p, 24.0, 18.0, {"S": [10.5, 13.5, 16.5], "W": [7.5, 10.5], "E": [7.5, 10.5]}, "ind_floor", style=ROBOTICS)
+    wall_with_gaps(p, (8.85, 6.0), (18.15, 6.0), [(4.65, 2.4)], 3.6, 0.3, ROBOTICS)
+    wall_with_gaps(p, (9.0, 0.0), (9.0, 6.0), [], 3.6, 0.3, ROBOTICS)
+    wall_with_gaps(p, (18.0, 0.0), (18.0, 6.0), [], 3.6, 0.3, ROBOTICS)
+    p.append(part("cube", "steel_dark", g(13.5, 0.4, 0.75), (6.0, 0.7, 0.8)))
+    for x in (11.25, 12.75, 14.25, 15.75):
+        p.append(part("cube", "rubber", g(x, 1.8, 0.25), (1.1, 0.1, 0.65)))
+        p.append(part("cube", "screen", g(x, 1.8, 0.31), (1.0, 0.02, 0.55)))
+    p.append(part("cube", "ind_panel", g(13.5, 0.45, 3.2), (2.4, 1.4, 0.9)))
+    p.append(part("cube", "screen", g(13.5, 0.91, 3.2), (2.2, 1.2, 0.02)))
+    p.append(part("cube", "ind_panel", g(13.5, 0.55, 10.5), (7.0, 0.9, 1.1)))                # reception desk
+    p.append(part("cube", "safety_yellow", g(13.5, 1.12, 10.5), (7.1, 0.92, 0.04)))
+    p.append(part("cube", "led_blue", g(13.5, 0.7, 10.04), (6.6, 0.02, 0.06)))
+    p.append(part("cube", "steel_dark", g(4.0, 0.4, 3.0), (1.2, 1.2, 0.8)))                   # display arm
+    robot_arm(p, 4.0, 3.0)
+    hazard_line(p, 4.5, 9.0, 9.0, True, 0.3)
+    hazard_line(p, 19.5, 9.0, 9.0, True, 0.3)
+    hazard_line(p, 13.5, 14.5, 7.0, False, 0.3)
+    rooms["welcome_center"] = p
+
+    for name, pieces in rooms.items():
+        join_and_export(pieces, "room_robotics_" + name, material, "robotics", False)
+
+
+def roomba(material):
+    """The roomba (enemy_roomba): a white robot vacuum, 0.6 m across, a red eye light and a kitchen knife taped on
+    the front."""
+    parts = [
+        part("cylinder", "steel_dark", (0, 0, 0.05), (0.6, 0.6, 0.07), vertices=14),
+        part("cylinder", "robot_white", (0, 0, 0.12), (0.56, 0.56, 0.08), vertices=14),
+        part("cylinder", "ind_panel", (0, -0.02, 0.165), (0.34, 0.34, 0.02), vertices=12),
+        part("cube", "led_red", (0, 0.24, 0.155), (0.12, 0.03, 0.03)),
+        part("cylinder", "bolt", (0, -0.02, 0.18), (0.08, 0.08, 0.02), vertices=8),
+        part("cube", "bolt", (0.04, 0.4, 0.09), (0.05, 0.22, 0.008)),                       # knife blade
+        part("cube", "rubber", (0.04, 0.27, 0.09), (0.05, 0.08, 0.03)),                     # handle
+        part("cube", "label", (0.04, 0.27, 0.09), (0.07, 0.03, 0.035)),                     # tape
+    ]
+    for side in (-1, 1):
+        parts.append(part("cylinder", "safety_yellow", (side * 0.2, 0.2, 0.025), (0.1, 0.1, 0.02), vertices=6))
+    join_and_export(parts, "enemy_roomba", material, "robotics", True)
+
+
+def turret(material):
+    """The turret (enemy_turret): a yellow sentry gun on a tripod, 0.9 m tall, twin barrels and a red sensor eye."""
+    parts = [
+        part("cylinder", "steel_dark", (0, 0, 0.45), (0.08, 0.08, 0.5), vertices=6),
+        part("cube", "safety_yellow", (0, 0, 0.7), (0.34, 0.38, 0.26)),
+        part("cube", "stripe_black", (0, 0, 0.7), (0.35, 0.12, 0.27)),
+        part("uv", "led_red", (0, 0.19, 0.76), (0.09, 0.05, 0.09), segments=6, rings=4),
+        part("cube", "ind_panel", (0, -0.1, 0.86), (0.2, 0.2, 0.06)),
+    ]
+    for side in (-1, 1):
+        parts.append(part("cylinder", "steel_dark", (side * 0.09, 0.3, 0.64), (0.06, 0.06, 0.32), (90, 0, 0), vertices=6))
+        parts.append(part("cube", "steel", (side * 0.2, 0.0, 0.7), (0.06, 0.2, 0.14)))
+    for i in range(3):                                                                      # tripod
+        a = math.radians(i * 120 + 60)
+        parts.append(part("cylinder", "steel_dark", (math.sin(a) * 0.14, math.cos(a) * 0.14, 0.12), (0.04, 0.04, 0.32),
+                          (math.degrees(math.cos(a)) * 0.6, -math.degrees(math.sin(a)) * 0.6, 0), vertices=5))
+    join_and_export(parts, "enemy_turret", material, "robotics", True)
+
+
+def drone(material):
+    """The drone (enemy_drone): a yellow quadcopter 0.6 m across, four spinning rotor discs and a red camera."""
+    parts = [
+        part("cube", "safety_yellow", (0, 0, 0.1), (0.2, 0.26, 0.09)),
+        part("cube", "ind_panel", (0, 0, 0.155), (0.14, 0.18, 0.02)),
+        part("uv", "led_red", (0, 0.13, 0.08), (0.06, 0.05, 0.06), segments=6, rings=4),
+        part("cube", "steel_dark", (0, 0, 0.04), (0.1, 0.1, 0.06)),
+    ]
+    for i in range(4):
+        a = math.radians(45 + i * 90)
+        x, y = math.sin(a) * 0.22, math.cos(a) * 0.22
+        parts.append(part("cube", "steel_dark", (x / 2, y / 2, 0.11), (0.03, 0.3, 0.025), (0, 0, -math.degrees(a))))
+        parts.append(part("cylinder", "steel_dark", (x, y, 0.13), (0.04, 0.04, 0.06), vertices=6))
+        parts.append(part("cylinder", "steel", (x, y, 0.17), (0.2, 0.2, 0.008), vertices=10))
+    join_and_export(parts, "enemy_drone", material, "robotics", True)
+
+
+def flock_camera(material):
+    """The flock camera (enemy_flock_camera): a security camera that broke off its wall mount and flies with a
+    little rotor on top; a big lens and a red light. 0.45 m long."""
+    parts = [
+        part("cube", "robot_white", (0, -0.02, 0.15), (0.2, 0.36, 0.18)),
+        part("cube", "robot_white", (0, 0.02, 0.255), (0.24, 0.42, 0.03)),                   # sun hood
+        part("cylinder", "steel_dark", (0, 0.18, 0.15), (0.14, 0.14, 0.06), (90, 0, 0), vertices=10),
+        part("cylinder", "screen", (0, 0.215, 0.15), (0.1, 0.1, 0.01), (90, 0, 0), vertices=10),
+        part("uv", "led_red", (0.07, 0.17, 0.22), (0.03, 0.03, 0.03), segments=6, rings=3),
+        part("cylinder", "steel_dark", (0, -0.05, 0.3), (0.03, 0.03, 0.06), vertices=6),
+        part("cube", "steel", (0, -0.05, 0.335), (0.3, 0.03, 0.006)),                        # rotor
+        part("cube", "steel", (0, -0.05, 0.335), (0.03, 0.3, 0.006)),
+        part("cube", "rubber", (0, -0.2, 0.15), (0.04, 0.06, 0.04)),                         # torn cable
+        part("cylinder", "copper", (0, -0.24, 0.15), (0.02, 0.02, 0.05), (90, 0, 0), vertices=4),
+        part("cube", "steel_dark", (0, -0.02, 0.05), (0.08, 0.1, 0.06)),                     # broken mount
+    ]
+    join_and_export(parts, "enemy_flock_camera", material, "robotics", True)
+
+
+def robobrain(material, glass_material):
+    """The Robobrain boss (boss_robobrain): a brain in a glass dome on a yellow tank body with tracks, two clamp
+    arms and a red visor. 2.75 m tall. The dome is its own see-through model (boss_robobrain_glass)."""
+    parts = [
+        part("cube", "steel_dark", (0, 0, 0.5), (1.0, 2.0, 0.5)),                                  # chassis
+        part("cube", "safety_yellow", (0, 0, 1.25), (1.4, 1.4, 0.9)),                             # body
+        part("cube", "stripe_black", (0, 0, 0.88), (1.42, 1.42, 0.12)),
+        part("cube", "ind_panel", (0, 0.71, 1.3), (0.9, 0.04, 0.4)),
+        part("cube", "led_red", (0, 0.74, 1.32), (0.6, 0.04, 0.16)),                              # visor
+        part("cylinder", "steel", (0, 0, 1.76), (1.4, 1.4, 0.14), vertices=14),                  # dome collar
+        part("uv", "brain_pink", (0.0, 0.0, 2.05), (0.8, 0.95, 0.62), segments=10, rings=6),
+        part("cube", "brain_pink", (0.0, 0.0, 2.36), (0.04, 0.8, 0.02)),                           # the middle groove
+        part("uv", "brain_pink", (0.18, 0.18, 2.24), (0.36, 0.4, 0.28), segments=8, rings=5),
+        part("uv", "brain_pink", (-0.18, -0.15, 2.24), (0.36, 0.42, 0.28), segments=8, rings=5),
+        part("cylinder", "copper", (0.0, -0.3, 1.86), (0.06, 0.06, 0.2), vertices=6),
+        part("cylinder", "copper", (0.2, 0.25, 1.86), (0.05, 0.05, 0.2), vertices=6),
+    ]
+    for side in (-1, 1):
+        parts.append(part("cube", "rubber", (side * 0.75, 0, 0.4), (0.5, 2.4, 0.8)))               # tracks
+        for y in (-0.8, 0.0, 0.8):
+            parts.append(part("cylinder", "steel", (side * 1.0, y, 0.4), (0.5, 0.5, 0.04), (0, 90, 0), vertices=10))
+        parts.append(part("cube", "safety_yellow", (side * 0.95, 0.3, 1.35), (0.35, 1.3, 0.35)))  # arms
+        parts.append(part("cube", "steel_dark", (side * 0.95, 1.0, 1.35), (0.45, 0.2, 0.45)))
+        for dx in (-0.14, 0.14):
+            parts.append(part("cube", "steel", (side * 0.95 + dx, 1.2, 1.35), (0.06, 0.28, 0.3)))
+        parts.append(part("cylinder", "steel_dark", (side * 0.72, 0.3, 1.35), (0.3, 0.3, 0.1), (0, 90, 0), vertices=8))
+    join_and_export(parts, "boss_robobrain", material, "robotics", False)
+    dome = [part("uv", "glass", (0, 0, 2.1), (1.3, 1.3, 1.3), segments=14, rings=8)]
+    join_and_export(dome, "boss_robobrain_glass", glass_material, "robotics", False)
+
+
 clear_scene()
 palette = make_palette()
 solid = palette_material(palette)
@@ -1038,6 +1333,12 @@ flytrap(solid)
 spore_shooter(solid)
 vine_creeper(solid)
 mushroom_man(solid)
+robotics_rooms(solid, see_through)
+roomba(solid)
+turret(solid)
+drone(solid)
+flock_camera(solid)
+robobrain(solid, see_through)
 bat(solid)
 fly(solid)
 kangaroo(solid)

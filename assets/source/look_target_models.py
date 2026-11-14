@@ -409,6 +409,86 @@ def animal_holding(material):
     join_and_export(parts, "room_zoology_animal_holding", material, "zoology", False)
 
 
+def room_shell(parts, width, depth, doors, floor_swatch="concrete", height=3.6, wall=0.3):
+    """Floor, four walls with doorway gaps and a ceiling for a tile of width x depth metres (origin at its corner).
+    doors: {"N": [x...], "S": [x...], "W": [z...], "E": [z...]}: each doorway's centre along that wall (2.4 m wide)."""
+    parts.append(part("cube", floor_swatch, g(width / 2.0, -0.05, depth / 2.0), (width, depth, 0.1)))
+    gaps = {side: [(c, 2.4) for c in doors.get(side, [])] for side in "NSWE"}
+    wall_with_gaps(parts, (0.0, -wall / 2.0), (width, -wall / 2.0), gaps["N"], height, wall)
+    wall_with_gaps(parts, (0.0, depth + wall / 2.0), (width, depth + wall / 2.0), gaps["S"], height, wall)
+    wall_with_gaps(parts, (-wall / 2.0, 0.0), (-wall / 2.0, depth), gaps["W"], height, wall)
+    wall_with_gaps(parts, (width + wall / 2.0, 0.0), (width + wall / 2.0, depth), gaps["E"], height, wall)
+    parts.append(part("cube", "plaster_dirty", g(width / 2.0, height + 0.05, depth / 2.0), (width + wall * 2, depth + wall * 2, 0.1)))
+    for z in [3.0 * i for i in range(1, int(depth / 3.0))]:
+        parts.append(part("cube", "wood_dark", g(width / 2.0, height - 0.15, z), (width, 0.25, 0.3)))
+
+
+def vet_surgery(material):
+    """Zoology's vet surgery (tile_zoology_vet_surgery, 12 x 12 m): a pale tiled floor, the operating table under a
+    big lamp, an instrument trolley, a glass-fronted cabinet, a sink and an X-ray light box."""
+    w = d = 12.0
+    parts = []
+    room_shell(parts, w, d, {"N": [4.5], "S": [7.5], "W": [7.5], "E": [4.5]}, "label")
+    for i in range(1, 12):                                                         # floor tile grout
+        parts.append(part("cube", "plaster_dirty", g(float(i), 0.004, d / 2.0), (0.03, d, 0.008)))
+        parts.append(part("cube", "plaster_dirty", g(w / 2.0, 0.004, float(i)), (w, 0.03, 0.008)))
+    # Operating table (2.2 x 1 m top, 1 m high) and its lamp.
+    parts.append(part("cube", "metal", g(6.0, 0.95, 6.0), (2.2, 1.0, 0.1)))
+    parts.append(part("cube", "steel_dark", g(6.0, 0.45, 6.0), (0.3, 0.3, 0.9)))
+    parts.append(part("cube", "steel_dark", g(6.0, 0.05, 6.0), (1.4, 0.7, 0.1)))
+    parts.append(part("cube", "water", g(6.0, 1.02, 6.0), (2.0, 0.8, 0.04)))
+    parts.append(part("cylinder", "steel_dark", g(6.0, 3.1, 6.0), (0.05, 0.05, 1.0), vertices=6))
+    parts.append(part("cylinder", "metal", g(6.0, 2.55, 6.0), (0.9, 0.9, 0.15), vertices=12))
+    parts.append(part("cylinder", "skylight", g(6.0, 2.47, 6.0), (0.75, 0.75, 0.02), vertices=12))
+    # Instrument trolley (1 x 0.6 m, two shelves).
+    for y in (0.3, 0.85):
+        parts.append(part("cube", "metal", g(9.0, y, 9.0), (1.0, 0.6, 0.04)))
+    for x in (8.55, 9.45):
+        for z in (8.75, 9.25):
+            parts.append(part("cylinder", "steel", g(x, 0.45, z), (0.04, 0.04, 0.9), vertices=4))
+    parts.append(part("cube", "bolt", g(8.8, 0.9, 9.0), (0.3, 0.2, 0.04)))
+    # Cabinet against the north wall (3 x 2 x 0.8 m) with glass doors and bottles.
+    parts.append(part("cube", "wood_dark", g(9.5, 1.0, 0.55), (3.0, 0.8, 2.0)))
+    parts.append(part("cube", "glass", g(9.5, 1.3, 0.94), (2.8, 0.02, 1.2)))
+    for i in range(6):
+        parts.append(part("cylinder", ("dna_green", "cap_red", "water")[i % 3], g(8.4 + i * 0.42, 1.35, 0.8),
+                          (0.1, 0.1, 0.25), vertices=6))
+    # Sink on the west wall and an X-ray light box above it.
+    parts.append(part("cube", "metal", g(0.45, 0.9, 3.0), (0.6, 1.2, 0.2)))
+    parts.append(part("cube", "steel_dark", g(0.4, 0.45, 3.0), (0.5, 0.9, 0.9)))
+    parts.append(part("cube", "skylight", g(0.04, 2.0, 3.0), (0.02, 1.0, 0.7)))
+    join_and_export(parts, "room_zoology_vet_surgery", material, "zoology", False)
+
+
+def sack(parts, x, y, z, turn):
+    parts.append(part("uv", "feed_sack", g(x, y, z), (0.75, 0.5, 0.32), (0, 0, turn), segments=6, rings=4))
+    parts.append(part("cube", "wood_dark", g(x, y + 0.15, z), (0.1, 0.4, 0.05), (0, 0, turn)))
+
+
+def feed_storage(material):
+    """Zoology's feed storage (tile_zoology_feed_storage, 9 x 9 m): sack piles in the four corners (on the grey box's
+    1.8 m squares), a shelf of tins, a scoop and spilt feed."""
+    w = d = 9.0
+    parts = []
+    room_shell(parts, w, d, {"N": [4.5], "S": [4.5], "W": [4.5], "E": [4.5]})
+    for cx, cz in ((1.2, 1.2), (7.8, 1.2), (1.2, 7.8), (7.8, 7.8)):
+        parts.append(part("cube", "wood", g(cx, 0.06, cz), (1.8, 1.8, 0.12)))         # a pallet
+        # Three layers, so the pile fills the grey box's 1 m tall collision.
+        for level, offsets in enumerate(([(-0.4, -0.4), (0.4, -0.4), (-0.4, 0.4), (0.4, 0.4)],
+                                         [(-0.3, -0.3), (0.35, -0.25), (0.0, 0.35)], [(0.0, 0.0)])):
+            for i, (ox, oz) in enumerate(offsets):
+                sack(parts, cx + ox, 0.3 + level * 0.32, cz + oz, (i * 37 + level * 50) % 90)
+    # Spilt feed, a scoop and a shelf of tins on the south wall.
+    parts.append(part("cube", "hay_dark", g(5.6, 0.01, 6.2), (1.4, 0.9, 0.02), (0, 0, 20)))
+    parts.append(part("cube", "steel", g(5.9, 0.06, 6.0), (0.35, 0.2, 0.12), (0, 0, 30)))
+    parts.append(part("cube", "wood_dark", g(4.5, 1.4, 8.8), (2.4, 0.4, 0.06)))
+    parts.append(part("cube", "wood_dark", g(4.5, 1.9, 8.8), (2.4, 0.4, 0.06)))
+    for i in range(6):
+        parts.append(part("cylinder", ("metal", "cap_red", "moss")[i % 3], g(3.6 + i * 0.36, 1.58, 8.8),
+                          (0.22, 0.22, 0.3), vertices=8))
+    join_and_export(parts, "room_zoology_feed_storage", material, "zoology", False)
+
+
 clear_scene()
 palette = make_palette()
 solid = palette_material(palette)
@@ -421,4 +501,6 @@ meat(solid)
 vial(solid, see_through)
 lift(solid)
 animal_holding(solid)
+vet_surgery(solid)
+feed_storage(solid)
 print("LOOK_TARGET_DONE")

@@ -2072,6 +2072,102 @@ def cosmetics(material, glass_material):
                     "cosmetic_hat_brain_jar_glass", glass_material, "shared", False)
 
 
+BREAK_STYLE = {"lower": "wood", "upper": "plaster", "trim": "wood_dark", "ceiling": "plaster_dirty", "beam": "wood_dark",
+               "light": None}
+
+
+def break_room(material, glass_material):
+    """The Break Room (systems/break_room/break_room.tscn, origin in the middle of the room): a cosy staff room between
+    floors (docs/ART_BIBLE.md: warm, posters, a fridge). Walls and the big pieces sit on the scene's CSG boxes; the
+    kitchenette, fridge, sofa and water cooler get their own CSG boxes in the scene."""
+    p = [part("cube", "wood", g(0, -0.02, 0), (14.0, 18.0, 0.04)),                                  # floor
+         part("cube", "steel_dark", g(0, -0.02, -11.85), (6.0, 5.8, 0.04))]                        # lift bay floor
+    for i in range(1, 24):
+        p.append(part("cube", "wood_dark", g(-7.0 + i * 0.6, 0.002, 0), (0.02, 18.0, 0.004)))
+    p.append(part("cube", "terracotta", g(0, 0.006, 2.0), (5.2, 4.4, 0.012)))                       # rug
+    p.append(part("cube", "hay", g(0, 0.01, 2.0), (4.6, 3.8, 0.012)))
+    p.append(part("cube", "terracotta", g(0, 0.014, 2.0), (4.2, 3.4, 0.012)))
+    hazard_line(p, 0.0, -9.1, 6.0, True, 0.25)
+    # Walls (on the CSG walls: 0.5 thick, 3.5 high).
+    wall_with_gaps(p, (-7.5, 9.25), (7.5, 9.25), [], 3.5, 0.5, BREAK_STYLE)
+    wall_with_gaps(p, (7.25, -9.5), (7.25, 9.5), [], 3.5, 0.5, BREAK_STYLE)
+    wall_with_gaps(p, (-7.25, -9.5), (-7.25, 9.5), [], 3.5, 0.5, BREAK_STYLE)
+    wall_with_gaps(p, (-7.5, -9.25), (-3.0, -9.25), [], 3.5, 0.5, BREAK_STYLE)
+    wall_with_gaps(p, (3.0, -9.25), (7.5, -9.25), [], 3.5, 0.5, BREAK_STYLE)
+    for x in (-3.25, 3.25):
+        p.append(part("cube", "steel", g(x, 1.75, -12.1), (0.5, 5.7, 3.5)))
+    p.append(part("cube", "steel", g(0, 1.75, -14.95), (7.0, 0.5, 3.5)))
+    p.append(part("cube", "plaster_dirty", g(0, 3.55, -2.75), (15.0, 24.5, 0.1)))                 # ceiling
+    for z in (-6.0, -3.0, 0.0, 3.0, 6.0):
+        p.append(part("cube", "wood_dark", g(0, 3.38, z), (14.0, 0.25, 0.3)))
+    # Pendant lamps (the scene puts warm lights under them).
+    for x, z in BREAK_ROOM_LAMPS:
+        p.append(part("cylinder", "stripe_black", g(x, 3.1, z), (0.02, 0.02, 0.6), vertices=4))
+        p.append(part("cone", "hay", g(x, 2.72, z), (0.55, 0.55, 0.3), tip=0.12, vertices=10))
+        p.append(part("uv", "skylight", g(x, 2.62, z), (0.16, 0.16, 0.16), segments=6, rings=4))
+    # The table (2 x 0.8 x 1) with mugs and a box of doughnuts.
+    p.append(part("cube", "wood", g(-3.5, 0.77, 5.0), (2.1, 1.1, 0.06)))
+    for x in (-4.4, -2.6):
+        for z in (4.6, 5.4):
+            p.append(part("cylinder", "wood_dark", g(x, 0.37, z), (0.07, 0.07, 0.74), vertices=6))
+    for x, z, swatch in ((-3.9, 4.8, "cap_red"), (-3.2, 5.25, "led_blue"), (-2.8, 4.75, "label")):
+        p.append(part("cylinder", swatch, g(x, 0.86, z), (0.08, 0.08, 0.1), vertices=8))
+    p.append(part("cube", "label", g(-3.5, 0.83, 5.15), (0.4, 0.3, 0.06)))
+    p.append(part("cube", "skin_pink", g(-3.5, 0.865, 5.15), (0.36, 0.26, 0.01)))
+    # The jacket closet (0.9 x 2.4 x 2), doors facing into the room.
+    p.append(part("cube", "wood_dark", g(6.5, 1.2, 0), (0.9, 2.0, 2.4)))
+    for z in (-0.5, 0.5):
+        p.append(part("cube", "wood", g(6.04, 1.15, z), (0.02, 0.95, 2.2)))
+        p.append(part("cube", "bolt", g(6.02, 1.2, z * 0.15), (0.03, 0.03, 0.2)))
+    p.append(part("cube", "label", g(6.03, 2.25, 0), (0.01, 0.5, 0.12)))
+    # The mirror (0.1 x 2 x 1.4) and the whiteboard (4.6 x 2 x 0.1).
+    p.append(part("cube", "wood_dark", g(-6.95, 1.5, 0), (0.1, 1.4, 2.0)))
+    p.append(part("cube", "glass", g(-6.89, 1.5, 0), (0.01, 1.25, 1.85)))
+    p.append(part("cube", "steel", g(0, 1.85, 8.95), (4.6, 0.1, 2.0)))
+    p.append(part("cube", "label", g(0, 1.85, 8.895), (4.45, 0.01, 1.85)))
+    p.append(part("cube", "steel", g(0, 0.86, 8.85), (2.0, 0.12, 0.04)))
+    # The how-to boards: paper on cork.
+    for x, y, h in ((-5.25, 1.8, 1.3), (5.25, 2.45, 1.0), (5.25, 1.25, 1.0)):
+        p.append(part("cube", "hay_dark", g(x, y, -8.97), (3.2, 0.06, h)))
+        p.append(part("cube", "label", g(x, y, -8.935), (3.0, 0.01, h - 0.12)))
+        for side in (-1, 1):
+            p.append(part("cylinder", "cap_red", g(x + side * 1.4, y + h / 2.0 - 0.1, -8.925), (0.04, 0.04, 0.02), (90, 0, 0), vertices=6))
+    # Kitchenette: counter, sink, kettle, coffee machine, microwave; the fridge.
+    p.append(part("cube", "wood_dark", g(-5.8, 0.43, 8.6), (2.3, 0.8, 0.86)))
+    p.append(part("cube", "plaster", g(-5.8, 0.88, 8.6), (2.35, 0.85, 0.04)))
+    p.append(part("cylinder", "steel", g(-6.4, 0.905, 8.6), (0.45, 0.35, 0.02), vertices=8))
+    p.append(part("cube", "rubber", g(-5.5, 1.05, 8.75), (0.25, 0.25, 0.3)))
+    p.append(part("cube", "steel_dark", g(-4.95, 1.05, 8.7), (0.5, 0.35, 0.3)))
+    p.append(part("cylinder", "cap_red", g(-6.0, 0.98, 8.7), (0.15, 0.15, 0.16), vertices=8))
+    p.append(part("cube", "label", g(-6.55, 1.0, 6.8), (0.8, 0.8, 2.0)))                           # fridge
+    p.append(part("cube", "steel_dark", g(-6.14, 1.25, 6.5), (0.03, 0.03, 0.4)))
+    p.append(part("cube", "plaster_dirty", g(-6.145, 1.36, 6.8), (0.005, 0.78, 0.02)))
+    for y, z, swatch in ((1.6, 7.0, "safety_yellow"), (1.4, 6.9, "lab_green"), (1.1, 7.05, "cap_red")):  # magnets, notes
+        p.append(part("cube", swatch, g(-6.145, y, z), (0.005, 0.12, 0.12)))
+    # Sofa against the east wall, cushions; the water cooler; plants; posters; a clock.
+    p.append(part("cube", "cap_red", g(6.5, 0.22, 6.5), (1.0, 2.6, 0.44)))
+    p.append(part("cube", "cap_red", g(6.85, 0.62, 6.5), (0.3, 2.6, 0.6)))
+    for z in (5.3, 7.7):
+        p.append(part("cube", "cap_red", g(6.5, 0.55, z), (1.0, 0.2, 0.3)))
+    for z in (6.0, 7.0):
+        p.append(part("cube", "terracotta", g(6.45, 0.5, z), (0.7, 0.85, 0.12)))
+    p.append(part("cube", "plaster", g(6.6, 0.45, -6.0), (0.4, 0.4, 0.9)))                         # water cooler
+    p.append(part("cylinder", "water", g(6.6, 1.1, -6.0), (0.34, 0.34, 0.45), vertices=8))
+    for x, z in ((-6.5, -8.4), (6.5, 8.4), (-6.5, -2.5)):
+        p.append(part("cylinder", "terracotta", g(x, 0.25, z), (0.5, 0.5, 0.5), vertices=8))
+        p.append(part("ico", "moss", g(x, 0.85, z), (0.8, 0.8, 0.9), subdivisions=1))
+    for x, z, sx, sz, swatch in ((7.0, -3.5, 0.02, 0.9, "lab_green"), (7.0, 3.0, 0.02, 0.9, "safety_yellow"),
+                                 (-7.0, 3.0, 0.02, 0.9, "led_blue"), (-7.0, -5.5, 0.02, 0.9, "cap_red")):
+        p.append(part("cube", "label", g(x, 2.0, z), (sx + 0.01, sz + 0.1, 1.3)))
+        p.append(part("cube", swatch, g(x - 0.005 if x > 0 else x + 0.005, 2.1, z), (sx, sz - 0.1, 0.8)))
+    p.append(part("cylinder", "label", g(0, 3.15, 8.97), (0.4, 0.4, 0.04), (90, 0, 0), vertices=12))   # clock
+    p.append(part("cube", "stripe_black", g(0.05, 3.18, 8.94), (0.12, 0.01, 0.02), (0, 30, 0)))
+    join_and_export(p, "room_break_room", material, "shared", False)
+
+
+BREAK_ROOM_LAMPS = ((-3.5, 5.0), (3.5, 5.0), (0.0, 0.0), (-3.5, -5.0), (3.5, -5.0))
+
+
 clear_scene()
 palette = make_palette()
 for other_department in DEPARTMENT_SHELLS:
@@ -2115,6 +2211,7 @@ debris_and_cart(solid, see_through)
 pickups(solid, solid)
 machines(solid, see_through)
 cosmetics(solid, see_through)
+break_room(solid, see_through)
 bat(solid)
 fly(solid)
 kangaroo(solid)

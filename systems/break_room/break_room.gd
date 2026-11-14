@@ -22,6 +22,9 @@ The cargo lift is out of order. Again.
 
 (scrawled underneath:) fix lift, go UP, get out"""
 
+## NEW 2026-11-14 (art phase, Zachary OK'd the mock-up): the room's warm light and air (GameWorld puts it on).
+@export var look: LightingStyleData
+
 var _net: NetService
 var _config: GameConfig
 var _props: PropSpawner

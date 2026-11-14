@@ -106,6 +106,7 @@ func build_break_room(scene: PackedScene) -> Array[Node3D]:
 	clear_level()
 	apply_look(null)
 	var room := scene.instantiate() as BreakRoom
+	apply_look(room.look)
 	_level_root.add_child(room)
 	_line_up(room.get_lift_spot())
 	return room.get_spawn_points()

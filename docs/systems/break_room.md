@@ -130,3 +130,4 @@ press them, and the "who's missing" sign has a copy on the elevator's back wall.
   inside spawns everyone automatically.
 - **game_flow:** listen to `elevator_start_accepted` and start the run; when it ends, load the Break Room again.
 - **cargo_lift:** replace the ElevatorZone node in `break_room.tscn` (break_room owns the scene, so ask).
+- 2026-11-14 (art phase, Zachary OK'd the mock-up): the cosy Break Room. The CSG `Geometry` is hidden (its collision stays) and the model `Art` (`assets/models/shared/room_break_room.mesh`) shows instead: wood floor and panelling, beamed ceiling, pendant lamps, rug, kitchenette, fridge, sofa, water cooler, plants, posters, clock. NEW CSG boxes `Counter`, `Fridge`, `Sofa`, `WaterCooler` for their collision. NEW `Lamps` (five warm OmniLights, two with shadows). NEW `@export var look: LightingStyleData` (warm light and air) that GameWorld.build_break_room puts on the world.

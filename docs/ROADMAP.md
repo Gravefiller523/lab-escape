@@ -492,7 +492,7 @@ The five questions, the same every time:
   hole in the model. Every room in the game now has a finished model.
   On `wp/27-player-body`: the lift's twelve spare parts, the heavy crate, the trash bag, the Zoology lift part,
   the six debris pieces and the cart,
-  and a mock-up of the player's body (a lab worker in blue scrubs, `player_body.glb`) waiting on Zachary's OK before
+  and a mock-up of the player's body (a scientist in a white lab coat, `player_body.glb`) waiting on Zachary's OK before
   it replaces the grey capsule. **Status: in progress.**
 
 ### Phase S: sound (see section e)

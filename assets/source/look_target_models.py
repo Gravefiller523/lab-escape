@@ -96,6 +96,9 @@ PALETTE = {
     "skin": (10, 8, (0.87, 0.68, 0.55)),
     "hair": (11, 8, (0.32, 0.22, 0.15)),
     "sneaker": (12, 8, (0.93, 0.93, 0.92)),
+    "coat_white": (13, 8, (0.93, 0.94, 0.92)),
+    "shirt": (14, 8, (0.62, 0.76, 0.90)),
+    "trousers": (15, 8, (0.24, 0.25, 0.29)),
 }
 
 # Each department's colours for the shell squares (docs/ART_BIBLE.md section 2). Zoology's are the PALETTE ones.
@@ -1600,39 +1603,50 @@ def shared_rooms(material):
 
 
 def player_body(material):
-    """The player (systems/player/player.tscn, MOCK-UP for Zachary's OK): a lab worker in blue scrubs, 1.8 m tall,
-    trainers, an ID badge on a lanyard and short hair. Coats, hats, glasses, gloves and shoes from the closet go on
-    top of this (systems/cosmetics); mutation parts go on its attach points."""
+    """The player (systems/player/player.tscn, MOCK-UP for Zachary's OK): a scientist, 1.8 m tall, in a white lab
+    coat that hangs to the knees and is open at the front over a blue shirt and tie, dark trousers, black shoes,
+    glasses, an ID badge and pens in the chest pocket. Hats, glasses, gloves and shoes from the closet go on top;
+    mutation parts go on its attach points."""
     parts = [
-        part("cube", "scrubs", (0, 0, 0.92), (0.38, 0.22, 0.2)),                                     # hips
-        part("cylinder", "scrubs", (0, 0, 1.2), (0.44, 0.26, 0.5), vertices=8),                       # torso
-        part("cylinder", "scrubs", (0, 0, 1.43), (0.48, 0.27, 0.08), vertices=8),                     # shoulders
-        part("cube", "skin", (0, 0.115, 1.42), (0.1, 0.04, 0.1), (0, 45, 0)),                         # v-neck
-        part("cube", "scrubs_dark", (-0.11, 0.13, 1.28), (0.12, 0.02, 0.1)),                          # chest pocket
-        part("cylinder", "steel_dark", (-0.11, 0.135, 1.35), (0.012, 0.012, 0.08), vertices=4),       # pen
-        part("cube", "lab_green", (0.06, 0.135, 1.33), (0.015, 0.01, 0.2), (0, 25, 0)),              # lanyard
-        part("cube", "label", (0.1, 0.14, 1.2), (0.07, 0.01, 0.1)),                                   # ID badge
-        part("cube", "lab_green", (0.1, 0.146, 1.23), (0.05, 0.005, 0.02)),
-        part("cylinder", "skin", (0, 0, 1.52), (0.11, 0.11, 0.12), vertices=8),                       # neck
+        part("cylinder", "coat_white", (0, 0, 1.2), (0.46, 0.28, 0.5), vertices=8),                   # coat body
+        part("cylinder", "coat_white", (0, 0, 1.44), (0.5, 0.29, 0.08), vertices=8),                  # shoulders
+        part("cylinder", "coat_white", (0, -0.01, 0.78), (0.5, 0.32, 0.36), vertices=8),              # coat skirt
+        part("cube", "shirt", (0, 0.132, 1.27), (0.13, 0.03, 0.34)),                                  # shirt front
+        part("cube", "cap_red", (0, 0.15, 1.27), (0.035, 0.01, 0.26)),                                # tie
+        part("cube", "cap_red", (0, 0.152, 1.41), (0.05, 0.01, 0.04)),
+        part("cube", "trousers", (0, 0.15, 0.82), (0.12, 0.03, 0.3)),                                 # gap in the coat
+        part("cube", "shirt", (0, 0.06, 1.5), (0.2, 0.14, 0.05)),                                     # shirt collar
+        part("cube", "coat_white", (0.085, 0.14, 1.34), (0.05, 0.02, 0.22), (0, -12, 0)),             # lapels
+        part("cube", "coat_white", (-0.085, 0.14, 1.34), (0.05, 0.02, 0.22), (0, 12, 0)),
+        part("cube", "coat_white", (-0.13, 0.142, 1.24), (0.1, 0.01, 0.08)),                          # chest pocket
+        part("cylinder", "steel_dark", (-0.15, 0.145, 1.29), (0.012, 0.012, 0.07), vertices=4),       # pens
+        part("cylinder", "led_blue", (-0.12, 0.145, 1.29), (0.012, 0.012, 0.07), vertices=4),
+        part("cube", "label", (0.13, 0.142, 1.2), (0.07, 0.01, 0.1)),                                 # ID badge
+        part("cube", "lab_green", (0.13, 0.148, 1.23), (0.05, 0.005, 0.02)),
+        part("cylinder", "skin", (0, 0, 1.53), (0.11, 0.11, 0.1), vertices=8),                        # neck
         part("uv", "skin", (0, 0.01, 1.66), (0.24, 0.26, 0.28), segments=10, rings=6),               # head
         part("uv", "hair", (0, -0.025, 1.73), (0.26, 0.27, 0.2), segments=10, rings=5),              # hair
-        part("cube", "hair", (0, 0.07, 1.78), (0.2, 0.1, 0.06), (15, 0, 0)),                          # fringe
-        part("uv", "eye", (0.05, 0.125, 1.67), (0.035, 0.02, 0.04), segments=6, rings=4),
-        part("uv", "eye", (-0.05, 0.125, 1.67), (0.035, 0.02, 0.04), segments=6, rings=4),
-        part("cube", "hair", (0.05, 0.13, 1.71), (0.06, 0.015, 0.015)),                               # brows
-        part("cube", "hair", (-0.05, 0.13, 1.71), (0.06, 0.015, 0.015)),
+        part("cube", "hair", (0.03, 0.07, 1.78), (0.2, 0.1, 0.06), (15, 0, -6)),                      # messy fringe
+        part("cube", "hair", (-0.08, 0.02, 1.81), (0.08, 0.08, 0.05), (0, 20, 30)),
+        part("uv", "eye", (0.05, 0.125, 1.67), (0.03, 0.02, 0.035), segments=6, rings=4),
+        part("uv", "eye", (-0.05, 0.125, 1.67), (0.03, 0.02, 0.035), segments=6, rings=4),
+        part("cube", "hair", (0.05, 0.13, 1.715), (0.06, 0.015, 0.015)),                              # brows
+        part("cube", "hair", (-0.05, 0.13, 1.715), (0.06, 0.015, 0.015)),
         part("cone", "skin", (0, 0.14, 1.635), (0.04, 0.04, 0.05), (-90, 0, 0), vertices=4),         # nose
         part("cube", "skin_pink", (0, 0.125, 1.59), (0.06, 0.01, 0.012)),                             # mouth
+        part("cube", "steel_dark", (0, 0.142, 1.672), (0.04, 0.01, 0.012)),                           # glasses bridge
     ]
     for side in (-1, 1):
-        parts.append(part("uv", "skin", (side * 0.125, 0.0, 1.66), (0.05, 0.04, 0.07), segments=6, rings=4))  # ears
-        parts.append(part("cylinder", "scrubs", (side * 0.105, 0, 0.5), (0.15, 0.15, 0.82), vertices=8))      # legs
-        parts.append(part("cube", "sneaker", (side * 0.105, 0.035, 0.05), (0.13, 0.28, 0.1)))                # trainers
-        parts.append(part("cube", "rubber", (side * 0.105, 0.035, 0.008), (0.135, 0.29, 0.016)))
-        parts.append(part("cube", "lab_green", (side * 0.17, 0.035, 0.06), (0.005, 0.12, 0.03)))
-        parts.append(part("cylinder", "scrubs", (side * 0.27, 0, 1.3), (0.12, 0.12, 0.28), (0, side * 8, 0), vertices=8))  # sleeves
-        parts.append(part("cylinder", "skin", (side * 0.29, 0.0, 1.03), (0.09, 0.09, 0.3), (0, side * 4, 0), vertices=8))  # forearms
-        parts.append(part("uv", "skin", (side * 0.3, 0.0, 0.84), (0.09, 0.07, 0.12), segments=6, rings=4))               # hands
+        parts.append(part("cylinder", "steel_dark", (side * 0.05, 0.138, 1.67), (0.075, 0.075, 0.012), (90, 0, 0), vertices=8))
+        parts.append(part("cylinder", "glass", (side * 0.05, 0.142, 1.67), (0.06, 0.06, 0.008), (90, 0, 0), vertices=8))
+        parts.append(part("cube", "steel_dark", (side * 0.105, 0.07, 1.675), (0.01, 0.13, 0.01)))                      # arms of the glasses
+        parts.append(part("uv", "skin", (side * 0.125, 0.0, 1.66), (0.05, 0.04, 0.07), segments=6, rings=4))         # ears
+        parts.append(part("cylinder", "trousers", (side * 0.1, 0, 0.42), (0.15, 0.15, 0.74), vertices=8))             # legs
+        parts.append(part("cube", "rubber", (side * 0.1, 0.035, 0.045), (0.12, 0.27, 0.09)))                          # shoes
+        parts.append(part("cube", "coat_white", (side * 0.19, 0.12, 0.9), (0.12, 0.08, 0.14)))                        # coat pockets
+        parts.append(part("cylinder", "coat_white", (side * 0.28, 0, 1.18), (0.13, 0.13, 0.52), (0, side * 6, 0), vertices=8))  # sleeves
+        parts.append(part("cylinder", "shirt", (side * 0.3, 0, 0.92), (0.1, 0.1, 0.03), vertices=8))                  # cuffs
+        parts.append(part("uv", "skin", (side * 0.3, 0.0, 0.85), (0.09, 0.07, 0.12), segments=6, rings=4))            # hands
     join_and_export(parts, "player_body", material, "shared", True)
 
 

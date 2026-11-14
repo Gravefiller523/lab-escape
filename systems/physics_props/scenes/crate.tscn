@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/prop_crate.mesh" id="art_mesh_1"]
 
 [sub_resource type="BoxShape3D" id="Shape_crate"]
 size = Vector3(0.6, 0.6, 0.6)
@@ -12,6 +13,7 @@ albedo_color = Color(0.62, 0.45, 0.28, 1)
 material = SubResource("Mat_crate")
 size = Vector3(0.6, 0.6, 0.6)
 
+
 [node name="Crate" type="RigidBody3D"]
 script = ExtResource("1_prop")
 
@@ -19,4 +21,4 @@ script = ExtResource("1_prop")
 shape = SubResource("Shape_crate")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("Mesh_crate")
+mesh = ExtResource("art_mesh_1")

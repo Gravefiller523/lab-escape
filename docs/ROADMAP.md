@@ -454,7 +454,9 @@ The five questions, the same every time:
 - **Built so far (2026-11-14):** `docs/ART_BIBLE.md` written. **Waiting on Zachary:** Blender isn't installed on the PC yet (one step, in the thread). Import settings get set when the first model comes in. **Status: in progress.**
 #### WP21: Look target (needs your OK on screenshots before anything rolls out)
 - One Zoology animal holding room, the lift, the rat, a crate, gem, meat and DNA vial at final quality.
-  **Status: not started.**
+  - **Built:** all of them, as Blender scripts in `assets/source/` (models in `assets/models/`), shown as screenshots next to the grey box. Zachary approved on 2026-11-14, asking for the rat's teeth to sit back in its head (done).
+  **Status: done** (approved; the rollout into the game is next).
+
 #### WP21b: Performance budget check (added 2026-11-12, Zachary's choice; before the art rollout)
 - **What:** measure before the art multiplies: frames per second, the time a floor takes to load, and how much the
   graphics card is asked to draw, on Zachary's PC, in the busiest grey-box floor and in the look-target room, alone
@@ -462,7 +464,8 @@ The five questions, the same every time:
   the art bible (triangles, lights that cast shadows, effects), replacing section d's estimates.
 - **Why here:** if the look target is too heavy, it's far cheaper to find out with one room than after sixty.
 - **Test it:** type `perf` in the console on a busy floor and read the numbers against the budget.
-- **Gaps:** G47 (first half). **Status: not started.**
+- **Built:** the `perf` console readout (fps, frame time, draw calls and triangles against the budget in GameConfig) and `docs/PERFORMANCE.md` with the first measurements: the look-target room is about 4,000 triangles in 5 draw calls, so a whole floor would use about a fifth of the triangle budget; lighting and fog are the expensive parts. A modest PC can't be measured here (this PC has an RTX 5080), so that check stays in WP31.
+- **Gaps:** G47 (first half). **Status: done.**
 #### WP21c: The Steam "Coming soon" page (added 2026-11-12, Zachary's choice; waits on D8 and D9)
 - **What:** the store page goes up as soon as the look target gives real screenshots, not at the end: capsule
   images, 5 screenshots, a short description, tags, system requirements and the AI-content disclosure. Wishlists

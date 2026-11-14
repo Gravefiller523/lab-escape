@@ -1,0 +1,17 @@
+[gd_resource type="AudioStreamRandomizer" format=3]
+
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_step_concrete_1.ogg" id="1_um0kh"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_step_concrete_2.ogg" id="2_n61p0"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_step_concrete_3.ogg" id="3_03lt8"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_step_concrete_4.ogg" id="4_lquu6"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_step_concrete_5.ogg" id="5_kpo7s"]
+
+[resource]
+random_pitch = 1.08
+random_volume_offset_db = 1.0
+streams_count = 5
+stream_0/stream = ExtResource("1_um0kh")
+stream_1/stream = ExtResource("2_n61p0")
+stream_2/stream = ExtResource("3_03lt8")
+stream_3/stream = ExtResource("4_lquu6")
+stream_4/stream = ExtResource("5_kpo7s")

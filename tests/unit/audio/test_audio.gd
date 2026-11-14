@@ -16,10 +16,19 @@ func test_buses_exist() -> void:
 
 
 func test_placeholders_fill_empty_event_sounds() -> void:
-	var stream := Sound.event_sound(&"hit") as AudioStreamWAV
+	# CHANGED 2026-11-14 (roadmap WP28): "hit" has a real sound now, so this checks a field that is still empty.
+	var stream := Sound.event_sound(&"enemy_notice") as AudioStreamWAV
 	assert_not_null(stream, "an empty field gets a generated placeholder")
 	assert_gt(stream.data.size(), 0)
-	assert_eq(Sound.event_sound(&"hit"), stream, "made once, then reused")
+	assert_eq(Sound.event_sound(&"enemy_notice"), stream, "made once, then reused")
+
+
+func test_real_sounds_replace_the_placeholders() -> void:
+	# NEW 2026-11-14 (roadmap WP28): filled fields use the sound set (a few variations, picked at random).
+	var hit := Sound.event_sound(&"hit") as AudioStreamRandomizer
+	assert_not_null(hit, "hits use the real punch sounds")
+	assert_gt(hit.streams_count, 1, "with a few variations")
+	assert_not_null(SurfaceType.find(&"metal").step_sound() as AudioStreamRandomizer, "metal footsteps are real too")
 
 
 func test_a_real_sound_replaces_the_placeholder() -> void:

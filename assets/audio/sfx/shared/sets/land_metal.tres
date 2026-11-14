@@ -1,0 +1,13 @@
+[gd_resource type="AudioStreamRandomizer" format=3]
+
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_land_metal_1.ogg" id="1_188ji"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_land_metal_2.ogg" id="2_gfqsq"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_land_metal_3.ogg" id="3_n6baf"]
+
+[resource]
+random_pitch = 1.08
+random_volume_offset_db = 1.0
+streams_count = 3
+stream_0/stream = ExtResource("1_188ji")
+stream_1/stream = ExtResource("2_gfqsq")
+stream_2/stream = ExtResource("3_n6baf")

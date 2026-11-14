@@ -227,6 +227,16 @@ extends Resource
 ## Base enemy spawn budget on the first floor.
 @export var base_enemy_budget: int = 6
 
+@export_group("Sound mix")
+## NEW 2026-11-14 (roadmap WP28): music gets quieter while someone talks on voice chat (ducking): how strongly
+## (1 = not at all, higher = more), and how loud voices must be (dB) before it starts.
+@export var music_duck_ratio: float = 6.0
+@export var music_duck_threshold_db: float = -32.0
+## A light room reverb on sound effects, so the lab sounds like one place with voice chat (0 = none).
+@export_range(0.0, 1.0) var sfx_room_reverb: float = 0.12
+## The loudest the whole game may get (dB): a limiter on the Master bus keeps peaks under it.
+@export var master_ceiling_db: float = -1.0
+
 @export_group("Break Room")
 ## Seconds before the host may start without everyone in the elevator. 0 = never.
 @export var afk_force_start_after: float = 60.0

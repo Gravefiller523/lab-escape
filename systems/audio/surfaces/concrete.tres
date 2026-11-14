@@ -1,6 +1,12 @@
-[gd_resource type="Resource" script_class="SurfaceType" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="SurfaceType" format=3]
 
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/impact_concrete.tres" id="1_ru5ts"]
 [ext_resource type="Script" path="res://systems/audio/surface_type.gd" id="1_surface"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/land_concrete.tres" id="2_8md8t"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sets/step_concrete.tres" id="4_ky2d1"]
 
 [resource]
 script = ExtResource("1_surface")
+step = ExtResource("4_ky2d1")
+land = ExtResource("2_8md8t")
+impact = ExtResource("1_ru5ts")

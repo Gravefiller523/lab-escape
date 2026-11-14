@@ -1,0 +1,15 @@
+[gd_resource type="AudioStreamRandomizer" format=3]
+
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_door_shut_1.ogg" id="1_uetu4"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_door_shut_2.ogg" id="2_xb2jn"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_door_shut_3.ogg" id="3_thb1a"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_door_shut_4.ogg" id="4_n6v2a"]
+
+[resource]
+random_pitch = 1.08
+random_volume_offset_db = 1.0
+streams_count = 4
+stream_0/stream = ExtResource("1_uetu4")
+stream_1/stream = ExtResource("2_xb2jn")
+stream_2/stream = ExtResource("3_thb1a")
+stream_3/stream = ExtResource("4_n6v2a")

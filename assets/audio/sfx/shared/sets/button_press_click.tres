@@ -1,0 +1,13 @@
+[gd_resource type="AudioStreamRandomizer" format=3]
+
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_button_press_click_1.ogg" id="1_sla3o"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_button_press_click_2.ogg" id="2_edq40"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shared/sfx_button_press_click_3.ogg" id="3_0x7e8"]
+
+[resource]
+random_pitch = 1.08
+random_volume_offset_db = 1.0
+streams_count = 3
+stream_0/stream = ExtResource("1_sla3o")
+stream_1/stream = ExtResource("2_edq40")
+stream_2/stream = ExtResource("3_0x7e8")

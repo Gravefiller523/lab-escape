@@ -172,8 +172,8 @@ def rat(material):
         part("uv", "fur", (0, 0.27, 0.19), (0.22, 0.26, 0.2), segments=8, rings=5),        # head
         part("cone", "skin_pink", (0, 0.42, 0.18), (0.1, 0.1, 0.12), (-90, 0, 0)),         # snout
         part("uv", "skin_pink", (0, 0.48, 0.18), (0.05, 0.05, 0.05), segments=6, rings=4),  # nose
-        part("cube", "tooth", (0.018, 0.385, 0.13), (0.03, 0.025, 0.07)),                    # teeth, set into the snout
-        part("cube", "tooth", (-0.018, 0.385, 0.13), (0.03, 0.025, 0.07)),
+        part("cube", "tooth", (0.018, 0.355, 0.125), (0.03, 0.025, 0.07)),                   # teeth, under the head
+        part("cube", "tooth", (-0.018, 0.355, 0.125), (0.03, 0.025, 0.07)),
         part("uv", "eye_red", (0.07, 0.36, 0.24), (0.045, 0.045, 0.045), segments=6, rings=4),
         part("uv", "eye_red", (-0.07, 0.36, 0.24), (0.045, 0.045, 0.045), segments=6, rings=4),
         part("cylinder", "skin_pink", (0.09, 0.24, 0.3), (0.12, 0.12, 0.02), (90, 0, 20), vertices=8),  # ears
@@ -243,12 +243,14 @@ def meat(material):
 
 
 def vial(material, glass_material):
-    liquid = [
-        part("cylinder", "dna_green", (0, 0, -0.02), (0.08, 0.08, 0.15), vertices=10),
+    # The liquid is its own mesh: the game tints it the colour of the mutation inside (glow_tint.gd).
+    liquid = [part("cylinder", "dna_green", (0, 0, -0.02), (0.08, 0.08, 0.15), vertices=10)]
+    join_and_export(liquid, "prop_dna_vial_liquid", material, "shared", False)
+    cap = [
         part("cylinder", "cap_red", (0, 0, 0.1), (0.11, 0.11, 0.04), vertices=10),
         part("cube", "label", (0, -0.045, -0.02), (0.06, 0.012, 0.07)),
     ]
-    join_and_export(liquid, "prop_dna_vial", material, "shared", False)
+    join_and_export(cap, "prop_dna_vial", material, "shared", False)
     glass = [part("cylinder", "glass", (0, 0, -0.005), (0.1, 0.1, 0.2), vertices=10)]
     join_and_export(glass, "prop_dna_vial_glass", glass_material, "shared", False)
 

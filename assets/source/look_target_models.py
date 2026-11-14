@@ -1771,6 +1771,72 @@ def trash_bag(material):
     join_and_export(parts, "prop_trash_bag", material, "shared", False)
 
 
+def debris_and_cart(material, glass_material):
+    """Loose debris that damaged floors scatter (systems/level_gen/debris/*.tscn, centred on their grey boxes) and the
+    standard cart (systems/carts/scenes/cart_standard.tscn, origin on the floor)."""
+    models = {}
+    p = []                                                                   # cage bars: 1.1 x 0.12 x 0.35
+    for z in (-0.14, 0.14):
+        p.append(part("cylinder", "metal", g(0, 0, z), (0.05, 0.05, 1.1), (0, 90, 0), vertices=6))
+    for i in range(6):
+        p.append(part("cylinder", "metal", g(-0.45 + i * 0.18, 0, 0), (0.035, 0.035, 0.34), (90, 0, i * 3), vertices=6))
+    p.append(part("cylinder", "metal", g(0.6, 0.0, 0.1), (0.035, 0.035, 0.2), (0, 70, 30), vertices=6))  # bent end
+    models["debris_cage_bars"] = p
+    models["debris_chunk"] = [                                               # rubble: 0.5 x 0.3 x 0.4
+        part("ico", "concrete", g(0, 0, 0), (0.48, 0.38, 0.28), subdivisions=1),
+        part("ico", "plaster_dirty", g(0.15, 0.06, -0.1), (0.2, 0.18, 0.16), subdivisions=1),
+        part("cylinder", "steel_dark", g(-0.12, 0.08, 0.05), (0.02, 0.02, 0.3), (40, 20, 0), vertices=4),
+    ]
+    models["debris_feed_sack"] = [                                           # 0.5 x 0.25 x 0.8, lying down
+        part("uv", "feed_sack", g(0, 0, 0), (0.5, 0.78, 0.25), segments=8, rings=5),
+        part("cone", "feed_sack", g(0, 0, -0.38), (0.16, 0.16, 0.1), (-90, 0, 0), vertices=6),
+        part("cube", "wood_dark", g(0, 0.11, 0.05), (0.3, 0.3, 0.02)),
+        part("cube", "hay", g(0.1, -0.1, 0.45), (0.2, 0.15, 0.03)),            # spilt feed
+    ]
+    p = []                                                                   # hay: 0.8 x 0.45 x 0.5
+    hay_bale(p, 0.0, 0.0, 0, 1)
+    for obj in p:
+        obj.location.z -= 0.22
+    p.append(part("cube", "hay", g(0.3, 0.2, 0.15), (0.3, 0.2, 0.05), (0, 0, 30)))
+    models["debris_hay"] = p
+    models["debris_panel"] = [                                               # ceiling panel: 0.9 x 0.05 x 0.6
+        part("cube", "lab_panel", g(0, 0, 0), (0.88, 0.58, 0.04)),
+        part("cube", "steel_dark", g(0, 0.0, -0.29), (0.9, 0.03, 0.05)),
+        part("cube", "steel_dark", g(-0.44, 0.0, 0), (0.03, 0.6, 0.05)),
+        part("cube", "plaster_dirty", g(0.2, 0.022, 0.1), (0.3, 0.02, 0.005), (0, 0, 35)),     # crack
+        part("cube", "plaster_dirty", g(0.05, 0.022, 0.0), (0.2, 0.015, 0.005), (0, 0, -20)),
+    ]
+    p = []                                                                   # vines: 0.7 x 0.35 x 0.5
+    for i in range(5):
+        p.append(part("cylinder", "vine", g(-0.25 + i * 0.12, 0.0, 0.0), (0.06, 0.06, 0.5), (90, 0, -40 + i * 22), vertices=5))
+    for x, z, a in ((-0.2, 0.15, 20), (0.15, -0.12, -40), (0.25, 0.18, 70), (-0.05, -0.2, 10)):
+        p.append(part("cube", "leaf", g(x, 0.1, z), (0.18, 0.1, 0.02), (15, 0, a)))
+    p.append(part("ico", "leaf_dark", g(0, -0.05, 0), (0.4, 0.3, 0.22), subdivisions=1))
+    models["debris_vines"] = p
+    for name, pieces in models.items():
+        join_and_export(pieces, "prop_" + name, material, "shared", False)
+
+    # The cart: a steel basket on a frame, four castors and a push handle at the back (+z).
+    c = [part("cube", "steel", g(0, 0.45, 0), (1.1, 1.5, 0.06))]
+    for x, z, sx, sz in ((-0.53, 0.0, 0.04, 1.5), (0.53, 0.0, 0.04, 1.5), (0.0, -0.73, 1.1, 0.04), (0.0, 0.73, 1.1, 0.04)):
+        c.append(part("cube", "steel_dark", g(x, 0.94, z), (sx + 0.02, sz + 0.02, 0.04)))     # top rail
+        for i in range(6 if sx < sz else 5):
+            along = -0.65 + i * 0.26 if sx < sz else -0.48 + i * 0.24
+            bx, bz = (x, along) if sx < sz else (along, z)
+            c.append(part("cube", "metal", g(bx, 0.7, bz), (0.025, 0.025, 0.48)))           # basket bars
+        c.append(part("cube", "metal", g(x, 0.6, z), (sx, sz, 0.02)))
+    c.append(part("cube", "safety_yellow", g(0, 0.72, -0.755), (0.5, 0.01, 0.12)))            # bumper sticker
+    for x in (-0.45, 0.45):
+        for z in (-0.6, 0.6):
+            c.append(part("cylinder", "steel_dark", g(x, 0.33, z), (0.04, 0.04, 0.24), vertices=6))
+            c.append(part("cylinder", "rubber", g(x, 0.12, z), (0.24, 0.24, 0.08), (0, 90, 0), vertices=10))
+            c.append(part("cylinder", "bolt", g(x, 0.12, z), (0.1, 0.1, 0.09), (0, 90, 0), vertices=6))
+    for x in (-0.45, 0.45):
+        c.append(part("cylinder", "steel_dark", g(x, 0.96, 0.85), (0.04, 0.04, 0.3), (60, 0, 0), vertices=6))
+    c.append(part("cylinder", "rubber", g(0, 1.0, 0.95), (0.06, 0.06, 0.9), (0, 90, 0), vertices=8))
+    join_and_export(c, "prop_cart_standard", material, "shared", False)
+
+
 clear_scene()
 palette = make_palette()
 for other_department in DEPARTMENT_SHELLS:
@@ -1810,6 +1876,7 @@ player_body(solid)
 lift_parts(solid, see_through)
 heavy_crate(solid)
 trash_bag(solid)
+debris_and_cart(solid, see_through)
 bat(solid)
 fly(solid)
 kangaroo(solid)

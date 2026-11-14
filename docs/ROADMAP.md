@@ -450,7 +450,8 @@ The five questions, the same every time:
 
 ### Phase A: art (see section d)
 #### WP20: Art bible, tools and import pipeline
-- Install Blender (and its MCP), set import settings, write `docs/ART_BIBLE.md` from section d. **Status: not started.**
+- Install Blender (and its MCP), set import settings, write `docs/ART_BIBLE.md` from section d.
+- **Built so far (2026-11-14):** `docs/ART_BIBLE.md` written. **Waiting on Zachary:** Blender isn't installed on the PC yet (one step, in the thread). Import settings get set when the first model comes in. **Status: in progress.**
 #### WP21: Look target (needs your OK on screenshots before anything rolls out)
 - One Zoology animal holding room, the lift, the rat, a crate, gem, meat and DNA vial at final quality.
   **Status: not started.**

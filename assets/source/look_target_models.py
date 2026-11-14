@@ -1603,26 +1603,21 @@ def shared_rooms(material):
 
 
 def player_body(material):
-    """The player (systems/player/player.tscn, MOCK-UP for Zachary's OK): a scientist, 1.8 m tall, in a white lab
-    coat that hangs to the knees and is open at the front over a blue shirt and tie, dark trousers, black shoes,
-    glasses, an ID badge and pens in the chest pocket. Hats, glasses, gloves and shoes from the closet go on top;
-    mutation parts go on its attach points."""
-    parts = [
-        part("cylinder", "coat_white", (0, 0, 1.2), (0.46, 0.28, 0.5), vertices=8),                   # coat body
-        part("cylinder", "coat_white", (0, 0, 1.44), (0.5, 0.29, 0.08), vertices=8),                  # shoulders
-        part("cylinder", "coat_white", (0, -0.01, 0.78), (0.5, 0.32, 0.36), vertices=8),              # coat skirt
-        part("cube", "shirt", (0, 0.132, 1.27), (0.13, 0.03, 0.34)),                                  # shirt front
-        part("cube", "cap_red", (0, 0.15, 1.27), (0.035, 0.01, 0.26)),                                # tie
-        part("cube", "cap_red", (0, 0.152, 1.41), (0.05, 0.01, 0.04)),
-        part("cube", "trousers", (0, 0.15, 0.82), (0.12, 0.03, 0.3)),                                 # gap in the coat
-        part("cube", "shirt", (0, 0.06, 1.5), (0.2, 0.14, 0.05)),                                     # shirt collar
-        part("cube", "coat_white", (0.085, 0.14, 1.34), (0.05, 0.02, 0.22), (0, -12, 0)),             # lapels
-        part("cube", "coat_white", (-0.085, 0.14, 1.34), (0.05, 0.02, 0.22), (0, 12, 0)),
-        part("cube", "coat_white", (-0.13, 0.142, 1.24), (0.1, 0.01, 0.08)),                          # chest pocket
-        part("cylinder", "steel_dark", (-0.15, 0.145, 1.29), (0.012, 0.012, 0.07), vertices=4),       # pens
-        part("cylinder", "led_blue", (-0.12, 0.145, 1.29), (0.012, 0.012, 0.07), vertices=4),
-        part("cube", "label", (0.13, 0.142, 1.2), (0.07, 0.01, 0.1)),                                 # ID badge
-        part("cube", "lab_green", (0.13, 0.148, 1.23), (0.05, 0.005, 0.02)),
+    """The player (systems/player/player.tscn, OK'd by Zachary 2026-11-14): a scientist, 1.8 m tall. Two models:
+    player_body is the person (blue shirt and red tie, dark trousers, black shoes, glasses, short hair) and
+    player_coat is the white lab coat that hangs to the knees (open at the front, ID badge, pens in the pocket). A coat
+    from the closet replaces the white coat (PlayerCharacter.set_default_coat_shown); hats, glasses, gloves and shoes
+    go on top; mutation parts go on the attach points."""
+    body = [
+        part("cylinder", "shirt", (0, 0, 1.2), (0.42, 0.25, 0.5), vertices=8),                       # shirt
+        part("cylinder", "shirt", (0, 0, 1.43), (0.46, 0.26, 0.08), vertices=8),
+        part("cylinder", "trousers", (0, 0, 0.9), (0.4, 0.24, 0.16), vertices=8),                     # hips
+        part("cylinder", "rubber", (0, 0, 0.97), (0.41, 0.245, 0.04), vertices=8),                       # belt
+        part("cube", "cap_red", (0, 0.13, 1.27), (0.035, 0.01, 0.26)),                                # tie
+        part("cube", "cap_red", (0, 0.132, 1.41), (0.05, 0.01, 0.04)),
+        part("cube", "shirt", (0, 0.06, 1.5), (0.2, 0.14, 0.05)),                                     # collar
+        part("cube", "label", (0.12, 0.13, 1.25), (0.07, 0.01, 0.1)),                                 # ID badge
+        part("cube", "lab_green", (0.12, 0.136, 1.28), (0.05, 0.005, 0.02)),
         part("cylinder", "skin", (0, 0, 1.53), (0.11, 0.11, 0.1), vertices=8),                        # neck
         part("uv", "skin", (0, 0.01, 1.66), (0.24, 0.26, 0.28), segments=10, rings=6),               # head
         part("uv", "hair", (0, -0.025, 1.73), (0.26, 0.27, 0.2), segments=10, rings=5),              # hair
@@ -1637,17 +1632,36 @@ def player_body(material):
         part("cube", "steel_dark", (0, 0.142, 1.672), (0.04, 0.01, 0.012)),                           # glasses bridge
     ]
     for side in (-1, 1):
-        parts.append(part("cylinder", "steel_dark", (side * 0.05, 0.138, 1.67), (0.075, 0.075, 0.012), (90, 0, 0), vertices=8))
-        parts.append(part("cylinder", "glass", (side * 0.05, 0.142, 1.67), (0.06, 0.06, 0.008), (90, 0, 0), vertices=8))
-        parts.append(part("cube", "steel_dark", (side * 0.105, 0.07, 1.675), (0.01, 0.13, 0.01)))                      # arms of the glasses
-        parts.append(part("uv", "skin", (side * 0.125, 0.0, 1.66), (0.05, 0.04, 0.07), segments=6, rings=4))         # ears
-        parts.append(part("cylinder", "trousers", (side * 0.1, 0, 0.42), (0.15, 0.15, 0.74), vertices=8))             # legs
-        parts.append(part("cube", "rubber", (side * 0.1, 0.035, 0.045), (0.12, 0.27, 0.09)))                          # shoes
-        parts.append(part("cube", "coat_white", (side * 0.19, 0.12, 0.9), (0.12, 0.08, 0.14)))                        # coat pockets
-        parts.append(part("cylinder", "coat_white", (side * 0.28, 0, 1.18), (0.13, 0.13, 0.52), (0, side * 6, 0), vertices=8))  # sleeves
-        parts.append(part("cylinder", "shirt", (side * 0.3, 0, 0.92), (0.1, 0.1, 0.03), vertices=8))                  # cuffs
-        parts.append(part("uv", "skin", (side * 0.3, 0.0, 0.85), (0.09, 0.07, 0.12), segments=6, rings=4))            # hands
-    join_and_export(parts, "player_body", material, "shared", True)
+        body.append(part("cylinder", "steel_dark", (side * 0.05, 0.138, 1.67), (0.075, 0.075, 0.012), (90, 0, 0), vertices=8))
+        body.append(part("cylinder", "glass", (side * 0.05, 0.142, 1.67), (0.06, 0.06, 0.008), (90, 0, 0), vertices=8))
+        body.append(part("cube", "steel_dark", (side * 0.105, 0.07, 1.675), (0.01, 0.13, 0.01)))
+        body.append(part("uv", "skin", (side * 0.125, 0.0, 1.66), (0.05, 0.04, 0.07), segments=6, rings=4))     # ears
+        body.append(part("cylinder", "trousers", (side * 0.1, 0, 0.45), (0.15, 0.15, 0.8), vertices=8))          # legs
+        body.append(part("cube", "rubber", (side * 0.1, 0.035, 0.045), (0.12, 0.27, 0.09)))                      # shoes
+        body.append(part("cylinder", "shirt", (side * 0.28, 0, 1.18), (0.11, 0.11, 0.52), (0, side * 6, 0), vertices=8))  # sleeves
+        body.append(part("uv", "skin", (side * 0.3, 0.0, 0.85), (0.09, 0.07, 0.12), segments=6, rings=4))        # hands
+    join_and_export(body, "player_body", material, "shared", False)
+
+    coat = [
+        part("cylinder", "coat_white", (0, -0.01, 1.2), (0.47, 0.29, 0.5), vertices=8),
+        part("cylinder", "coat_white", (0, -0.01, 1.44), (0.51, 0.3, 0.08), vertices=8),              # shoulders
+        part("cylinder", "coat_white", (0, -0.015, 0.78), (0.5, 0.32, 0.36), vertices=8),             # skirt
+        part("cube", "trousers", (0, 0.152, 0.82), (0.12, 0.03, 0.3)),                                # the open front
+        part("cube", "shirt", (0, 0.138, 1.24), (0.13, 0.02, 0.38)),
+        part("cube", "cap_red", (0, 0.15, 1.27), (0.035, 0.01, 0.26)),                                # tie shows through
+        part("cube", "coat_white", (0.085, 0.14, 1.34), (0.05, 0.02, 0.22), (0, -12, 0)),             # lapels
+        part("cube", "coat_white", (-0.085, 0.14, 1.34), (0.05, 0.02, 0.22), (0, 12, 0)),
+        part("cube", "coat_white", (-0.13, 0.142, 1.24), (0.1, 0.01, 0.08)),                          # chest pocket
+        part("cylinder", "steel_dark", (-0.15, 0.145, 1.29), (0.012, 0.012, 0.07), vertices=4),       # pens
+        part("cylinder", "led_blue", (-0.12, 0.145, 1.29), (0.012, 0.012, 0.07), vertices=4),
+        part("cube", "label", (0.13, 0.142, 1.2), (0.07, 0.01, 0.1)),                                 # ID badge on the coat
+        part("cube", "lab_green", (0.13, 0.148, 1.23), (0.05, 0.005, 0.02)),
+    ]
+    for side in (-1, 1):
+        coat.append(part("cube", "coat_white", (side * 0.19, 0.12, 0.9), (0.12, 0.08, 0.14)))                    # pockets
+        coat.append(part("cylinder", "coat_white", (side * 0.28, 0, 1.18), (0.13, 0.13, 0.5), (0, side * 6, 0), vertices=8))  # sleeves
+        coat.append(part("cylinder", "shirt", (side * 0.3, 0, 0.92), (0.1, 0.1, 0.03), vertices=8))              # cuffs
+    join_and_export(coat, "player_coat", material, "shared", False)
 
 
 def ring_of(parts, swatch, count, radius, z, size, kind="cube", spin=True):

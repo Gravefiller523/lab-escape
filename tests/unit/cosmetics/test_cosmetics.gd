@@ -171,6 +171,20 @@ func test_dresser_puts_worn_cosmetics_on_the_body() -> void:
 	assert_false(shown[&"hat"].visible, "your own cosmetics are hidden from you, like the rest of your body")
 
 
+func test_a_closet_coat_replaces_the_white_lab_coat() -> void:
+	# NEW 2026-11-14 (art rollout): the body wears a white lab coat of its own; a coat from the closet takes its place.
+	var body: PlayerCharacter = _spawn_me()
+	await wait_process_frames(2)
+	assert_true(body.is_default_coat_shown(), "no closet coat: the white lab coat is on")
+	Cosmetics.request_equip(&"cosmetic_coat_lab_coat")
+	await wait_process_frames(2)
+	assert_true(_dresser(body).get_shown().has(&"coat"), "the closet coat is on")
+	assert_false(body.is_default_coat_shown(), "and the white coat is off, so they don't overlap")
+	Cosmetics.request_unequip(&"coat")
+	await wait_process_frames(2)
+	assert_true(body.is_default_coat_shown(), "taking the closet coat off brings the white coat back")
+
+
 func test_hidden_slot_not_shown() -> void:
 	var body: PlayerCharacter = _spawn_me()
 	await wait_process_frames(2)

@@ -219,7 +219,7 @@ func test_the_laser_beam_can_be_jumped_and_has_an_end() -> void:
 	assert_false(laser.call("beam_touches", origin, forward, Vector3(0, 0, 8)), "behind the boss: missed")
 	assert_false(laser.call("beam_touches", origin, forward, Vector3(0, 0, -40)), "past its end: missed")
 	var player := _player(Vector3(0, 0, 12))
-	assert_lt(float(laser.get("beam_height")), player.tuning.jump_height * 0.7, "the beam is well under a jump's height")
+	assert_lt((laser.get("beam_height") as float), player.tuning.jump_height * 0.7, "the beam is well under a jump's height")
 
 
 func test_the_laser_sweep_hits_you_once_and_turns_the_boss() -> void:
@@ -240,7 +240,7 @@ func test_the_laser_sweep_hits_you_once_and_turns_the_boss() -> void:
 		frames += 1
 	assert_true(laser.is_finished())
 	assert_gt(rad_to_deg(widest), 50.0, "the boss turned through the arc")
-	assert_almost_eq(HealthComponent.of(player).get_current(), 100.0 - float(laser.get("damage")), 0.01,
+	assert_almost_eq(HealthComponent.of(player).get_current(), 100.0 - (laser.get("damage") as float), 0.01,
 		"the beam passed over you and hit exactly once")
 
 

@@ -51,7 +51,7 @@ func test_disabled_writes_nothing() -> void:
 func test_every_signal_connected() -> void:
 	_telemetry.set_enabled(true)
 	for info: Dictionary in EventBus.get_signal_list():
-		assert_gt(EventBus.get_signal_connection_list(info["name"]).size(), 0, "%s is listened to" % info["name"])
+		assert_gt(EventBus.get_signal_connection_list(info["name"] as StringName).size(), 0, "%s is listened to" % info["name"])
 	EventBus.lift_ready.emit()
 	EventBus.achievement_unlocked.emit(&"achievement_test")
 	EventBus.enemy_killed.emit(&"enemy_rat", Vector3(1, 0, 2), 765)
@@ -96,6 +96,6 @@ func test_run_summary_is_written_when_a_run_ends() -> void:
 	assert_eq(summaries.size(), 1, "one summary")
 	var data: Dictionary = summaries[0]["data"]
 	assert_eq(data["result"], "wiped")
-	assert_eq(int(data["deaths"]), 1)
-	assert_eq(int(data["gems_spent"]), 3)
+	assert_eq((data["deaths"] as int), 1)
+	assert_eq((data["gems_spent"] as int), 3)
 	assert_eq(data["upgrades_found"], ["mutation_fly"])

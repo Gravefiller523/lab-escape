@@ -99,7 +99,7 @@ func _problems(role: String) -> PackedStringArray:
 func _floor_numbers(floors: Array) -> Array[int]:
 	var numbers: Array[int] = []
 	for entry: Variant in floors:
-		numbers.append(int((entry as Dictionary).get("floor", 0)))
+		numbers.append(((entry as Dictionary).get("floor", 0) as int))
 	return numbers
 
 
@@ -144,16 +144,16 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 	assert_eq(host.get("final_state", ""), "BREAK_ROOM", "everyone is back in the Break Room")
 	for entry: Variant in floors:
 		var floor_entry: Dictionary = entry
-		var number: int = int(floor_entry["floor"])
+		var number: int = (floor_entry["floor"] as int)
 		assert_true(floor_entry.get("departed", false), "the lift left floor %d" % number)
 		# NEW (roadmap WP3, G5): a dead player can be reprinted on every floor, boss floors too.
-		assert_gt(int(floor_entry.get("printers", 0)), 0, "floor %d has a 3D printer" % number)
+		assert_gt((floor_entry.get("printers", 0) as int), 0, "floor %d has a 3D printer" % number)
 		if floor_entry.get("boss_floor", false):
 			assert_true((floor_entry.get("boss", {}) as Dictionary).get("defeated", false),
 				"the boss on floor %d was beaten" % number)
 		else:
 			assert_true(floor_entry.get("lift_fixed", false), "the lift on floor %d was fixed" % number)
-			assert_gt(int(floor_entry.get("enemies", 0)), 0, "floor %d has enemies" % number)
+			assert_gt((floor_entry.get("enemies", 0) as int), 0, "floor %d has enemies" % number)
 		if number > LATE_FLOOR:
 			assert_eq((floor_entry["bodies"] as Array).size(), 3, "all 3 players have bodies on floor %d" % number)
 	if total < DEATH_FLOOR:
@@ -168,14 +168,14 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 
 	# A client died and was reprinted.
 	var death: Dictionary = (floors[DEATH_FLOOR - 1] as Dictionary).get("death", {})
-	assert_eq(int(death.get("player_id", 0)), int(client.get("player_id", -1)), "the client was the one who died")
+	assert_eq((death.get("player_id", 0) as int), (client.get("player_id", -1) as int), "the client was the one who died")
 	assert_true(death.get("died", false), "the client died")
 	assert_true(death.get("ghost", false), "and became a ghost")
 	assert_true(death.get("reprinted", false), "and was reprinted")
 
 	# The client saw the same floors in the same departments, with a body on each.
 	assert_true(client.get("ok", false), "the client finished: %s" % str(client.get("notes", [])))
-	assert_eq(_floor_numbers(client.get("floors", [])), expected, "the client reached every floor")
+	assert_eq(_floor_numbers(client.get("floors", []) as Array), expected, "the client reached every floor")
 	for index: int in mini((client.get("floors", []) as Array).size(), total):
 		var seen: Dictionary = (client["floors"] as Array)[index]
 		assert_eq(seen["department"], (floors[index] as Dictionary)["department"], "same department on floor %d" % (index + 1))
@@ -211,17 +211,17 @@ func test_a_whole_run_with_a_client_and_a_late_joiner() -> void:
 		if (entry as Dictionary).get("boss_floor", false):
 			boss_floors += 1
 	var host_id: String = str(host.get("my_player_id", ""))
-	assert_eq(int((host.get("kills_credited", {}) as Dictionary).get(host_id, 0)), boss_floors, "the host counted its boss kills")
-	assert_eq(int((client.get("kills_credited", {}) as Dictionary).get(host_id, 0)), boss_floors,
+	assert_eq(((host.get("kills_credited", {}) as Dictionary).get(host_id, 0) as int), boss_floors, "the host counted its boss kills")
+	assert_eq(((client.get("kills_credited", {}) as Dictionary).get(host_id, 0) as int), boss_floors,
 		"the client was told about every one of the host's kills")
 
 	# The late joiner joined during a floor and played the rest.
 	assert_true(late.get("ok", false), "the late joiner finished: %s" % str(late.get("notes", [])))
 	assert_true(late.get("waiting_on_join", false), "it was told to wait for the next floor")
-	assert_eq(_floor_numbers(late.get("floors", [])), expected.slice(LATE_FLOOR - 1),
+	assert_eq(_floor_numbers(late.get("floors", []) as Array), expected.slice(LATE_FLOOR - 1),
 		"it built the floor it joined on, then every later floor")
 	for seen: Variant in late.get("floors", []):
-		var number: int = int((seen as Dictionary)["floor"])
+		var number: int = ((seen as Dictionary)["floor"] as int)
 		assert_eq((seen as Dictionary).get("has_body", false), number > LATE_FLOOR,
 			"the late joiner has a body on floor %d: %s" % [number, number > LATE_FLOOR])
 	assert_eq(late.get("result", ""), "escaped", "the late joiner saw the escape")
@@ -270,4 +270,4 @@ func test_players_leaving_mid_floor() -> void:
 
 	assert_true(stayer.get("host_left", false), "the client noticed the host leaving")
 	assert_eq(stayer.get("state_after_host_left", ""), "MAIN_MENU", "and went back to the main menu")
-	assert_eq(_floor_numbers(stayer.get("floors", [])), [1, 2] as Array[int], "after playing floors 1 and 2")
+	assert_eq(_floor_numbers(stayer.get("floors", []) as Array), [1, 2] as Array[int], "after playing floors 1 and 2")

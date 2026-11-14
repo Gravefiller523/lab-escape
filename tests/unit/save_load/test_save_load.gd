@@ -52,7 +52,7 @@ func test_migration_from_version_0_fixture() -> void:
 	assert_has(profile.unlocked_cosmetic_ids, &"cosmetic_lab_coat", "old cosmetics carried over")
 	assert_eq(profile.loadout.get("body"), "cosmetic_lab_coat", "and the outfit")
 	assert_eq(profile.seen_hint_ids.size(), 0, "new fields get their defaults")
-	assert_eq(int(SaveService.migrate({}).get("save_version")), SaveService.SAVE_VERSION)
+	assert_eq((SaveService.migrate({}).get("save_version") as int), SaveService.SAVE_VERSION)
 
 
 func test_broken_file_is_renamed_not_crash() -> void:

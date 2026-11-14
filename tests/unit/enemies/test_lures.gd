@@ -19,7 +19,7 @@ func before_each() -> void:
 	props.name = "Props"
 	_world.add_child(props)
 	for field: String in ["lure_attention_seconds", "lure_bored_seconds", "lure_check_seconds"]:
-		_saved[field] = float(Config.feel.ai.get(field))
+		_saved[field] = (Config.feel.ai.get(field) as float)
 
 
 func after_each() -> void:

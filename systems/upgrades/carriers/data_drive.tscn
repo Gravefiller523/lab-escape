@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
 [ext_resource type="Script" path="res://systems/loot/glow_tint.gd" id="2_tint"]
 [ext_resource type="Script" path="res://systems/upgrades/upgrade_carrier.gd" id="3_carrier"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/prop_data_drive.mesh" id="art_mesh_1"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/prop_data_drive_glow.mesh" id="art_mesh_2"]
 
 [sub_resource type="BoxShape3D" id="Shape_1"]
 size = Vector3(0.2, 0.04, 0.12)
@@ -24,6 +26,8 @@ emission = Color(0.4, 0.75, 1, 1)
 material = SubResource("Strip")
 size = Vector3(0.16, 0.045, 0.02)
 
+
+
 [node name="DataDrive" type="RigidBody3D"]
 script = ExtResource("1_prop")
 
@@ -31,10 +35,10 @@ script = ExtResource("1_prop")
 shape = SubResource("Shape_1")
 
 [node name="Case" type="MeshInstance3D" parent="."]
-mesh = SubResource("CaseMesh")
+mesh = ExtResource("art_mesh_1")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("StripMesh")
+mesh = ExtResource("art_mesh_2")
 script = ExtResource("2_tint")
 
 [node name="UpgradeCarrier" type="Node" parent="."]

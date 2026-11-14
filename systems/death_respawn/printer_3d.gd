@@ -11,6 +11,8 @@ signal meat_changed(inserted: int, needed: int)
 const GROUP: StringName = &"printers"
 const MEAT_TAG: String = "meat"
 const BODY_SIZE: Vector3 = Vector3(1.4, 1.6, 1.2)
+## NEW 2026-11-14 (art rollout): the printer's finished body model.
+const BODY_MODEL: String = "res://assets/models/shared/machine_printer.mesh"
 ## Where reprinted players appear, in front of the printer.
 const OUTPUT_OFFSET: Vector3 = Vector3(0.0, 0.1, 1.4)
 const MSG_NEED_MEAT: String = "The printer needs %d meat (it has %d)."
@@ -127,7 +129,14 @@ func _build() -> void:
 	shape.shape = box
 	shape.position.y = BODY_SIZE.y / 2.0
 	body.add_child(shape)
-	body.add_child(_mesh(BODY_SIZE, Vector3(0, BODY_SIZE.y / 2.0, 0), Color(0.85, 0.85, 0.82)))
+	# CHANGED 2026-11-14 (art rollout): the finished model when it is there (origin on the floor), else the grey box.
+	if ResourceLoader.exists(BODY_MODEL):
+		var model := MeshInstance3D.new()
+		model.name = "Model"
+		model.mesh = load(BODY_MODEL) as Mesh
+		body.add_child(model)
+	else:
+		body.add_child(_mesh(BODY_SIZE, Vector3(0, BODY_SIZE.y / 2.0, 0), Color(0.85, 0.85, 0.82)))
 	add_child(body)
 	# The hopper: a red tray on top. Meat dropped onto it goes in.
 	_hopper = Area3D.new()

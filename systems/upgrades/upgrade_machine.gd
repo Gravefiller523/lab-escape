@@ -14,6 +14,8 @@ signal applied(player_id: int, upgrade_id: StringName)
 
 const GROUP: StringName = &"upgrade_machines"
 const BOOTH_SIZE: Vector3 = Vector3(2.0, 2.6, 2.0)
+## NEW 2026-11-14 (art rollout): the booth's finished model (its walls keep their collision, without their boxes).
+const BOOTH_MODEL: String = "res://assets/models/shared/machine_upgrade_booth.mesh"
 const WALL: float = 0.15
 const HOPPER_OFFSET: Vector3 = Vector3(1.35, 1.0, 0.3)
 ## The host accepts "insert" requests from this far away (metres).
@@ -204,6 +206,11 @@ func _build() -> void:
 	_add_wall("Left", Vector3(-size.x / 2.0, size.y / 2.0, 0), Vector3(WALL, size.y, size.z), metal)
 	_add_wall("Right", Vector3(size.x / 2.0, size.y / 2.0, 0), Vector3(WALL, size.y, size.z), metal)
 	_add_wall("Roof", Vector3(0, size.y, 0), Vector3(size.x + WALL, WALL, size.z + WALL), metal)
+	if ResourceLoader.exists(BOOTH_MODEL):
+		var model := MeshInstance3D.new()
+		model.name = "Model"
+		model.mesh = load(BOOTH_MODEL) as Mesh
+		add_child(model)
 	# A glowing pad on the floor inside.
 	_pad = MeshInstance3D.new()
 	_pad.name = "Pad"
@@ -285,6 +292,9 @@ func _add_wall(node_name: String, center: Vector3, size: Vector3, color: Color) 
 	box.size = size
 	shape.shape = box
 	wall.add_child(shape)
+	if ResourceLoader.exists(BOOTH_MODEL):
+		add_child(wall)
+		return
 	var mesh := MeshInstance3D.new()
 	var box_mesh := BoxMesh.new()
 	box_mesh.size = size

@@ -1,28 +1,12 @@
 [gd_scene format=3]
 
-[sub_resource type="StandardMaterial3D" id="Mat_1"]
-transparency = 1
-albedo_color = Color(0.6, 0.85, 1, 0.5)
-
-[sub_resource type="SphereMesh" id="Mesh_1"]
-material = SubResource("Mat_1")
-radius = 0.2
-height = 0.3
-
-[sub_resource type="StandardMaterial3D" id="Mat_2"]
-albedo_color = Color(0.95, 0.6, 0.7, 1)
-
-[sub_resource type="SphereMesh" id="Mesh_2"]
-material = SubResource("Mat_2")
-radius = 0.1
-height = 0.12
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/cosmetic_hat_brain_jar.mesh" id="1_model"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/cosmetic_hat_brain_jar_glass.mesh" id="2_glass"]
 
 [node name="BrainJar" type="Node3D"]
 
-[node name="Part1" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
-mesh = SubResource("Mesh_1")
+[node name="Model" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_model")
 
-[node name="Part2" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
-mesh = SubResource("Mesh_2")
+[node name="Glass" type="MeshInstance3D" parent="."]
+mesh = ExtResource("2_glass")

@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/cosmetic_glasses_sunglasses.mesh" id="1_model"]
+
+[node name="Sunglasses" type="Node3D"]
+
+[node name="Model" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_model")

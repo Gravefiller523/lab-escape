@@ -1,6 +1,8 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/prop_keycard_yellow_glow.mesh" id="art_mesh_1"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/prop_keycard_details.mesh" id="art_mesh_details"]
 
 [sub_resource type="BoxShape3D" id="Shape_prop"]
 size = Vector3(0.22, 0.03, 0.14)
@@ -15,6 +17,7 @@ emission_energy_multiplier = 0.6
 material = SubResource("Mat_prop")
 size = Vector3(0.22, 0.03, 0.14)
 
+
 [node name="KeycardYellow" type="RigidBody3D"]
 script = ExtResource("1_prop")
 
@@ -22,4 +25,7 @@ script = ExtResource("1_prop")
 shape = SubResource("Shape_prop")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("Mesh_prop")
+mesh = ExtResource("art_mesh_1")
+
+[node name="Details" type="MeshInstance3D" parent="Mesh"]
+mesh = ExtResource("art_mesh_details")

@@ -454,7 +454,9 @@ The five questions, the same every time:
 - **Built so far (2026-11-14):** `docs/ART_BIBLE.md` written. **Waiting on Zachary:** Blender isn't installed on the PC yet (one step, in the thread). Import settings get set when the first model comes in. **Status: in progress.**
 #### WP21: Look target (needs your OK on screenshots before anything rolls out)
 - One Zoology animal holding room, the lift, the rat, a crate, gem, meat and DNA vial at final quality.
-  **Status: not started.**
+  - **Built:** all of them, as Blender scripts in `assets/source/` (models in `assets/models/`), shown as screenshots next to the grey box. Zachary approved on 2026-11-14, asking for the rat's teeth to sit back in its head (done).
+  **Status: done** (approved; the rollout into the game is next).
+
 #### WP21b: Performance budget check (added 2026-11-12, Zachary's choice; before the art rollout)
 - **What:** measure before the art multiplies: frames per second, the time a floor takes to load, and how much the
   graphics card is asked to draw, on Zachary's PC, in the busiest grey-box floor and in the look-target room, alone

@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://systems/bosses/attacks/slam_attack.gd" id="3_slam"]
 [ext_resource type="Script" path="res://systems/bosses/attacks/projectile_burst_attack.gd" id="4_burst"]
 [ext_resource type="Script" path="res://core/data/enemies/ranged_attack_data.gd" id="5_ranged"]
+[ext_resource type="ArrayMesh" path="res://assets/models/botany/boss_mushroom_man.mesh" id="art_mesh_1"]
 
 [sub_resource type="BoxShape3D" id="Shape_1"]
 size = Vector3(1.6, 2.6, 1.6)
@@ -78,6 +79,7 @@ status_id = &"status_spores"
 projectile_radius = 0.24
 projectile_color = Color(0.85, 0.8, 0.3, 1)
 
+
 [node name="MushroomMan" type="CharacterBody3D"]
 script = ExtResource("1_boss")
 attack_knockback = 5.0
@@ -92,28 +94,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
 shape = SubResource("Shape_1")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
-mesh = SubResource("Mesh_stalk")
-
-[node name="Cap" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("Mesh_cap")
-
-[node name="SpotA" type="MeshInstance3D" parent="Mesh/Cap"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 0.42, 0.5)
-mesh = SubResource("Mesh_spot")
-
-[node name="SpotB" type="MeshInstance3D" parent="Mesh/Cap"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0.42, -0.6)
-mesh = SubResource("Mesh_spot")
-
-[node name="SpotC" type="MeshInstance3D" parent="Mesh/Cap"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.42, 0.9)
-mesh = SubResource("Mesh_spot")
-
-[node name="Eyes" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -0.71)
-mesh = SubResource("Mesh_eyes")
+mesh = ExtResource("art_mesh_1")
 
 [node name="HealthLabel" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 0)

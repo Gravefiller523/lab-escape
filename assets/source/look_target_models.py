@@ -53,6 +53,20 @@ PALETTE = {
     "skylight": (5, 4, (1.00, 0.95, 0.80)),
     "concrete": (6, 4, (0.62, 0.58, 0.50)),
     "feed_sack": (7, 4, (0.80, 0.72, 0.55)),
+    "lab_white": (0, 5, (0.90, 0.93, 0.91)),
+    "lab_panel": (1, 5, (0.80, 0.85, 0.82)),
+    "lab_green": (2, 5, (0.28, 0.72, 0.40)),
+    "lab_floor": (3, 5, (0.74, 0.78, 0.75)),
+    "leaf": (4, 5, (0.30, 0.62, 0.25)),
+    "leaf_dark": (5, 5, (0.18, 0.42, 0.18)),
+    "soil": (6, 5, (0.35, 0.25, 0.17)),
+    "terracotta": (7, 5, (0.78, 0.42, 0.28)),
+    "light_strip": (0, 6, (0.95, 1.00, 0.95)),
+    "mushroom_cap": (1, 6, (0.80, 0.30, 0.20)),
+    "mushroom_stalk": (2, 6, (0.92, 0.88, 0.78)),
+    "spore": (3, 6, (0.78, 0.72, 0.36)),
+    "vine": (4, 6, (0.36, 0.52, 0.22)),
+    "flytrap_mouth": (5, 6, (0.80, 0.25, 0.30)),
 }
 
 
@@ -308,7 +322,13 @@ def g(x, y, z):
     return (x, -z, y)
 
 
-def wall_with_gaps(parts, start, end, gaps, height, thickness):
+ZOOLOGY = {"lower": "wood", "upper": "plaster", "trim": "wood_dark", "ceiling": "plaster_dirty", "beam": "wood_dark",
+           "light": None}
+BOTANY = {"lower": "lab_panel", "upper": "lab_white", "trim": "lab_green", "ceiling": "lab_white", "beam": None,
+          "light": "light_strip"}
+
+
+def wall_with_gaps(parts, start, end, gaps, height, thickness, style=None):
     """A wall from start to end (Godot x, z on the floor), with doorway gaps [(centre along the wall, width)]: a
     wooden lower half and plaster above, with a header over each doorway."""
     sx, sz = start
@@ -327,14 +347,15 @@ def wall_with_gaps(parts, start, end, gaps, height, thickness):
         cx = sx + (mid if along_x else 0.0)
         cz = sz + (0.0 if along_x else mid)
         seg = (b - a, thickness) if along_x else (thickness, b - a)
-        parts.append(part("cube", "wood", g(cx, 0.6, cz), (seg[0], seg[1], 1.2)))
-        parts.append(part("cube", "plaster", g(cx, 0.6 + height / 2.0, cz), (seg[0], seg[1], height - 1.2)))
-        parts.append(part("cube", "wood_dark", g(cx, 1.22, cz), (seg[0] + 0.02, seg[1] + 0.04, 0.08)))
+        s = style or ZOOLOGY
+        parts.append(part("cube", s["lower"], g(cx, 0.6, cz), (seg[0], seg[1], 1.2)))
+        parts.append(part("cube", s["upper"], g(cx, 0.6 + height / 2.0, cz), (seg[0], seg[1], height - 1.2)))
+        parts.append(part("cube", s["trim"], g(cx, 1.22, cz), (seg[0] + 0.02, seg[1] + 0.04, 0.08)))
     for centre, width in gaps:
         cx = sx + (centre if along_x else 0.0)
         cz = sz + (0.0 if along_x else centre)
         seg = (width, thickness) if along_x else (thickness, width)
-        parts.append(part("cube", "plaster", g(cx, 2.8 + (height - 2.8) / 2.0, cz), (seg[0], seg[1], height - 2.8)))
+        parts.append(part("cube", (style or ZOOLOGY)["upper"], g(cx, 2.8 + (height - 2.8) / 2.0, cz), (seg[0], seg[1], height - 2.8)))
 
 
 def fence(parts, start, end, height=2.2):
@@ -409,18 +430,22 @@ def animal_holding(material):
     join_and_export(parts, "room_zoology_animal_holding", material, "zoology", False)
 
 
-def room_shell(parts, width, depth, doors, floor_swatch="concrete", height=3.6, wall=0.3):
+def room_shell(parts, width, depth, doors, floor_swatch="concrete", height=3.6, wall=0.3, style=None):
     """Floor, four walls with doorway gaps and a ceiling for a tile of width x depth metres (origin at its corner).
     doors: {"N": [x...], "S": [x...], "W": [z...], "E": [z...]}: each doorway's centre along that wall (2.4 m wide)."""
     parts.append(part("cube", floor_swatch, g(width / 2.0, -0.05, depth / 2.0), (width, depth, 0.1)))
     gaps = {side: [(c, 2.4) for c in doors.get(side, [])] for side in "NSWE"}
-    wall_with_gaps(parts, (0.0, -wall / 2.0), (width, -wall / 2.0), gaps["N"], height, wall)
-    wall_with_gaps(parts, (0.0, depth + wall / 2.0), (width, depth + wall / 2.0), gaps["S"], height, wall)
-    wall_with_gaps(parts, (-wall / 2.0, 0.0), (-wall / 2.0, depth), gaps["W"], height, wall)
-    wall_with_gaps(parts, (width + wall / 2.0, 0.0), (width + wall / 2.0, depth), gaps["E"], height, wall)
-    parts.append(part("cube", "plaster_dirty", g(width / 2.0, height + 0.05, depth / 2.0), (width + wall * 2, depth + wall * 2, 0.1)))
+    s = style or ZOOLOGY
+    wall_with_gaps(parts, (0.0, -wall / 2.0), (width, -wall / 2.0), gaps["N"], height, wall, s)
+    wall_with_gaps(parts, (0.0, depth + wall / 2.0), (width, depth + wall / 2.0), gaps["S"], height, wall, s)
+    wall_with_gaps(parts, (-wall / 2.0, 0.0), (-wall / 2.0, depth), gaps["W"], height, wall, s)
+    wall_with_gaps(parts, (width + wall / 2.0, 0.0), (width + wall / 2.0, depth), gaps["E"], height, wall, s)
+    parts.append(part("cube", s["ceiling"], g(width / 2.0, height + 0.05, depth / 2.0), (width + wall * 2, depth + wall * 2, 0.1)))
     for z in [3.0 * i for i in range(1, int(depth / 3.0))]:
-        parts.append(part("cube", "wood_dark", g(width / 2.0, height - 0.15, z), (width, 0.25, 0.3)))
+        if s["beam"]:
+            parts.append(part("cube", s["beam"], g(width / 2.0, height - 0.15, z), (width, 0.25, 0.3)))
+        if s["light"]:
+            parts.append(part("cube", s["light"], g(width / 2.0, height - 0.01, z), (width * 0.7, 0.25, 0.02)))
 
 
 def vet_surgery(material):
@@ -713,6 +738,281 @@ def welcome_center(material):
     join_and_export(parts, "room_zoology_welcome_center", material, "zoology", False)
 
 
+def bench(parts, x, y_top, z, sx, sz, top="lab_white", body="lab_panel"):
+    """A lab bench whose box matches a grey-box bench: cupboard body, a white top."""
+    parts.append(part("cube", body, g(x, (y_top - 0.04) / 2.0, z), (sx, sz, y_top - 0.04)))
+    parts.append(part("cube", top, g(x, y_top - 0.02, z), (sx + 0.05, sz + 0.05, 0.04)))
+
+
+def plants_on(parts, x, y, z, count, spacing, along_x=True):
+    for i in range(count):
+        px = x + (i - (count - 1) / 2.0) * spacing if along_x else x
+        pz = z if along_x else z + (i - (count - 1) / 2.0) * spacing
+        parts.append(part("cylinder", "terracotta", g(px, y + 0.1, pz), (0.24, 0.24, 0.2), vertices=6))
+        parts.append(part("ico", "leaf" if i % 2 else "leaf_dark", g(px, y + 0.32, pz), (0.36, 0.36, 0.3), subdivisions=1))
+
+
+def botany_rooms(material):
+    """Botany's ten rooms (docs/ART_BIBLE.md: clinical white with green accents). Every big piece sits on the grey
+    box's collision box of the same name."""
+    rooms = {}
+
+    p = []
+    room_shell(p, 6.0, 9.0, {"N": [1.5], "S": [4.5], "W": [4.5], "E": [4.5]}, "lab_floor", style=BOTANY)
+    p.append(part("cube", "metal", g(4.5, 0.75, 0.75), (2.0, 1.2, 1.5)))
+    p.append(part("cylinder", "steel_dark", g(4.5, 0.85, 1.36), (1.0, 1.0, 0.06), (90, 0, 0), vertices=10))
+    p.append(part("cube", "lab_green", g(5.2, 1.3, 1.37), (0.3, 0.02, 0.15)))
+    for x in (0.35, 2.65):
+        for z in (8.05, 8.75):
+            p.append(part("cube", "steel_dark", g(x, 0.9, z), (0.06, 0.06, 1.8)))
+    for y in (0.3, 0.9, 1.5):
+        p.append(part("cube", "metal", g(1.5, y, 8.4), (2.4, 0.8, 0.04)))
+        for i in range(4):
+            p.append(part("cylinder", "glass", g(0.6 + i * 0.6, y + 0.15, 8.4), (0.15, 0.15, 0.26), vertices=6))
+    rooms["autoclave_room"] = p
+
+    p = []
+    room_shell(p, 12.0, 12.0, {"N": [4.5], "S": [7.5], "W": [7.5], "E": [4.5]}, "lab_floor", style=BOTANY)
+    for x in (4.5, 9.0):
+        bench(p, x, 0.9, 3.0, 3.0, 1.0)
+        for i in range(4):
+            p.append(part("cylinder", "glass", g(x - 1.1 + i * 0.7, 1.0, 3.0), (0.2, 0.2, 0.06), vertices=10))
+    bench(p, 6.0, 0.9, 8.0, 4.0, 1.2)
+    p.append(part("cube", "lab_white", g(6.0, 1.15, 8.0), (1.0, 0.6, 0.5)))
+    p.append(part("cube", "glass", g(6.0, 1.45, 8.0), (0.9, 0.5, 0.1)))
+    rooms["cell_culture_lab"] = p
+
+    p = []
+    room_shell(p, 3.0, 6.0, {"N": [1.5], "S": [1.5]}, "steel_dark", style=BOTANY)
+    p.append(part("cube", "lab_panel", g(0.4, 0.25, 3.0), (0.5, 1.6, 0.5)))
+    for z in (2.0, 4.0):
+        p.append(part("cube", "metal", g(1.5, 3.3, z), (2.4, 0.15, 0.15)))
+        for i in range(5):
+            p.append(part("cone", "steel_dark", g(0.7 + i * 0.4, 3.2, z), (0.06, 0.06, 0.08), (180, 0, 0), vertices=4))
+    for i in range(7):
+        swatch = "safety_yellow" if i % 2 == 0 else "stripe_black"
+        p.append(part("cube", swatch, g(0.3 + i * 0.4, 0.006, 0.3), (0.4, 0.25, 0.012)))
+        p.append(part("cube", swatch, g(0.3 + i * 0.4, 0.006, 5.7), (0.4, 0.25, 0.012)))
+    rooms["decon_airlock"] = p
+
+    p = []
+    room_shell(p, 18.0, 24.0, {"N": [7.5], "S": [10.5], "W": [7.5], "E": [16.5]}, "lab_floor", style=BOTANY)
+    for z in (5.0, 10.0, 15.0, 20.0):
+        p.append(part("cube", "lab_panel", g(9.0, 0.35, z), (12.0, 1.2, 0.7)))
+        p.append(part("cube", "soil", g(9.0, 0.76, z), (11.8, 1.1, 0.08)))
+        for i in range(12):
+            p.append(part("ico", "leaf" if (i + int(z)) % 2 else "leaf_dark", g(3.5 + i * 1.0, 1.0, z), (0.6, 0.6, 0.45), subdivisions=1))
+    p.append(part("cylinder", "lab_green", g(1.2, 0.9, 12.0), (1.6, 1.6, 1.8), vertices=10))
+    p.append(part("cylinder", "steel", g(1.2, 1.85, 12.0), (1.6, 1.6, 0.1), vertices=10))
+    for x in (4.5, 9.0, 13.5):                                                                 # glass roof panes
+        p.append(part("cube", "glass", g(x, 3.58, 12.0), (3.6, 22.0, 0.02)))
+    rooms["greenhouse"] = p
+
+    p = []
+    room_shell(p, 12.0, 12.0, {"N": [4.5], "S": [7.5], "W": [7.5], "E": [4.5]}, "lab_floor", style=BOTANY)
+    for z in (4.0, 8.5):
+        p.append(part("cube", "metal", g(6.0, 1.2, z), (8.0, 0.08, 2.4)))                    # rack back
+        for y in (0.4, 1.2, 2.0):
+            p.append(part("cube", "metal", g(6.0, y, z), (8.0, 1.0, 0.05)))
+            p.append(part("cube", "light_strip", g(6.0, y + 0.7, z), (7.6, 0.3, 0.03)))
+            for i in range(10):
+                p.append(part("ico", "leaf", g(2.4 + i * 0.8, y + 0.15, z), (0.4, 0.4, 0.28), subdivisions=1))
+        for x in (2.0, 10.0):
+            p.append(part("cube", "steel_dark", g(x, 1.2, z), (0.08, 1.0, 2.4)))
+    rooms["growth_chamber"] = p
+
+    p = []
+    room_shell(p, 9.0, 12.0, {"N": [4.5], "S": [4.5], "W": [7.5], "E": [4.5]}, "lab_floor", style=BOTANY)
+    bench(p, 1.0, 0.9, 3.0, 1.4, 3.0)
+    for z in (2.2, 3.0, 3.8):
+        p.append(part("cube", "steel_dark", g(0.9, 1.0, z), (0.25, 0.25, 0.2)))
+        p.append(part("cylinder", "steel_dark", g(0.9, 1.25, z), (0.1, 0.1, 0.35), vertices=6))
+    bench(p, 1.65, 0.9, 11.0, 2.7, 1.2)
+    bench(p, 4.5, 0.9, 7.5, 2.0, 1.2, "lab_green")
+    rooms["microscopy_lab"] = p
+
+    p = []
+    room_shell(p, 9.0, 12.0, {"N": [4.5], "S": [4.5], "W": [7.5], "E": [4.5]}, "steel_dark", style=BOTANY)
+    for x, z in ((2.0, 3.0), (7.0, 9.5)):
+        p.append(part("cube", "lab_green", g(x, 0.6, z), (2.0, 2.0, 1.2)))
+        p.append(part("cylinder", "steel", g(x, 0.6, z), (1.0, 1.0, 2.1), (0, 90, 0), vertices=10))
+    p.append(part("cylinder", "lab_white", g(2.0, 1.0, 10.0), (2.0, 2.0, 2.0), vertices=10))
+    p.append(part("cube", "water", g(2.0, 1.4, 11.0), (0.3, 0.02, 0.6)))
+    p.append(part("cylinder", "steel", g(8.6, 3.3, 6.0), (0.3, 0.3, 10.0), (90, 0, 0), vertices=8))
+    rooms["pump_room"] = p
+
+    p = []
+    room_shell(p, 9.0, 9.0, {"N": [4.5], "S": [4.5], "W": [4.5], "E": [4.5]}, "lab_floor", style=BOTANY)
+    for x, z in ((1.15, 0.55), (7.85, 0.55), (1.15, 8.45), (7.85, 8.45)):
+        p.append(part("cube", "lab_white", g(x, 1.0, z), (2.0, 0.8, 2.0)))
+        p.append(part("cube", "glass", g(x, 1.1, z + (0.41 if z < 4.5 else -0.41)), (1.8, 0.02, 1.6)))
+        p.append(part("cube", "light_strip", g(x, 1.9, z), (1.6, 0.6, 0.04)))
+    bench(p, 4.5, 0.9, 4.5, 1.2, 1.2)
+    for i in range(3):
+        p.append(part("cube", "terracotta", g(4.2 + i * 0.3, 0.95, 4.5), (0.15, 0.2, 0.1)))
+    rooms["seed_vault"] = p
+
+    p = []
+    room_shell(p, 12.0, 15.0, {"N": [7.5], "S": [4.5], "W": [7.5], "E": [7.5]}, "lab_floor", style=BOTANY)
+    for z in (4.0, 11.0):
+        bench(p, 6.0, 0.9, z, 8.0, 1.2, "wood", "lab_panel")
+        plants_on(p, 6.0, 0.9, z, 8, 0.9)
+        p.append(part("cube", "soil", g(3.0, 0.93, z), (0.8, 0.5, 0.06)))
+    p.append(part("cube", "terracotta", g(10.5, 0.5, 13.5), (1.6, 1.6, 1.0)))
+    p.append(part("cube", "soil", g(10.5, 1.0, 13.5), (1.5, 1.5, 0.05)))
+    rooms["soil_prep"] = p
+
+    p = []
+    room_shell(p, 24.0, 18.0, {"S": [10.5, 13.5, 16.5], "W": [7.5, 10.5], "E": [7.5, 10.5]}, "lab_floor", style=BOTANY)
+    wall_with_gaps(p, (8.85, 6.0), (18.15, 6.0), [(4.65, 2.4)], 3.6, 0.3, BOTANY)
+    wall_with_gaps(p, (9.0, 0.0), (9.0, 6.0), [], 3.6, 0.3, BOTANY)
+    wall_with_gaps(p, (18.0, 0.0), (18.0, 6.0), [], 3.6, 0.3, BOTANY)
+    p.append(part("cube", "steel_dark", g(13.5, 0.4, 0.75), (6.0, 0.7, 0.8)))
+    for x in (11.25, 12.75, 14.25, 15.75):
+        p.append(part("cube", "rubber", g(x, 1.8, 0.25), (1.1, 0.1, 0.65)))
+        p.append(part("cube", "water", g(x, 1.8, 0.31), (1.0, 0.02, 0.55)))
+    p.append(part("cube", "lab_panel", g(13.5, 0.45, 3.2), (2.4, 1.4, 0.9)))
+    p.append(part("cube", "lab_white", g(13.5, 0.55, 10.5), (6.0, 0.8, 1.1)))
+    p.append(part("cube", "lab_green", g(13.5, 1.12, 10.5), (6.1, 0.9, 0.05)))
+    for x in (10.9, 16.1):
+        p.append(part("cube", "lab_white", g(x, 0.55, 11.4), (0.8, 1.0, 1.1)))
+    for x in (4.0, 20.0):
+        p.append(part("cube", "lab_green", g(x, 0.25, 17.2), (4.0, 0.8, 0.5)))
+    for x, z, sx, sz in ((3.0, 2.0, 2.0, 1.2), (19.5, 1.0, 1.6, 1.0)):
+        p.append(part("cube", "terracotta", g(x, 0.4, z), (sx, sz, 0.8)))
+        plants_on(p, x, 0.8, z, 3, sx / 3.0)
+    p.append(part("cube", "lab_green", g(13.5, 0.01, 14.5), (0.3, 7.0, 0.02)))
+    rooms["welcome_center"] = p
+
+    for name, pieces in rooms.items():
+        join_and_export(pieces, "room_botany_" + name, material, "botany", False)
+
+
+def mushroom_zombie(material):
+    """The mushroom zombie (enemy_mushroom_zombie): a lab worker in a white coat, 1.6 m tall, arms out in front, a red
+    mushroom cap bursting out of the head and small mushrooms on the shoulders."""
+    parts = [
+        part("cube", "lab_white", (0, 0, 1.05), (0.42, 0.26, 0.6)),                          # coat
+        part("cube", "lab_white", (0, -0.01, 0.68), (0.44, 0.28, 0.3)),                      # coat tails
+        part("cube", "lab_green", (0.12, 0.135, 1.15), (0.08, 0.01, 0.1)),                   # badge
+        part("uv", "mushroom_stalk", (0, 0.02, 1.42), (0.24, 0.24, 0.26), segments=8, rings=5),  # head
+        part("uv", "mushroom_cap", (0.04, 0, 1.6), (0.52, 0.5, 0.2), (0, 12, 0), segments=10, rings=5),
+        part("uv", "mushroom_stalk", (0.15, 0.06, 1.68), (0.08, 0.08, 0.04), segments=6, rings=3),
+        part("uv", "mushroom_stalk", (-0.1, -0.1, 1.68), (0.06, 0.06, 0.03), segments=6, rings=3),
+        part("uv", "spore", (0.05, 0.12, 1.44), (0.04, 0.03, 0.04), segments=6, rings=4),    # glazed eyes
+        part("uv", "spore", (-0.05, 0.12, 1.44), (0.04, 0.03, 0.04), segments=6, rings=4),
+        part("cube", "rubber", (0, 0.13, 1.36), (0.08, 0.01, 0.025)),                        # mouth
+    ]
+    for side in (-1, 1):
+        parts.append(part("cylinder", "rubber", (side * 0.1, 0, 0.27), (0.14, 0.14, 0.54), vertices=6))   # legs
+        parts.append(part("cube", "rubber", (side * 0.1, 0.04, 0.03), (0.13, 0.22, 0.06)))                # shoes
+        parts.append(part("cylinder", "lab_white", (side * 0.25, 0.2, 1.22), (0.11, 0.11, 0.45), (80, 0, 0), vertices=6))
+        parts.append(part("uv", "mushroom_stalk", (side * 0.25, 0.44, 1.18), (0.1, 0.1, 0.1), segments=6, rings=4))
+        parts.append(part("cylinder", "mushroom_stalk", (side * 0.16, -0.02, 1.4), (0.04, 0.04, 0.1), vertices=6))
+        parts.append(part("uv", "mushroom_cap", (side * 0.16, -0.02, 1.46), (0.12, 0.12, 0.05), segments=6, rings=3))
+    join_and_export(parts, "enemy_mushroom_zombie", material, "botany", True)
+
+
+def flytrap(material):
+    """The flytrap (enemy_flytrap): a giant snapping plant in a clay pot, 0.9 m tall, jaws open towards the front
+    with pale teeth on the rims."""
+    parts = [
+        part("cylinder", "terracotta", (0, 0, 0.17), (0.56, 0.56, 0.34), vertices=8),
+        part("cylinder", "terracotta", (0, 0, 0.33), (0.6, 0.6, 0.06), vertices=8),
+        part("cylinder", "soil", (0, 0, 0.355), (0.5, 0.5, 0.02), vertices=8),
+        part("cylinder", "vine", (0, 0.02, 0.48), (0.09, 0.09, 0.28), (10, 0, 0), vertices=6),        # stem
+        part("uv", "leaf", (0, 0.1, 0.74), (0.46, 0.4, 0.14), (-28, 0, 0), segments=10, rings=5),   # top jaw
+        part("uv", "flytrap_mouth", (0, 0.11, 0.72), (0.4, 0.34, 0.08), (-28, 0, 0), segments=10, rings=5),
+        part("uv", "leaf", (0, 0.08, 0.6), (0.44, 0.38, 0.12), (14, 0, 0), segments=10, rings=5),    # bottom jaw
+        part("uv", "flytrap_mouth", (0, 0.09, 0.62), (0.38, 0.32, 0.06), (14, 0, 0), segments=10, rings=5),
+    ]
+    for i in range(7):                                                                  # teeth on both rims
+        angle = math.radians(-70 + i * (140 / 6))
+        x, y = math.sin(angle) * 0.2, 0.1 + math.cos(angle) * 0.18
+        parts.append(part("cone", "tooth", (x, y, 0.8 + (0.18 - abs(x)) * 0.25), (0.03, 0.03, 0.08), (180, 0, 0), vertices=4))
+        parts.append(part("cone", "tooth", (x, y - 0.02, 0.64), (0.03, 0.03, 0.07), vertices=4))
+    for i in range(4):                                                                  # leaves over the pot rim
+        a = math.radians(45 + i * 90)
+        parts.append(part("cube", "leaf_dark", (math.sin(a) * 0.3, math.cos(a) * 0.3, 0.4), (0.12, 0.26, 0.02),
+                          (25, 0, -math.degrees(a))))
+    join_and_export(parts, "enemy_flytrap", material, "botany", True)
+
+
+def spore_shooter(material):
+    """The spore shooter (enemy_spore_shooter): a waddling puffball 0.8 m tall on root feet, with a spout on top that
+    lobs spore clouds forward, two small eyes and pale spots."""
+    parts = [
+        part("uv", "spore", (0, 0, 0.4), (0.5, 0.48, 0.56), segments=10, rings=6),
+        part("cylinder", "leaf_dark", (0, 0.13, 0.66), (0.16, 0.16, 0.26), (-55, 0, 0), vertices=8),     # spout
+        part("cylinder", "soil", (0, 0.24, 0.74), (0.12, 0.12, 0.04), (-55, 0, 0), vertices=8),
+        part("uv", "eye_red", (0.08, 0.22, 0.46), (0.06, 0.04, 0.06), segments=6, rings=4),
+        part("uv", "eye_red", (-0.08, 0.22, 0.46), (0.06, 0.04, 0.06), segments=6, rings=4),
+    ]
+    for x, y, z in ((0.2, 0.05, 0.5), (-0.18, -0.1, 0.55), (0.1, -0.2, 0.35), (-0.22, 0.08, 0.3), (0.0, -0.08, 0.66)):
+        parts.append(part("uv", "mushroom_stalk", (x, y, z), (0.07, 0.07, 0.04), segments=6, rings=3))
+    for i in range(4):                                                                  # root feet
+        a = math.radians(45 + i * 90)
+        parts.append(part("cone", "vine", (math.sin(a) * 0.16, math.cos(a) * 0.16, 0.08), (0.1, 0.1, 0.18),
+                          (155, 0, -math.degrees(a)), vertices=5))
+    join_and_export(parts, "enemy_spore_shooter", material, "botany", True)
+
+
+def vine_creeper(material):
+    """The vine creeper (enemy_vine_creeper): a 1.4 m tangle of vines with a flower-mouth head and two long tendrils
+    reaching forward (it pulls players in)."""
+    parts = [
+        part("ico", "leaf_dark", (0, 0, 0.25), (0.8, 0.75, 0.5), subdivisions=1),
+        part("ico", "vine", (0, 0, 0.7), (0.6, 0.55, 0.55), subdivisions=1),
+        part("ico", "leaf_dark", (0, 0.03, 1.12), (0.5, 0.48, 0.45), subdivisions=1),
+        part("cylinder", "flytrap_mouth", (0, 0.24, 1.14), (0.32, 0.32, 0.04), (90, 0, 0), vertices=6),   # petals
+        part("cylinder", "rubber", (0, 0.26, 1.14), (0.14, 0.14, 0.03), (90, 0, 0), vertices=6),          # mouth
+        part("uv", "spore", (0.12, 0.2, 1.3), (0.06, 0.04, 0.06), segments=6, rings=4),
+        part("uv", "spore", (-0.12, 0.2, 1.3), (0.06, 0.04, 0.06), segments=6, rings=4),
+    ]
+    for side in (-1, 1):                                                                # tendrils, three pieces each
+        for i in range(3):
+            parts.append(part("cylinder", "vine", (side * (0.3 + i * 0.03), 0.2 + i * 0.22, 0.95 - i * 0.08),
+                              (0.08 - i * 0.015, 0.08 - i * 0.015, 0.26), (75 + i * 8, 0, side * -8), vertices=5))
+        parts.append(part("cube", "leaf", (side * 0.4, 0.0, 0.85), (0.24, 0.12, 0.02), (0, side * 30, 0)))
+    for i in range(6):                                                                  # roots
+        a = math.radians(i * 60)
+        parts.append(part("cone", "vine", (math.sin(a) * 0.32, math.cos(a) * 0.32, 0.06), (0.12, 0.12, 0.34),
+                          (-100, 0, -math.degrees(a)), vertices=5))
+    join_and_export(parts, "enemy_vine_creeper", material, "botany", True)
+
+
+def mushroom_man(material):
+    """The Mushroom Man boss (boss_mushroom_man): a 2.8 m mushroom with a thick stalk, a huge spotted red cap, gills
+    underneath, an angry face, stubby arms, root feet and a torn lab coat collar."""
+    parts = [
+        part("cylinder", "mushroom_stalk", (0, 0, 1.0), (1.3, 1.3, 2.0), vertices=12),
+        part("cylinder", "mushroom_stalk", (0, 0, 0.15), (1.5, 1.5, 0.3), vertices=12),
+        part("cylinder", "mushroom_stalk", (0, 0, 1.75), (1.55, 1.55, 0.08), vertices=12),     # skirt ring
+        part("uv", "mushroom_cap", (0, 0, 2.3), (3.0, 3.0, 1.1), segments=14, rings=7),
+        part("cylinder", "spore", (0, 0, 2.18), (2.7, 2.7, 0.12), vertices=14),                 # gills
+        part("uv", "spore", (0.24, 0.66, 1.3), (0.22, 0.1, 0.15), segments=6, rings=4),        # eyes
+        part("uv", "spore", (-0.24, 0.66, 1.3), (0.22, 0.1, 0.15), segments=6, rings=4),
+        part("cube", "rubber", (0.24, 0.68, 1.43), (0.3, 0.05, 0.06), (0, -15, 0)),            # angry brows
+        part("cube", "rubber", (-0.24, 0.68, 1.43), (0.3, 0.05, 0.06), (0, 15, 0)),
+        part("cube", "rubber", (0, 0.66, 0.98), (0.46, 0.05, 0.12)),                              # mouth
+        part("cylinder", "lab_white", (0, 0.0, 1.62), (1.42, 1.42, 0.14), vertices=12),                          # coat collar
+        part("cube", "label", (0.3, 0.71, 1.62), (0.2, 0.02, 0.1)),
+    ]
+    for x, y in ((0.6, 0.6), (-0.8, 0.2), (0.2, -0.7), (-0.4, -0.5), (0.9, -0.3), (-0.2, 0.9), (0.0, 0.0)):
+        parts.append(part("uv", "mushroom_stalk", (x, y, 2.3 + 0.55 * math.sqrt(max(0.0, 1 - (x * x + y * y) / 2.25))),
+                          (0.42, 0.42, 0.16), segments=8, rings=3))
+    for side in (-1, 1):                                                                # stubby arms
+        parts.append(part("cylinder", "mushroom_stalk", (side * 0.8, 0.15, 1.15), (0.3, 0.3, 0.7), (30, side * 35, 0), vertices=8))
+        parts.append(part("uv", "mushroom_stalk", (side * 0.98, 0.35, 0.88), (0.3, 0.3, 0.3), segments=8, rings=4))
+        parts.append(part("cylinder", "mushroom_stalk", (side * 0.6, -0.3, 0.75), (0.05, 0.05, 0.16), vertices=6))
+        parts.append(part("uv", "mushroom_cap", (side * 0.6, -0.33, 0.84), (0.2, 0.2, 0.08), segments=6, rings=3))
+    for i in range(6):                                                                  # root feet
+        a = math.radians(i * 60 + 30)
+        parts.append(part("cone", "soil", (math.sin(a) * 0.78, math.cos(a) * 0.78, 0.1), (0.3, 0.3, 0.55),
+                          (-100, 0, -math.degrees(a)), vertices=5))
+    join_and_export(parts, "boss_mushroom_man", material, "botany", True)
+
+
 clear_scene()
 palette = make_palette()
 solid = palette_material(palette)
@@ -732,6 +1032,12 @@ aquarium(solid)
 habitat_sim(solid)
 quarantine_pens(solid)
 welcome_center(solid)
+botany_rooms(solid)
+mushroom_zombie(solid)
+flytrap(solid)
+spore_shooter(solid)
+vine_creeper(solid)
+mushroom_man(solid)
 bat(solid)
 fly(solid)
 kangaroo(solid)

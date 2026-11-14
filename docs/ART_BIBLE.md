@@ -58,6 +58,12 @@ grey-box materials, not the system.
 - One **palette texture per department**, 256 x 256 pixels: a grid of colour squares. Models are UV-mapped onto the
   squares instead of having their own pictures. Changing the department changes the palette, so one modular kit
   serves all three departments.
+- NEW 2026-11-14 (art rollout): the 16 x 16 grid has eight "shell" squares (lower wall, upper wall, trim, ceiling,
+  beam, light, floor, accent). They hold Zoology's colours in `palette_zoology.png` and Botany's and Robotics'
+  colours in `palette_botany.png` and `palette_robotics.png`. Every room's walls use them, so the rooms and
+  hallways all departments share are one model each, coloured by the floor's department palette
+  (`DepartmentData.palette["art"]`), and a doorway a floor doesn't use is filled with one wall piece that fits any
+  room (`assets/models/shared/wall_patch`).
 - Hero objects (bosses, the lift) may have one 512 x 512 texture of their own.
 - Glowing parts use an emissive material from the shared set (`assets/materials/shared/`), not a texture.
 

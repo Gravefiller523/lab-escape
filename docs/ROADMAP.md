@@ -486,8 +486,10 @@ The five questions, the same every time:
   spore shooter, vine creeper, Mushroom Man). Then all of Robotics on `wp/25-robotics-art`: its eight rooms in
   industrial grey with safety-yellow trim (assembly floor, charging bay, electronics lab, machine shop, parts storage,
   server room, test bay, welcome centre) and its creatures (roomba, turret, drone, flock camera, Robobrain with a
-  see-through dome). All three departments now look finished. Next: the rooms and hallways every department
-  shares (offices, break room, cafeteria, bathroom, storage, hallways), then the player body. **Status: in progress.**
+  see-through dome). All three departments now look finished. Then the 25 rooms and hallways every department shares (offices,
+  break room, cafeteria, bathroom, storage, janitor closet, elevator, hallways): one model each, coloured by the
+  floor's department palette; and a fix so a doorway a floor doesn't use is filled with wall instead of showing a
+  hole in the model. Next: the player body. Every room in the game now has a finished model. **Status: in progress.**
 
 ### Phase S: sound (see section e)
 #### WP28: Audio mix and free sounds

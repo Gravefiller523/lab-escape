@@ -1,8 +1,11 @@
 # Builds the look target's first models in Blender (roadmap WP21) and exports them as .glb files.
 # Run from the project folder:
 #   blender --background --factory-startup --python assets/source/look_target_models.py
-# Every model is chunky low-poly with flat shading, UV-mapped onto the Zoology palette texture (one 256 x 256 image
-# of colour squares, docs/ART_BIBLE.md section 4), so it needs no texture of its own.
+# Every model is chunky low-poly with flat shading, UV-mapped onto the palette texture (one 256 x 256 image of colour
+# squares, docs/ART_BIBLE.md section 4), so it needs no texture of its own.
+# The "shell_..." squares (walls, ceiling, trim, floor) have a different colour in each department's palette image
+# (DEPARTMENT_SHELLS): a room or hallway every department shares is built once from them, and the floor's department
+# palette colours it (DepartmentData.palette["art"]).
 # Blender +Y becomes Godot -Z (forward), so faces and heads point to +Y here.
 
 import math
@@ -13,10 +16,12 @@ import bmesh
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 PALETTE_PATH = os.path.join(ROOT, "assets", "textures", "zoology", "palette_zoology.png")
+DEPARTMENT_PALETTE_PATH = os.path.join(ROOT, "assets", "textures", "%s", "palette_%s.png")
 MODEL_DIR = os.path.join(ROOT, "assets", "models")
 
-# The palette: 8 x 8 squares of 32 px. Name -> (column, row, colour).
-SWATCH = 32
+# The palette: 16 x 16 squares of 16 px. Name -> (column, row, colour).
+SWATCH = 16
+GRID = 16
 PALETTE = {
     "fur": (0, 0, (0.42, 0.40, 0.42)),
     "fur_dark": (1, 0, (0.28, 0.26, 0.28)),
@@ -77,22 +82,45 @@ PALETTE = {
     "screen": (5, 7, (0.20, 0.45, 0.55)),
     "brain_pink": (6, 7, (0.93, 0.60, 0.68)),
     "ind_floor": (7, 7, (0.40, 0.41, 0.43)),
+    # Department shell squares: the colours here are Zoology's; DEPARTMENT_SHELLS swaps them per department.
+    "shell_lower": (0, 8, (0.62, 0.43, 0.25)),
+    "shell_upper": (1, 8, (0.86, 0.80, 0.66)),
+    "shell_trim": (2, 8, (0.45, 0.30, 0.17)),
+    "shell_ceiling": (3, 8, (0.70, 0.64, 0.50)),
+    "shell_beam": (4, 8, (0.45, 0.30, 0.17)),
+    "shell_light": (5, 8, (1.00, 0.95, 0.80)),
+    "shell_floor": (6, 8, (0.62, 0.58, 0.50)),
+    "shell_accent": (7, 8, (0.45, 0.60, 0.30)),
+}
+
+# Each department's colours for the shell squares (docs/ART_BIBLE.md section 2). Zoology's are the PALETTE ones.
+DEPARTMENT_SHELLS = {
+    "botany": {"shell_lower": (0.80, 0.85, 0.82), "shell_upper": (0.90, 0.93, 0.91), "shell_trim": (0.28, 0.72, 0.40),
+               "shell_ceiling": (0.90, 0.93, 0.91), "shell_beam": (0.80, 0.85, 0.82), "shell_light": (0.95, 1.00, 0.95),
+               "shell_floor": (0.74, 0.78, 0.75), "shell_accent": (0.28, 0.72, 0.40)},
+    "robotics": {"shell_lower": (0.36, 0.38, 0.41), "shell_upper": (0.52, 0.54, 0.57), "shell_trim": (0.95, 0.74, 0.10),
+                 "shell_ceiling": (0.20, 0.22, 0.25), "shell_beam": (0.42, 0.45, 0.50), "shell_light": (0.95, 1.00, 0.95),
+                 "shell_floor": (0.40, 0.41, 0.43), "shell_accent": (0.95, 0.74, 0.10)},
 }
 
 
-def make_palette():
-    size = SWATCH * 8
-    image = bpy.data.images.new("palette_zoology", size, size, alpha=False)
+def make_palette(department="zoology"):
+    """Writes a department's palette image (Zoology's is the one the models are built on) and returns it."""
+    size = SWATCH * GRID
+    image = bpy.data.images.new("palette_" + department, size, size, alpha=False)
     pixels = [0.5] * (size * size * 4)
+    shells = DEPARTMENT_SHELLS.get(department, {})
     for name, (column, row, colour) in PALETTE.items():
+        colour = shells.get(name, colour)
         for y in range(row * SWATCH, (row + 1) * SWATCH):
             image_y = size - 1 - y
             for x in range(column * SWATCH, (column + 1) * SWATCH):
                 index = (image_y * size + x) * 4
                 pixels[index:index + 4] = [colour[0], colour[1], colour[2], 1.0]
     image.pixels = pixels
-    os.makedirs(os.path.dirname(PALETTE_PATH), exist_ok=True)
-    image.filepath_raw = PALETTE_PATH
+    path = PALETTE_PATH if department == "zoology" else DEPARTMENT_PALETTE_PATH % (department, department)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    image.filepath_raw = path
     image.file_format = "PNG"
     image.save()
     return image
@@ -116,8 +144,8 @@ def palette_material(image, name="palette_zoology", transparent=False):
 
 def swatch_uv(name):
     column, row, _ = PALETTE[name]
-    u = (column + 0.5) / 8.0
-    v = 1.0 - (row + 0.5) / 8.0
+    u = (column + 0.5) / GRID
+    v = 1.0 - (row + 0.5) / GRID
     return (u, v)
 
 
@@ -332,12 +360,21 @@ def g(x, y, z):
     return (x, -z, y)
 
 
-ZOOLOGY = {"lower": "wood", "upper": "plaster", "trim": "wood_dark", "ceiling": "plaster_dirty", "beam": "wood_dark",
-           "light": None}
-BOTANY = {"lower": "lab_panel", "upper": "lab_white", "trim": "lab_green", "ceiling": "lab_white", "beam": None,
-          "light": "light_strip"}
-ROBOTICS = {"lower": "ind_panel", "upper": "ind_wall", "trim": "safety_yellow", "ceiling": "steel_dark", "beam": "steel",
-            "light": "light_strip"}
+# Wall and ceiling styles. Every style uses the shell squares, so a sealed doorway's patch (wall_patch) matches any
+# room's walls; the department palette gives them their colours.
+SHARED = {"lower": "shell_lower", "upper": "shell_upper", "trim": "shell_trim", "ceiling": "shell_ceiling",
+          "beam": "shell_beam", "light": "shell_light"}
+ZOOLOGY = dict(SHARED, light=None)
+BOTANY = dict(SHARED, beam=None)
+ROBOTICS = dict(SHARED)
+
+
+def wall_patch(material):
+    """Fills a doorway a floor doesn't use (BlockoutTile.seal_socket): the wall piece that would be there, 2.4 m
+    wide and up to the 2.8 m header, centred on the socket and lying along X."""
+    parts = []
+    wall_with_gaps(parts, (-1.21, 0.0), (1.21, 0.0), [], 2.8, 0.32, SHARED)
+    join_and_export(parts, "wall_patch", material, "shared", False)
 
 
 def wall_with_gaps(parts, start, end, gaps, height, thickness, style=None):
@@ -1308,8 +1345,259 @@ def robobrain(material, glass_material):
     join_and_export(dome, "boss_robobrain_glass", glass_material, "robotics", False)
 
 
+def open_shell(parts, width, depth, doors, open_units, floor_swatch="shell_floor", style=None, lights=True,
+               height=3.6, wall=0.3):
+    """Like room_shell, for tiles with open edges (hallways): open_units {"N": [unit...]} are 3 m stretches of an edge
+    with no wall at all (where the hallway goes on), as in BlockoutTile. Ceiling lights sit one per 3 x 3 m cell
+    (none when lights is False, for the dark fillers)."""
+    s = style or SHARED
+    parts.append(part("cube", floor_swatch, g(width / 2.0, -0.05, depth / 2.0), (width, depth, 0.1)))
+    edges = {"N": ((0.0, -wall / 2.0), (1.0, 0.0), width), "S": ((0.0, depth + wall / 2.0), (1.0, 0.0), width),
+             "W": ((-wall / 2.0, 0.0), (0.0, 1.0), depth), "E": ((width + wall / 2.0, 0.0), (0.0, 1.0), depth)}
+    for side, (origin, along, length) in edges.items():
+        units = int(round(length / 3.0))
+        opened = set(open_units.get(side, []))
+        run_start = None
+        for index in range(units + 1):
+            closed = index < units and index not in opened
+            if closed and run_start is None:
+                run_start = index
+            elif not closed and run_start is not None:
+                a, b = run_start * 3.0, index * 3.0
+                gaps = [(c - a, 2.4) for c in doors.get(side, []) if a < c < b]
+                start = (origin[0] + along[0] * a, origin[1] + along[1] * a)
+                end = (origin[0] + along[0] * b, origin[1] + along[1] * b)
+                wall_with_gaps(parts, start, end, gaps, height, wall, s)
+                run_start = None
+    parts.append(part("cube", s["ceiling"], g(width / 2.0, height + 0.05, depth / 2.0), (width + wall * 2, depth + wall * 2, 0.1)))
+    for cx in range(int(width / 3.0)):
+        for cz in range(int(depth / 3.0)):
+            x, z = cx * 3.0 + 1.5, cz * 3.0 + 1.5
+            parts.append(part("cube", "steel_dark", g(x, height - 0.03, z), (1.0, 1.0, 0.06)))
+            if lights:
+                parts.append(part("cube", s["light"], g(x, height - 0.065, z), (0.85, 0.85, 0.02)))
+    # Thin accent lines along the floor's closed sides.
+    for side, (origin, along, length) in edges.items():
+        if len(open_units.get(side, [])) * 3.0 >= length:
+            continue
+        inset = 0.35
+        if side == "N":
+            parts.append(part("cube", "shell_accent", g(width / 2.0, 0.004, inset), (width, 0.08, 0.008)))
+        elif side == "S":
+            parts.append(part("cube", "shell_accent", g(width / 2.0, 0.004, depth - inset), (width, 0.08, 0.008)))
+        elif side == "W":
+            parts.append(part("cube", "shell_accent", g(inset, 0.004, depth / 2.0), (0.08, depth, 0.008)))
+        else:
+            parts.append(part("cube", "shell_accent", g(width - inset, 0.004, depth / 2.0), (0.08, depth, 0.008)))
+
+
+def shelf_row(parts, x, z, length, depth, height, frame="safety_yellow"):
+    """A steel shelving row on a grey-box shelf box (length along x), stocked with boxes and bins."""
+    posts = max(2, int(length / 2.0) + 1)
+    for i in range(posts):
+        px = x - length / 2.0 + 0.05 + i * (length - 0.1) / (posts - 1)
+        parts.append(part("cube", frame, g(px, height / 2.0, z), (0.1, depth, height)))
+    levels = [0.15, height * 0.4, height * 0.72, height - 0.05]
+    for y in levels:
+        parts.append(part("cube", "steel", g(x, y, z), (length, depth, 0.05)))
+    count = int(length / 0.8)
+    for i in range(count):
+        y = levels[i % 3] + 0.2
+        bx = x - length / 2.0 + 0.5 + i * (length - 1.0) / max(1, count - 1)
+        swatch = ("sand", "shell_accent", "label", "wood")[i % 4]
+        parts.append(part("cube", swatch, g(bx, y, z + (0.08 if i % 2 else -0.08)), (0.5, depth * 0.6, 0.34)))
+
+
+def desk(parts, x, z, sx, sz, facing=1):
+    """An office desk on a grey-box desk box: top, side panels, a monitor, a keyboard and papers."""
+    parts.append(part("cube", "wood", g(x, 0.73, z), (sx, sz, 0.04)))
+    for side in (-1, 1):
+        parts.append(part("cube", "steel_dark", g(x + side * (sx / 2.0 - 0.03), 0.355, z), (0.04, sz - 0.05, 0.71)))
+    parts.append(part("cube", "steel_dark", g(x, 0.95, z - facing * sz * 0.3), (0.55, 0.04, 0.36)))
+    parts.append(part("cube", "screen", g(x, 0.97, z - facing * (sz * 0.3 - 0.025)), (0.5, 0.01, 0.3)))
+    parts.append(part("cube", "steel_dark", g(x, 0.77, z - facing * sz * 0.3), (0.06, 0.06, 0.1)))
+    parts.append(part("cube", "rubber", g(x, 0.76, z + facing * 0.05), (0.45, 0.15, 0.02)))
+    parts.append(part("cube", "label", g(x + sx * 0.3, 0.755, z), (0.21, 0.3, 0.01), (0, 0, 12)))
+
+
+def shared_rooms(material):
+    """The rooms and hallways every department shares (tile_<name>.tscn). Their walls, ceilings and floors use the
+    shell squares, so each department's palette colours them; the furniture keeps its own colours."""
+    rooms = {}
+
+    halls = {   # name: (width, depth, doorways, open units, lights)
+        "hall_corner": (3, 3, {}, {"S": [0], "E": [0]}, True),
+        "hall_cross": (3, 3, {}, {"N": [0], "S": [0], "W": [0], "E": [0]}, True),
+        "hall_end": (3, 3, {"N": [1.5]}, {"S": [0]}, True),
+        "hall_filler": (3, 3, {}, {"N": [0], "S": [0]}, True),
+        "hall_filler_dark": (3, 3, {}, {"N": [0], "S": [0]}, False),
+        "hall_straight": (3, 9, {"W": [4.5], "E": [4.5]}, {"N": [0], "S": [0]}, True),
+        "hall_straight_long": (3, 15, {"W": [4.5, 10.5], "E": [4.5, 10.5]}, {"N": [0], "S": [0]}, True),
+        "hall_t": (3, 3, {}, {"W": [0], "E": [0], "S": [0]}, True),
+        "main_corner": (6, 6, {}, {"S": [0, 1], "E": [0, 1]}, True),
+        "main_end": (6, 3, {"N": [1.5]}, {"S": [0, 1]}, True),
+        "main_filler": (6, 3, {}, {"N": [0, 1], "S": [0, 1]}, True),
+        "main_filler_dark": (6, 3, {}, {"N": [0, 1], "S": [0, 1]}, False),
+        "main_straight": (6, 9, {"W": [4.5], "E": [4.5]}, {"N": [0, 1], "S": [0, 1]}, True),
+        "main_straight_long": (6, 15, {"W": [4.5, 10.5], "E": [4.5, 10.5]}, {"N": [0, 1], "S": [0, 1]}, True),
+        "main_t": (6, 6, {}, {"W": [0, 1], "E": [0, 1], "S": [0, 1]}, True),
+    }
+    for name, (w, d, doors, opened, lights) in halls.items():
+        p = []
+        open_shell(p, float(w), float(d), doors, opened, lights=lights)
+        if not lights:                                                  # a dead light panel hanging loose
+            p.append(part("cube", "steel_dark", g(w / 2.0, 3.3, 1.5), (0.85, 0.85, 0.03), (20, 0, 0)))
+        rooms[name] = p
+
+    p = []
+    open_shell(p, 9.0, 9.0, {}, {"N": [0, 1, 2]})
+    rooms["elevator"] = p
+    bpy.data.objects.remove(p.pop(0))                                   # no whole floor: the lift stands in the hole
+    for x, z, sx, sz in ((0.9, 4.5, 1.8, 9.0), (8.1, 4.5, 1.8, 9.0), (4.5, 0.9, 5.4, 1.8), (4.5, 8.1, 5.4, 1.8)):
+        p.append(part("cube", "shell_floor", g(x, -0.05, z), (sx, sz, 0.1)))
+    hazard_line(p, 4.5, 1.65, 5.7, True, 0.25)
+    hazard_line(p, 4.5, 7.35, 5.7, True, 0.25)
+    hazard_line(p, 1.65, 4.5, 5.2, False, 0.25)
+    hazard_line(p, 7.35, 4.5, 5.2, False, 0.25)
+
+    p = []
+    room_shell(p, 6.0, 9.0, {"N": [1.5], "S": [1.5], "W": [4.5], "E": [4.5]}, "label", style=SHARED)
+    for i in range(1, 9):
+        p.append(part("cube", "plaster", g(3.0, 0.004, float(i)), (6.0, 0.03, 0.008)))
+    for i in range(1, 6):
+        p.append(part("cube", "plaster", g(float(i), 0.004, 4.5), (0.03, 9.0, 0.008)))
+    for z in (1.5, 3.0):
+        p.append(part("cube", "lab_panel", g(4.8, 1.0, z), (2.4, 0.08, 1.8)))
+        p.append(part("cube", "steel", g(4.8, 1.92, z), (2.4, 0.1, 0.04)))
+    for z in (0.75, 2.25):
+        p.append(part("cube", "label", g(5.55, 0.2, z), (0.4, 0.55, 0.4)))
+        p.append(part("cube", "label", g(5.83, 0.6, z), (0.18, 0.5, 0.45)))
+        p.append(part("cylinder", "steel", g(5.5, 0.41, z), (0.36, 0.42, 0.03), vertices=8))
+    bench(p, 5.4, 0.9, 7.5, 1.0, 2.4, "plaster", "lab_panel")
+    for z in (6.9, 8.1):
+        p.append(part("cylinder", "steel", g(5.35, 0.89, z), (0.5, 0.5, 0.04), vertices=8))
+        p.append(part("cylinder", "steel_dark", g(5.8, 1.0, z), (0.04, 0.04, 0.2), vertices=6))
+    p.append(part("cube", "glass", g(5.98, 1.6, 7.5), (0.02, 2.2, 0.9)))
+    rooms["bathroom"] = p
+
+    p = []
+    room_shell(p, 12.0, 12.0, {"N": [4.5], "S": [7.5], "W": [7.5], "E": [4.5]}, "wood", style=SHARED)
+    bench(p, 9.0, 0.9, 0.5, 5.4, 0.7, "plaster", "wood_dark")
+    p.append(part("cube", "label", g(11.2, 1.0, 0.5), (0.9, 0.7, 2.0)))                   # fridge
+    p.append(part("cube", "steel_dark", g(10.82, 1.3, 0.86), (0.04, 0.03, 0.5)))
+    p.append(part("cube", "steel_dark", g(7.4, 1.05, 0.45), (0.6, 0.4, 0.3)))             # microwave
+    p.append(part("cube", "rubber", g(8.4, 1.05, 0.4), (0.25, 0.25, 0.3)))                # coffee machine
+    p.append(part("cylinder", "steel", g(9.6, 0.92, 0.5), (0.5, 0.4, 0.04), vertices=8))  # sink
+    p.append(part("cube", "wood", g(6.0, 0.73, 7.0), (3.0, 1.6, 0.04)))
+    for x in (4.8, 7.2):
+        for z in (6.4, 7.6):
+            p.append(part("cylinder", "wood_dark", g(x, 0.355, z), (0.08, 0.08, 0.71), vertices=6))
+    p.append(part("cube", "cap_red", g(6.0, 0.005, 7.0), (4.5, 3.0, 0.01)))              # rug
+    p.append(part("cube", "fur", g(2.0, 0.2, 11.0), (3.0, 0.9, 0.4)))                    # sofa
+    p.append(part("cube", "fur", g(2.0, 0.6, 11.35), (3.0, 0.2, 0.5)))
+    for side in (-1, 1):
+        p.append(part("cube", "fur_dark", g(2.0 + side * 1.4, 0.5, 11.0), (0.2, 0.9, 0.3)))
+    for x, z, sw in ((2.0, 0.17, "safety_yellow"), (4.0, 0.17, "lab_green"), (11.83, 7.0, "cap_red")):  # posters
+        if z < 1.0:
+            p.append(part("cube", sw, g(x, 1.9, z), (0.8, 0.02, 1.1)))
+        else:
+            p.append(part("cube", sw, g(x, 1.9, z), (0.02, 0.8, 1.1)))
+    p.append(part("cylinder", "wood_dark", g(0.6, 0.75, 9.6), (0.3, 0.3, 1.5), vertices=6))   # floor lamp
+    p.append(part("cone", "skylight", g(0.6, 1.6, 9.6), (0.5, 0.5, 0.35), tip=0.25, vertices=8))
+    rooms["break_room"] = p
+
+    p = []
+    room_shell(p, 18.0, 18.0, {"N": [4.5, 13.5], "S": [4.5, 13.5], "W": [4.5, 13.5], "E": [4.5, 13.5]}, "shell_floor",
+               style=SHARED)
+    p.append(part("cube", "steel", g(9.0, 0.48, 1.2), (6.0, 0.8, 0.96)))                  # serving counter
+    p.append(part("cube", "steel_dark", g(9.0, 0.98, 1.2), (6.0, 0.8, 0.04)))
+    p.append(part("cube", "glass", g(9.0, 1.3, 1.45), (5.8, 0.02, 0.5), (20, 0, 0)))
+    for i in range(5):
+        p.append(part("cube", "steel", g(6.8 + i * 1.1, 1.02, 1.1), (0.9, 0.5, 0.06)))
+        p.append(part("cube", ("meat", "hay", "lab_green", "sand", "meat_fat")[i], g(6.8 + i * 1.1, 1.06, 1.1), (0.8, 0.4, 0.03)))
+    p.append(part("cube", "rubber", g(9.0, 2.4, 0.16), (3.0, 0.02, 1.0)))                 # menu board
+    for i in range(4):
+        p.append(part("cube", "label", g(8.0 + (i % 2) * 2.0, 2.6 - (i // 2) * 0.4, 0.18), (1.2, 0.01, 0.06)))
+    for x in (4.5, 9.0, 13.5):
+        for z in (6.0, 12.0):
+            p.append(part("cube", "plaster", g(x, 0.73, z), (3.0, 1.4, 0.04)))
+            p.append(part("cube", "steel_dark", g(x, 0.355, z), (2.6, 0.2, 0.71)))
+            for i in range(2):
+                p.append(part("cube", "rubber", g(x - 0.6 + i * 1.2, 0.76, z + (0.3 if i else -0.3)), (0.4, 0.3, 0.02)))
+            p.append(part("cube", "steel", g(x, 0.8, z), (0.12, 0.08, 0.1)))
+    rooms["cafeteria"] = p
+
+    p = []
+    room_shell(p, 6.0, 6.0, {"N": [4.5], "S": [1.5], "W": [4.5], "E": [1.5]}, "concrete", style=SHARED)
+    shelf_row(p, 1.5, 0.5, 2.4, 0.6, 1.8, "steel_dark")
+    p.append(part("cube", "plaster", g(5.3, 0.3, 4.6), (0.8, 1.0, 0.6)))                   # mop sink
+    p.append(part("cube", "water", g(5.3, 0.58, 4.6), (0.65, 0.85, 0.04)))
+    p.append(part("cylinder", "safety_yellow", g(5.3, 0.75, 4.3), (0.32, 0.32, 0.3), vertices=8))   # bucket
+    p.append(part("cylinder", "wood", g(5.5, 1.1, 4.9), (0.04, 0.04, 1.4), (12, 0, 0), vertices=5))  # mop
+    p.append(part("cube", "safety_yellow", g(4.4, 0.35, 5.6), (0.4, 0.04, 0.7), (0, 0, 12)))      # wet floor sign
+    rooms["janitor_closet"] = p
+
+    p = []
+    room_shell(p, 9.0, 12.0, {"N": [4.5], "S": [4.5], "W": [7.5], "E": [4.5]}, "shell_floor", style=SHARED)
+    for x, z, facing in ((2.2, 3.0, 1), (6.8, 3.0, 1), (2.2, 9.5, -1), (6.8, 9.5, -1)):
+        desk(p, x, z, 1.6, 0.8, facing)
+    p.append(part("cube", "steel", g(8.4, 0.65, 11.0), (0.6, 1.6, 1.3)))
+    for i in range(3):
+        p.append(part("cube", "steel_dark", g(8.09, 0.3 + i * 0.4, 11.0), (0.02, 1.0, 0.04)))
+    p.append(part("cylinder", "terracotta", g(0.6, 0.25, 11.4), (0.4, 0.4, 0.5), vertices=6))
+    p.append(part("ico", "leaf", g(0.6, 0.75, 11.4), (0.7, 0.7, 0.6), subdivisions=1))
+    rooms["office"] = p
+
+    p = []
+    room_shell(p, 12.0, 15.0, {"N": [7.5], "S": [4.5], "W": [7.5], "E": [7.5]}, "shell_floor", style=SHARED)
+    for x, z in ((3.0, 4.0), (9.0, 4.0), (3.0, 11.0), (9.0, 11.0)):
+        for dx in (-0.8, 0.8):
+            for facing in (1, -1):
+                desk(p, x + dx, z + facing * 0.35, 1.55, 0.68, -facing)
+        p.append(part("cube", "shell_accent", g(x, 0.9, z), (3.2, 0.05, 0.4)))            # partition
+    rooms["office_open"] = p
+
+    p = []
+    room_shell(p, 15.0, 18.0, {"N": [4.5, 10.5], "S": [4.5, 10.5], "W": [4.5, 13.5], "E": [4.5, 13.5]}, "concrete",
+               style=SHARED)
+    for z in (6.0, 9.0, 12.0):
+        shelf_row(p, 7.5, z, 9.0, 1.0, 2.4)
+    hazard_line(p, 7.5, 3.0, 10.0, True, 0.15)
+    rooms["storage_large"] = p
+
+    p = []
+    room_shell(p, 9.0, 9.0, {"N": [4.5], "S": [4.5], "W": [4.5], "E": [4.5]}, "concrete", style=SHARED)
+    for x, z in ((1.5, 1.0), (7.5, 1.0), (1.5, 8.0), (7.5, 8.0)):
+        shelf_row(p, x, z, 2.4, 0.8, 2.0)
+    rooms["storage_small"] = p
+
+    p = []
+    room_shell(p, 24.0, 18.0, {"S": [10.5, 13.5, 16.5], "W": [7.5, 10.5], "E": [7.5, 10.5]}, "shell_floor", style=SHARED)
+    wall_with_gaps(p, (8.85, 6.0), (18.15, 6.0), [(4.65, 2.4)], 3.6, 0.3, SHARED)
+    wall_with_gaps(p, (9.0, 0.0), (9.0, 6.0), [], 3.6, 0.3, SHARED)
+    wall_with_gaps(p, (18.0, 0.0), (18.0, 6.0), [], 3.6, 0.3, SHARED)
+    p.append(part("cube", "steel_dark", g(13.5, 0.4, 0.75), (6.0, 0.7, 0.8)))
+    for x in (11.25, 12.75, 14.25, 15.75):
+        p.append(part("cube", "rubber", g(x, 1.8, 0.25), (1.1, 0.1, 0.65)))
+        p.append(part("cube", "screen", g(x, 1.8, 0.31), (1.0, 0.02, 0.55)))
+    p.append(part("cube", "shell_lower", g(13.5, 0.45, 3.2), (2.4, 1.4, 0.9)))
+    p.append(part("cube", "shell_lower", g(13.5, 0.55, 10.5), (6.0, 0.8, 1.1)))
+    p.append(part("cube", "shell_trim", g(13.5, 1.12, 10.5), (6.1, 0.9, 0.05)))
+    for x in (10.9, 16.1):
+        p.append(part("cube", "shell_lower", g(x, 0.55, 11.4), (0.8, 1.0, 1.1)))
+    for x in (4.0, 20.0):
+        p.append(part("cube", "shell_trim", g(x, 0.25, 17.2), (4.0, 0.8, 0.5)))
+    p.append(part("cube", "shell_accent", g(13.5, 0.01, 14.5), (0.3, 7.0, 0.02)))
+    rooms["welcome_center"] = p
+
+    for name, pieces in rooms.items():
+        join_and_export(pieces, "room_shared_" + name, material, "shared", False)
+
+
 clear_scene()
 palette = make_palette()
+for other_department in DEPARTMENT_SHELLS:
+    make_palette(other_department)
 solid = palette_material(palette)
 see_through = palette_material(palette, "palette_zoology_glass", True)
 rat(solid)
@@ -1318,6 +1606,7 @@ gem(solid, "prop_gem", 0.16)
 gem(solid, "prop_gem_large", 0.28)
 meat(solid)
 vial(solid, see_through)
+wall_patch(solid)
 lift(solid)
 animal_holding(solid)
 vet_surgery(solid)
@@ -1339,6 +1628,7 @@ turret(solid)
 drone(solid)
 flock_camera(solid)
 robobrain(solid, see_through)
+shared_rooms(solid)
 bat(solid)
 fly(solid)
 kangaroo(solid)

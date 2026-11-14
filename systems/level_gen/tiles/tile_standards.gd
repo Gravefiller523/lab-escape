@@ -35,7 +35,7 @@ const CEILING_GROUP: StringName = &"tile_ceiling"
 ## Named material slots: a node with the metadata "material_slot" set to one of these gets the
 ## department's material for it (DepartmentData.palette) when the floor is built.
 const MATERIAL_SLOT_META: StringName = &"material_slot"
-const MATERIAL_SLOTS: Array[StringName] = [&"wall", &"floor", &"trim", &"accent", &"rubble"]
+const MATERIAL_SLOTS: Array[StringName] = [&"wall", &"floor", &"trim", &"accent", &"rubble", &"art"]
 
 ## Marker kinds tiles may use (RoomMarker.kind). New kinds need no code, but add them here and to the
 ## spec so the tile test knows them. The first group is from the floor generation plan (section 3.4).

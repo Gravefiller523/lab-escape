@@ -10,6 +10,7 @@
 [ext_resource type="Material" path="res://assets/materials/zoology/zoology_trim.tres" id="8_trim"]
 [ext_resource type="Material" path="res://assets/materials/zoology/zoology_accent.tres" id="9_accent"]
 [ext_resource type="PackedScene" path="res://systems/level_gen/tiles/tile_zoology_welcome_center.tscn" id="10_welcome"]
+[ext_resource type="Material" path="res://assets/materials/shared/palette_zoology.tres" id="11_art"]
 
 [sub_resource type="Resource" id="Enemy_rat"]
 script = ExtResource("2_weighted")
@@ -175,6 +176,7 @@ boss_floors = true
 welcome_center_scene = ExtResource("10_welcome")
 room_types = Array[ExtResource("3_room_type")]([SubResource("Type_animal_holding"), SubResource("Type_vet_surgery"), SubResource("Type_feed_storage"), SubResource("Type_observation_room"), SubResource("Type_aquarium"), SubResource("Type_habitat_sim"), SubResource("Type_quarantine_pens")])
 palette = {
+"art": ExtResource("11_art"),
 "accent": ExtResource("9_accent"),
 "floor": ExtResource("7_floor"),
 "trim": ExtResource("8_trim"),

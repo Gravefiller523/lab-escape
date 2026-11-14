@@ -1,0 +1,9 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/textures/robotics/palette_robotics.png" id="1_palette"]
+
+[resource]
+resource_name = "palette_robotics"
+albedo_texture = ExtResource("1_palette")
+roughness = 0.8
+texture_filter = 0

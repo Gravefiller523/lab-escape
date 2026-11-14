@@ -28,6 +28,14 @@ const LIFT_PART_TAG: String = "lift_part"
 ## Inside size (metres): width (x), depth (z), height. The gate is on the -z side.
 const INSIDE: Vector3 = Vector3(5.0, 3.4, 5.0)
 const WALL: float = 0.2
+## NEW 2026-11-14 (roadmap WP21 art rollout, look target approved by Zachary): the cage's and gate doors' real models
+## (assets/source/look_target_models.py). The grey boxes stay for collision; their meshes are hidden. The cage model's
+## origin is under its platform, 0.3 m below the floor you stand on.
+const CAGE_MESH: Mesh = preload("res://assets/models/shared/lift_cage.mesh")
+const DOOR_MESH: Mesh = preload("res://assets/models/shared/lift_door.mesh")
+const CAGE_DROP: float = 0.3
+const GREY_PARTS: Array[String] = ["Platform", "BackWall", "Roof", "LeftRailing", "RightRailing", "LeftKick",
+	"RightKick"]
 const DOOR_SPEED: float = 2.5
 ## The shaft drawn around the lift while it rides.
 const SHAFT_GAP: float = 0.6
@@ -742,6 +750,7 @@ func _build() -> void:
 	# The gate: two sliding doors on the -z side.
 	_left_door = _door("LeftDoor", -1.0)
 	_right_door = _door("RightDoor", 1.0)
+	_dress()
 	var light := OmniLight3D.new()
 	light.name = "Light"
 	light.position = Vector3(0, half.y - 0.3, 0)
@@ -795,6 +804,27 @@ func _door(door_name: String, side: float) -> AnimatableBody3D:
 	door.add_child(mesh)
 	add_child(door)
 	return door
+
+
+## NEW 2026-11-14 (roadmap WP21): the real cage model over the grey boxes (which stay for collision).
+func _dress() -> void:
+	for child: Node in get_children():
+		var body := child as StaticBody3D
+		if body == null:
+			continue
+		var grey: bool = GREY_PARTS.has(String(body.name)) or String(body.name).contains("Post")
+		var mesh := body.get_node_or_null(^"Mesh") as MeshInstance3D
+		if grey and mesh != null:
+			mesh.visible = false
+	var cage := MeshInstance3D.new()
+	cage.name = "Cage"
+	cage.mesh = CAGE_MESH
+	cage.position.y = -CAGE_DROP
+	add_child(cage)
+	for door: AnimatableBody3D in [_left_door, _right_door]:
+		var door_mesh := door.get_node_or_null(^"Mesh") as MeshInstance3D
+		if door_mesh != null:
+			door_mesh.mesh = DOOR_MESH
 
 
 ## The back wall: the status sign, a slot for every kind of lift part, Go and Start anyway.

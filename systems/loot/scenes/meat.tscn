@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://systems/physics_props/net_prop.gd" id="1_prop"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/prop_meat.mesh" id="art_mesh_1"]
 
 [sub_resource type="BoxShape3D" id="Shape_1"]
 size = Vector3(0.3, 0.14, 0.22)
@@ -13,6 +14,7 @@ roughness = 0.6
 material = SubResource("Mat_1")
 size = Vector3(0.3, 0.14, 0.22)
 
+
 [node name="Meat" type="RigidBody3D"]
 script = ExtResource("1_prop")
 
@@ -20,4 +22,4 @@ script = ExtResource("1_prop")
 shape = SubResource("Shape_1")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("Mesh_1")
+mesh = ExtResource("art_mesh_1")

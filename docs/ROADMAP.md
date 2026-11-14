@@ -475,7 +475,10 @@ The five questions, the same every time:
 #### WP22 to WP27: Art rollout
 - WP22 modular kit (walls, floors, ceilings, doors, hallway pieces) for all three palettes; WP23 shared props;
   WP24 player body and mutation parts; WP25 enemies and bosses with animation; WP26 effects and lighting per
-  department; WP27 UI theme and icons. **Status: not started.**
+  department; WP27 UI theme and icons.
+- **Built so far (2026-11-14):** the look target's models are in the game: the rat, crate, gems, meat, DNA vial and
+  the lift (merged), and Zoology's animal holding room (tiles can now show a finished model over their grey box;
+  Zachary OK'd editing level_gen for it). **Status: in progress** (branch `wp/22-art-rollout`).
 
 ### Phase S: sound (see section e)
 #### WP28: Audio mix and free sounds

@@ -636,6 +636,7 @@ GUT tests: `test_same_seed_same_layout`, `test_required_rooms_always_present`, `
   keycard doors and loops). Report with before and after tables: `docs/design/floor-stats-6c.md`.
   Also (Zachary's OK) the enemies' spawner budget follows the run's floor and `enemy_budget_per_floor` is 0.2 in
   `config/game_config.tres`, so enemies per room stay about 0.5 on every floor. `FloorStats` counts spawned enemies too.
+- 2026-11-14 (roadmap WP22 art rollout; made by the roadmap thread with Zachary's OK, since the floor generator's plan is finished): NEW `BlockoutTile.art_mesh` (Mesh, optional) and `BlockoutTile.ART_NAME`. When set, the tile builds as before, then hides its CSG combiners (the generated shell and ceiling, and its own CSG pieces such as the pens), whose collision stays, and shows the mesh as child `Art` of `Generated`. The mesh must fit the tile: origin at its corner, the same walls, doorways and big pieces. First user: `tile_zoology_animal_holding` with `assets/models/zoology/room_zoology_animal_holding.mesh` (from `assets/source/look_target_models.py`). Lights, markers, damage overlays and emergency slits are unchanged. Test: `tests/unit/level_gen/test_tile_art.gd` (2).
 
 ## HANDOFF
 **Built (2026-10-18):** autoload `Level` (`LevelService`), `LevelGenerator`, `FloorLayout`, `RoomPlacement`,

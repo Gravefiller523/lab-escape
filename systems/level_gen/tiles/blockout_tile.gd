@@ -17,6 +17,10 @@ extends Node3D
 
 ## Footprint in grid units (x, z). Must match the tile's RoomData.size_cells (x and z).
 @export var size_units: Vector2i = Vector2i.ONE
+## NEW 2026-11-14 (roadmap WP22 art rollout): the tile's finished model, made to fit this tile (origin at its corner,
+## the same walls, doorways and big pieces). When set, the blockout's walls, floor, ceiling and the tile's own CSG
+## pieces are hidden but keep their collision, and the model is shown instead.
+@export var art_mesh: Mesh
 ## Add ceiling lights (one per 2 x 2 grid units).
 @export var auto_lights: bool = true
 ## A hole in the floor (x, z, width, depth in metres), e.g. where the cargo lift's own floor stands, so
@@ -36,6 +40,8 @@ extends Node3D
 			_build()
 
 const GENERATED_NAME: String = "Generated"
+## NEW 2026-11-14 (roadmap WP22 art rollout, OK'd by Zachary): the node holding a tile's finished model (art_mesh).
+const ART_NAME: String = "Art"
 const PLACEHOLDER_NAME: String = "Placeholder"
 const TUNING_PATH: String = "res://config/floor_gen_tuning.tres"
 ## Floor and ceiling slab thickness (metres).
@@ -104,8 +110,23 @@ func _build() -> void:
 
 	if auto_lights:
 		_add_lights(generated, tuning)
+	if art_mesh != null:
+		_show_art(generated)
 	_fill_overlays(tuning)
 	EmergencySlits.build(self, tuning)
+
+
+## NEW 2026-11-14 (roadmap WP22): hide the grey CSG (its collision stays) and show the finished model.
+func _show_art(generated: Node3D) -> void:
+	for holder: Node in [self, generated]:
+		for child: Node in holder.get_children():
+			var csg := child as CSGCombiner3D
+			if csg != null:
+				csg.visible = false
+	var art := MeshInstance3D.new()
+	art.name = ART_NAME
+	art.mesh = art_mesh
+	generated.add_child(art)
 
 
 ## NEW 2026-10-31 (step 4c fix): a door socket nothing joins becomes plain wall: its hole and frame go, so

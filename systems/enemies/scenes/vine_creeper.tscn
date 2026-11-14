@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://systems/enemies/states/attack_melee_state.gd" id="5_attack_melee"]
 [ext_resource type="Script" path="res://systems/enemies/states/search_state.gd" id="6_search"]
 [ext_resource type="Script" path="res://systems/enemies/behaviours/pull_behaviour.gd" id="7_behaviour"]
+[ext_resource type="ArrayMesh" path="res://assets/models/botany/enemy_vine_creeper.mesh" id="art_mesh_1"]
 
 [sub_resource type="BoxShape3D" id="Shape_1"]
 size = Vector3(0.8, 1.4, 0.8)
@@ -18,6 +19,7 @@ albedo_color = Color(0.2, 0.4, 0.15, 1)
 material = SubResource("Mat_1")
 size = Vector3(0.8, 1.4, 0.8)
 
+
 [node name="VineCreeper" type="CharacterBody3D"]
 script = ExtResource("1_enemy")
 hurtbox_radius = 0.5
@@ -28,8 +30,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
 shape = SubResource("Shape_1")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
-mesh = SubResource("Mesh_1")
+mesh = ExtResource("art_mesh_1")
 
 [node name="States" type="Node" parent="."]
 

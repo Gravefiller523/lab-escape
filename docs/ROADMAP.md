@@ -480,7 +480,10 @@ The five questions, the same every time:
   the lift (merged), and Zoology's animal holding room (tiles can now show a finished model over their grey box;
   Zachary OK'd editing level_gen for it). Then all of Zoology: its other seven rooms (vet surgery, feed
   storage, observation room, aquarium, habitat simulation, quarantine pens, welcome centre) and its creatures (bat,
-  fly, kangaroo, Giant Rat). Next: Botany, then Robotics. **Status: in progress** (branch `wp/22-art-rollout`).
+  fly, kangaroo, Giant Rat) on `wp/23-zoology-art`. Then all of Botany on `wp/24-botany-art`: its ten rooms in clinical
+  white with green trim (autoclave room, cell culture lab, decontamination airlock, greenhouse, growth chamber,
+  microscopy lab, pump room, seed vault, soil prep, welcome centre) and its creatures (mushroom zombie, flytrap,
+  spore shooter, vine creeper, Mushroom Man). Next: Robotics. **Status: in progress.**
 
 ### Phase S: sound (see section e)
 #### WP28: Audio mix and free sounds

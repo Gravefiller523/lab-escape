@@ -478,7 +478,9 @@ The five questions, the same every time:
   department; WP27 UI theme and icons.
 - **Built so far (2026-11-14):** the look target's models are in the game: the rat, crate, gems, meat, DNA vial and
   the lift (merged), and Zoology's animal holding room (tiles can now show a finished model over their grey box;
-  Zachary OK'd editing level_gen for it). **Status: in progress** (branch `wp/22-art-rollout`).
+  Zachary OK'd editing level_gen for it). Then all of Zoology: its other seven rooms (vet surgery, feed
+  storage, observation room, aquarium, habitat simulation, quarantine pens, welcome centre) and its creatures (bat,
+  fly, kangaroo, Giant Rat). Next: Botany, then Robotics. **Status: in progress** (branch `wp/22-art-rollout`).
 
 ### Phase S: sound (see section e)
 #### WP28: Audio mix and free sounds

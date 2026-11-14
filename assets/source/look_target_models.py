@@ -674,6 +674,45 @@ def giant_rat(material):
     join_and_export(parts, "boss_giant_rat", material, "zoology", True)
 
 
+def welcome_center(material):
+    """Zoology's welcome centre (24 x 18 m, where Zoology floors start): the reception desk, waiting benches, the
+    security room in the north middle (walls, a doorway, the monitor desk and screens, the map table), hay bales and
+    a yellow entry stripe. Everything sits on the grey box's pieces."""
+    w, d = 24.0, 18.0
+    parts = []
+    room_shell(parts, w, d, {"S": [10.5, 13.5, 16.5], "W": [7.5, 10.5], "E": [7.5, 10.5]}, "wood")
+    # The security room: front wall with its doorway, and the two side walls.
+    wall_with_gaps(parts, (8.85, 6.0), (18.15, 6.0), [(4.65, 2.4)], 3.6, 0.3)
+    wall_with_gaps(parts, (9.0, 0.0), (9.0, 6.0), [], 3.6, 0.3)
+    wall_with_gaps(parts, (18.0, 0.0), (18.0, 6.0), [], 3.6, 0.3)
+    parts.append(part("cube", "steel_dark", g(13.5, 0.4, 0.75), (6.0, 0.7, 0.8)))            # monitor desk
+    parts.append(part("cube", "wood", g(13.5, 0.81, 0.75), (6.1, 0.75, 0.04)))
+    for x in (11.25, 12.75, 14.25, 15.75):
+        parts.append(part("cube", "rubber", g(x, 1.8, 0.25), (1.1, 0.1, 0.65)))
+        parts.append(part("cube", "water", g(x, 1.8, 0.31), (1.0, 0.02, 0.55)))
+        parts.append(part("cube", "steel_dark", g(x, 1.2, 0.3), (0.08, 0.08, 0.6)))
+    parts.append(part("cube", "wood_dark", g(13.5, 0.45, 3.2), (2.4, 1.4, 0.9)))            # map table
+    parts.append(part("cube", "sand", g(13.5, 0.91, 3.2), (2.3, 1.3, 0.02)))
+    # Reception desk (6 m, with returns at both ends).
+    parts.append(part("cube", "wood", g(13.5, 0.55, 10.5), (6.0, 0.8, 1.1)))
+    parts.append(part("cube", "wood_dark", g(13.5, 1.12, 10.5), (6.1, 0.9, 0.05)))
+    for x in (10.9, 16.1):
+        parts.append(part("cube", "wood", g(x, 0.55, 11.4), (0.8, 1.0, 1.1)))
+    parts.append(part("cube", "label", g(13.5, 0.7, 10.08), (2.2, 0.02, 0.4)))               # "WELCOME" plate
+    parts.append(part("cube", "steel_dark", g(12.2, 1.3, 10.6), (0.5, 0.35, 0.3)))           # a till
+    # Waiting benches by the south doors.
+    for x in (4.0, 20.0):
+        parts.append(part("cube", "wood", g(x, 0.45, 17.2), (4.0, 0.6, 0.08)))
+        parts.append(part("cube", "wood_dark", g(x, 0.22, 17.2), (3.8, 0.5, 0.44)))
+    # Hay bales and a potted fern, the entry stripe.
+    hay_bale(parts, 3.0, 2.0, 0, 2)
+    hay_bale(parts, 19.5, 1.0, 10, 2)
+    parts.append(part("cube", "safety_yellow", g(13.5, 0.01, 14.5), (0.3, 7.0, 0.02)))
+    parts.append(part("cylinder", "wood_dark", g(22.5, 0.3, 15.5), (0.6, 0.6, 0.6), vertices=8))
+    parts.append(part("cone", "moss", g(22.5, 1.0, 15.5), (0.9, 0.9, 0.9), vertices=6))
+    join_and_export(parts, "room_zoology_welcome_center", material, "zoology", False)
+
+
 clear_scene()
 palette = make_palette()
 solid = palette_material(palette)
@@ -692,6 +731,7 @@ observation_room(solid)
 aquarium(solid)
 habitat_sim(solid)
 quarantine_pens(solid)
+welcome_center(solid)
 bat(solid)
 fly(solid)
 kangaroo(solid)

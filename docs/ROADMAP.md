@@ -483,7 +483,11 @@ The five questions, the same every time:
   fly, kangaroo, Giant Rat) on `wp/23-zoology-art`. Then all of Botany on `wp/24-botany-art`: its ten rooms in clinical
   white with green trim (autoclave room, cell culture lab, decontamination airlock, greenhouse, growth chamber,
   microscopy lab, pump room, seed vault, soil prep, welcome centre) and its creatures (mushroom zombie, flytrap,
-  spore shooter, vine creeper, Mushroom Man). Next: Robotics. **Status: in progress.**
+  spore shooter, vine creeper, Mushroom Man). Then all of Robotics on `wp/25-robotics-art`: its eight rooms in
+  industrial grey with safety-yellow trim (assembly floor, charging bay, electronics lab, machine shop, parts storage,
+  server room, test bay, welcome centre) and its creatures (roomba, turret, drone, flock camera, Robobrain with a
+  see-through dome). All three departments now look finished. Next: the rooms and hallways every department
+  shares (offices, break room, cafeteria, bathroom, storage, hallways), then the player body. **Status: in progress.**
 
 ### Phase S: sound (see section e)
 #### WP28: Audio mix and free sounds

@@ -209,6 +209,11 @@ func _make_preview() -> Control:
 	_turntable.add_child(body)
 	# The real body's attach points, so things sit where they do in the game.
 	var template := PLAYER_SCENE.instantiate()
+	# CHANGED 2026-11-14 (art rollout): the stand-in is the real body model when the player scene has one.
+	var real_body := template.get_node_or_null(^"BodyMesh") as MeshInstance3D
+	if real_body != null and real_body.mesh != null and not (real_body.mesh is CapsuleMesh):
+		body.mesh = real_body.mesh
+		body.position.y = 0.0
 	var points: Node = template.get_node_or_null(^"AttachPoints")
 	if points != null:
 		for marker: Node in points.get_children():

@@ -103,3 +103,4 @@ Break Room: `test_closet_opens_for_whoever_used_it`.
 ends, when a boss is beaten and when an achievement unlocks; a toast says "New in the jacket closet: ...".
 **Not yet:** real models (grey boxes now, roadmap section d) and Giraffe variants; a 2-window check that others
 see your outfit; achievement-based cosmetics on Steam need decision D8 like the achievements themselves.
+- 2026-11-14 (art rollout): the closet's turning stand-in uses the player scene's body model when it has one (the scientist), not a grey capsule.

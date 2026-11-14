@@ -291,7 +291,12 @@ func apply_height() -> void:
 	if mesh != null:
 		mesh.radius = radius
 		mesh.height = maxf(height, radius * 2.0)
-	_body_mesh.position.y = height * 0.5
+		_body_mesh.position.y = height * 0.5
+	else:
+		# CHANGED 2026-11-14 (art rollout): the finished body model stands on its feet (origin at the floor), so
+		# crouching and height changes squash or stretch it instead of resizing a capsule.
+		_body_mesh.position.y = 0.0
+		_body_mesh.scale = Vector3(1.0, height / maxf(tuning.stand_height, 0.01), 1.0)
 	_head.position.y = height - tuning.eye_offset
 
 

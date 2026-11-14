@@ -265,3 +265,4 @@ against a wall or ledge (it faces +Z). Nothing networked: every PC has the same 
 **OPEN / tune in playtests:** how strong the glide, hops, climb speed and slide grip feel (all in
 `player_tuning.tres`); Octo climbs anything solid, including crates and other players; no climbing animations
 or sounds yet; the slug leaves no slime trail.
+- 2026-11-14 (art rollout, Zachary OK'd the look): `BodyMesh` is the finished scientist model (`assets/models/shared/player_body.mesh`, origin at the feet, white lab coat) instead of the grey capsule and visor. `apply_height` keeps resizing a capsule if one is there; for the model it sets the position to 0 and squashes it upright by height / `stand_height` (crouching, Giraffe). Your own body is still hidden from your own camera.

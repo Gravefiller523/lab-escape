@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://systems/player/player_character.gd" id="1_body"]
 [ext_resource type="Script" path="res://systems/player/player_movement.gd" id="2_movement"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/player_body.mesh" id="art_mesh_1"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -34,6 +35,7 @@ properties/3/path = NodePath(".:sync_crouch")
 properties/3/spawn = true
 properties/3/replication_mode = 1
 
+
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1_body")
 
@@ -44,14 +46,7 @@ shape = SubResource("CapsuleShape3D_body")
 
 [node name="BodyMesh" type="MeshInstance3D" parent="."]
 unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
-mesh = SubResource("CapsuleMesh_body")
-surface_material_override/0 = SubResource("StandardMaterial3D_body")
-
-[node name="Visor" type="MeshInstance3D" parent="BodyMesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, -0.3)
-mesh = SubResource("BoxMesh_visor")
-surface_material_override/0 = SubResource("StandardMaterial3D_visor")
+mesh = ExtResource("art_mesh_1")
 
 [node name="Head" type="Node3D" parent="."]
 unique_name_in_owner = true

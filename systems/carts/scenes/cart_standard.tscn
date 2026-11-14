@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://systems/carts/cart.gd" id="1_cart"]
+[ext_resource type="ArrayMesh" path="res://assets/models/shared/prop_cart_standard.mesh" id="art_mesh_1"]
 
 [sub_resource type="PhysicsMaterial" id="Slide"]
 friction = 0.25
@@ -50,6 +51,7 @@ height = 0.08
 material = SubResource("Handle")
 size = Vector3(0.9, 0.05, 0.05)
 
+
 [node name="CartStandard" type="RigidBody3D"]
 physics_material_override = SubResource("Slide")
 script = ExtResource("1_cart")
@@ -74,47 +76,8 @@ shape = SubResource("EndWall")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0.72)
 shape = SubResource("EndWall")
 
-[node name="Mesh" type="Node3D" parent="."]
-
-[node name="Floor" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
-mesh = SubResource("BaseMesh")
-
-[node name="Left" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.53, 0.7, 0)
-mesh = SubResource("SideMesh")
-
-[node name="Right" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.53, 0.7, 0)
-mesh = SubResource("SideMesh")
-
-[node name="Front" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, -0.73)
-mesh = SubResource("EndMesh")
-
-[node name="Back" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0.73)
-mesh = SubResource("EndMesh")
-
-[node name="Handle" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0.95)
-mesh = SubResource("HandleMesh")
-
-[node name="WheelFL" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.45, 0.12, -0.6)
-mesh = SubResource("Wheel")
-
-[node name="WheelFR" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.45, 0.12, -0.6)
-mesh = SubResource("Wheel")
-
-[node name="WheelBL" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.45, 0.12, 0.6)
-mesh = SubResource("Wheel")
-
-[node name="WheelBR" type="MeshInstance3D" parent="Mesh"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.45, 0.12, 0.6)
-mesh = SubResource("Wheel")
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = ExtResource("art_mesh_1")
 
 [node name="Basket" type="Area3D" parent="."]
 

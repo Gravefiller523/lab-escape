@@ -12,6 +12,8 @@ extends CharacterBody3D
 signal landed(fall_speed: float)
 
 const GROUP: StringName = &"players"
+## NEW 2026-11-14 (art rollout): the body mesh's child holding its default white lab coat.
+const DEFAULT_COAT_NAME: String = "Coat"
 ## Height above the feet (metres) of the "did I just go through a wall" check. Below a crouching head.
 const WALL_CHECK_HEIGHT: float = 0.5
 const ATTACH_POINTS: Array[StringName] = [&"head", &"face", &"back", &"left_arm", &"right_arm",
@@ -153,6 +155,20 @@ func get_hold_point() -> Node3D:
 ## The points are rough placeholders until there is a real character model.
 func get_attach_point(point: StringName) -> Node3D:
 	return _attach_points.get_node_or_null(NodePath(String(point))) as Node3D
+
+
+## NEW 2026-11-14 (art rollout): the body model wears a white lab coat (child DEFAULT_COAT_NAME of the body mesh).
+## The cosmetics dresser hides it while a coat from the closet is worn, so that coat replaces it.
+func set_default_coat_shown(shown: bool) -> void:
+	var coat := _body_mesh.get_node_or_null(NodePath(DEFAULT_COAT_NAME)) as Node3D
+	if coat != null:
+		coat.visible = shown
+
+
+## NEW 2026-11-14: is the body's own white coat showing (no closet coat on)?
+func is_default_coat_shown() -> bool:
+	var coat := _body_mesh.get_node_or_null(NodePath(DEFAULT_COAT_NAME)) as Node3D
+	return coat != null and coat.visible
 
 
 func get_movement() -> PlayerMovement:

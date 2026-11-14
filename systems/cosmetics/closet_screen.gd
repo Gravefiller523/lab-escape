@@ -20,6 +20,8 @@ var _wear: Button
 var _slot_buttons: Dictionary[StringName, Button] = {}
 var _turntable: Node3D
 var _points: Dictionary[StringName, Node3D] = {}
+## NEW 2026-11-14: the stand-in's own white lab coat (hidden while a closet coat is on it).
+var _preview_coat: MeshInstance3D
 
 
 ## For tests: which slot is showing, and what is picked.
@@ -214,6 +216,11 @@ func _make_preview() -> Control:
 	if real_body != null and real_body.mesh != null and not (real_body.mesh is CapsuleMesh):
 		body.mesh = real_body.mesh
 		body.position.y = 0.0
+		var real_coat := real_body.get_node_or_null(NodePath(PlayerCharacter.DEFAULT_COAT_NAME)) as MeshInstance3D
+		if real_coat != null:
+			_preview_coat = MeshInstance3D.new()
+			_preview_coat.mesh = real_coat.mesh
+			body.add_child(_preview_coat)
 	var points: Node = template.get_node_or_null(^"AttachPoints")
 	if points != null:
 		for marker: Node in points.get_children():
@@ -246,6 +253,7 @@ func _rebuild_preview() -> void:
 	var picked := ContentRegistry.get_content(_selected) as CosmeticData
 	if picked != null:
 		outfit[String(picked.slot)] = String(picked.id)
+	var coat_worn: bool = false
 	var hidden: PackedStringArray = Upgrades.get_hidden_cosmetic_slots(me)
 	for slot: Variant in outfit:
 		var data := ContentRegistry.get_content(StringName(str(outfit[slot]))) as CosmeticData
@@ -255,3 +263,8 @@ func _rebuild_preview() -> void:
 		var scene: PackedScene = CosmeticDresser.model_for(data, upgrades)
 		if scene != null:
 			_points[point_name].add_child(scene.instantiate())
+			if str(slot) == "coat":
+				coat_worn = true
+	# NEW 2026-11-14 (art rollout): a coat from the closet replaces the body's white lab coat here too.
+	if _preview_coat != null:
+		_preview_coat.visible = not coat_worn

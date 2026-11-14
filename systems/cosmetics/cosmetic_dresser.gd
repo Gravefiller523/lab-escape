@@ -36,6 +36,7 @@ func refresh() -> void:
 	var loadout: Dictionary = Cosmetics.get_loadout(_body.player_id)
 	var hidden: PackedStringArray = Upgrades.get_hidden_cosmetic_slots(_body.player_id)
 	var upgrades: Array[StringName] = Upgrades.get_upgrades(_body.player_id)
+	var coat_worn: bool = false
 	for slot: StringName in CosmeticsService.SLOTS:
 		var point: Node3D = _point_for(slot)
 		if point == null:
@@ -56,6 +57,10 @@ func refresh() -> void:
 		model.name = MODEL_PREFIX + String(slot)
 		model.visible = not _body.is_local()
 		point.add_child(model)
+		if slot == &"coat":
+			coat_worn = true
+	# NEW 2026-11-14 (art rollout): a coat from the closet replaces the body's own white lab coat.
+	_body.set_default_coat_shown(not coat_worn)
 
 
 ## The model to show: a mutation's variant if the player has one listed, else the normal one.

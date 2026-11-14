@@ -46,7 +46,7 @@ func _drive(body: PlayerCharacter, distance_at: Callable, seconds: float) -> int
 		var t: float = float(Engine.get_physics_frames() - first_frame) / float(Engine.physics_ticks_per_second)
 		if t > seconds:
 			break
-		expected = start + Vector3(distance_at.call(t), 0.0, 0.0)
+		expected = start + Vector3(distance_at.call(t) as float, 0.0, 0.0)
 		body.sync_position = expected
 	_ignore_offline_message_errors()
 	return snaps

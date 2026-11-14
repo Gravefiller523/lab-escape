@@ -174,11 +174,11 @@ func test_e_at_the_machine_while_holding_a_vial_puts_it_in() -> void:
 	PropsService.grab_of(_body).try_grab(vial)
 	await wait_until(func() -> bool: return vial.is_held(), WAIT)
 	var controller: InteractionController = InteractionService.controller_of(_body)
-	assert_true(controller.press_use(machine.get_node("Back")), "E on the machine")
+	assert_true(controller.press_use(machine.get_node("Back") as Node3D), "E on the machine")
 	# Zachary's bug (2026-10-24): right after it goes in, the prompt and E must not touch the freed vial.
 	await wait_process_frames(1)
 	controller.get_prompt()
-	controller.press_use(machine.get_node("Back"))
+	controller.press_use(machine.get_node("Back") as Node3D)
 	await wait_physics_frames(2)
 	assert_eq(machine.get_loaded(), [&"mutation_giraffe"] as Array[StringName])
 	assert_false(Upgrades.has_upgrade(_me, &"mutation_giraffe"), "loading isn't getting it: you step in for that")

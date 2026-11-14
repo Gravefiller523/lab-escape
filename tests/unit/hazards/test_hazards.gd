@@ -59,7 +59,7 @@ func test_hazards_appear_at_the_markers_the_plan_switched_on() -> void:
 	var root: Node3D = _world()
 	Level.build(layout, root)
 	var made: int = Hazards.spawn_for_floor()
-	assert_eq(made, layout.active_markers.get(&"hazard", PackedStringArray()).size(), "one zone per switched-on hazard marker")
+	assert_eq(made, (layout.active_markers.get(&"hazard", PackedStringArray()) as PackedStringArray).size(), "one zone per switched-on hazard marker")
 	assert_gt(made, 0, "a destroyed floor 18 has hazards")
 	assert_eq(Hazards.spawn_for_floor(), 0, "never twice at one marker")
 	Level.clear()

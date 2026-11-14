@@ -7,26 +7,21 @@ test-build notes, a full GUT run and play sessions (see "How the audit was done"
 **A fresh session can pick up from this file alone.** Read "Working rules" (section i) first, then find the first
 work package whose status is not "done" and isn't waiting on Zachary.
 
-## Where things stand (keep this box up to date; last updated 2026-11-13)
+## Where things stand (keep this box up to date; last updated 2026-11-14)
 
-- **Merged into main (pushed 2026-11-13):** WP1 to WP15, WP13b, WP15b and WP18, and the build number in the main
-  menu. PT1's test build can be made from main now.
-- **Waiting on Zachary.** Each branch below sits on top of the one above it, so a merge phrase for one also
-  merges everything above it in this table. "push and merge wp/17-cosmetics into main" merges both.
+- **Merged into main (pushed 2026-11-14):** WP1 to WP15 and WP17 to WP19, WP13b and WP15b, the build number in the
+  main menu, and the floor generator's steps 6a to 6c (12-floor runs, a boss every 4th).
+- **Waiting on Zachary:** nothing to merge right now.
 
-  | Branch | Package | What to try in the game |
-  |---|---|---|
-  | `wp/19-ending` | WP19 | Console: `floor 12` (or the last floor), beat the boss, press Go: the car park, "YOU ESCAPED", the summary, the credits, then the Break Room. |
-  | `wp/17-cosmetics` | WP17 | In the Break Room, press E on the jacket closet and wear a hat. With two game windows, the other player sees it. Console: `unlock_cosmetics` opens up the rest. |
-
-- **Also waiting on Zachary: PT1, the first real-Steam session** with one friend, together with fun check 1 (both
-  in section c, after WP13). It needs a test build: say "make a test build" (main has everything up to WP18).
-- **Next for Claude:** phase M's packages are built or waiting on you: WP16 (balance) needs your play sessions, and fun check 3 (after WP19) needs a play session too. The art phase (WP20 on) starts with the art bible and needs your tools and OK. Anything PT1 finds jumps the queue.
+- **Play tests wait until the end (Zachary, 2026-11-13):** PT1, the fun checks and WP16's play sessions come once
+  the building is done. PT1 needs a test build: say "make a test build" when you want it (main has everything up to WP19).
+- **Next for Claude:** the leftovers that need nobody (G59 typing warnings in the test files, G60, G61), then the art
+  phase. WP20 starts it with the art bible and needs Blender installed on your PC (one small step, I'll give it).
 - **On hold until Zachary says so:** D8 (Steam fee and App ID) and D9 (name check). They block WP18's real test,
   WP32 and WP33.
 - **Other threads working in this repo:** the floor generator thread owns `systems/level_gen`,
   `config/floor_gen_tuning.tres`, and the run length numbers `run_floor_count` and `boss_every_floors` (decision D1
-  is approved but not applied yet: today they are still 18 and 6). It works in its own folder, `../lab-escape-6a`.
+  is applied since its step 6a: 12 floors, a boss every 4th). It works in its own folder, `../lab-escape-6a`.
 - **Pace so far:** 20 packages built in the first 3 days. The code packages went much faster than the estimate in
   section a. The art, sound and launch phases (WP20 on) depend on Zachary's time, tools and play tests, and are
   still the long part.
@@ -130,7 +125,7 @@ Tags: **reliability**, **fun**, **looks**, **sound**, **content**, **release**. 
 | G57 | (Fixed in WP15b: each hit is judged on its own.) `test_thrown_crate_barely_hurts_a_heavy_enemy` (physics_props) failed once in a full run: the thrown crate hit the 50 kg test enemy twice (it bounced), leaving 6.6 health where the test wants more than 9. It passed 3 times in a row alone. Physics bounce timing; worth making the test count only the first hit. Found in WP11. | reliability | S | ||
 | G60 | Once, in WP15, the leaving test's leaver logged "Node not found: Enemies/Spawner/Enemy5" (an enemy update reaching a client that never had that enemy, the old G54 shape) and the test failed on it. The next three full runs were clean. Worth a look at how a client that quits mid-floor handles enemy updates in its last moments. | reliability | S | |
 | G61 | The Godot AI editor plugin's game helper (`_mcp_game_helper`, addons/godot_ai) is an autoload, so it ships inside exported builds. It only talks to the editor's debugger, so it does nothing for players, but a release build should leave out a development tool: exclude `addons/godot_ai` from the release export and drop its autoload there (WP32). Found 2026-11-13 while writing `docs/CREDITS.md`. | release | S | |
-| G59 | The test files (tests/unit and tests/integration) have about 100 typing warnings outside level_gen's tests (mostly a Variant from a Dictionary handed to assert_true or int()). Found in WP15b with a checker that loads every script with typing warnings raised to errors (a temporary `override.cfg`; see the WP15b notes). | reliability | S | |
+| G59 | The test files (tests/unit and tests/integration) have about 100 typing warnings outside level_gen's tests (mostly a Variant from a Dictionary handed to assert_true or int()). Found in WP15b with a checker that loads every script with typing warnings raised to errors (a temporary `override.cfg`; see the WP15b notes).  Partly fixed 2026-11-14: every real one (a Variant handed to int(), float(), Vector3() or a typed argument) is fixed outside level_gen's tests. What remains are calls into GUT's own assert functions, where Godot warns that a Variant is passed to a Variant (an engine quirk, not a bug in our code); level_gen's tests belong to the floor generator thread. | reliability | S | |
 | G55 | (Systems outside level_gen fixed in WP15b; level_gen's ~90 are the floor generator thread's.) The open editor lists about 130 typing warnings in existing code (mostly "a Variant was given where an int/float/String is needed"): most in level_gen, some in physics_props, enemies, security, hazards. CLAUDE.md counts them as bugs. Found in WP3; level_gen's share is for the floor generator thread. | reliability | M | |
 | G54 | ~~Now and then an enemy's position update reaches a client just before the enemy exists there (or just after it's gone): "Node not found: Enemies/Spawner/EnemyN" errors.~~ Fixed in WP3. | reliability | S | |
 | G58 | ~~(WP13b) Nothing checks that the host and a joining player run the same version of the game.~~ Fixed in WP13b. Was: **no check.** Two different builds can join each other, and the result is confusing bugs on one PC only (missing enemies, things out of step). Needs a build number shown in the main menu and a clear "your game is a different version" message on join. Found in the 2026-11-12 review. | reliability | S | |
@@ -436,7 +431,7 @@ The five questions, the same every time:
 - **Gaps:** G24.
 - **Built:** press E on the jacket closet in the Break Room. Slots down the left (hat, glasses, coat, gloves, shoes), that slot's items in the middle (worn, yours, or locked with how to get it), and a grey stand-in of you on the right, slowly turning, trying on whatever you pick. Wear puts it on for everyone; pressing it again takes it off. 14 grey-box items, following D6: 6 from day one (hard hat, hairnet, safety goggles, lab coat, rubber gloves, lab clogs), sunglasses / hi-vis vest / Employee of the month coat for escaping 1, 3 and 10 times, rat ears / mushroom cap / brain jar for beating each boss, a sweatband for Cardio Day and a pest-control mask for Animal Control. A toast says when something new is in the closet. Your outfit is saved in your profile and is still on after a restart. A Slug can't wear shoes. Console: `unlock_cosmetics`.
 - **Not yet:** real models and tall Giraffe versions come with the art phase; others seeing your outfit is only checked by the tests on one PC, so try it with two game windows.
-- **Status: waiting for your play test.** Branch `wp/17-cosmetics` (stacked on `wp/19-ending`).
+- **Status: done.** Merged into main 2026-11-14 (it went in with WP19 by mistake; Zachary chose to keep it).
 
 #### WP18: Achievements
 - **What:** the achievements system and about 15 achievements with original names (G32).
@@ -451,11 +446,12 @@ The five questions, the same every time:
   run summary, then credits from `docs/CREDITS.md`.
 - **Gaps:** G29, G45.
 - **Built (mock-up approved):** after the last boss the lift rides up into white light (with a PA line) and bursts out in the lab's car park, in daylight, with parked cars and the lab behind. "YOU ESCAPED" shows for 3 seconds, then the run summary, and everyone can walk around. After 15 seconds the credits roll (40 seconds, Esc skips them on your own PC), then the lift takes everyone down to the Break Room. The credits come from `docs/CREDITS.md` (copied into `config/credits.tres`) plus Godot's own licence notices. Wipes end as before. Grey box until the art pass.
-- **Status: waiting for your play test.** Branch `wp/19-ending` (stacked on `wp/13c-build-label`).
+- **Status: done.** Merged into main 2026-11-14.
 
 ### Phase A: art (see section d)
 #### WP20: Art bible, tools and import pipeline
-- Install Blender (and its MCP), set import settings, write `docs/ART_BIBLE.md` from section d. **Status: not started.**
+- Install Blender (and its MCP), set import settings, write `docs/ART_BIBLE.md` from section d.
+- **Built so far (2026-11-14):** `docs/ART_BIBLE.md` written. **Waiting on Zachary:** Blender isn't installed on the PC yet (one step, in the thread). Import settings get set when the first model comes in. **Status: in progress.**
 #### WP21: Look target (needs your OK on screenshots before anything rolls out)
 - One Zoology animal holding room, the lift, the rat, a crate, gem, meat and DNA vial at final quality.
   **Status: not started.**

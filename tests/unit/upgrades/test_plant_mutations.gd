@@ -82,7 +82,7 @@ func test_photosynthesis_heals_you_when_nothing_hurts_you() -> void:
 	var health: HealthComponent = HealthComponent.of(_body)
 	health.apply_damage(DamageInfo.make(20.0, &"blunt"))
 	var hurt: float = health.get_current()
-	var calm: float = float((_behaviour(&"mutation_photosynthesis").get_meta(&"params") as Dictionary)["calm_seconds"])
+	var calm: float = ((_behaviour(&"mutation_photosynthesis").get_meta(&"params") as Dictionary)["calm_seconds"] as float)
 	await wait_seconds(calm * 0.5)
 	assert_eq(health.get_current(), hurt, "not yet: you were just hurt")
 	await wait_until(func() -> bool: return health.get_current() > hurt + 0.5, calm + 3.0)

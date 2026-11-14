@@ -61,7 +61,7 @@ func _ready() -> void:
 	EventBus.surface_reached.connect(_on_surface_reached)
 	EventBus.kill_credited.connect(func(_enemy_id: StringName, killer_player_id: int) -> void:
 		if killer_player_id != 0:
-			_kills_credited[str(killer_player_id)] = int(_kills_credited.get(str(killer_player_id), 0)) + 1)
+			_kills_credited[str(killer_player_id)] = (_kills_credited.get(str(killer_player_id), 0) as int) + 1)
 	EventBus.run_ended.connect(func(result: StringName) -> void: _run_result = result)
 	get_tree().create_timer(TOTAL_TIMEOUT).timeout.connect(func() -> void: _finish("timed out"))
 	if _report["role"] == "host":
@@ -342,7 +342,7 @@ func _run_client() -> void:
 	_report["host_left"] = not Net.is_online()
 	await _seconds(HOST_GONE_SECONDS)
 	_report["state_after_host_left"] = GameFlow.get_state_name()
-	_report["ok"] = _run_result != &"" or bool(_report["host_left"])
+	_report["ok"] = _run_result != &"" or (_report["host_left"] as bool)
 	_finish()
 
 

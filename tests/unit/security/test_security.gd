@@ -29,7 +29,7 @@ func _joins(layout: FloorLayout) -> Dictionary[int, Array]:
 				var from: int = link["placement"]
 				if not joins.has(from):
 					joins[from] = []
-				joins[from].append(int(other["placement"]))
+				joins[from].append((other["placement"] as int))
 	return joins
 
 

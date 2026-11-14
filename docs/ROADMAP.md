@@ -500,7 +500,8 @@ The five questions, the same every time:
   On `wp/31-ui-theme` (WP27, Zachary OK'd the mock-up): the lab theme for every menu and screen
   (`assets/ui/lab_theme.tres`), the new main menu over a lit room, the HUD's floor line top left.
   On `wp/32-department-lighting` (WP26, Zachary OK'd the mock-up): each department's light and air (haze,
-  dust, spores, sparks, soft shadows, Robotics' pulsing warning lights). **Status: in progress.**
+  dust, spores, sparks, soft shadows, Robotics' pulsing warning lights).
+  On `wp/33-break-room-art` (Zachary OK'd the mock-up): the cosy Break Room with warm lamps. **Status: in progress.**
 
 ### Phase S: sound (see section e)
 #### WP28: Audio mix and free sounds

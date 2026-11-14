@@ -641,7 +641,7 @@ def giant_rat(material):
         part("uv", "eye_red", (-0.07 * s, 0.36 * s, 0.24 * s), (0.045 * s, 0.045 * s, 0.045 * s), segments=6, rings=4),
         part("cylinder", "skin_pink", (0.09 * s, 0.24 * s, 0.3 * s), (0.12 * s, 0.12 * s, 0.02 * s), (90, 0, 20), vertices=8),
         part("cylinder", "skin_pink", (-0.09 * s, 0.24 * s, 0.3 * s), (0.12 * s, 0.12 * s, 0.02 * s), (90, 0, -20), vertices=8),
-        part("cylinder", "rubber", (0, 0.18 * s, 0.19 * s), (0.42 * s, 0.42 * s, 0.05 * s), (70, 0, 0), vertices=12),  # collar
+        part("cylinder", "rubber", (0, 0.17 * s, 0.18 * s), (0.27 * s, 0.27 * s, 0.035 * s), (90, 0, 0), vertices=12),  # collar
         part("cube", "bolt", (0, 0.2 * s, 0.07 * s), (0.04 * s, 0.03 * s, 0.05 * s)),
         part("cube", "skin_pink", (0.1 * s, 0.05 * s, 0.27 * s), (0.02 * s, 0.18 * s, 0.01 * s), (0, 0, 30)),  # scars
         part("cube", "skin_pink", (0.05 * s, -0.1 * s, 0.27 * s), (0.02 * s, 0.14 * s, 0.01 * s), (0, 0, -25)),

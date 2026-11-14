@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://systems/enemies/states/attack_melee_state.gd" id="6_attack"]
 [ext_resource type="Script" path="res://systems/enemies/states/flee_state.gd" id="7_flee"]
 [ext_resource type="Script" path="res://systems/enemies/states/search_state.gd" id="9_search"]
+[ext_resource type="ArrayMesh" path="res://assets/models/zoology/enemy_fly.mesh" id="art_mesh_1"]
 
 [sub_resource type="SphereShape3D" id="Shape_1"]
 radius = 0.1
@@ -19,6 +20,7 @@ albedo_color = Color(0.15, 0.3, 0.15, 1)
 material = SubResource("Mat_1")
 radius = 0.1
 height = 0.16
+
 
 [node name="Fly" type="CharacterBody3D"]
 script = ExtResource("1_enemy")
@@ -32,7 +34,7 @@ hurtbox_height = 0.5
 shape = SubResource("Shape_1")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("Mesh_1")
+mesh = ExtResource("art_mesh_1")
 
 [node name="States" type="Node" parent="."]
 

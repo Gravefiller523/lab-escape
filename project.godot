@@ -62,6 +62,10 @@ gdscript/warnings/unsafe_property_access=1
 gdscript/warnings/unsafe_method_access=1
 gdscript/warnings/unsafe_call_argument=1
 
+[gui]
+
+theme/custom="res://assets/ui/lab_theme.tres"
+
 [display]
 
 window/stretch/mode="canvas_items"

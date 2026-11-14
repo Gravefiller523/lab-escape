@@ -8,6 +8,9 @@ extends Control
 
 const DEFAULT_PORT: int = 7777
 const DEFAULT_ADDRESS: String = "127.0.0.1"
+## NEW 2026-11-14 (roadmap WP27): the line under the title, and the staff ID badge colour.
+const TAGLINE: String = "Clock out. Get out. Bring friends."
+const BADGE_COLOR: Color = Color(0.93, 0.94, 0.92)
 
 ## The "host" / "join" launch options run once per game start, not every time the menu is rebuilt
 ## (coming Back from Settings, or after leaving a game).
@@ -27,36 +30,56 @@ func _ready() -> void:
 
 
 func _build() -> void:
-	var background := ColorRect.new()
-	background.color = Color(0.08, 0.09, 0.11, 0.85)
-	background.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(background)
+	# CHANGED 2026-11-14 (roadmap WP27, Zachary OK'd the mock-up): the lab look. The title and big buttons on the left
+	# over the lit lab room behind (main_menu_background); "Join a friend" and "Test on one PC" open their options
+	# under them; the Steam sign-in shows on a staff ID badge. The buttons and boxes are the same as before.
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.35)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(shade)
 
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
 	var column := VBoxContainer.new()
-	column.custom_minimum_size = Vector2(420, 0)
+	column.name = "Column"
+	column.position = Vector2(70, 46)
+	column.custom_minimum_size = Vector2(430, 0)
 	column.add_theme_constant_override("separation", 10)
-	center.add_child(column)
+	add_child(column)
 
 	var title := Label.new()
 	title.text = "LAB ESCAPE"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 56)
+	title.add_theme_font_size_override("font_size", 76)
+	title.add_theme_constant_override("outline_size", 10)
+	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	column.add_child(title)
+	column.add_child(_hazard_stripe(430.0, 14.0))
+	var tagline := Label.new()
+	tagline.text = TAGLINE
+	tagline.modulate = Color(1, 1, 1, 0.75)
+	tagline.add_theme_constant_override("outline_size", 4)
+	tagline.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	column.add_child(tagline)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 14)
+	column.add_child(gap)
 
-	var host_button := _add_button(column, "Host game (Steam)", _on_host_steam)
+	var host_button := _add_button(column, "HOST GAME", _on_host_steam)
 	host_button.name = "HostSteamButton"
 	host_button.disabled = not SteamSession.is_steam_running()
-	var join_hint := Label.new()
-	join_hint.text = "To join a friend: accept their Steam invite, or right-click them\nin your Steam friends list and choose \"Join game\"."
-	join_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	join_hint.modulate = Color(0.8, 0.8, 0.85)
-	column.add_child(join_hint)
 
+	var join_box := _sub_box(column)
+	join_box.name = "JoinBox"
+	_add_toggle(column, "JOIN A FRIEND", join_box)
+	column.move_child(join_box, column.get_child_count() - 1)
+	var join_column := VBoxContainer.new()
+	join_box.add_child(join_column)
+	var join_hint := Label.new()
+	join_hint.text = "Accept their Steam invite, or right-click them in your
+Steam friends list and choose \"Join game\"."
+	join_hint.modulate = Color(0.85, 0.85, 0.88)
+	join_column.add_child(join_hint)
 	var lobby_row := HBoxContainer.new()
-	column.add_child(lobby_row)
+	join_column.add_child(lobby_row)
 	_lobby_id_edit = LineEdit.new()
 	_lobby_id_edit.placeholder_text = "Steam lobby id (testing)"
 	_lobby_id_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -64,13 +87,18 @@ func _build() -> void:
 	var join_id_button := _add_button(lobby_row, "Join by id", _on_join_by_id)
 	join_id_button.disabled = not SteamSession.is_steam_running()
 
-	column.add_child(HSeparator.new())
+	var local_box := _sub_box(column)
+	local_box.name = "LocalBox"
+	_add_toggle(column, "TEST ON ONE PC", local_box)
+	column.move_child(local_box, column.get_child_count() - 1)
+	var local_column := VBoxContainer.new()
+	local_box.add_child(local_column)
 	var local_title := Label.new()
-	local_title.text = "Testing on one PC (no Steam)"
-	local_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(local_title)
+	local_title.text = "Two game windows on this PC (no Steam)"
+	local_title.modulate = Color(0.85, 0.85, 0.88)
+	local_column.add_child(local_title)
 	var address_row := HBoxContainer.new()
-	column.add_child(address_row)
+	local_column.add_child(address_row)
 	_address_edit = LineEdit.new()
 	_address_edit.text = DEFAULT_ADDRESS
 	_address_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -81,7 +109,7 @@ func _build() -> void:
 	_port_edit.custom_minimum_size = Vector2(90, 0)
 	address_row.add_child(_port_edit)
 	var local_row := HBoxContainer.new()
-	column.add_child(local_row)
+	local_column.add_child(local_row)
 	var host_local := _add_button(local_row, "Host local", _on_host_local)
 	host_local.name = "HostLocalButton"
 	host_local.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -89,13 +117,41 @@ func _build() -> void:
 	join_local.name = "JoinLocalButton"
 	join_local.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	column.add_child(HSeparator.new())
-	_add_button(column, "Settings", func() -> void: Settings.open(UI.SCREEN_MAIN_MENU))
-	_add_button(column, "Quit", func() -> void: get_tree().quit())
+	_add_button(column, "SETTINGS", func() -> void: Settings.open(UI.SCREEN_MAIN_MENU))
+	_add_button(column, "QUIT", func() -> void: get_tree().quit())
+	for child: Node in column.get_children():
+		if child is Button:
+			(child as Button).alignment = HORIZONTAL_ALIGNMENT_LEFT
+
+	# The staff ID badge: who Steam says you are.
+	var badge := PanelContainer.new()
+	badge.name = "StaffBadge"
+	var paper := StyleBoxFlat.new()
+	paper.bg_color = BADGE_COLOR
+	paper.set_corner_radius_all(8)
+	paper.set_content_margin_all(12)
+	badge.add_theme_stylebox_override("panel", paper)
+	badge.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 40)
+	badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	badge.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	add_child(badge)
+	var badge_column := VBoxContainer.new()
+	badge.add_child(badge_column)
+	var strip := ColorRect.new()
+	strip.color = Color(0.28, 0.72, 0.4)
+	strip.custom_minimum_size = Vector2(280, 8)
+	badge_column.add_child(strip)
+	var staff := Label.new()
+	staff.text = "STAFF ID"
+	staff.add_theme_font_size_override("font_size", 14)
+	staff.add_theme_color_override("font_color", Color(0.3, 0.3, 0.32))
+	badge_column.add_child(staff)
 	_status = Label.new()
-	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status.modulate = Color(0.7, 0.7, 0.75)
-	column.add_child(_status)
+	_status.name = "Status"
+	_status.add_theme_color_override("font_color", Color(0.08, 0.08, 0.09))
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status.custom_minimum_size = Vector2(280, 0)
+	badge_column.add_child(_status)
 	# NEW 2026-11-13 (roadmap WP13b, OK'd by Zachary): which build this is, small and grey in the bottom-right corner,
 	# so two friends can check they have the same one.
 	var build := Label.new()
@@ -109,10 +165,40 @@ func _build() -> void:
 	add_child(build)
 
 
+## NEW 2026-11-14 (roadmap WP27): a black-and-yellow hazard stripe under the title.
+func _hazard_stripe(width: float, height: float) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(width, height)
+	holder.clip_contents = true
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for index: int in int(width / 14.0) + 3:
+		var piece := ColorRect.new()
+		piece.color = HudStyle.ACCENT if index % 2 == 0 else Color(0.08, 0.08, 0.09)
+		piece.size = Vector2(14.0, height * 3.0)
+		piece.position = Vector2(index * 14.0 - height, -height)
+		piece.rotation = deg_to_rad(30.0)
+		piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(piece)
+	return holder
+
+
+## NEW 2026-11-14: a hidden box of options under a big button.
+func _sub_box(parent: Control) -> PanelContainer:
+	var box := PanelContainer.new()
+	box.visible = false
+	parent.add_child(box)
+	return box
+
+
+## NEW 2026-11-14: a big button that opens or closes its box of options.
+func _add_toggle(parent: Control, text: String, box: Control) -> Button:
+	return _add_button(parent, text, func() -> void: box.visible = not box.visible)
+
+
 func _add_button(parent: Control, text: String, action: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(0, 40)
+	button.custom_minimum_size = Vector2(0, 48)
 	button.pressed.connect(action)
 	parent.add_child(button)
 	return button

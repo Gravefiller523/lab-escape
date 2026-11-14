@@ -496,7 +496,9 @@ The five questions, the same every time:
   the closet's stand-in. Moving arms and legs (Mixamo) come later.
   On `wp/29-machines-art`: the glowing pickups (keycards, power cell, data drive, with a new glowing palette
   material), the vending machine, 3D printer, mutation booth and battery charger, and all 14 closet cosmetics.
-  Attach points moved to fit the scientist. **Status: in progress.**
+  Attach points moved to fit the scientist.
+  On `wp/31-ui-theme` (WP27, Zachary OK'd the mock-up): the lab theme for every menu and screen
+  (`assets/ui/lab_theme.tres`), the new main menu over a lit room, the HUD's floor line top left. **Status: in progress.**
 
 ### Phase S: sound (see section e)
 #### WP28: Audio mix and free sounds

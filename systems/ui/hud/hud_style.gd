@@ -1,13 +1,14 @@
 class_name HudStyle
 ## Shared looks for the HUD widgets (NEW 2026-11-11, roadmap WP5): outlined labels, dark see-through panels and flat
-## bars. One place to change until the UI theme (lab_theme.tres, WP27) replaces it.
+## bars. CHANGED 2026-11-14 (roadmap WP27, Zachary OK'd the mock-up): the lab theme's colours (dark ink panels,
+## safety-yellow accents); the rest of the UI gets them from assets/ui/lab_theme.tres (the project's theme).
 
 const FONT_SIZE: int = 20
 const SMALL_FONT_SIZE: int = 16
 const OUTLINE_SIZE: int = 6
-const PANEL_COLOR: Color = Color(0.05, 0.06, 0.08, 0.6)
+const PANEL_COLOR: Color = Color(0.06, 0.07, 0.09, 0.8)
 const PANEL_BORDER: Color = Color(1, 1, 1, 0.15)
-const ACCENT: Color = Color(0.95, 0.78, 0.2)
+const ACCENT: Color = Color(0.96, 0.76, 0.12)
 const TRACK_COLOR: Color = Color(0, 0, 0, 0.55)
 const GOOD: Color = Color(0.35, 0.8, 0.35)
 const WARN: Color = Color(0.95, 0.7, 0.2)
@@ -30,8 +31,19 @@ static func panel_box(border: Color = PANEL_BORDER, border_width: int = 1) -> St
 	box.bg_color = PANEL_COLOR
 	box.border_color = border
 	box.set_border_width_all(border_width)
-	box.set_corner_radius_all(8)
+	box.set_corner_radius_all(6)
 	box.set_content_margin_all(8)
+	return box
+
+
+## NEW 2026-11-14 (roadmap WP27): a panel with a thick coloured stripe down its left side (floor, lift, health).
+static func accent_box(color: Color = ACCENT) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = PANEL_COLOR
+	box.border_color = color
+	box.border_width_left = 6
+	box.set_corner_radius_all(6)
+	box.set_content_margin_all(10)
 	return box
 
 

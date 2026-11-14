@@ -45,6 +45,14 @@ PALETTE = {
     "stripe_black": (4, 3, (0.08, 0.08, 0.09)),
     "rubber": (5, 3, (0.12, 0.12, 0.13)),
     "bolt": (6, 3, (0.70, 0.72, 0.75)),
+    "plaster": (0, 4, (0.86, 0.80, 0.66)),
+    "plaster_dirty": (1, 4, (0.70, 0.64, 0.50)),
+    "hay": (2, 4, (0.90, 0.76, 0.36)),
+    "hay_dark": (3, 4, (0.72, 0.56, 0.24)),
+    "water": (4, 4, (0.35, 0.60, 0.75)),
+    "skylight": (5, 4, (1.00, 0.95, 0.80)),
+    "concrete": (6, 4, (0.62, 0.58, 0.50)),
+    "feed_sack": (7, 4, (0.80, 0.72, 0.55)),
 }
 
 
@@ -293,6 +301,112 @@ def lift(material):
     join_and_export(door, "lift_door", material, "shared", False)
 
 
+def g(x, y, z):
+    """A Godot position (x right, y up, z towards the viewer) in Blender's axes."""
+    return (x, -z, y)
+
+
+def wall_with_gaps(parts, start, end, gaps, height, thickness):
+    """A wall from start to end (Godot x, z on the floor), with doorway gaps [(centre along the wall, width)]: a
+    wooden lower half and plaster above, with a header over each doorway."""
+    sx, sz = start
+    ex, ez = end
+    along_x = abs(ex - sx) > abs(ez - sz)
+    length = abs(ex - sx) if along_x else abs(ez - sz)
+    cuts = [0.0]
+    for centre, width in sorted(gaps):
+        cuts += [centre - width / 2.0, centre + width / 2.0]
+    cuts.append(length)
+    for index in range(0, len(cuts), 2):
+        a, b = cuts[index], cuts[index + 1]
+        if b - a < 0.01:
+            continue
+        mid = (a + b) / 2.0
+        cx = sx + (mid if along_x else 0.0)
+        cz = sz + (0.0 if along_x else mid)
+        seg = (b - a, thickness) if along_x else (thickness, b - a)
+        parts.append(part("cube", "wood", g(cx, 0.6, cz), (seg[0], seg[1], 1.2)))
+        parts.append(part("cube", "plaster", g(cx, 0.6 + height / 2.0, cz), (seg[0], seg[1], height - 1.2)))
+        parts.append(part("cube", "wood_dark", g(cx, 1.22, cz), (seg[0] + 0.02, seg[1] + 0.04, 0.08)))
+    for centre, width in gaps:
+        cx = sx + (centre if along_x else 0.0)
+        cz = sz + (0.0 if along_x else centre)
+        seg = (width, thickness) if along_x else (thickness, width)
+        parts.append(part("cube", "plaster", g(cx, 2.8 + (height - 2.8) / 2.0, cz), (seg[0], seg[1], height - 2.8)))
+
+
+def fence(parts, start, end, height=2.2):
+    """Cage bars from start to end (Godot x, z): a wooden kick board, bars every 0.3 m and a top rail."""
+    sx, sz = start
+    ex, ez = end
+    length = math.hypot(ex - sx, ez - sz)
+    along_x = abs(ex - sx) > abs(ez - sz)
+    mid = ((sx + ex) / 2.0, (sz + ez) / 2.0)
+    size = (length, 0.08) if along_x else (0.08, length)
+    parts.append(part("cube", "wood_dark", g(mid[0], 0.25, mid[1]), (size[0], size[1], 0.5)))
+    parts.append(part("cube", "steel", g(mid[0], height, mid[1]), (size[0] + 0.06, size[1] + 0.04, 0.08)))
+    count = max(int(length / 0.3), 1)
+    for index in range(count + 1):
+        t = index / count
+        x = sx + (ex - sx) * t
+        z = sz + (ez - sz) * t
+        parts.append(part("cylinder", "steel", g(x, 0.5 + (height - 0.5) / 2.0, z), (0.035, 0.035, height - 0.5),
+                          vertices=4))
+
+
+def hay_bale(parts, x, z, turn=0.0, stack=1):
+    for level in range(stack):
+        parts.append(part("cube", "hay", g(x, 0.22 + level * 0.44, z), (0.9, 0.5, 0.44), (0, 0, turn + level * 12)))
+        parts.append(part("cube", "hay_dark", g(x, 0.22 + level * 0.44, z), (0.92, 0.1, 0.46), (0, 0, turn + level * 12)))
+
+
+def animal_holding(material):
+    """Zoology's animal holding room (tile_zoology_animal_holding, 18 x 18 m, 3.6 m high): the shell, four pens of
+    cage bars on the same lines as the grey box's pens, hay, troughs and feed sacks, and skylights."""
+    size, height, wall = 18.0, 3.6, 0.3
+    parts = [part("cube", "concrete", g(size / 2.0, -0.05, size / 2.0), (size, size, 0.1))]
+    # Straw on the floor inside the pens, and a drain down the aisle.
+    for x, z, w, d in ((2.5, 2.5, 4.6, 4.6), (14.0, 2.5, 7.6, 4.6), (2.5, 15.5, 4.6, 4.6), (15.5, 15.5, 4.6, 4.6)):
+        parts.append(part("cube", "hay_dark", g(x, 0.012, z), (w, d, 0.02)))
+    parts.append(part("cube", "steel_dark", g(9.0, 0.006, 9.0), (0.3, 8.0, 0.012)))
+    wall_with_gaps(parts, (0.0, -wall / 2.0), (size, -wall / 2.0), [(7.5, 2.4)], height, wall)          # north
+    wall_with_gaps(parts, (0.0, size + wall / 2.0), (size, size + wall / 2.0), [(10.5, 2.4)], height, wall)  # south
+    wall_with_gaps(parts, (-wall / 2.0, 0.0), (-wall / 2.0, size), [(7.5, 2.4)], height, wall)          # west
+    wall_with_gaps(parts, (size + wall / 2.0, 0.0), (size + wall / 2.0, size), [(10.5, 2.4)], height, wall)  # east
+    # Ceiling: dark beams and four skylights (one is broken: a dark hole, for the damaged look).
+    parts.append(part("cube", "plaster_dirty", g(size / 2.0, height + 0.05, size / 2.0), (size + wall * 2, size + wall * 2, 0.1)))
+    for z in (3.0, 6.0, 9.0, 12.0, 15.0):
+        parts.append(part("cube", "wood_dark", g(size / 2.0, height - 0.15, z), (size, 0.25, 0.3)))
+    for x, z in ((4.5, 4.5), (13.5, 4.5), (4.5, 13.5), (13.5, 13.5)):
+        parts.append(part("cube", "skylight", g(x, height - 0.01, z), (2.2, 2.2, 0.02)))
+        parts.append(part("cube", "steel_dark", g(x, height - 0.05, z), (2.4, 0.1, 0.1)))
+        parts.append(part("cube", "steel_dark", g(x, height - 0.05, z), (0.1, 2.4, 0.1)))
+    # The pens: the same lines as the grey box (each side wall and front, with a 1.2 m gate gap in the front).
+    fence(parts, (5.0, 0.15), (5.0, 4.0))
+    fence(parts, (0.15, 5.0), (3.5, 5.0))
+    fence(parts, (10.0, 0.15), (10.0, 4.0))
+    fence(parts, (11.5, 5.0), (17.85, 5.0))
+    fence(parts, (5.0, 13.0), (5.0, 17.85))
+    fence(parts, (0.15, 13.0), (3.5, 13.0))
+    fence(parts, (13.0, 13.0), (13.0, 17.85))
+    fence(parts, (14.5, 13.0), (17.85, 13.0))
+    # Hay, troughs and feed sacks.
+    hay_bale(parts, 1.4, 1.2, 10, 2)
+    hay_bale(parts, 16.4, 1.3, -5, 1)
+    hay_bale(parts, 1.3, 16.6, 0, 2)
+    hay_bale(parts, 16.5, 16.5, 20, 1)
+    for x, z in ((3.0, 3.9), (15.0, 3.9), (3.0, 14.1), (15.5, 14.1)):
+        parts.append(part("cube", "steel", g(x, 0.25, z), (1.4, 0.45, 0.5)))
+        parts.append(part("cube", "water", g(x, 0.42, z), (1.25, 0.35, 0.06)))
+    for index, (x, z) in enumerate(((8.2, 1.0), (8.8, 1.1), (8.5, 1.0))):
+        parts.append(part("uv", "feed_sack", g(x, 0.3 + (0.45 if index == 2 else 0.0), z), (0.55, 0.4, 0.6), (0, 0, index * 25),
+                          segments=6, rings=4))
+    # A hose reel and a pail by the east door.
+    parts.append(part("cylinder", "moss", g(17.6, 1.4, 8.0), (0.6, 0.6, 0.15), (90, 0, 90), vertices=10))
+    parts.append(part("cylinder", "steel", g(16.8, 0.2, 8.6), (0.35, 0.35, 0.4), vertices=8))
+    join_and_export(parts, "room_zoology_animal_holding", material, "zoology", False)
+
+
 clear_scene()
 palette = make_palette()
 solid = palette_material(palette)
@@ -304,4 +418,5 @@ gem(solid, "prop_gem_large", 0.28)
 meat(solid)
 vial(solid, see_through)
 lift(solid)
+animal_holding(solid)
 print("LOOK_TARGET_DONE")
